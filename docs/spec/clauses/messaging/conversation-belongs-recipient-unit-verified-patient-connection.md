@@ -80,6 +80,6 @@ on) plus a new HTTP test for the staff caller — one separate task, outside thi
 test-only scope.
 
 Separately, the conversation routes are listed in
-`contracts/openapi/missing-routes.txt` rather than published in
+`contracts/openapi.yaml` rather than published in
 `contracts/openapi.yaml`; that contract-parity debt is also outside this task
 and does not change the clause's runtime behavior or its evidence.

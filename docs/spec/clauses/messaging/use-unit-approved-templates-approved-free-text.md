@@ -87,7 +87,7 @@ No gap for the clause behaviour itself. Out of scope and pre-existing:
   store, `db/migrations/V64__patient_instructions.sql` with RLS and FORCE RLS and
   its integration test; it depends on `READY-39`.
 - The six `/api/v1/patient-instructions` routes are absent from the committed
-  OpenAPI contract and are listed in `contracts/openapi/missing-routes.txt`.
+  OpenAPI contract and are listed in `contracts/openapi.yaml`.
   `FIX-OPENAPI-04` owns documenting the remaining routes and emptying that
   baseline (through `FIX-OPENAPI-02` and `FIX-OPENAPI-03`); `FIX-OPENAPI-01`
   owns the route-parity gate.

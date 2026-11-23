@@ -69,7 +69,7 @@ Production classes and files exercised by the service/store path:
   `public.app_org()`; and the append-only `attachment_event` ledger with update, delete
   and truncate triggers.
 - Discovery note: `/api/v1/patient/files/**` is baselined in
-  `contracts/openapi/missing-routes.txt:78,278-279` rather than published in
+  `contracts/openapi.yaml:78,278-279` rather than published in
   `contracts/openapi.yaml`; only `/api/v1/staff/attachments/**` is published. Contract
   changes are outside this test-only story's scope.
 

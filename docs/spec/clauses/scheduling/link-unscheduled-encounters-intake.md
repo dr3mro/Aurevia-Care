@@ -53,7 +53,7 @@ Production classes exercised through that entry point:
   from the Flyway migrations under `db/migrations`.
 
 Discovery: the intake route is currently listed in
-`contracts/openapi/missing-routes.txt` rather than documented in
+`contracts/openapi.yaml` rather than documented in
 `contracts/openapi.yaml`. That is a separate contract task and is out of scope
 for this clause test; it does not affect the clause's API behaviour.
 

@@ -60,7 +60,7 @@ Clause behavior: none. Two documentation boundaries remain outside this story's 
 
 1. Public contract coverage: `POST /api/v1/xch04/orders`, `POST /api/v1/xch04/results` and
    `GET /api/v1/xch04/results/{id}` are still listed as undocumented in
-   `contracts/openapi/missing-routes.txt` (lines 350, 352 and 124), and `contracts/openapi.yaml` has
+   `contracts/openapi.yaml` (lines 350, 352 and 124), and `contracts/openapi.yaml` has
    no xch04 paths. Closing it would change `contracts/openapi.yaml`, regenerate
    `contracts/openapi/generated/openapi.yaml` and remove the corresponding `missing-routes.txt` lines.
    That is one separate contract task; this story forbids contract changes.

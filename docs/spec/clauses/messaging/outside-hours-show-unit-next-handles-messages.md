@@ -68,7 +68,7 @@ the existing unit proof in `ServiceProfileServiceTest` and `ServiceHoursCalculat
 the real-PostgreSQL HTTP proof in `ServiceProfileHttpIntegrationTest`, the Jdbc store and
 the Flyway migrations under `db/migrations`. The route is served by `ServiceProfileController`,
 but the full published OpenAPI contract does not yet carry it: it is listed in
-`contracts/openapi/missing-routes.txt`. Contract publication is out of scope for this
+`contracts/openapi.yaml`. Contract publication is out of scope for this
 test-only task.
 
 ## Gap

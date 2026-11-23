@@ -89,7 +89,7 @@ The tracked half of the clause is implemented and durable, but no controller rou
    `GET` aggregate, but the commands cannot be issued over HTTP and there is no HTTP-level test for
    them. Closing this needs controller routes plus HTTP-level integration tests.
 2. **No published contract.** `/api/v1/therapy/episodes` is absent from `contracts/openapi.yaml`
-   (the two real routes are baselined in `contracts/openapi/missing-routes.txt`), so generated
+   (the two real routes are baselined in `contracts/openapi.yaml`), so generated
    clients cannot call even the two existing routes. The generated contract still advertises a
    different `/api/v1/therapy/referrals/{id}/accept` path that no controller implements. Closing
    this needs OpenAPI `paths` entries, reconciliation of that stale generated path, and a

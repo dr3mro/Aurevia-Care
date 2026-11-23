@@ -85,6 +85,6 @@ that the chart-records route is published in the committed OpenAPI contract.
 
 None for the clause behaviour. Out of scope and pre-existing: the committed
 OpenAPI contract has no `/api/v1/chart/records` path and no author/actor fields
-(`contracts/openapi/missing-routes.txt` already lists those routes). Documenting
+(`contracts/openapi.yaml` already lists those routes). Documenting
 them would change `contracts/openapi.yaml`, the generated client and the
 contract tests — one separate ARC-04/WEB-05 contract task.

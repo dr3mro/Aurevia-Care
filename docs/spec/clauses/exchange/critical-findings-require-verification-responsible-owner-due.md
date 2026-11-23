@@ -74,7 +74,7 @@ Production classes and files surveyed and exercised by the entry point:
   security and FORCE RLS from V2 confine both tables to the active organization;
   triggers re-check ownership, version and transition invariants in the database.
 - Contract survey: all ten `/api/v1/critical-results/*` routes are baselined in
-  `contracts/openapi/missing-routes.txt` (GET report and GET `{}` at lines 29-30;
+  `contracts/openapi.yaml` (GET report and GET `{}` at lines 29-30;
   POST base and the seven sub-routes at lines 170-177). They are not described as
   operations in `contracts/openapi.yaml`. That is separate contract-documentation
   and regenerated-client debt; it does not affect whether the clause is

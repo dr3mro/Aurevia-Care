@@ -73,7 +73,7 @@ point. This task added proof only; it did not change production code, an existin
 contract or a migration.
 
 Two adjacent, non-blocking observations are recorded for completeness. First, the nine prescription
-routes are listed in `contracts/openapi/missing-routes.txt` as baselined routes absent from the
+routes are listed in `contracts/openapi.yaml` as baselined routes absent from the
 generated OpenAPI contract; publishing them and regenerating the staff client is a separate
 cross-cutting contract task (WEB-05), outside this clause's test-only scope. Second, no unit test
 asserts the UUID shape of `RxInputs.newSubmissionId` in isolation; its canonical form is proven here

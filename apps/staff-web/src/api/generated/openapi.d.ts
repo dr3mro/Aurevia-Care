@@ -271,7 +271,8 @@ export interface paths {
         /** List appointments by scheduled-start range with cursor pagination */
         get: operations["listAppointments"];
         put?: never;
-        post?: never;
+        /** Book (POST /api/v1/appointments) */
+        post: operations["appointmentbook"];
         delete?: never;
         options?: never;
         head?: never;
@@ -288,7 +289,8 @@ export interface paths {
         /** List laboratory accessions in the active organization with cursor pagination */
         get: operations["listLabAccessions"];
         put?: never;
-        post?: never;
+        /** Accession (POST /api/v1/lab/accessions) */
+        post: operations["labaccessionaccession"];
         delete?: never;
         options?: never;
         head?: never;
@@ -833,7 +835,8 @@ export interface paths {
         /** List released orders in the active organization with cursor pagination */
         get: operations["listOrders"];
         put?: never;
-        post?: never;
+        /** Create (POST /api/v1/orders) */
+        post: operations["ordercreate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1753,10 +1756,4752 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patient/appointments/devices/{tokenId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke (DELETE /api/v1/patient/appointments/devices/{tokenId}) */
+        delete: operations["patientappointmentrevoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/emergency/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Active (GET /api/v1/access/emergency/active) */
+        get: operations["accessactive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/emergency/review-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Review Queue (GET /api/v1/access/emergency/review-queue) */
+        get: operations["accessreviewqueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/appointments/{id}) */
+        get: operations["appointmentget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/authz/role-history/{subject}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History (GET /api/v1/authz/role-history/{subject}) */
+        get: operations["rolehistoryhistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/care-units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Units (GET /api/v1/care-units) */
+        get: operations["careunitunits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/care-units/{unitId}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Availability (GET /api/v1/care-units/{unitId}/availability) */
+        get: operations["serviceprofileavailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/care-units/{unitId}/service-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View (GET /api/v1/care-units/{unitId}/service-profile) */
+        get: operations["serviceprofileview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/care-units/{unitId}/service-profile/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History (GET /api/v1/care-units/{unitId}/service-profile/versions) */
+        get: operations["serviceprofilehistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/care-units/{unitId}/supervisor-snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Supervisor (GET /api/v1/care-units/{unitId}/supervisor-snapshot) */
+        get: operations["serviceprofilesupervisor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chart/records/entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/chart/records/entries/{id}) */
+        get: operations["chartget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chart/records/patients/{patientId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chart (GET /api/v1/chart/records/patients/{patientId}/entries) */
+        get: operations["chartchart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/worklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Worklist (GET /api/v1/clinic/worklist) */
+        get: operations["clinicworklist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/diagnosis/{key}/effective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Effective Diagnosis (GET /api/v1/clinical-catalog/diagnosis/{key}/effective) */
+        get: operations["clinicalcatalogeffectivediagnosis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/diagnosis/{key}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History Diagnosis (GET /api/v1/clinical-catalog/diagnosis/{key}/history) */
+        get: operations["clinicalcataloghistorydiagnosis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/diagnosis/{key}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Diagnosis (GET /api/v1/clinical-catalog/diagnosis/{key}/search) */
+        get: operations["clinicalcatalogsearchdiagnosis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/dictionaries/{key}/effective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Effective Dictionary (GET /api/v1/clinical-catalog/dictionaries/{key}/effective) */
+        get: operations["clinicalcatalogeffectivedictionary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/dictionaries/{key}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History Dictionary (GET /api/v1/clinical-catalog/dictionaries/{key}/history) */
+        get: operations["clinicalcataloghistorydictionary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-notes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/clinical-notes/{id}) */
+        get: operations["clinicalnoteget"];
+        /** Edit (PUT /api/v1/clinical-notes/{id}) */
+        put: operations["clinicalnoteedit"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report (GET /api/v1/critical-results/report) */
+        get: operations["criticalresultreport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/critical-results/{id}) */
+        get: operations["criticalresultget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/dead-letters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dead Letters (GET /api/v1/delivery/dead-letters) */
+        get: operations["deliverydeadletters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View (GET /api/v1/documents/artifacts/{id}) */
+        get: operations["documentartifactview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download (GET /api/v1/documents/artifacts/{id}/download) */
+        get: operations["documentartifactdownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/associations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Association (GET /api/v1/documents/associations/{id}) */
+        get: operations["documentassociation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/associations/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Association Content (GET /api/v1/documents/associations/{id}/content) */
+        get: operations["documentassociationcontent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/rendered": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rendered Versions (GET /api/v1/documents/rendered) */
+        get: operations["documentrenderedversions"];
+        put?: never;
+        /** Render (POST /api/v1/documents/rendered) */
+        post: operations["documentrender"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/rendered/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rendered (GET /api/v1/documents/rendered/{id}) */
+        get: operations["documentrendered"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/rendered/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rendered Content (GET /api/v1/documents/rendered/{id}/content) */
+        get: operations["documentrenderedcontent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/duplicate-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Worklist (GET /api/v1/duplicate-reviews) */
+        get: operations["consolidationworklist"];
+        put?: never;
+        /** Open (POST /api/v1/duplicate-reviews) */
+        post: operations["consolidationopen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/duplicate-reviews/{survivorId}/{duplicateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Review (GET /api/v1/duplicate-reviews/{survivorId}/{duplicateId}) */
+        get: operations["consolidationreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exchange-tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/exchange-tasks/{id}) */
+        get: operations["exchangetaskget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exchange/work-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Work Items (GET /api/v1/exchange/work-items) */
+        get: operations["orderworkitems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/{id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tasks (GET /api/v1/follow-ups/{id}/tasks) */
+        get: operations["followuptasks"];
+        put?: never;
+        /** Create Task (POST /api/v1/follow-ups/{id}/tasks) */
+        post: operations["followupcreatetask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imaging/orders/study-link-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Study Link Reviews (GET /api/v1/imaging/orders/study-link-reviews) */
+        get: operations["imagingstudylinkreviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imaging/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read (GET /api/v1/imaging/orders/{orderId}) */
+        get: operations["imagingread"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instructions/overdue-follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overdue (GET /api/v1/instructions/overdue-follow-ups) */
+        get: operations["instructionfactoverdue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instructions/{id}/facts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts (GET /api/v1/instructions/{id}/facts) */
+        get: operations["instructionfactfacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/accessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/lab/accessions/{id}) */
+        get: operations["labaccessionget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/outage/orders/{orderRef}/attachment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Attachment (GET /api/v1/lab/outage/orders/{orderRef}/attachment) */
+        get: operations["outageattachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/outage/orders/{orderRef}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History (GET /api/v1/lab/outage/orders/{orderRef}/history) */
+        get: operations["outagehistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/outage/unmatched": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Unmatched (GET /api/v1/lab/outage/unmatched) */
+        get: operations["outageunmatched"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/releases/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read (GET /api/v1/lab/releases/{id}) */
+        get: operations["labreportreleaseread"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/releases/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History (GET /api/v1/lab/releases/{id}/history) */
+        get: operations["labreportreleasehistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/results/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read (GET /api/v1/lab/results/{id}) */
+        get: operations["labresultentryread"];
+        put?: never;
+        /** Enter (POST /api/v1/lab/results/{id}) */
+        post: operations["labresultentryenter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/specimens/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History (GET /api/v1/lab/specimens/{id}/history) */
+        get: operations["specimenrejectionhistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/specimens/{id}/label": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Label (GET /api/v1/lab/specimens/{id}/label) */
+        get: operations["specimencollectionlabel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/retention/{resourceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retention (GET /api/v1/messaging-governance/retention/{resourceId}) */
+        get: operations["messaginggovernanceretention"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/openapi.yaml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contract (GET /api/v1/openapi.yaml) */
+        get: operations["openapicontractcontract"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/orders/{id}) */
+        get: operations["orderget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-flow/notices/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notification Text (GET /api/v1/patient-flow/notices/{kind}) */
+        get: operations["patientflowpresentationnotificationtext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-flow/presentation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Presentation (GET /api/v1/patient-flow/presentation) */
+        get: operations["patientflowpresentationpresentation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-identity/accounts/{subject}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Has Access (GET /api/v1/patient-identity/accounts/{subject}/access) */
+        get: operations["identityproofinghasaccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-identity/accounts/{subject}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Links (GET /api/v1/patient-identity/accounts/{subject}/links) */
+        get: operations["identityproofinglinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-instructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List For Patient (GET /api/v1/patient-instructions) */
+        get: operations["instructionlistforpatient"];
+        put?: never;
+        /** Send (POST /api/v1/patient-instructions) */
+        post: operations["instructionsend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-instructions/{threadId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/patient-instructions/{threadId}) */
+        get: operations["instructionget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-unit-connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Connections (GET /api/v1/patient-unit-connections) */
+        get: operations["careunitconnections"];
+        put?: never;
+        /** Connect (POST /api/v1/patient-unit-connections) */
+        post: operations["careunitconnect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/accounts/{accountId}/chart-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check Chart Access (GET /api/v1/patient/access/accounts/{accountId}/chart-access) */
+        get: operations["patientaccesscheckchartaccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/accounts/{accountId}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Account View (GET /api/v1/patient/access/accounts/{accountId}/view) */
+        get: operations["patientaccessaccountview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notifications (GET /api/v1/patient/access/notifications) */
+        get: operations["patientaccessnotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List (GET /api/v1/patient/appointments) */
+        get: operations["patientappointmentlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/files/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download (GET /api/v1/patient/files/{id}/download) */
+        get: operations["attachmentdownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List (GET /api/v1/patient/reports) */
+        get: operations["releasedreportlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/reports/{reportId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download (GET /api/v1/patient/reports/{reportId}/download) */
+        get: operations["releasedreportdownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search (GET /api/v1/patients) */
+        get: operations["patientsearch"];
+        put?: never;
+        /** Register (POST /api/v1/patients) */
+        post: operations["patientregister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/patients/{id}) */
+        get: operations["patientget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/released-revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Visible Revisions (GET /api/v1/patients/{patientId}/released-revisions) */
+        get: operations["patientreleasedrevisionsvisiblerevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/clarifications/overdue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overdue (GET /api/v1/pharmacy/clarifications/overdue) */
+        get: operations["clarificationoverdue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/clarifications/{threadId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View (GET /api/v1/pharmacy/clarifications/{threadId}) */
+        get: operations["clarificationview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List (GET /api/v1/pharmacy/inbox) */
+        get: operations["pharmacyinboxlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/inbox/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/pharmacy/inbox/{id}) */
+        get: operations["pharmacyinboxget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/status/{prescriptionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View (GET /api/v1/pharmacy/status/{prescriptionId}) */
+        get: operations["pharmacystatusview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/status/{prescriptionId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History (GET /api/v1/pharmacy/status/{prescriptionId}/events) */
+        get: operations["pharmacystatushistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/reports/addenda/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open Addenda (GET /api/v1/radiology/reports/addenda/open) */
+        get: operations["reportopenaddenda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/reports/addenda/overdue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overdue Addenda (GET /api/v1/radiology/reports/addenda/overdue) */
+        get: operations["reportoverdueaddenda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/reports/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Events (GET /api/v1/radiology/reports/events) */
+        get: operations["reportevents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/reports/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read (GET /api/v1/radiology/reports/{orderId}) */
+        get: operations["reportread"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/reports/{orderId}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Revisions (GET /api/v1/radiology/reports/{orderId}/revisions) */
+        get: operations["reportrevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/worklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Worklist (GET /api/v1/radiology/worklist) */
+        get: operations["worklistworklist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/worklist/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Events (GET /api/v1/radiology/worklist/events) */
+        get: operations["worklistevents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/worklist/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read (GET /api/v1/radiology/worklist/orders/{orderId}) */
+        get: operations["worklistread"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/releases/{id}) */
+        get: operations["patientreleaseget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History (GET /api/v1/releases/{id}/history) */
+        get: operations["patientreleasehistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/specialty/attestations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List (GET /api/v1/specialty/attestations) */
+        get: operations["specialtylist"];
+        put?: never;
+        /** Attest (POST /api/v1/specialty/attestations) */
+        post: operations["specialtyattest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/specialty/attestations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/specialty/attestations/{id}) */
+        get: operations["specialtyget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/specialty/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Permissions (GET /api/v1/specialty/permissions) */
+        get: operations["specialtypermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-invitations/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pending (GET /api/v1/staff-invitations/pending) */
+        get: operations["staffinvitationpending"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-messages/governance/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit (GET /api/v1/staff-messages/governance/audit) */
+        get: operations["staffmessagegovernanceaudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-messages/governance/retention/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retention (GET /api/v1/staff-messages/governance/retention/{conversationId}) */
+        get: operations["staffmessagegovernanceretention"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-messages/governance/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search (GET /api/v1/staff-messages/governance/search) */
+        get: operations["staffmessagegovernancesearch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/exports/{jobId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download (GET /api/v1/tenant/exports/{jobId}) */
+        get: operations["exportdownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/therapy/episodes/{episodeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read (GET /api/v1/therapy/episodes/{episodeId}) */
+        get: operations["therapyread"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trends/{patientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trend (GET /api/v1/trends/{patientId}) */
+        get: operations["trendtrend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get (GET /api/v1/xch03/orders/{id}) */
+        get: operations["exchangeresponseget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History (GET /api/v1/xch03/orders/{id}/history) */
+        get: operations["exchangeresponsehistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieve (GET /api/v1/xch03/orders/{id}/retrieve) */
+        get: operations["exchangeresponseretrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch04/reconciliations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reconciliation (GET /api/v1/xch04/reconciliations) */
+        get: operations["resultlistreconciliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch04/reconciliations/{id}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resolution (GET /api/v1/xch04/reconciliations/{id}/resolution) */
+        get: operations["reconciliationresolution"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch04/results/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report (GET /api/v1/xch04/results/{id}) */
+        get: operations["resultgetreport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live (GET /health/live) */
+        get: operations["healthlive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ready (GET /health/ready) */
+        get: operations["healthready"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Scrape aggregate request metrics as Prometheus exposition text for an allowed source
+         * @description Unauthenticated scrape. The source address is allowlisted by MetricsAccessPolicy; loopback is always permitted and additional CIDRs come from SMARTCLINIC_METRICS_ALLOW. A disallowed source receives a bare 404 with an empty body so the endpoint is not discoverable from an untrusted network. The body holds aggregate counters only, never request bodies, tokens, tenant or patient fields.
+         */
+        get: operations["scrapeMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/emergency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Grant (POST /api/v1/access/emergency) */
+        post: operations["accessgrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/emergency/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review (POST /api/v1/access/emergency/{id}/review) */
+        post: operations["accessreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/emergency/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke (POST /api/v1/access/emergency/{id}/revoke) */
+        post: operations["accessrevoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/support/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Access (POST /api/v1/access/support/check) */
+        post: operations["accesscheckaccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/support/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Incident (POST /api/v1/access/support/incidents) */
+        post: operations["accesscreateincident"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/support/incidents/{reference}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Incident (POST /api/v1/access/support/incidents/{reference}/approve) */
+        post: operations["accessapproveincident"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/holds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hold (POST /api/v1/appointments/holds) */
+        post: operations["appointmenthold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Series (POST /api/v1/appointments/series) */
+        post: operations["appointmentseries"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel (POST /api/v1/appointments/{id}/cancel) */
+        post: operations["appointmentcancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}/check-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check In (POST /api/v1/appointments/{id}/check-in) */
+        post: operations["appointmentcheckin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete (POST /api/v1/appointments/{id}/complete) */
+        post: operations["appointmentcomplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm (POST /api/v1/appointments/{id}/confirm) */
+        post: operations["appointmentconfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}/no-show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** No Show (POST /api/v1/appointments/{id}/no-show) */
+        post: operations["appointmentnoshow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}/reschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reschedule (POST /api/v1/appointments/{id}/reschedule) */
+        post: operations["appointmentreschedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start (POST /api/v1/appointments/{id}/start) */
+        post: operations["appointmentstart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/care-units/{unitId}/service-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish (POST /api/v1/care-units/{unitId}/service-profiles) */
+        post: operations["serviceprofilepublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/care-units/{unitId}/service-profiles/{profileId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve (POST /api/v1/care-units/{unitId}/service-profiles/{profileId}/approve) */
+        post: operations["serviceprofileapprove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chart/records/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record (POST /api/v1/chart/records/entries) */
+        post: operations["chartrecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chart/records/entries/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify (POST /api/v1/chart/records/entries/{id}/verify) */
+        post: operations["chartverify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/appointments/{id}/check-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check In (POST /api/v1/clinic/appointments/{id}/check-in) */
+        post: operations["cliniccheckin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/appointments/{id}/open-encounter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open Encounter (POST /api/v1/clinic/appointments/{id}/open-encounter) */
+        post: operations["clinicopenencounter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/verifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify (POST /api/v1/clinic/verifications) */
+        post: operations["clinicverify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/worklist/intake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Intake (POST /api/v1/clinic/worklist/intake) */
+        post: operations["clinicintake"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/worklist/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign (POST /api/v1/clinic/worklist/{id}/assign) */
+        post: operations["clinicassign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/worklist/{id}/handoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Handoff (POST /api/v1/clinic/worklist/{id}/handoff) */
+        post: operations["clinichandoff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/diagnosis/{key}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Define Diagnosis (POST /api/v1/clinical-catalog/diagnosis/{key}/versions) */
+        post: operations["clinicalcatalogdefinediagnosis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/diagnosis/{key}/versions/{version}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Diagnosis (POST /api/v1/clinical-catalog/diagnosis/{key}/versions/{version}/approve) */
+        post: operations["clinicalcatalogapprovediagnosis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/dictionaries/{key}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Define Dictionary (POST /api/v1/clinical-catalog/dictionaries/{key}/versions) */
+        post: operations["clinicalcatalogdefinedictionary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-catalog/dictionaries/{key}/versions/{version}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Dictionary (POST /api/v1/clinical-catalog/dictionaries/{key}/versions/{version}/approve) */
+        post: operations["clinicalcatalogapprovedictionary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create (POST /api/v1/clinical-notes) */
+        post: operations["clinicalnotecreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-notes/{id}/amend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Amend (POST /api/v1/clinical-notes/{id}/amend) */
+        post: operations["clinicalnoteamend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-notes/{id}/entered-in-error": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Entered In Error (POST /api/v1/clinical-notes/{id}/entered-in-error) */
+        post: operations["clinicalnoteenteredinerror"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-notes/{id}/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign (POST /api/v1/clinical-notes/{id}/sign) */
+        post: operations["clinicalnotesign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-notes/{id}/sign-addendum": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign Addendum (POST /api/v1/clinical-notes/{id}/sign-addendum) */
+        post: operations["clinicalnotesignaddendum"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register (POST /api/v1/critical-results) */
+        post: operations["criticalresultregister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/{id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge (POST /api/v1/critical-results/{id}/acknowledge) */
+        post: operations["criticalresultacknowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign (POST /api/v1/critical-results/{id}/assign) */
+        post: operations["criticalresultassign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/{id}/escalate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Escalate (POST /api/v1/critical-results/{id}/escalate) */
+        post: operations["criticalresultescalate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/{id}/follow-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Follow Up (POST /api/v1/critical-results/{id}/follow-up) */
+        post: operations["criticalresultfollowup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/{id}/read-back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read Back (POST /api/v1/critical-results/{id}/read-back) */
+        post: operations["criticalresultreadback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release (POST /api/v1/critical-results/{id}/release) */
+        post: operations["criticalresultrelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/critical-results/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify (POST /api/v1/critical-results/{id}/verify) */
+        post: operations["criticalresultverify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/consumer-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Consume (POST /api/v1/delivery/consumer-events) */
+        post: operations["deliveryconsume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/dead-letters/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Dead Letter (POST /api/v1/delivery/dead-letters/review) */
+        post: operations["deliveryreviewdeadletter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish (POST /api/v1/delivery/events) */
+        post: operations["deliverypublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/events/{id}/dead-letter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dead Letter (POST /api/v1/delivery/events/{id}/dead-letter) */
+        post: operations["deliverydeadletter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/events/{id}/delivered": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Delivered (POST /api/v1/delivery/events/{id}/delivered) */
+        post: operations["deliverymarkdelivered"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/events/{id}/failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Failed (POST /api/v1/delivery/events/{id}/failed) */
+        post: operations["deliverymarkfailed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/events/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry (POST /api/v1/delivery/events/{id}/retry) */
+        post: operations["deliveryretry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/events/{id}/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Sent (POST /api/v1/delivery/events/{id}/sent) */
+        post: operations["deliverymarksent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/external-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link External (POST /api/v1/delivery/external-links) */
+        post: operations["deliverylinkexternal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/replays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replay (POST /api/v1/delivery/replays) */
+        post: operations["deliveryreplay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload (POST /api/v1/documents/artifacts) */
+        post: operations["documentartifactupload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bind (POST /api/v1/documents/artifacts/bindings) */
+        post: operations["documentartifactbind"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release (POST /api/v1/documents/artifacts/releases) */
+        post: operations["documentartifactrelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/renders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Render (POST /api/v1/documents/artifacts/renders) */
+        post: operations["documentartifactrequestrender"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/renders/{jobId}/fail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fail Render (POST /api/v1/documents/artifacts/renders/{jobId}/fail) */
+        post: operations["documentartifactfailrender"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/renders/{jobId}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish Render (POST /api/v1/documents/artifacts/renders/{jobId}/finish) */
+        post: operations["documentartifactfinishrender"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/renders/{jobId}/pickup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pickup Render (POST /api/v1/documents/artifacts/renders/{jobId}/pickup) */
+        post: operations["documentartifactpickuprender"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete (POST /api/v1/documents/artifacts/{id}/complete) */
+        post: operations["documentartifactcomplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/{id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove (POST /api/v1/documents/artifacts/{id}/remove) */
+        post: operations["documentartifactremove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/artifacts/{id}/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Scan (POST /api/v1/documents/artifacts/{id}/scan) */
+        post: operations["documentartifactscan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/associations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link (POST /api/v1/documents/associations) */
+        post: operations["documentlink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/associations/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void Association (POST /api/v1/documents/associations/{id}/void) */
+        post: operations["documentvoidassociation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/duplicate-reviews/{reviewId}/consolidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Consolidate (POST /api/v1/duplicate-reviews/{reviewId}/consolidate) */
+        post: operations["consolidationconsolidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/duplicate-reviews/{reviewId}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Correct (POST /api/v1/duplicate-reviews/{reviewId}/correct) */
+        post: operations["consolidationcorrect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exchange-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create (POST /api/v1/exchange-tasks) */
+        post: operations["exchangetaskcreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exchange-tasks/{id}/{command}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Execute (POST /api/v1/exchange-tasks/{id}/{command}) */
+        post: operations["exchangetaskexecute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exchange/authorizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authorize (POST /api/v1/exchange/authorizations) */
+        post: operations["orderauthorize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exchange/work-items/{id}/verify-patient": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Patient (POST /api/v1/exchange/work-items/{id}/verify-patient) */
+        post: operations["orderverifypatient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suggest (POST /api/v1/follow-ups/suggest) */
+        post: operations["followupsuggest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/tasks/{taskId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Task (POST /api/v1/follow-ups/tasks/{taskId}/complete) */
+        post: operations["followupcompletetask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm (POST /api/v1/follow-ups/{id}/confirm) */
+        post: operations["followupconfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/{id}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Override (POST /api/v1/follow-ups/{id}/override) */
+        post: operations["followupoverride"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gate-evidence/produce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Produce (POST /api/v1/gate-evidence/produce) */
+        post: operations["gateevidenceproduce"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imaging/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Intake (POST /api/v1/imaging/orders) */
+        post: operations["imagingintake"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imaging/orders/study-link-reviews/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Study Link Review (POST /api/v1/imaging/orders/study-link-reviews/resolve) */
+        post: operations["imagingresolvestudylinkreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imaging/orders/{orderId}/studies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link Study (POST /api/v1/imaging/orders/{orderId}/studies) */
+        post: operations["imaginglinkstudy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instructions/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge (POST /api/v1/instructions/acknowledge) */
+        post: operations["instructionfactacknowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instructions/dispatch/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry (POST /api/v1/instructions/dispatch/retry) */
+        post: operations["instructionfactretry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instructions/first-view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** First View (POST /api/v1/instructions/first-view) */
+        post: operations["instructionfactfirstview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instructions/follow-up/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve (POST /api/v1/instructions/follow-up/resolve) */
+        post: operations["instructionfactresolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instructions/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish (POST /api/v1/instructions/publish) */
+        post: operations["instructionfactpublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/accessions/{id}/collect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Collect (POST /api/v1/lab/accessions/{id}/collect) */
+        post: operations["labaccessioncollect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/accessions/{id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive (POST /api/v1/lab/accessions/{id}/receive) */
+        post: operations["labaccessionreceive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/accessions/{id}/recollect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recollect (POST /api/v1/lab/accessions/{id}/recollect) */
+        post: operations["labaccessionrecollect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/accessions/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject (POST /api/v1/lab/accessions/{id}/reject) */
+        post: operations["labaccessionreject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/outage/orders/{orderRef}/manual-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record (POST /api/v1/lab/outage/orders/{orderRef}/manual-results) */
+        post: operations["outagerecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release (POST /api/v1/lab/releases) */
+        post: operations["labreportreleaserelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/releases/{id}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Correct (POST /api/v1/lab/releases/{id}/correct) */
+        post: operations["labreportreleasecorrect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/releases/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw (POST /api/v1/lab/releases/{id}/withdraw) */
+        post: operations["labreportreleasewithdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/results/{id}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Correct (POST /api/v1/lab/results/{id}/correct) */
+        post: operations["labresultentrycorrect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/results/{id}/error": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enter In Error (POST /api/v1/lab/results/{id}/error) */
+        post: operations["labresultentryenterinerror"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/results/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify (POST /api/v1/lab/results/{id}/verify) */
+        post: operations["labresultentryverify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/specimens/{id}/collect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Collect (POST /api/v1/lab/specimens/{id}/collect) */
+        post: operations["specimencollectioncollect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/specimens/{id}/recollect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recollect (POST /api/v1/lab/specimens/{id}/recollect) */
+        post: operations["specimenrejectionrecollect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/specimens/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject (POST /api/v1/lab/specimens/{id}/reject) */
+        post: operations["specimenrejectionreject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Action (POST /api/v1/messaging-governance/actions) */
+        post: operations["messaginggovernancerecordaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/chart-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link To Chart (POST /api/v1/messaging-governance/chart-links) */
+        post: operations["messaginggovernancelinktochart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/connections/{id}/revocation-effects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Revocation (POST /api/v1/messaging-governance/connections/{id}/revocation-effects) */
+        post: operations["messaginggovernancerecordrevocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/copy-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Copy (POST /api/v1/messaging-governance/copy-requests) */
+        post: operations["messaginggovernancerequestcopy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Export (POST /api/v1/messaging-governance/exports) */
+        post: operations["messaginggovernancecreateexport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/legal-holds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Place Hold (POST /api/v1/messaging-governance/legal-holds) */
+        post: operations["messaginggovernanceplacehold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/legal-holds/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release Hold (POST /api/v1/messaging-governance/legal-holds/{id}/release) */
+        post: operations["messaginggovernancereleasehold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-identity/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enroll (POST /api/v1/patient-identity/accounts) */
+        post: operations["identityproofingenroll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-identity/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue (POST /api/v1/patient-identity/invitations) */
+        post: operations["identityproofingissue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-identity/links/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim (POST /api/v1/patient-identity/links/claim) */
+        post: operations["identityproofingclaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-identity/links/reverify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reverify (POST /api/v1/patient-identity/links/reverify) */
+        post: operations["identityproofingreverify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-identity/links/unlink": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unlink (POST /api/v1/patient-identity/links/unlink) */
+        post: operations["identityproofingunlink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-instructions/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Define Template (POST /api/v1/patient-instructions/templates) */
+        post: operations["instructiondefinetemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-instructions/{threadId}/replace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace (POST /api/v1/patient-instructions/{threadId}/replace) */
+        post: operations["instructionreplace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-instructions/{threadId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw (POST /api/v1/patient-instructions/{threadId}/withdraw) */
+        post: operations["instructionwithdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-unit-connections/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke (POST /api/v1/patient-unit-connections/{id}/revoke) */
+        post: operations["careunitrevoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/accounts/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change Staff Contact (POST /api/v1/patient/access/accounts/contact) */
+        post: operations["patientaccesschangestaffcontact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/accounts/recovery/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recover (POST /api/v1/patient/access/accounts/recovery/redeem) */
+        post: operations["patientaccessrecover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/accounts/sensitive-change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sensitive Change (POST /api/v1/patient/access/accounts/sensitive-change) */
+        post: operations["patientaccesssensitivechange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/accounts/{accountId}/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Recovery (POST /api/v1/patient/access/accounts/{accountId}/recovery) */
+        post: operations["patientaccessissuerecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/accounts/{accountId}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unlock (POST /api/v1/patient/access/accounts/{accountId}/unlock) */
+        post: operations["patientaccessunlock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open Case (POST /api/v1/patient/access/cases) */
+        post: operations["patientaccessopencase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/cases/{caseId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign Case (POST /api/v1/patient/access/cases/{caseId}/assign) */
+        post: operations["patientaccessassigncase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/cases/{caseId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Case (POST /api/v1/patient/access/cases/{caseId}/resolve) */
+        post: operations["patientaccessresolvecase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Invitation (POST /api/v1/patient/access/invitations) */
+        post: operations["patientaccessissueinvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/invitations/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enroll (POST /api/v1/patient/access/invitations/redeem) */
+        post: operations["patientaccessenroll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/reauth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Reauth (POST /api/v1/patient/access/reauth) */
+        post: operations["patientaccessissuereauth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/appointments/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register (POST /api/v1/patient/appointments/devices) */
+        post: operations["patientappointmentregister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/appointments/devices/{tokenId}/invalid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invalid Token (POST /api/v1/patient/appointments/devices/{tokenId}/invalid) */
+        post: operations["patientappointmentinvalidtoken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/appointments/{appointmentId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm (POST /api/v1/patient/appointments/{appointmentId}/confirm) */
+        post: operations["patientappointmentconfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/appointments/{appointmentId}/notify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Notify (POST /api/v1/patient/appointments/{appointmentId}/notify) */
+        post: operations["patientappointmentnotify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/files/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload (POST /api/v1/patient/files/upload) */
+        post: operations["attachmentupload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/files/{id}/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Scan (POST /api/v1/patient/files/{id}/scan) */
+        post: operations["attachmentscan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/clarifications/{threadId}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer (POST /api/v1/pharmacy/clarifications/{threadId}/answer) */
+        post: operations["clarificationanswer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/clarifications/{prescriptionId}/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request (POST /api/v1/pharmacy/clarifications/{prescriptionId}/request) */
+        post: operations["clarificationrequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/status/{prescriptionId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept (POST /api/v1/pharmacy/status/{prescriptionId}/accept) */
+        post: operations["pharmacystatusaccept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/status/{prescriptionId}/clarification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Clarification (POST /api/v1/pharmacy/status/{prescriptionId}/clarification) */
+        post: operations["pharmacystatusaskclarification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/status/{prescriptionId}/dispensing-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Dispensing (POST /api/v1/pharmacy/status/{prescriptionId}/dispensing-evidence) */
+        post: operations["pharmacystatusrecorddispensing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/status/{prescriptionId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject (POST /api/v1/pharmacy/status/{prescriptionId}/reject) */
+        post: operations["pharmacystatusreject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish (POST /api/v1/radiology/reports) */
+        post: operations["reportpublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/reports/{orderId}/addenda": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Addendum (POST /api/v1/radiology/reports/{orderId}/addenda) */
+        post: operations["reportaddendum"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/reports/{orderId}/addenda/{version}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge (POST /api/v1/radiology/reports/{orderId}/addenda/{version}/acknowledge) */
+        post: operations["reportacknowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/worklist/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive (POST /api/v1/radiology/worklist/orders) */
+        post: operations["worklistreceive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/worklist/orders/{orderId}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report (POST /api/v1/radiology/worklist/orders/{orderId}/report) */
+        post: operations["worklistreport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/worklist/orders/{orderId}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Schedule (POST /api/v1/radiology/worklist/orders/{orderId}/schedule) */
+        post: operations["worklistschedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radiology/worklist/orders/{orderId}/studies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link Study (POST /api/v1/radiology/worklist/orders/{orderId}/studies) */
+        post: operations["worklistlinkstudy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authorize (POST /api/v1/releases) */
+        post: operations["patientreleaseauthorize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases/{id}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Correct (POST /api/v1/releases/{id}/correct) */
+        post: operations["patientreleasecorrect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases/{id}/lift-hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lift Hold (POST /api/v1/releases/{id}/lift-hold) */
+        post: operations["patientreleaselifthold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/releases/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw (POST /api/v1/releases/{id}/withdraw) */
+        post: operations["patientreleasewithdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create (POST /api/v1/staff-invitations) */
+        post: operations["staffinvitationcreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept (POST /api/v1/staff-invitations/accept) */
+        post: operations["staffinvitationaccept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-invitations/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke (POST /api/v1/staff-invitations/{id}/revoke) */
+        post: operations["staffinvitationrevoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-messages/governance/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Action (POST /api/v1/staff-messages/governance/actions) */
+        post: operations["staffmessagegovernancerecordaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-messages/governance/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export Conversation (POST /api/v1/staff-messages/governance/exports) */
+        post: operations["staffmessagegovernanceexportconversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-messages/governance/legal-holds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Place Hold (POST /api/v1/staff-messages/governance/legal-holds) */
+        post: operations["staffmessagegovernanceplacehold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-messages/governance/legal-holds/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release Hold (POST /api/v1/staff-messages/governance/legal-holds/{id}/release) */
+        post: operations["staffmessagegovernancereleasehold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-messages/governance/messages/{messageId}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hide (POST /api/v1/staff-messages/governance/messages/{messageId}/hide) */
+        post: operations["staffmessagegovernancehide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start (POST /api/v1/tenant/exports) */
+        post: operations["exportstart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/exports/{jobId}/expire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Expire (POST /api/v1/tenant/exports/{jobId}/expire) */
+        post: operations["exportexpire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/imports/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit (POST /api/v1/tenant/imports/commit) */
+        post: operations["controlledimportcommit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/imports/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dry Run (POST /api/v1/tenant/imports/dry-run) */
+        post: operations["importdryrun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/imports/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reverse (POST /api/v1/tenant/imports/reverse) */
+        post: operations["controlledimportreverse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/imports/sign-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign Off (POST /api/v1/tenant/imports/sign-off) */
+        post: operations["controlledimportsignoff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/therapy/episodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept (POST /api/v1/therapy/episodes) */
+        post: operations["therapyaccept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trends/comparability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Define (POST /api/v1/trends/comparability) */
+        post: operations["trenddefine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trends/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record (POST /api/v1/trends/observations) */
+        post: operations["trendrecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept (POST /api/v1/xch03/orders/{id}/accept) */
+        post: operations["exchangeresponseaccept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/cancellation-response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancellation Response (POST /api/v1/xch03/orders/{id}/cancellation-response) */
+        post: operations["exchangeresponsecancellationresponse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/change-response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change Response (POST /api/v1/xch03/orders/{id}/change-response) */
+        post: operations["exchangeresponsechangeresponse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/clarify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clarify (POST /api/v1/xch03/orders/{id}/clarify) */
+        post: operations["exchangeresponseclarify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/propose-change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Propose Change (POST /api/v1/xch03/orders/{id}/propose-change) */
+        post: operations["exchangeresponseproposechange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject (POST /api/v1/xch03/orders/{id}/reject) */
+        post: operations["exchangeresponsereject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/request-cancellation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Cancellation (POST /api/v1/xch03/orders/{id}/request-cancellation) */
+        post: operations["exchangeresponserequestcancellation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch03/orders/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke (POST /api/v1/xch03/orders/{id}/revoke) */
+        post: operations["exchangeresponserevoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch04/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register Order (POST /api/v1/xch04/orders) */
+        post: operations["resultregisterorder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch04/reconciliations/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve (POST /api/v1/xch04/reconciliations/{id}/resolve) */
+        post: operations["reconciliationresolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch04/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Result (POST /api/v1/xch04/results) */
+        post: operations["resultimportresult"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/xch04/results/{id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge (POST /api/v1/xch04/results/{id}/acknowledge) */
+        post: operations["resultacknowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Generic command envelope for state-changing operations. The owning service validates the concrete command fields and the authenticated actor; tenant and facility are always taken from the session. */
+        ApiCommand: {
+            [key: string]: unknown;
+        };
         CreateFacility: {
             code: string;
             name: string;
@@ -2929,6 +7674,1159 @@ export interface components {
         };
         /** @description Governance audit facts in insertion order; not a cursor-paginated page. */
         MessagingAuditList: components["schemas"]["MessagingAuditEntry"][];
+        /** @description Synthetic response projection for GET /api/v1/access/emergency/active. */
+        AccessActiveView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/access/support/incidents/{reference}/approve. */
+        AccessApproveIncidentView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/access/support/check. */
+        AccessCheckAccessView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/access/support/incidents. */
+        AccessCreateIncidentView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/access/emergency. */
+        AccessGrantView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/access/emergency/review-queue. */
+        AccessReviewQueueView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/access/emergency/{id}/review. */
+        AccessReviewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/access/emergency/{id}/revoke. */
+        AccessRevokeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments. */
+        AppointmentBookView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/{id}/cancel. */
+        AppointmentCancelView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/{id}/check-in. */
+        AppointmentCheckInView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/{id}/complete. */
+        AppointmentCompleteView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/{id}/confirm. */
+        AppointmentConfirmView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/appointments/{id}. */
+        AppointmentGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/holds. */
+        AppointmentHoldView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/{id}/no-show. */
+        AppointmentNoShowView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/{id}/reschedule. */
+        AppointmentRescheduleView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/series. */
+        AppointmentSeriesView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/appointments/{id}/start. */
+        AppointmentStartView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient/files/{id}/download. */
+        AttachmentDownloadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/files/{id}/scan. */
+        AttachmentScanView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/files/upload. */
+        AttachmentUploadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-unit-connections. */
+        CareUnitConnectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient-unit-connections. */
+        CareUnitConnectionsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-unit-connections/{id}/revoke. */
+        CareUnitRevokeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/care-units. */
+        CareUnitUnitsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/chart/records/patients/{patientId}/entries. */
+        ChartChartView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/chart/records/entries/{id}. */
+        ChartGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/chart/records/entries. */
+        ChartRecordView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/chart/records/entries/{id}/verify. */
+        ChartVerifyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/pharmacy/clarifications/{threadId}/answer. */
+        ClarificationAnswerView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/pharmacy/clarifications/overdue. */
+        ClarificationOverdueView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/pharmacy/clarifications/{prescriptionId}/request. */
+        ClarificationRequestView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/pharmacy/clarifications/{threadId}. */
+        ClarificationViewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinic/worklist/{id}/assign. */
+        ClinicAssignView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinic/appointments/{id}/check-in. */
+        ClinicCheckInView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinic/worklist/{id}/handoff. */
+        ClinicHandoffView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinic/worklist/intake. */
+        ClinicIntakeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinic/appointments/{id}/open-encounter. */
+        ClinicOpenEncounterView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinic/verifications. */
+        ClinicVerifyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/clinic/worklist. */
+        ClinicWorklistView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-catalog/diagnosis/{key}/versions/{version}/approve. */
+        ClinicalCatalogApproveDiagnosisView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-catalog/dictionaries/{key}/versions/{version}/approve. */
+        ClinicalCatalogApproveDictionaryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-catalog/diagnosis/{key}/versions. */
+        ClinicalCatalogDefineDiagnosisView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-catalog/dictionaries/{key}/versions. */
+        ClinicalCatalogDefineDictionaryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/clinical-catalog/diagnosis/{key}/effective. */
+        ClinicalCatalogEffectiveDiagnosisView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/clinical-catalog/dictionaries/{key}/effective. */
+        ClinicalCatalogEffectiveDictionaryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/clinical-catalog/diagnosis/{key}/history. */
+        ClinicalCatalogHistoryDiagnosisView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/clinical-catalog/dictionaries/{key}/history. */
+        ClinicalCatalogHistoryDictionaryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/clinical-catalog/diagnosis/{key}/search. */
+        ClinicalCatalogSearchDiagnosisView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-notes/{id}/amend. */
+        ClinicalNoteAmendView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-notes. */
+        ClinicalNoteCreateView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for PUT /api/v1/clinical-notes/{id}. */
+        ClinicalNoteEditView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-notes/{id}/entered-in-error. */
+        ClinicalNoteEnteredInErrorView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/clinical-notes/{id}. */
+        ClinicalNoteGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-notes/{id}/sign-addendum. */
+        ClinicalNoteSignAddendumView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/clinical-notes/{id}/sign. */
+        ClinicalNoteSignView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/duplicate-reviews/{reviewId}/consolidate. */
+        ConsolidationConsolidateView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/duplicate-reviews/{reviewId}/correct. */
+        ConsolidationCorrectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/duplicate-reviews. */
+        ConsolidationOpenView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/duplicate-reviews/{survivorId}/{duplicateId}. */
+        ConsolidationReviewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/duplicate-reviews. */
+        ConsolidationWorklistView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/tenant/imports/commit. */
+        ControlledImportCommitView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/tenant/imports/reverse. */
+        ControlledImportReverseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/tenant/imports/sign-off. */
+        ControlledImportSignOffView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/critical-results/{id}/acknowledge. */
+        CriticalResultAcknowledgeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/critical-results/{id}/assign. */
+        CriticalResultAssignView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/critical-results/{id}/escalate. */
+        CriticalResultEscalateView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/critical-results/{id}/follow-up. */
+        CriticalResultFollowUpView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/critical-results/{id}. */
+        CriticalResultGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/critical-results/{id}/read-back. */
+        CriticalResultReadBackView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/critical-results. */
+        CriticalResultRegisterView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/critical-results/{id}/release. */
+        CriticalResultReleaseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/critical-results/report. */
+        CriticalResultReportView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/critical-results/{id}/verify. */
+        CriticalResultVerifyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/consumer-events. */
+        DeliveryConsumeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/events/{id}/dead-letter. */
+        DeliveryDeadLetterView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/delivery/dead-letters. */
+        DeliveryDeadLettersView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/external-links. */
+        DeliveryLinkExternalView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/events/{id}/delivered. */
+        DeliveryMarkDeliveredView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/events/{id}/failed. */
+        DeliveryMarkFailedView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/events/{id}/sent. */
+        DeliveryMarkSentView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/events. */
+        DeliveryPublishView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/replays. */
+        DeliveryReplayView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/events/{id}/retry. */
+        DeliveryRetryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/delivery/dead-letters/review. */
+        DeliveryReviewDeadLetterView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/bindings. */
+        DocumentArtifactBindView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/{id}/complete. */
+        DocumentArtifactCompleteView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/documents/artifacts/{id}/download. */
+        DocumentArtifactDownloadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/renders/{jobId}/fail. */
+        DocumentArtifactFailRenderView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/renders/{jobId}/finish. */
+        DocumentArtifactFinishRenderView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/renders/{jobId}/pickup. */
+        DocumentArtifactPickupRenderView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/releases. */
+        DocumentArtifactReleaseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/{id}/remove. */
+        DocumentArtifactRemoveView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/renders. */
+        DocumentArtifactRequestRenderView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts/{id}/scan. */
+        DocumentArtifactScanView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/artifacts. */
+        DocumentArtifactUploadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/documents/artifacts/{id}. */
+        DocumentArtifactViewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/documents/associations/{id}/content. */
+        DocumentAssociationContentView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/documents/associations/{id}. */
+        DocumentAssociationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/associations. */
+        DocumentLinkView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/rendered. */
+        DocumentRenderView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/documents/rendered/{id}/content. */
+        DocumentRenderedContentView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/documents/rendered. */
+        DocumentRenderedVersionsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/documents/rendered/{id}. */
+        DocumentRenderedView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/documents/associations/{id}/void. */
+        DocumentVoidAssociationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch03/orders/{id}/accept. */
+        ExchangeResponseAcceptView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch03/orders/{id}/cancellation-response. */
+        ExchangeResponseCancellationResponseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch03/orders/{id}/change-response. */
+        ExchangeResponseChangeResponseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch03/orders/{id}/clarify. */
+        ExchangeResponseClarifyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/xch03/orders/{id}. */
+        ExchangeResponseGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/xch03/orders/{id}/history. */
+        ExchangeResponseHistoryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch03/orders/{id}/propose-change. */
+        ExchangeResponseProposeChangeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch03/orders/{id}/reject. */
+        ExchangeResponseRejectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch03/orders/{id}/request-cancellation. */
+        ExchangeResponseRequestCancellationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/xch03/orders/{id}/retrieve. */
+        ExchangeResponseRetrieveView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch03/orders/{id}/revoke. */
+        ExchangeResponseRevokeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/exchange-tasks. */
+        ExchangeTaskCreateView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/exchange-tasks/{id}/{command}. */
+        ExchangeTaskExecuteView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/exchange-tasks/{id}. */
+        ExchangeTaskGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/tenant/exports/{jobId}. */
+        ExportDownloadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/tenant/exports/{jobId}/expire. */
+        ExportExpireView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/tenant/exports. */
+        ExportStartView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/follow-ups/tasks/{taskId}/complete. */
+        FollowUpCompleteTaskView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/follow-ups/{id}/confirm. */
+        FollowUpConfirmView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/follow-ups/{id}/tasks. */
+        FollowUpCreateTaskView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/follow-ups/{id}/override. */
+        FollowUpOverrideView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/follow-ups/suggest. */
+        FollowUpSuggestView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/follow-ups/{id}/tasks. */
+        FollowUpTasksView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/gate-evidence/produce. */
+        GateEvidenceProduceView: {
+            [key: string]: unknown;
+        };
+        /** @description Status-only health body from HealthController; no diagnostics or identifiers. */
+        HealthStatus: {
+            /** @enum {string} */
+            status?: "UP" | "DOWN";
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-identity/links/claim. */
+        IdentityProofingClaimView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-identity/accounts. */
+        IdentityProofingEnrollView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient-identity/accounts/{subject}/access. */
+        IdentityProofingHasAccessView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-identity/invitations. */
+        IdentityProofingIssueView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient-identity/accounts/{subject}/links. */
+        IdentityProofingLinksView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-identity/links/reverify. */
+        IdentityProofingReverifyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-identity/links/unlink. */
+        IdentityProofingUnlinkView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/imaging/orders. */
+        ImagingIntakeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/imaging/orders/{orderId}/studies. */
+        ImagingLinkStudyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/imaging/orders/{orderId}. */
+        ImagingReadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/imaging/orders/study-link-reviews/resolve. */
+        ImagingResolveStudyLinkReviewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/imaging/orders/study-link-reviews. */
+        ImagingStudyLinkReviewsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/tenant/imports/dry-run. */
+        ImportDryRunView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-instructions/templates. */
+        InstructionDefineTemplateView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/instructions/acknowledge. */
+        InstructionFactAcknowledgeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/instructions/{id}/facts. */
+        InstructionFactFactsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/instructions/first-view. */
+        InstructionFactFirstViewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/instructions/overdue-follow-ups. */
+        InstructionFactOverdueView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/instructions/publish. */
+        InstructionFactPublishView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/instructions/follow-up/resolve. */
+        InstructionFactResolveView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/instructions/dispatch/retry. */
+        InstructionFactRetryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient-instructions/{threadId}. */
+        InstructionGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient-instructions. */
+        InstructionListForPatientView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-instructions/{threadId}/replace. */
+        InstructionReplaceView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-instructions. */
+        InstructionSendView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient-instructions/{threadId}/withdraw. */
+        InstructionWithdrawView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/accessions. */
+        LabAccessionAccessionView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/accessions/{id}/collect. */
+        LabAccessionCollectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/accessions/{id}. */
+        LabAccessionGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/accessions/{id}/receive. */
+        LabAccessionReceiveView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/accessions/{id}/recollect. */
+        LabAccessionRecollectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/accessions/{id}/reject. */
+        LabAccessionRejectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/releases/{id}/correct. */
+        LabReportReleaseCorrectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/releases/{id}/history. */
+        LabReportReleaseHistoryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/releases/{id}. */
+        LabReportReleaseReadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/releases. */
+        LabReportReleaseReleaseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/releases/{id}/withdraw. */
+        LabReportReleaseWithdrawView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/results/{id}/correct. */
+        LabResultEntryCorrectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/results/{id}/error. */
+        LabResultEntryEnterInErrorView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/results/{id}. */
+        LabResultEntryEnterView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/results/{id}. */
+        LabResultEntryReadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/results/{id}/verify. */
+        LabResultEntryVerifyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/messaging-governance/exports. */
+        MessagingGovernanceCreateExportView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/messaging-governance/chart-links. */
+        MessagingGovernanceLinkToChartView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/messaging-governance/legal-holds. */
+        MessagingGovernancePlaceHoldView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/messaging-governance/actions. */
+        MessagingGovernanceRecordActionView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/messaging-governance/connections/{id}/revocation-effects. */
+        MessagingGovernanceRecordRevocationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/messaging-governance/legal-holds/{id}/release. */
+        MessagingGovernanceReleaseHoldView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/messaging-governance/copy-requests. */
+        MessagingGovernanceRequestCopyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/messaging-governance/retention/{resourceId}. */
+        MessagingGovernanceRetentionView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/openapi.yaml. */
+        OpenApiContractContractView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/exchange/authorizations. */
+        OrderAuthorizeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/orders. */
+        OrderCreateView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/orders/{id}. */
+        OrderGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/exchange/work-items/{id}/verify-patient. */
+        OrderVerifyPatientView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/exchange/work-items. */
+        OrderWorkItemsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/outage/orders/{orderRef}/attachment. */
+        OutageAttachmentView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/outage/orders/{orderRef}/history. */
+        OutageHistoryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/outage/orders/{orderRef}/manual-results. */
+        OutageRecordView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/outage/unmatched. */
+        OutageUnmatchedView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient/access/accounts/{accountId}/view. */
+        PatientAccessAccountViewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/cases/{caseId}/assign. */
+        PatientAccessAssignCaseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/accounts/contact. */
+        PatientAccessChangeStaffContactView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient/access/accounts/{accountId}/chart-access. */
+        PatientAccessCheckChartAccessView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/invitations/redeem. */
+        PatientAccessEnrollView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/invitations. */
+        PatientAccessIssueInvitationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/reauth. */
+        PatientAccessIssueReauthView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/accounts/{accountId}/recovery. */
+        PatientAccessIssueRecoveryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient/access/notifications. */
+        PatientAccessNotificationsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/cases. */
+        PatientAccessOpenCaseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/accounts/recovery/redeem. */
+        PatientAccessRecoverView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/cases/{caseId}/resolve. */
+        PatientAccessResolveCaseView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/accounts/sensitive-change. */
+        PatientAccessSensitiveChangeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/access/accounts/{accountId}/unlock. */
+        PatientAccessUnlockView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/appointments/{appointmentId}/confirm. */
+        PatientAppointmentConfirmView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/appointments/devices/{tokenId}/invalid. */
+        PatientAppointmentInvalidTokenView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient/appointments. */
+        PatientAppointmentListView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/appointments/{appointmentId}/notify. */
+        PatientAppointmentNotifyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patient/appointments/devices. */
+        PatientAppointmentRegisterView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for DELETE /api/v1/patient/appointments/devices/{tokenId}. */
+        PatientAppointmentRevokeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient-flow/notices/{kind}. */
+        PatientFlowPresentationNotificationTextView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient-flow/presentation. */
+        PatientFlowPresentationPresentationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patients/{id}. */
+        PatientGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/patients. */
+        PatientRegisterView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/releases. */
+        PatientReleaseAuthorizeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/releases/{id}/correct. */
+        PatientReleaseCorrectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/releases/{id}. */
+        PatientReleaseGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/releases/{id}/history. */
+        PatientReleaseHistoryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/releases/{id}/lift-hold. */
+        PatientReleaseLiftHoldView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/releases/{id}/withdraw. */
+        PatientReleaseWithdrawView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patients/{patientId}/released-revisions. */
+        PatientReleasedRevisionsVisibleRevisionsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patients. */
+        PatientSearchView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/pharmacy/inbox/{id}. */
+        PharmacyInboxGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/pharmacy/inbox. */
+        PharmacyInboxListView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/pharmacy/status/{prescriptionId}/accept. */
+        PharmacyStatusAcceptView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/pharmacy/status/{prescriptionId}/clarification. */
+        PharmacyStatusAskClarificationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/pharmacy/status/{prescriptionId}/events. */
+        PharmacyStatusHistoryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/pharmacy/status/{prescriptionId}/dispensing-evidence. */
+        PharmacyStatusRecordDispensingView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/pharmacy/status/{prescriptionId}/reject. */
+        PharmacyStatusRejectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/pharmacy/status/{prescriptionId}. */
+        PharmacyStatusViewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/xch04/reconciliations/{id}/resolution. */
+        ReconciliationResolutionView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch04/reconciliations/{id}/resolve. */
+        ReconciliationResolveView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient/reports/{reportId}/download. */
+        ReleasedReportDownloadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/patient/reports. */
+        ReleasedReportListView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/radiology/reports/{orderId}/addenda/{version}/acknowledge. */
+        ReportAcknowledgeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/radiology/reports/{orderId}/addenda. */
+        ReportAddendumView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/radiology/reports/events. */
+        ReportEventsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/radiology/reports/addenda/open. */
+        ReportOpenAddendaView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/radiology/reports/addenda/overdue. */
+        ReportOverdueAddendaView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/radiology/reports. */
+        ReportPublishView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/radiology/reports/{orderId}. */
+        ReportReadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/radiology/reports/{orderId}/revisions. */
+        ReportRevisionsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch04/results/{id}/acknowledge. */
+        ResultAcknowledgeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/xch04/results/{id}. */
+        ResultGetReportView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch04/results. */
+        ResultImportResultView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/xch04/reconciliations. */
+        ResultListReconciliationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/xch04/orders. */
+        ResultRegisterOrderView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/authz/role-history/{subject}. */
+        RoleHistoryHistoryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/care-units/{unitId}/service-profiles/{profileId}/approve. */
+        ServiceProfileApproveView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/care-units/{unitId}/availability. */
+        ServiceProfileAvailabilityView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/care-units/{unitId}/service-profile/versions. */
+        ServiceProfileHistoryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/care-units/{unitId}/service-profiles. */
+        ServiceProfilePublishView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/care-units/{unitId}/supervisor-snapshot. */
+        ServiceProfileSupervisorView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/care-units/{unitId}/service-profile. */
+        ServiceProfileViewView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/specialty/attestations. */
+        SpecialtyAttestView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/specialty/attestations/{id}. */
+        SpecialtyGetView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/specialty/attestations. */
+        SpecialtyListView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/specialty/permissions. */
+        SpecialtyPermissionsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/specimens/{id}/collect. */
+        SpecimenCollectionCollectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/specimens/{id}/label. */
+        SpecimenCollectionLabelView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/lab/specimens/{id}/history. */
+        SpecimenRejectionHistoryView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/specimens/{id}/recollect. */
+        SpecimenRejectionRecollectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/lab/specimens/{id}/reject. */
+        SpecimenRejectionRejectView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/staff-invitations/accept. */
+        StaffInvitationAcceptView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/staff-invitations. */
+        StaffInvitationCreateView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/staff-invitations/pending. */
+        StaffInvitationPendingView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/staff-invitations/{id}/revoke. */
+        StaffInvitationRevokeView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/staff-messages/governance/audit. */
+        StaffMessageGovernanceAuditView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/staff-messages/governance/exports. */
+        StaffMessageGovernanceExportConversationView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/staff-messages/governance/messages/{messageId}/hide. */
+        StaffMessageGovernanceHideView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/staff-messages/governance/legal-holds. */
+        StaffMessageGovernancePlaceHoldView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/staff-messages/governance/actions. */
+        StaffMessageGovernanceRecordActionView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/staff-messages/governance/legal-holds/{id}/release. */
+        StaffMessageGovernanceReleaseHoldView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/staff-messages/governance/retention/{conversationId}. */
+        StaffMessageGovernanceRetentionView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/staff-messages/governance/search. */
+        StaffMessageGovernanceSearchView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/therapy/episodes. */
+        TherapyAcceptView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/therapy/episodes/{episodeId}. */
+        TherapyReadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/trends/comparability. */
+        TrendDefineView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/trends/observations. */
+        TrendRecordView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/trends/{patientId}. */
+        TrendTrendView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/radiology/worklist/events. */
+        WorklistEventsView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/radiology/worklist/orders/{orderId}/studies. */
+        WorklistLinkStudyView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/radiology/worklist/orders/{orderId}. */
+        WorklistReadView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/radiology/worklist/orders. */
+        WorklistReceiveView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/radiology/worklist/orders/{orderId}/report. */
+        WorklistReportView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for POST /api/v1/radiology/worklist/orders/{orderId}/schedule. */
+        WorklistScheduleView: {
+            [key: string]: unknown;
+        };
+        /** @description Synthetic response projection for GET /api/v1/radiology/worklist. */
+        WorklistWorklistView: {
+            [key: string]: unknown;
+        };
     };
     responses: {
         /** @description No active membership or missing action permission */
@@ -2985,6 +8883,15 @@ export interface components {
         };
         /** @description The command requires explicit client confirmation before publication */
         ConfirmationNeeded: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Unexpected server failure; shared envelope where the runtime renders one */
+        ServerError: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3759,6 +9666,42 @@ export interface operations {
             };
         };
     };
+    appointmentbook: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentBookView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
     listLabAccessions: {
         parameters: {
             query?: {
@@ -3804,6 +9747,42 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    labaccessionaccession: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabAccessionAccessionView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
         };
     };
     listFinanceInvoices: {
@@ -5231,6 +11210,42 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    ordercreate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderCreateView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
         };
     };
     saveOrderDraft: {
@@ -7518,6 +13533,10128 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationRequired"];
             403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientappointmentrevoke: {
+        parameters: {
+            query?: {
+                patientId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                tokenId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful delete response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAppointmentRevokeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    accessactive: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessActiveView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    accessreviewqueue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewQueueView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    rolehistoryhistory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                subject: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleHistoryHistoryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    careunitunits: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareUnitUnitsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    serviceprofileavailability: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                unitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceProfileAvailabilityView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    serviceprofileview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                unitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceProfileViewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    serviceprofilehistory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                unitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceProfileHistoryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    serviceprofilesupervisor: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                unitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceProfileSupervisorView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    chartget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    chartchart: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartChartView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicworklist: {
+        parameters: {
+            query?: {
+                limit?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicWorklistView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcatalogeffectivediagnosis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogEffectiveDiagnosisView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcataloghistorydiagnosis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogHistoryDiagnosisView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcatalogsearchdiagnosis: {
+        parameters: {
+            query?: {
+                query?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogSearchDiagnosisView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcatalogeffectivedictionary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogEffectiveDictionaryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcataloghistorydictionary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogHistoryDictionaryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalnoteget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalNoteGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalnoteedit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful put response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalNoteEditView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultreport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultReportView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliverydeadletters: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryDeadLettersView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactViewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactdownload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactDownloadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentassociation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentAssociationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentassociationcontent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentAssociationContentView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentrenderedversions: {
+        parameters: {
+            query?: {
+                locale?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRenderedVersionsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentrender: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRenderView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentrendered: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRenderedView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentrenderedcontent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRenderedContentView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    consolidationworklist: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsolidationWorklistView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    consolidationopen: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsolidationOpenView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    consolidationreview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                survivorId: string;
+                duplicateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsolidationReviewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangetaskget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeTaskGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    orderworkitems: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderWorkItemsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    followuptasks: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpTasksView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    followupcreatetask: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpCreateTaskView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    imagingstudylinkreviews: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImagingStudyLinkReviewsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    imagingread: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImagingReadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionfactoverdue: {
+        parameters: {
+            query?: {
+                unitId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionFactOverdueView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionfactfacts: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionFactFactsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labaccessionget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabAccessionGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    outageattachment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                orderRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutageAttachmentView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    outagehistory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                orderRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutageHistoryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    outageunmatched: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutageUnmatchedView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labreportreleaseread: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabReportReleaseReadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labreportreleasehistory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabReportReleaseHistoryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labresultentryread: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabResultEntryReadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labresultentryenter: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabResultEntryEnterView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specimenrejectionhistory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecimenRejectionHistoryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specimencollectionlabel: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecimenCollectionLabelView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messaginggovernanceretention: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingGovernanceRetentionView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    openapicontractcontract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/yaml": string;
+                };
+            };
+            500: components["responses"]["ServerError"];
+        };
+    };
+    orderget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientflowpresentationnotificationtext: {
+        parameters: {
+            query?: {
+                locale?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientFlowPresentationNotificationTextView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientflowpresentationpresentation: {
+        parameters: {
+            query?: {
+                timeZone?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientFlowPresentationPresentationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    identityproofinghasaccess: {
+        parameters: {
+            query?: {
+                chartId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                subject: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityProofingHasAccessView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    identityproofinglinks: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                subject: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityProofingLinksView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionlistforpatient: {
+        parameters: {
+            query?: {
+                patientId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionListForPatientView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionsend: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionSendView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                threadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    careunitconnections: {
+        parameters: {
+            query?: {
+                patientId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareUnitConnectionsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    careunitconnect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareUnitConnectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccesscheckchartaccess: {
+        parameters: {
+            query?: {
+                chartId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessCheckChartAccessView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessaccountview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessAccountViewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessnotifications: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessNotificationsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientappointmentlist: {
+        parameters: {
+            query?: {
+                patientId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAppointmentListView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    attachmentdownload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentDownloadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    releasedreportlist: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleasedReportListView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    releasedreportdownload: {
+        parameters: {
+            query?: {
+                revision?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                reportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleasedReportDownloadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientsearch: {
+        parameters: {
+            query?: {
+                name?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientSearchView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientregister: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientRegisterView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientreleasedrevisionsvisiblerevisions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientReleasedRevisionsVisibleRevisionsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clarificationoverdue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClarificationOverdueView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clarificationview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                threadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClarificationViewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pharmacyinboxlist: {
+        parameters: {
+            query?: {
+                limit?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacyInboxListView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pharmacyinboxget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacyInboxGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pharmacystatusview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                prescriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacyStatusViewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pharmacystatushistory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                prescriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacyStatusHistoryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reportopenaddenda: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOpenAddendaView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reportoverdueaddenda: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOverdueAddendaView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reportevents: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportEventsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reportread: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportReadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reportrevisions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportRevisionsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    worklistworklist: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklistWorklistView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    worklistevents: {
+        parameters: {
+            query?: {
+                site?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklistEventsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    worklistread: {
+        parameters: {
+            query?: {
+                site?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklistReadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientreleaseget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientReleaseGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientreleasehistory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientReleaseHistoryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specialtylist: {
+        parameters: {
+            query?: {
+                limit?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecialtyListView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specialtyattest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecialtyAttestView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specialtyget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecialtyGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specialtypermissions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecialtyPermissionsView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffinvitationpending: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInvitationPendingView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffmessagegovernanceaudit: {
+        parameters: {
+            query?: {
+                resourceId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMessageGovernanceAuditView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffmessagegovernanceretention: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMessageGovernanceRetentionView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffmessagegovernancesearch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMessageGovernanceSearchView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exportdownload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportDownloadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    therapyread: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                episodeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TherapyReadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    trendtrend: {
+        parameters: {
+            query?: {
+                testCode?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendTrendView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponseget: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseGetView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponsehistory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseHistoryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponseretrieve: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseRetrieveView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    resultlistreconciliation: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultListReconciliationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reconciliationresolution: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationResolutionView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    resultgetreport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful get response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultGetReportView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    healthlive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Process is running */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthStatus"];
+                };
+            };
+            500: components["responses"]["ServerError"];
+        };
+    };
+    healthready: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Database answered the readiness probe */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthStatus"];
+                };
+            };
+            500: components["responses"]["ServerError"];
+            /** @description Database probe failed; the status body is intentionally left undocumented */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    scrapeMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prometheus exposition text for an allowed source */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Source address is not permitted; response body is empty */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: components["responses"]["ServerError"];
+        };
+    };
+    accessgrant: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessGrantView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    accessreview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    accessrevoke: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRevokeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    accesscheckaccess: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessCheckAccessView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    accesscreateincident: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessCreateIncidentView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    accessapproveincident: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessApproveIncidentView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmenthold: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentHoldView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentseries: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentSeriesView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentcancel: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentCancelView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentcheckin: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentCheckInView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentcomplete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentCompleteView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentconfirm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentConfirmView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentnoshow: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentNoShowView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentreschedule: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentRescheduleView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    appointmentstart: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentStartView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    serviceprofilepublish: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                unitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceProfilePublishView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    serviceprofileapprove: {
+        parameters: {
+            query?: {
+                approvalNote?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                unitId: string;
+                profileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceProfileApproveView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    chartrecord: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartRecordView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    chartverify: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartVerifyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    cliniccheckin: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicCheckInView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicopenencounter: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicOpenEncounterView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicverify: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicVerifyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicintake: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicIntakeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicassign: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicAssignView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinichandoff: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicHandoffView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcatalogdefinediagnosis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogDefineDiagnosisView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcatalogapprovediagnosis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogApproveDiagnosisView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcatalogdefinedictionary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogDefineDictionaryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalcatalogapprovedictionary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalCatalogApproveDictionaryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalnotecreate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalNoteCreateView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalnoteamend: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalNoteAmendView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalnoteenteredinerror: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalNoteEnteredInErrorView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalnotesign: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalNoteSignView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clinicalnotesignaddendum: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalNoteSignAddendumView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultregister: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultRegisterView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultacknowledge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultAcknowledgeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultassign: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultAssignView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultescalate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultEscalateView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultfollowup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultFollowUpView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultreadback: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultReadBackView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultrelease: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultReleaseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    criticalresultverify: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalResultVerifyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliveryconsume: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryConsumeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliveryreviewdeadletter: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryReviewDeadLetterView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliverypublish: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryPublishView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliverydeadletter: {
+        parameters: {
+            query?: {
+                reason?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryDeadLetterView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliverymarkdelivered: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryMarkDeliveredView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliverymarkfailed: {
+        parameters: {
+            query?: {
+                reason?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryMarkFailedView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliveryretry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryRetryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliverymarksent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryMarkSentView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliverylinkexternal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryLinkExternalView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliveryreplay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryReplayView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactupload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactUploadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactbind: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactBindView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactrelease: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactReleaseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactrequestrender: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactRequestRenderView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactfailrender: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactFailRenderView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactfinishrender: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactFinishRenderView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactpickuprender: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactPickupRenderView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactcomplete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactCompleteView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactremove: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactRemoveView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentartifactscan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentArtifactScanView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentlink: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentLinkView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    documentvoidassociation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVoidAssociationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    consolidationconsolidate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsolidationConsolidateView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    consolidationcorrect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsolidationCorrectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangetaskcreate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeTaskCreateView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangetaskexecute: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+                command: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeTaskExecuteView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    orderauthorize: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderAuthorizeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    orderverifypatient: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderVerifyPatientView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    followupsuggest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpSuggestView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    followupcompletetask: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpCompleteTaskView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    followupconfirm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpConfirmView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    followupoverride: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpOverrideView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    gateevidenceproduce: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateEvidenceProduceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    imagingintake: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImagingIntakeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    imagingresolvestudylinkreview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImagingResolveStudyLinkReviewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    imaginglinkstudy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImagingLinkStudyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionfactacknowledge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionFactAcknowledgeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionfactretry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionFactRetryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionfactfirstview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionFactFirstViewView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionfactresolve: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionFactResolveView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionfactpublish: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionFactPublishView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labaccessioncollect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabAccessionCollectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labaccessionreceive: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabAccessionReceiveView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labaccessionrecollect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabAccessionRecollectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labaccessionreject: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabAccessionRejectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    outagerecord: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                orderRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutageRecordView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labreportreleaserelease: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabReportReleaseReleaseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labreportreleasecorrect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabReportReleaseCorrectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labreportreleasewithdraw: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabReportReleaseWithdrawView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labresultentrycorrect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabResultEntryCorrectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labresultentryenterinerror: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabResultEntryEnterInErrorView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    labresultentryverify: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabResultEntryVerifyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specimencollectioncollect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecimenCollectionCollectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specimenrejectionrecollect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecimenRejectionRecollectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    specimenrejectionreject: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecimenRejectionRejectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messaginggovernancerecordaction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingGovernanceRecordActionView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messaginggovernancelinktochart: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingGovernanceLinkToChartView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messaginggovernancerecordrevocation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingGovernanceRecordRevocationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messaginggovernancerequestcopy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingGovernanceRequestCopyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messaginggovernancecreateexport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingGovernanceCreateExportView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messaginggovernanceplacehold: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingGovernancePlaceHoldView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messaginggovernancereleasehold: {
+        parameters: {
+            query?: {
+                reason?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingGovernanceReleaseHoldView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    identityproofingenroll: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityProofingEnrollView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    identityproofingissue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityProofingIssueView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    identityproofingclaim: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityProofingClaimView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    identityproofingreverify: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityProofingReverifyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    identityproofingunlink: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityProofingUnlinkView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructiondefinetemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionDefineTemplateView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionreplace: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                threadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionReplaceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    instructionwithdraw: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                threadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionWithdrawView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    careunitrevoke: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareUnitRevokeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccesschangestaffcontact: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessChangeStaffContactView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessrecover: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessRecoverView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccesssensitivechange: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessSensitiveChangeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessissuerecovery: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessIssueRecoveryView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessunlock: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessUnlockView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessopencase: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessOpenCaseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessassigncase: {
+        parameters: {
+            query?: {
+                assignee?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessAssignCaseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessresolvecase: {
+        parameters: {
+            query?: {
+                note?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessResolveCaseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessissueinvitation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessIssueInvitationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessenroll: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessEnrollView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientaccessissuereauth: {
+        parameters: {
+            query?: {
+                purpose?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAccessIssueReauthView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientappointmentregister: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAppointmentRegisterView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientappointmentinvalidtoken: {
+        parameters: {
+            query?: {
+                reason?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                tokenId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAppointmentInvalidTokenView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientappointmentconfirm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                appointmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAppointmentConfirmView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientappointmentnotify: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                appointmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAppointmentNotifyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    attachmentupload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUploadView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    attachmentscan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentScanView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clarificationanswer: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                threadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClarificationAnswerView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    clarificationrequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                prescriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClarificationRequestView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pharmacystatusaccept: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                prescriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacyStatusAcceptView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pharmacystatusaskclarification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                prescriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacyStatusAskClarificationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pharmacystatusrecorddispensing: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                prescriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacyStatusRecordDispensingView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pharmacystatusreject: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                prescriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacyStatusRejectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reportpublish: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportPublishView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reportaddendum: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportAddendumView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reportacknowledge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                orderId: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportAcknowledgeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    worklistreceive: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklistReceiveView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    worklistreport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklistReportView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    worklistschedule: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklistScheduleView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    worklistlinkstudy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklistLinkStudyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientreleaseauthorize: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientReleaseAuthorizeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientreleasecorrect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientReleaseCorrectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientreleaselifthold: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientReleaseLiftHoldView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientreleasewithdraw: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientReleaseWithdrawView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffinvitationcreate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInvitationCreateView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffinvitationaccept: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInvitationAcceptView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffinvitationrevoke: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInvitationRevokeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffmessagegovernancerecordaction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMessageGovernanceRecordActionView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffmessagegovernanceexportconversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMessageGovernanceExportConversationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffmessagegovernanceplacehold: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMessageGovernancePlaceHoldView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffmessagegovernancereleasehold: {
+        parameters: {
+            query?: {
+                reason?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMessageGovernanceReleaseHoldView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    staffmessagegovernancehide: {
+        parameters: {
+            query?: {
+                conversationId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                messageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMessageGovernanceHideView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exportstart: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportStartView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exportexpire: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportExpireView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    controlledimportcommit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlledImportCommitView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    importdryrun: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDryRunView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    controlledimportreverse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlledImportReverseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    controlledimportsignoff: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlledImportSignOffView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    therapyaccept: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TherapyAcceptView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    trenddefine: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendDefineView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    trendrecord: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendRecordView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponseaccept: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseAcceptView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponsecancellationresponse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseCancellationResponseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponsechangeresponse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseChangeResponseView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponseclarify: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseClarifyView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponseproposechange: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseProposeChangeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponsereject: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseRejectView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponserequestcancellation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseRequestCancellationView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    exchangeresponserevoke: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeResponseRevokeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    resultregisterorder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultRegisterOrderView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    reconciliationresolve: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationResolveView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    resultimportresult: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultImportResultView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    resultacknowledge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful post response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultAcknowledgeView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
             422: components["responses"]["InvalidRequest"];
         };
     };

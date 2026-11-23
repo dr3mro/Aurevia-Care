@@ -84,7 +84,7 @@ None.
 
 The clause is built and proven by active HTTP-level tests. This task added proof only:
 it did not change production code, an existing test, the contract or a migration.
-The OpenAPI route-parity baseline `contracts/openapi/missing-routes.txt` still lists
+The OpenAPI route-parity baseline `contracts/openapi.yaml` still lists
 both `POST /api/v1/orders` (line 251) and `POST /api/v1/exchange/authorizations`
 (line 206) as undocumented routes; that is a pre-existing contract gap outside this
 task's scope and is recorded in the worker notes rather than fixed here.

@@ -106,7 +106,7 @@ test in this change:
    RLS/FORCE RLS and a store) and extend this class; a second task can publish the
    route and a six-field provenance schema in `contracts/openapi.yaml` and
    regenerate the client — the committed contract has no `/api/v1/clinical-notes`
-   path (`contracts/openapi/missing-routes.txt`) and no consolidated provenance
+   path (`contracts/openapi.yaml`) and no consolidated provenance
    schema, only isolated handout `sourceId`/`sourceSystem` strings. Two tasks.
 2. Author forgery is not refused on this route. `ClinicalNoteService.createDraft`
    validates `clinicalAuthorSubject` only as non-blank text of at most 128

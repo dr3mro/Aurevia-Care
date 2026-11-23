@@ -82,7 +82,7 @@ Source survey result (where the clause is implemented today):
 None for the clause behaviour. Out of scope and pre-existing: the five access routes
 (`POST /api/v1/access/emergency`, `GET .../active`, `POST .../{id}/revoke`,
 `POST .../{id}/review`, `GET .../review-queue`) are baselined in
-`contracts/openapi/missing-routes.txt` and are not declared in `contracts/openapi.yaml`.
+`contracts/openapi.yaml` and are not declared in `contracts/openapi.yaml`.
 Publishing them would change the contract, the generated staff-web client and the
 contract tests — one separate ARC-04/WEB-05 contract task. This task added proof only:
 it did not change production code, an existing test, the contract or a migration.

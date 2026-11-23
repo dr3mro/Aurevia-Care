@@ -78,7 +78,7 @@ captured final line).
 ## Gap
 
 None. The clause is implemented and proven end to end. The document routes are
-currently published in `contracts/openapi/missing-routes.txt` rather than
+currently published in `contracts/openapi.yaml` rather than
 `contracts/openapi.yaml`; that contract publication is a separate, already
 tracked debt outside this test-only story, and the tests drive the real
 controller routes directly.

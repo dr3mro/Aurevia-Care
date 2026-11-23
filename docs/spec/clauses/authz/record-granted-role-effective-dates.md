@@ -60,7 +60,7 @@ Where the clause is implemented today (source survey result):
   service, `Jdbc*` store and controller; `com.aurevia.smartclinic.authz.ActionPolicy`
   gates the read to `tenant_admin`.
 - Contract: the read route `GET /api/v1/authz/role-history/{subject}` is currently
-  baselined in `contracts/openapi/missing-routes.txt` rather than declared in
+  baselined in `contracts/openapi.yaml` rather than declared in
   `contracts/openapi.yaml`; the recording behaviour itself does not depend on the
   contract file. (Recorded as a finding in the task notes; outside this task's scope.)
 

@@ -68,5 +68,5 @@ cover the same behaviour; this task adds a focused, clause-only proof and change
 
 None for this clause: it is built and proven by active tests through the HTTP entry point. This task added
 proof only; it did not change production code, an existing test, the OpenAPI contract or a migration. The
-delivery routes remain baselined in `contracts/openapi/missing-routes.txt`, which is a separate contract
+delivery routes remain baselined in `contracts/openapi.yaml`, which is a separate contract
 publication task outside this test-only scope and is not required to prove the rule.

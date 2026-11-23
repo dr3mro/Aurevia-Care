@@ -27,7 +27,7 @@ Production classes and files exercised through those HTTP entry points:
 - [ApiErrorHandler.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/api/ApiErrorHandler.java) — renders the machine-readable `code` and correlation id asserted by the negatives.
 - [V19__exchange_orders.sql](../../../../db/migrations/V19__exchange_orders.sql) — `exchange_authorization`, `exchange_order`, `exchange_order_snapshot`, `exchange_disclosure` and the two-party `exchange_work_item` projection with forced RLS, the composite grant/recipient foreign keys, the `organization_id <> destination_org` check, fingerprint columns and projection-immutability triggers.
 
-Scope note: this status proves the clause's exchange behavior. Publishing every exchange route in the canonical contract is a separate WEB-05 concern; the routes are baselined in `contracts/openapi/missing-routes.txt` and are not claimed here. The recipient-side XCH-03 response ledger in `V21__xch03_order_response.sql` is exercised by other exchange stories, not by this bounded proof.
+Scope note: this status proves the clause's exchange behavior. Publishing every exchange route in the canonical contract is a separate WEB-05 concern; the routes are baselined in `contracts/openapi.yaml` and are not claimed here. The recipient-side XCH-03 response ledger in `V21__xch03_order_response.sql` is exercised by other exchange stories, not by this bounded proof.
 
 ## Gap
 

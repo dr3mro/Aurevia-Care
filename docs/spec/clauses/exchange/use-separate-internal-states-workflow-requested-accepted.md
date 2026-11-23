@@ -96,6 +96,6 @@ Verified locally:
 None for the clause behaviour. Out of scope and pre-existing: the routes
 `POST /api/v1/exchange-tasks`, `POST /api/v1/exchange-tasks/{}/{}` and
 `GET /api/v1/exchange-tasks/{}` are listed only in
-`contracts/openapi/missing-routes.txt:44,204-205` and are absent from
+`contracts/openapi.yaml:44,204-205` and are absent from
 `contracts/openapi.yaml`; publishing them and regenerating the client is one
 separate contract task.

@@ -59,7 +59,7 @@ and durable end to end. `ImagingController` publishes only intake, read and stud
 has no schedule or accession route, so a caller cannot complete clause 1 over HTTP. State lives in
 `HashMap`s in `ImagingService` with no Flyway table, RLS/FORCE RLS or `Jdbc*` store, so it does not
 survive a restart. There is no imaging entry in `contracts/openapi.yaml`: all five imaging routes
-are still listed as parity debt in `contracts/openapi/missing-routes.txt:49-50,220-222`.
+are still listed as parity debt in `contracts/openapi.yaml:49-50,220-222`.
 
 One bounded follow-up task closes the gap: add a radiology migration with tenant RLS and FORCE RLS,
 an `ImagingStore` interface with a `JdbcImagingStore` implementation behind `ImagingService`, an

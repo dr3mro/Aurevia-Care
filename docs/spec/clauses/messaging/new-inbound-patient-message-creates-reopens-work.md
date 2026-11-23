@@ -82,7 +82,7 @@ Production classes and files surveyed and exercised by these entry points:
   is the separate per-message ledger and `conversation.state <> 'closed'` is
   the staff work queue predicate.
 - Contract survey: the three conversation routes are baselined in
-  `contracts/openapi/missing-routes.txt` (lines 26-28 and 163-169) and have no
+  `contracts/openapi.yaml` (lines 26-28 and 163-169) and have no
   operation in `contracts/openapi.yaml`. That is separate contract-documentation
   debt, outside this test-only scope, and does not affect whether the behaviour
   is implemented and proven.

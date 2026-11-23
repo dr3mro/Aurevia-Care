@@ -17,85 +17,70 @@ import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * Proves the OpenAPI route gate itself with small synthetic handler sets.
+ * Proves the strict OpenAPI route gate itself with small synthetic handler sets.
  *
  * <p>Each failure mode of {@link OpenApiRouteCoverage} is exercised with a
  * fixture that is independent of the running application, so a regression in
- * the gate cannot be hidden by the real baseline file.</p>
+ * the gate cannot be hidden by the real contract. The framework-only exclusion
+ * is asserted in both directions: the method-less {@code /error} fallback is
+ * removed, while a real application route is never removed.</p>
  */
 class OpenApiRouteCoverageTest {
 
     @Test
-    void aNewUndocumentedControllerRouteFailsAndIsNamed() {
+    void undocumentedApplicationRouteFailsStrictParity() {
         OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.compare(
-                route("POST /api/v1/facilities", "POST /api/v1/new-command"),
-                route("POST /api/v1/facilities"), Set.of());
+                route("POST /api/v1/appointments", "POST /api/v1/new-command"), Set.of());
 
         assertFalse(report.passed());
-        assertEquals(route("POST /api/v1/new-command"), report.undocumented());
+        assertEquals(route("POST /api/v1/appointments", "POST /api/v1/new-command"),
+                report.undocumented());
         assertEquals(Set.of(), report.ghost());
-        assertEquals(Set.of(), report.staleBaseline());
         assertTrue(OpenApiRouteCoverage.describe(report).contains("POST /api/v1/new-command"));
     }
 
     @Test
-    void aStaleBaselineLineFailsOnceTheRouteIsDocumented() {
-        OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.compare(
-                route("POST /api/v1/facilities"), route("POST /api/v1/facilities"),
-                route("POST /api/v1/facilities"));
+    void strictParityAcceptsDocumentedRouteAndRejectsGhost() {
+        OpenApiRouteCoverage.Report clean = OpenApiRouteCoverage.compare(
+                route("GET /api/v1/facilities"), route("GET /api/v1/facilities"));
+        assertTrue(clean.passed());
+        assertEquals(Set.of(), clean.undocumented());
+        assertEquals(Set.of(), clean.ghost());
 
-        assertFalse(report.passed());
-        assertEquals(Set.of(), report.undocumented());
-        assertEquals(route("POST /api/v1/facilities"), report.staleBaseline());
-        assertTrue(OpenApiRouteCoverage.describe(report).contains("POST /api/v1/facilities"));
+        OpenApiRouteCoverage.Report withGhost = OpenApiRouteCoverage.compare(
+                route("GET /api/v1/facilities"),
+                route("GET /api/v1/facilities", "GET /api/v1/ghost"));
+        assertFalse(withGhost.passed());
+        assertEquals(Set.of(), withGhost.undocumented());
+        assertEquals(route("GET /api/v1/ghost"), withGhost.ghost());
+        assertTrue(OpenApiRouteCoverage.describe(withGhost)
+                .contains("Contract routes with no controller"));
+        assertTrue(OpenApiRouteCoverage.describe(withGhost).contains("GET /api/v1/ghost"));
     }
 
     @Test
-    void aContractRouteWithNoControllerFailsAndIsNamed() {
-        OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.compare(
-                route("POST /api/v1/facilities"),
-                route("POST /api/v1/facilities", "POST /api/v1/ghost"),
-                Set.of());
+    void frameworkErrorRouteIsExcludedButARealRouteIsNot() {
+        Set<OpenApiRouteCoverage.Route> filtered = OpenApiRouteCoverage.withoutFrameworkRoutes(
+                route("ANY /error", "GET /error", "GET /api/v1/facilities"));
 
-        assertFalse(report.passed());
-        assertEquals(route("POST /api/v1/ghost"), report.ghost());
-        assertTrue(OpenApiRouteCoverage.describe(report).contains("POST /api/v1/ghost"));
-    }
-
-    @Test
-    void aBaselinedUndocumentedRoutePasses() {
-        OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.compare(
-                route("POST /api/v1/facilities", "POST /api/v1/legacy"),
-                route("POST /api/v1/facilities"), route("POST /api/v1/legacy"));
-
-        assertTrue(report.passed());
-        assertEquals(route("POST /api/v1/legacy"), report.missingFromContract());
-        assertEquals(Set.of(), report.undocumented());
+        assertEquals(route("GET /error", "GET /api/v1/facilities"), filtered);
+        assertFalse(filtered.contains(new OpenApiRouteCoverage.Route("ANY", "/error")));
     }
 
     @Test
     void pathVariableNamesDoNotCreateFalseDrift() {
         OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.compare(
                 route("POST /api/v1/orders/{orderId}/accept"),
-                route("POST /api/v1/orders/{id}/accept"), Set.of());
+                route("POST /api/v1/orders/{id}/accept"));
 
         assertTrue(report.passed());
         assertEquals(Set.of(), report.ghost());
     }
 
     @Test
-    void parseBaselineSkipsBlankAndCommentLines() {
-        Set<OpenApiRouteCoverage.Route> parsed = OpenApiRouteCoverage.parseBaseline(List.of(
-                "", "   ", "# TODO: shrink this list", "GET /api/v1/facilities",
-                "  post   /api/v1/staff  "));
-
-        assertEquals(route("GET /api/v1/facilities", "POST /api/v1/staff"), parsed);
-    }
-
-    @Test
-    void parseBaselineRejectsAMalformedLine() {
+    void parseRouteSkipsNothingButRejectsAMalformedLine() {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> OpenApiRouteCoverage.parseBaseline(List.of("GET")));
+                () -> OpenApiRouteCoverage.parseRoute("GET"));
 
         assertTrue(error.getMessage().contains("METHOD /path"));
     }
@@ -135,13 +120,11 @@ class OpenApiRouteCoverageTest {
     @Test
     void describeListsEveryMissingRouteAsWellAsEachViolation() {
         OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.compare(
-                route("POST /api/v1/facilities", "POST /api/v1/legacy"),
-                route("POST /api/v1/other"), Set.of());
+                route("POST /api/v1/facilities", "POST /api/v1/legacy"), Set.of());
 
         String description = OpenApiRouteCoverage.describe(report);
         assertTrue(description.contains("POST /api/v1/legacy"));
         assertTrue(description.contains("POST /api/v1/facilities"));
-        assertTrue(description.contains("POST /api/v1/other"));
     }
 
     @Test
@@ -182,7 +165,11 @@ class OpenApiRouteCoverageTest {
     }
 
     private static Set<OpenApiRouteCoverage.Route> route(String... lines) {
-        return OpenApiRouteCoverage.parseBaseline(List.of(lines));
+        Set<OpenApiRouteCoverage.Route> routes = new java.util.TreeSet<>(OpenApiRouteCoverage.Route.ORDER);
+        for (String line : lines) {
+            routes.add(OpenApiRouteCoverage.parseRoute(line));
+        }
+        return java.util.Collections.unmodifiableSet(routes);
     }
 
     @SuppressWarnings("unchecked")

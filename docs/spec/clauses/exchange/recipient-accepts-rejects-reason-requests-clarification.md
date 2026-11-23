@@ -80,7 +80,7 @@ is no new production branch to map to a test.
 
 None in the clause. The six XCH-03 response routes relevant to this clause are
 absent from the published `contracts/openapi.yaml` and are listed in
-`contracts/openapi/missing-routes.txt`
+`contracts/openapi.yaml`
 (lines 119-121: `GET /api/v1/xch03/orders/{}`, `/history`, `/retrieve`; lines
 342-349: `POST /{}/accept`, `/reject`, `/clarify`, plus the other XCH-03 commands).
 This test exercises four of them (`GET /{id}` and the three POST commands);

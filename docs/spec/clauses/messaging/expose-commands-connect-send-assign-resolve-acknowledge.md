@@ -88,7 +88,7 @@ adjacent gaps prevent the clause from being called fully proven:
    threads, revisions and facts, replace the bean, and move the HTTP assertions
    above onto the durable store.
 2. The connection and instruction route families are baselined as undocumented in
-   `contracts/openapi/missing-routes.txt` (lines 64-66, 202, 206, 236 and
+   `contracts/openapi.yaml` (lines 64-66, 202, 206, 236 and
    238-240)
    and are absent from `contracts/openapi.yaml`, so no generated client exposes
    connect, instruction send/withdraw/replace or publish/acknowledge. The

@@ -86,7 +86,7 @@ against it.
 Out of scope and pre-existing: the committed OpenAPI contract has no
 `/api/v1/prescriptions/{id}/verify-partner-status` or
 `/api/v1/prescriptions/{id}/retry` operation; both routes are baselined in
-`contracts/openapi/missing-routes.txt` (lines 300 and 302). Publishing them
+`contracts/openapi.yaml` (lines 300 and 302). Publishing them
 would change `contracts/openapi.yaml`, regenerate the staff-web API client and
 update the contract parity tests, and would remove the two baseline entries.
 That is one separate contract work item tracked as two tasks in the backlog,

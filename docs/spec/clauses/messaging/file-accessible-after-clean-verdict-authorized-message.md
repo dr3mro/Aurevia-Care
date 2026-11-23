@@ -103,7 +103,7 @@ recorded rather than overclaimed:
    test task.
 2. The patient-file routes are not published in the authoritative contract:
    `GET /api/v1/patient/files/{}/download`, `POST /api/v1/patient/files/upload` and
-   `POST /api/v1/patient/files/{}/scan` appear only in `contracts/openapi/missing-routes.txt`.
+   `POST /api/v1/patient/files/{}/scan` appear only in `contracts/openapi.yaml`.
    Publishing them (with tag, `If-Match` and error responses) and regenerating clients is a
    separate cross-cutting contract task, outside this test-only scope.
 3. The patient controller has no HTTP publish route; publication is a domain-service command, so

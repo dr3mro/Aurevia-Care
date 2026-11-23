@@ -87,7 +87,7 @@ clause is not reachable end to end, so this is not "Proven by tests":
    `messageId` to a `conversation_message`, and there is no "patient-supplied"
    source-kind marker on messages.
 3. **No contract entry.** `contracts/openapi.yaml` has no patient-files
-   publish/inbox path, and even `contracts/openapi/missing-routes.txt` lists
+   publish/inbox path, and even `contracts/openapi.yaml` lists
    only upload, scan and download for `/api/v1/patient/files` (the missing-route
    baseline must not be edited by this task).
 

@@ -78,7 +78,7 @@ chart entry workflow and does not implement signing; the schema is
 `db/migrations/V15__clinical_note_signing.sql` (append-only `clinical_note_revision` with
 trigger-owned version, actors and checksum plus forced RLS); the HTTP routes
 `POST /api/v1/clinical-notes/{}/sign` and the other note routes are currently baselined in
-`contracts/openapi/missing-routes.txt`, not published in `contracts/openapi.yaml`. The existing
+`contracts/openapi.yaml`, not published in `contracts/openapi.yaml`. The existing
 HTTP/database proof is `apps/api/src/test/java/com/aurevia/smartclinic/it/clinical/ClinicalNoteRevisionIntegrationTest.java`
 and the existing fast unit proof is `.../it/clinical/ClinicalNoteServiceTest.java`; this task adds a
 clause-scoped proof only.

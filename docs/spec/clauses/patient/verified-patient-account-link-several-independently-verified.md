@@ -52,7 +52,7 @@ Production classes and files exercised by the request path:
 
 None for the clause behavior: the rule is implemented and reachable through the
 HTTP entry points above. Separately, the seven `/api/v1/patient-identity/**`
-routes are listed in `contracts/openapi/missing-routes.txt` rather than published
+routes are listed in `contracts/openapi.yaml` rather than published
 in `contracts/openapi.yaml`. Documenting them is a repo-wide contract task already
 tracked in `TODO.md`; it does not change this clause's runtime behavior or its
 test evidence.

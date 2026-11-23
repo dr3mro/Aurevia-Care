@@ -75,7 +75,7 @@ acknowledgments. This task adds a clause-focused HTTP proof of the exact-revisio
 tenant, role, state and idempotency refusal boundaries.
 
 The route `POST /api/v1/instructions/acknowledge` is currently listed in
-`contracts/openapi/missing-routes.txt`. That is pre-existing contract-documentation debt, out of
+`contracts/openapi.yaml`. That is pre-existing contract-documentation debt, out of
 scope for this proof-only change, and does not affect the implementation status of the clause.
 
 ## Gap

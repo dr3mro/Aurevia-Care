@@ -86,7 +86,7 @@ Production classes and files surveyed and exercised by the entry point:
   the `guard_conversation_insert` trigger that re-checks the verified patient
   link at write time. The migration is already in place and was not changed.
 - Contract survey: the route is baselined as
-  `POST /api/v1/conversations` in `contracts/openapi/missing-routes.txt` line
+  `POST /api/v1/conversations` in `contracts/openapi.yaml` line
   163, as are the other conversation routes. It is not described as an
   operation in `contracts/openapi.yaml`. That is separate
   contract-documentation debt, not a behaviour gap in this clause, and no

@@ -81,7 +81,7 @@ Production classes and files exercised by this request path:
 None. The clause behavior is implemented and proven by the tests above. One
 contract-documentation gap is deliberately outside this test-only story: the
 route `POST /api/v1/prescription-drafts/{}/allergy-check` is baselined at
-`contracts/openapi/missing-routes.txt:291` and is absent from
+`contracts/openapi.yaml:291` and is absent from
 `contracts/openapi.yaml`. Publishing it would need a separate contract task
 touching the OpenAPI entry, its route tag, the `Idempotency-Key` header and the
 regenerated client; this story changes no contract file.

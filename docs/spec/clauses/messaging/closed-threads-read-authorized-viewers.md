@@ -70,7 +70,7 @@ Production classes and files surveyed and exercised by the entry point:
   `closed` (`a closed conversation is read-only`), so the invariant is also
   enforced in the database and not only in the service.
 - Contract survey: the conversation routes are listed in
-  `contracts/openapi/missing-routes.txt` as
+  `contracts/openapi.yaml` as
   `GET /api/v1/conversations/{}`, `GET /api/v1/conversations/inbox`,
   `GET /api/v1/conversations/work-queue`, `POST /api/v1/conversations` and
   `POST /api/v1/conversations/{}/assign|close|read|reply|resolve|transfer`.

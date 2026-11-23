@@ -95,7 +95,7 @@ tests in `labflow/results/ResultEntryServiceTest`, the thin-adapter proof in
 `labflow/results/ResultIntegrationTest`, and kernel tests in `it/lab/LabResultServiceTest`.
 
 Contract and migration survey (recorded, not changed): `POST /api/v1/lab/results/{}`
-is baselined in `contracts/openapi/missing-routes.txt` (line 237) and the capture
+is baselined in `contracts/openapi.yaml` (line 237) and the capture
 operation has no entry in `contracts/openapi/generated/openapi.yaml`, which
 documents only `/api/v1/lab/results/{id}/verify` (lines 288-310). This is
 contract-documentation debt tracked by other backlog items and is out of scope

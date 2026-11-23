@@ -77,7 +77,7 @@ that the document routes are published in the committed OpenAPI contract.
 
 None for the clause behaviour. Out of scope and pre-existing: the document
 association routes are absent from `contracts/openapi.yaml` and are listed in
-`contracts/openapi/missing-routes.txt` (lines 35–36 and 198–199). Publishing
+`contracts/openapi.yaml` (lines 35–36 and 198–199). Publishing
 them would change `contracts/openapi.yaml`, the generated client and the
 contract tests — one separate ARC-04/WEB-05 contract task. No production file,
 existing test, migration or contract was changed by this proof.

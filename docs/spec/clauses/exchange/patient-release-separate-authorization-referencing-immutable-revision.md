@@ -66,7 +66,7 @@ the validation, visibility, HTTP status, correction, withdrawal and read-side be
 This task adds a focused clause-only proof and changes none of them.
 
 An adjacent, non-blocking contract debt is recorded for completeness: `POST /api/v1/releases`
-is still listed in `contracts/openapi/missing-routes.txt`, so the authoritative OpenAPI
+is still listed in `contracts/openapi.yaml`, so the authoritative OpenAPI
 contract has not published this route. Publishing it and regenerating the client is a
 separate contract task, outside this test-only scope and not required to prove the clause.
 

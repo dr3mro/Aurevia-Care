@@ -90,7 +90,7 @@ routes or provenance fields are published in the committed OpenAPI contract.
 
 None for the clause behaviour. Out of scope and pre-existing: the committed
 OpenAPI contract has no `/api/v1/follow-ups/**` paths (they are already listed in
-`contracts/openapi/missing-routes.txt`) and no `ruleExplanation` or `override`
+`contracts/openapi.yaml`) and no `ruleExplanation` or `override`
 schema. Documenting them would change `contracts/openapi.yaml`, the generated
 staff-web client and the contract tests — one separate ARC-04/WEB-05 contract
 task.

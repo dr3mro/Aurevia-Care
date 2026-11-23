@@ -66,7 +66,7 @@ Production classes and files exercised by each request path:
 Adjacent coverage already on `main` (not re-counted here): `it/lab/SpecimenAccessionIsolationTest`
 covers the same controller's tenant, role and mismatch paths, and `lab/accession/IssuerCodeBoundaryTest`
 covers the shared issuer/code primitive. The collect and receive routes are baselined in
-`contracts/openapi/missing-routes.txt`; changing the contract is outside this story's scope.
+`contracts/openapi.yaml`; changing the contract is outside this story's scope.
 
 ## Gap
 

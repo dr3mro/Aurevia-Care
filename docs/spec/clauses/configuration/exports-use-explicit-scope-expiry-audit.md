@@ -83,7 +83,7 @@ contract or migration. The only outstanding item is separate tracked OpenAPI deb
 Note (separate pre-existing debt, outside this clause's sentence): the three real
 routes `POST /api/v1/tenant/exports`, `GET /api/v1/tenant/exports/{}` and
 `POST /api/v1/tenant/exports/{}/expire` are still listed in
-`contracts/openapi/missing-routes.txt` (lines 333, 116 and 334) and have no path
+`contracts/openapi.yaml` (lines 333, 116 and 334) and have no path
 in `contracts/openapi.yaml` or the regenerated client. Publishing that contract
 and regenerating the client is already tracked elsewhere; the tests drive the
 real controller routes directly. The stale, disabled GAP test at

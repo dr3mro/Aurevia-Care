@@ -33,4 +33,4 @@ Production classes exercised through their normal entry point (`AppointmentServi
 
 ## Gap
 
-None for the model this clause names: the facility/time-zone, resource and availability, duration, recurrence, hold and booking-rule model is implemented and testable. Separately, the booking routes are baselined in `contracts/openapi/missing-routes.txt` and their publication is tracked by the owner task `FIX-OPENAPI-03` (WEB-05); that is a contract-publication concern, not a missing part of this clause's model, and no production file is changed by this test-only story.
+None for the model this clause names: the facility/time-zone, resource and availability, duration, recurrence, hold and booking-rule model is implemented and testable. Separately, the booking routes are baselined in `contracts/openapi.yaml` and their publication is tracked by the owner task `FIX-OPENAPI-03` (WEB-05); that is a contract-publication concern, not a missing part of this clause's model, and no production file is changed by this test-only story.

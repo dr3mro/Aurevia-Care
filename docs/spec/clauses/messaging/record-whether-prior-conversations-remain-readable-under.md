@@ -78,7 +78,7 @@ Database evidence: `db/migrations/V62__messaging_governance.sql` creates
 `record_access_basis`) with forced row-level security, so the recorded
 readability decision survives a restart and stays tenant-scoped. The
 `/api/v1/messaging-governance` routes are currently baselined as missing from
-`contracts/openapi.yaml` in `contracts/openapi/missing-routes.txt`, not
+`contracts/openapi.yaml` in `contracts/openapi.yaml`, not
 documented there. That is a separate contract-completeness observation and does
 not change this clause's runtime proof.
 

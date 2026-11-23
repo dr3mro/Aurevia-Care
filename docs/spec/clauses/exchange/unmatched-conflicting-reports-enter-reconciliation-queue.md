@@ -52,7 +52,7 @@ Production classes exercised through the normal HTTP entry points:
 - `com.aurevia.smartclinic.api.ApiErrorHandler` — renders the `FORBIDDEN` and `INVALID_STATUS` error codes.
 
 The routes `POST /api/v1/xch04/results` and `GET /api/v1/xch04/reconciliations` remain listed in
-`contracts/openapi/missing-routes.txt`; this proof-only task did not change the contract or regenerate a client.
+`contracts/openapi.yaml`; this proof-only task did not change the contract or regenerate a client.
 Neighbouring tests `UnmatchedReportReviewAcceptanceTest` and `ResultRoutingIntegrationTest` were read as
 fixtures and were not modified.
 

@@ -58,7 +58,7 @@ Production classes exercised through the normal entry point
 The clause behaviour is built and proven; no implementation gap for the worklist rule itself.
 
 One documentation debt remains outside this task's scope: the five
-`/api/v1/duplicate-reviews` routes are listed in `contracts/openapi/missing-routes.txt` rather
+`/api/v1/duplicate-reviews` routes are listed in `contracts/openapi.yaml` rather
 than declared in `contracts/openapi.yaml`, so the worklist is not yet part of the published
 OpenAPI contract or its generated staff-web client. Closing that needs one separate,
 cross-boundary task: add the operations and schemas to `contracts/openapi.yaml` and regenerate

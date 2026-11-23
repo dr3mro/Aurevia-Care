@@ -79,7 +79,7 @@ directory".
 No gap in the clause behavior: the rule is implemented and proven through the
 HTTP entry point above, so all tests are active and no `@Disabled` is used.
 `GET /api/v1/care-units` is listed in
-`contracts/openapi/missing-routes.txt` (lines 12–16), so the route is baselined as
+`contracts/openapi.yaml` (lines 12–16), so the route is baselined as
 a known parity gap rather than published in `contracts/openapi.yaml`. Documenting
 it is a separate repo-wide contract task; it does not change this clause's
 runtime behavior or its test evidence. The patient mobile directory client is

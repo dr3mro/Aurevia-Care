@@ -79,6 +79,6 @@ captured final lines).
 
 None. The clause is implemented and proven end to end. The published
 `contracts/openapi.yaml` does not yet list the `/api/v1/appointments/{}` action
-paths (they are in `contracts/openapi/missing-routes.txt`), but that contract
+paths (they are in `contracts/openapi.yaml`), but that contract
 publication is a separate, already-tracked debt (FIX-OPENAPI-03) outside this
 test-only story; the tests drive the real controller routes directly.

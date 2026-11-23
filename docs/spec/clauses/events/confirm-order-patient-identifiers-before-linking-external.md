@@ -75,7 +75,7 @@ exercises receipt persistence, cross-tenant row-level security and link insertio
 
 Contract status observed during the survey (not changed by this task): the route is described in
 [contracts/events/README.md](../../../../contracts/events/README.md), but
-[missing-routes.txt](../../../../contracts/openapi/missing-routes.txt) still lists it as absent from
+[missing-routes.txt](../../../../contracts/openapi.yaml) still lists it as absent from
 `contracts/openapi.yaml`. That is a separate contract-publication concern tracked outside this test-only
 task; no contract file was edited here.
 

@@ -74,7 +74,7 @@ Where the clause is implemented today (source survey result):
 - Contract: the `POST /api/v1/access/emergency` route is implemented in
   `com.aurevia.smartclinic.authz.access.AccessController` but is **not** declared in
   `contracts/openapi.yaml`; it is recorded as route-parity debt in
-  `contracts/openapi/missing-routes.txt` alongside the other `/api/v1/access/*` routes.
+  `contracts/openapi.yaml` alongside the other `/api/v1/access/*` routes.
   That is a pre-existing contract gap outside this task's scope and does not affect
   whether the clause itself is built. The recording behaviour is enforced in the schema,
   service and repository, not by the contract file.

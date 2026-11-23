@@ -69,7 +69,7 @@ named-approval rule live in `messaging/service`; all four field groups are persi
 by `V92__service_profiles.sql`; only an approved, effective profile that still names
 a queue owner and a backup is served by `viewProfile` via
 `ServiceProfile.enablesUnitAt`. The routes are currently baselined in
-`contracts/openapi/missing-routes.txt` rather than declared in the primary OpenAPI
+`contracts/openapi.yaml` rather than declared in the primary OpenAPI
 document; promoting them is tracked separately and is not this clause's behaviour.
 "Appropriate topics" is enforced here as a validated, non-blank, PHI-free publish
 round-trip; a cross-check against an approved topic catalog is not part of the

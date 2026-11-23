@@ -3,7 +3,6 @@ package com.aurevia.smartclinic.it.contract;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -11,19 +10,29 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 /**
- * Pure comparison logic for the OpenAPI route gate (WEB-05, ARC-04).
+ * Pure comparison logic for the strict OpenAPI route gate (WEB-05, ARC-04).
  *
- * <p>A controller route is acceptable when the authoritative contract documents
- * it, or when the shrinking baseline explicitly carries the debt. The gate also
- * rejects contract routes with no controller and baseline entries that have
- * since been documented, so the baseline can only shrink. Path template
- * variables are normalised so a controller and a contract may use different
- * placeholder names for the same route.</p>
+ * <p>A controller route is acceptable only when the authoritative contract
+ * documents it. There is no shrinking baseline: the gate also rejects contract
+ * routes with no controller, so the contract cannot drift in either direction.
+ * The single framework fallback that Spring registers without a method
+ * condition is removed explicitly by {@link #withoutFrameworkRoutes(Set)} before
+ * the comparison; every real application route remains subject to the gate.</p>
+ *
+ * <p>Path template variables are normalised so a controller and a contract may
+ * use different placeholder names for the same route.</p>
  */
 public final class OpenApiRouteCoverage {
 
     private static final Pattern PATH_VARIABLE = Pattern.compile("\\{[^}]*}");
     private static final String LINE_SHAPE = "METHOD /path";
+
+    /**
+     * Spring's {@code BasicErrorController} registers a method-less {@code /error}
+     * fallback. It is servlet plumbing, not a staff-API operation, and is the only
+     * route excluded from strict parity.
+     */
+    private static final Route FRAMEWORK_ERROR = new Route("ANY", "/error");
 
     private OpenApiRouteCoverage() {
     }
@@ -31,7 +40,7 @@ public final class OpenApiRouteCoverage {
     /** One HTTP method and path template, compared case-insensitively on the method. */
     public record Route(String method, String path) {
 
-        /** Deterministic order for failure messages and baseline files. */
+        /** Deterministic order for failure messages. */
         public static final Comparator<Route> ORDER = Comparator
                 .comparing(Route::method)
                 .thenComparing(Route::path);
@@ -64,96 +73,82 @@ public final class OpenApiRouteCoverage {
     }
 
     /**
-     * The outcome of comparing real controller routes with the contract and the
-     * baseline. Every set is sorted so a failure message is reproducible.
+     * The outcome of comparing real controller routes with the contract. Every
+     * set is sorted so a failure message is reproducible.
      *
-     * @param missingFromContract controller routes absent from the contract
-     * @param undocumented missing routes that the baseline does not carry
+     * @param undocumented controller routes absent from the contract
      * @param ghost contract routes with no controller
-     * @param staleBaseline baseline entries that are now documented
      */
-    public record Report(Set<Route> missingFromContract, Set<Route> undocumented,
-                         Set<Route> ghost, Set<Route> staleBaseline) {
+    public record Report(Set<Route> undocumented, Set<Route> ghost) {
 
         /**
          * Construct an immutable, ordered report.
          *
-         * @param missingFromContract controller routes absent from the contract
-         * @param undocumented missing routes that the baseline does not carry
+         * @param undocumented controller routes absent from the contract
          * @param ghost contract routes with no controller
-         * @param staleBaseline baseline entries that are now documented
          */
         public Report {
-            missingFromContract = sortedCopy(missingFromContract);
             undocumented = sortedCopy(undocumented);
             ghost = sortedCopy(ghost);
-            staleBaseline = sortedCopy(staleBaseline);
         }
 
         /**
-         * Whether the gate is satisfied.
+         * Whether strict parity is satisfied.
          *
-         * @return true only when there are no undocumented, ghost or stale-baseline routes
+         * @return true only when no controller route is undocumented and the
+         *         contract publishes no ghost route
          */
         public boolean passed() {
-            return undocumented.isEmpty() && ghost.isEmpty() && staleBaseline.isEmpty();
+            return undocumented.isEmpty() && ghost.isEmpty();
         }
     }
 
     /**
-     * Compare controller, contract and baseline routes.
+     * Compare controller and contract routes.
      *
-     * @param controller routes registered by Spring
+     * @param controller routes registered by Spring, already stripped of the
+     *                   framework-only fallback
      * @param contract routes documented in the authoritative OpenAPI contract
-     * @param baseline currently accepted undocumented routes
      * @return the reproducible comparison report
      */
-    public static Report compare(Set<Route> controller, Set<Route> contract, Set<Route> baseline) {
+    public static Report compare(Set<Route> controller, Set<Route> contract) {
         Set<Route> controllerRoutes = normalized(controller);
         Set<Route> contractRoutes = normalized(contract);
-        Set<Route> baselineRoutes = normalized(baseline);
-
-        Set<Route> missing = new TreeSet<>(Route.ORDER);
-        missing.addAll(controllerRoutes);
-        missing.removeAll(contractRoutes);
 
         Set<Route> undocumented = new TreeSet<>(Route.ORDER);
-        undocumented.addAll(missing);
-        undocumented.removeAll(baselineRoutes);
+        undocumented.addAll(controllerRoutes);
+        undocumented.removeAll(contractRoutes);
 
         Set<Route> ghost = new TreeSet<>(Route.ORDER);
         ghost.addAll(contractRoutes);
         ghost.removeAll(controllerRoutes);
 
-        Set<Route> stale = new TreeSet<>(Route.ORDER);
-        stale.addAll(baselineRoutes);
-        stale.retainAll(contractRoutes);
-
-        return new Report(missing, undocumented, ghost, stale);
+        return new Report(undocumented, ghost);
     }
 
     /**
-     * Parse the baseline file, ignoring blank lines and {@code #} comments.
+     * Drop the method-less {@code /error} fallback that Spring registers for
+     * {@code BasicErrorController}. The predicate is exact: a real application
+     * route such as {@code GET /error} is not excluded.
      *
-     * @param lines raw file lines
-     * @return an immutable, ordered set of routes
+     * @param routes routes derived from the live handler mapping
+     * @return an immutable set with only the framework fallback removed
      */
-    public static Set<Route> parseBaseline(List<String> lines) {
-        Set<Route> routes = new TreeSet<>(Route.ORDER);
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                continue;
+    public static Set<Route> withoutFrameworkRoutes(Set<Route> routes) {
+        Set<Route> result = new HashSet<>();
+        for (Route route : routes) {
+            if (!FRAMEWORK_ERROR.equals(route.normalized())) {
+                result.add(route);
             }
-            routes.add(parseRoute(trimmed));
         }
-        return Collections.unmodifiableSet(routes);
+        return Collections.unmodifiableSet(result);
     }
 
     /**
-     * Parse one {@code METHOD /path} line, upper-casing the method.
+     * Parse one {@code METHOD /path} line, upper-casing the method. Retained as
+     * the small parser behind the gate's synthetic test fixtures.
      *
-     * @param line a single baseline entry
+     * @param line a single route entry
      * @return the parsed route
      * @throws IllegalArgumentException when the line is not in {@code METHOD /path} form
      */
@@ -179,12 +174,8 @@ public final class OpenApiRouteCoverage {
      */
     public static String describe(Report report) {
         StringBuilder message = new StringBuilder("OpenAPI route parity failed.");
-        append(message, "Controller routes missing from the contract", report.missingFromContract());
-        append(message, "NEW undocumented controller routes (add to the contract or the baseline)",
-                report.undocumented());
+        append(message, "NEW undocumented controller routes", report.undocumented());
         append(message, "Contract routes with no controller", report.ghost());
-        append(message, "Baseline entries already documented (remove them so the list only shrinks)",
-                report.staleBaseline());
         return message.toString();
     }
 

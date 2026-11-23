@@ -83,12 +83,12 @@ proven active above, so no test is disabled.
 
 One adjacent contract gap remains, recorded here rather than edited because this task
 forbids contract changes. `POST /api/v1/documents/associations` is still listed at
-`contracts/openapi/missing-routes.txt:198` and is not yet published in `contracts/openapi.yaml`.
+`contracts/openapi.yaml:198` and is not yet published in `contracts/openapi.yaml`.
 Closing it requires one contract-and-client task: add the operation to `contracts/openapi.yaml`
 with its tag and route-parity entry, declaring only headers the controller actually accepts
 (`DocumentController.link()` binds no `Idempotency-Key`; only the void route binds `If-Match`),
 or pair such a header with a controller change under a separate task; regenerate
 `apps/staff-web/src/api/generated/openapi.d.ts` and `contracts/openapi/generated/openapi.yaml`;
-and remove the baseline entry from `contracts/openapi/missing-routes.txt`. That work is
+and remove the baseline entry from `contracts/openapi.yaml`. That work is
 already covered by the open `FIX-OPENAPI-04` task ("Publish every remaining route and empty
 the OpenAPI missing-route baseline", WEB-05), so no new task is requested.

@@ -84,7 +84,7 @@ trigger or route in `MessagingGovernanceController` for operator verification, t
 entries in `contracts/openapi.yaml` with a regenerated client, and an HTTP/integration test for
 the held-versus-eligible deletion outcome. That is one cross-boundary backend/database/contract
 task plus one operations evidence task: **two separate tasks**. The OpenAPI gap affects all nine
-governance routes (already listed in `contracts/openapi/missing-routes.txt`) and is adjacent
+governance routes (already listed in `contracts/openapi.yaml`) and is adjacent
 context, not a new ask of this evidence task.
 
 This evidence task added only the test class and this document. It changed no production code, no

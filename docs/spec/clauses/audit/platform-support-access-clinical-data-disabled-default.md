@@ -110,7 +110,7 @@ and self-approval refusal at the database level are proven by the real-PostgreSQ
 `AccessIntegrationTest`, not by the mocked-repository tests added here.
 
 One non-behavioral gap remains and needs one separate cross-boundary task. The three
-support routes are listed in `contracts/openapi/missing-routes.txt` (lines 131-133)
+support routes are listed in `contracts/openapi.yaml` (lines 131-133)
 rather than documented in `contracts/openapi.yaml`:
 `POST /api/v1/access/support/check`, `POST /api/v1/access/support/incidents` and
 `POST /api/v1/access/support/incidents/{reference}/approve`. Closing it means adding

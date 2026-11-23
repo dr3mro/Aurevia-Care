@@ -87,7 +87,7 @@ modified by this proof-only task.
 The clause's behavior is implemented and proven by active tests, but its public
 route is not yet in the API contract:
 `POST /api/v1/duplicate-reviews/{reviewId}/correct` is listed in
-`contracts/openapi/missing-routes.txt` (line 202), the baseline of Spring routes
+`contracts/openapi.yaml` (line 202), the baseline of Spring routes
 not yet documented in `contracts/openapi.yaml`; a grep of `contracts/openapi.yaml`
 finds no `duplicate-reviews` path. Closing this contracts gap needs one separate
 cross-boundary task: add the path, request and response schemas to

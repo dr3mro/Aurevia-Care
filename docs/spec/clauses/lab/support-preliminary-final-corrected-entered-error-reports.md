@@ -76,7 +76,7 @@ remain outside this test-only story:
    production code or migration needs to change to prove the behaviour.
 2. **OpenAPI contract entries.** The four mutating result routes (`POST /{id}`,
    `/verify`, `/correct`, `/error`) are listed in
-   `contracts/openapi/missing-routes.txt:237-240` but are absent from
+   `contracts/openapi.yaml:237-240` but are absent from
    `contracts/openapi.yaml`, so the generated client does not expose them. One separate
    contracts task must add the tagged operations with `Idempotency-Key` on each POST,
    document the `GET /{id}` route as well, and rerun `gen:api`.

@@ -84,7 +84,7 @@ scope:
 
 - The routes `POST /api/v1/releases`, `POST /api/v1/releases/{}/withdraw`,
   `POST /api/v1/releases/{}/correct` and `GET /api/v1/patients/{}/released-revisions` are currently
-  baselined in `contracts/openapi/missing-routes.txt` rather than published in `contracts/openapi.yaml`.
+  baselined in `contracts/openapi.yaml` rather than published in `contracts/openapi.yaml`.
   Documenting them and regenerating the staff-web client is tracked by the existing `FIX-OPENAPI-*`
   stories; no contract file was edited here.
 - The `ReleaseActionPolicy.allows(action, null)` branch cannot be produced through HTTP because

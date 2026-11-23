@@ -54,7 +54,7 @@ relevant to the instruction. Any syntactically valid key is accepted, so "to the
 is the only adapter (listed under `store-without-durable` in `scripts/wiring-baseline.json`),
 with no Flyway migration carrying RLS and FORCE RLS for instruction revisions, facts and
 templates, so a binding does not survive a restart. The API routes are tracked but not
-published: `contracts/openapi/missing-routes.txt` lists `GET`/`POST /api/v1/patient-instructions`
+published: `contracts/openapi.yaml` lists `GET`/`POST /api/v1/patient-instructions`
 and the template/replace/withdraw routes, while `contracts/openapi.yaml` has no such paths and
 the generated client has no corresponding types.
 

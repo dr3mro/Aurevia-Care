@@ -113,7 +113,7 @@ covers object verification and cross-tenant reads against real RLS.
 `db/migrations/V81__document_store.sql` creates the tenant tables with FORCE ROW
 LEVEL SECURITY and the append-only `document_event` ledger; there is no payload
 column on the mediated handle. The twelve artifact routes, including these two,
-are currently baselined in `contracts/openapi/missing-routes.txt` by the
+are currently baselined in `contracts/openapi.yaml` by the
 `FIX-OPENAPI-01` gate rather than described in `contracts/openapi.yaml`;
 publishing the remaining baselined routes is follow-up contract work under
 `FIX-OPENAPI-04` (after `FIX-OPENAPI-02` and `FIX-OPENAPI-03`). This is

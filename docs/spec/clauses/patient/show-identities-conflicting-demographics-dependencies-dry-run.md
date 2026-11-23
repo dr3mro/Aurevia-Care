@@ -52,7 +52,7 @@ Production classes and files exercised by the request path:
 - `db/migrations/V9__duplicate_review_consolidation.sql` — the forced-RLS tables
   and append-only folds backing the review. The
   `GET /api/v1/duplicate-reviews/{}/{}` route is currently baselined in
-  `contracts/openapi/missing-routes.txt` rather than published in
+  `contracts/openapi.yaml` rather than published in
   `contracts/openapi.yaml`; that is a contract-wiring follow-up, not part of the
   clause behaviour proved here.
 

@@ -77,7 +77,7 @@ Production classes and files surveyed and exercised by these entry points:
   [V59__rx02_ambiguous_transition.sql](../../../../db/migrations/V59__rx02_ambiguous_transition.sql)
   widens the update guard so an ambiguous first send out of `attested` is legal.
 - Contract survey: `contracts/openapi.yaml` has no prescription operation. The routes above are
-  baselined in [missing-routes.txt](../../../../contracts/openapi/missing-routes.txt) (lines 93–94
+  baselined in [missing-routes.txt](../../../../contracts/openapi.yaml) (lines 93–94
   and 293–302). That is separate contract-documentation debt recorded under `## Gap`, not a defect
   in the behavior proven here.
 

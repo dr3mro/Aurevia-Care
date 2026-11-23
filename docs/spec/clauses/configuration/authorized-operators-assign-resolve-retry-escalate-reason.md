@@ -73,7 +73,7 @@ administration (`ConfigurationService.create/approve/get/history`, `ConfigEntry`
 service, store, request type, migration, table, RLS policy, audit writer or
 OpenAPI route exists for ADM-02 operational queues; `retry` and `escalate` do
 not exist on the model at all. The assign/resolve/retry/escalate routes listed
-in `contracts/openapi/missing-routes.txt` (lines 152, 164, 168, 172-173, 184,
+in `contracts/openapi.yaml` (lines 152, 164, 168, 172-173, 184,
 221, 224, 269-270, 300, 351) belong to the check-in worklist, conversations,
 critical results, exchange delivery, imaging, patient instructions, patient
 access cases, prescriptions and reconciliation; they are baseline context for

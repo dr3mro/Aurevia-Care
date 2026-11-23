@@ -89,7 +89,7 @@ Production classes and files surveyed and exercised by the entry points:
   DELETE or TRUNCATE for the runtime role). Tenant isolation itself is a
   database invariant proved by the integration suite, not simulated by a mock.
 - Contract survey: the accept and change-response routes are listed in
-  `contracts/openapi/missing-routes.txt` as `POST /api/v1/xch03/orders/{}/accept`
+  `contracts/openapi.yaml` as `POST /api/v1/xch03/orders/{}/accept`
   and `POST /api/v1/xch03/orders/{}/change-response`. They are baselined there
   and are not described as operations in `contracts/openapi.yaml`. That is
   separate contract-documentation debt and does not affect whether the behavior

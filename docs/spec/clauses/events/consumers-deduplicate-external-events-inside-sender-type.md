@@ -52,7 +52,7 @@ Production classes exercised through the normal HTTP entry point:
   enabled and forced.
 
 The route `POST /api/v1/delivery/consumer-events` is already reachable and is baselined (not yet documented) in
-`contracts/openapi/missing-routes.txt`; publishing it in the OpenAPI contract is tracked as a separate contract task
+`contracts/openapi.yaml`; publishing it in the OpenAPI contract is tracked as a separate contract task
 and was deliberately not changed by this test-only story.
 
 ## Gap

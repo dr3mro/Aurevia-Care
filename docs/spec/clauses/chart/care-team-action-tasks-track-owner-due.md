@@ -90,7 +90,7 @@ already on `main`:
 
 None for the clause behaviour: owner, due date and outcome are implemented and
 proven through their HTTP entry points. Out of scope and pre-existing: the three
-follow-up task routes are listed in `contracts/openapi/missing-routes.txt`
+follow-up task routes are listed in `contracts/openapi.yaml`
 (lines 48 and 214–218) and are not yet published in `contracts/openapi.yaml`.
 Documenting them and regenerating the client is a separate contract task, as is
 any staff-web UI for assigning or completing care-team tasks; neither was changed
