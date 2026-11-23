@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import type { Locale } from '../../../i18n/messages';
@@ -252,6 +252,28 @@ describe('print order preview commands', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Print for patient' }));
     const style = document.querySelector('style[data-order-print-styles="true"]');
     expect(style).toBeTruthy();
+  });
+
+  it('handles a Tab delivered after the dialog unmounted', () => {
+    // The dialog ref is cleared on unmount; the focus trap must use the empty
+    // control list instead of reading a detached node.
+    const addListener = vi.spyOn(document, 'addEventListener');
+    renderButton([labOrder]);
+    fireEvent.click(screen.getByRole('button', { name: 'Print for patient' }));
+    const keydown = addListener.mock.calls.find(([type]) => type === 'keydown');
+    addListener.mockRestore();
+    expect(keydown?.[1]).toBeTypeOf('function');
+    const listener = keydown?.[1];
+    if (typeof listener !== 'function') {
+      throw new Error('Expected the order dialog to register a keydown listener');
+    }
+
+    cleanup();
+    const event = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+    listener(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
 
