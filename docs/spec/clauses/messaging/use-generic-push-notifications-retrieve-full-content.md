@@ -35,8 +35,10 @@ Production classes exercised, all in `com.aurevia.smartclinic.messaging.appointm
 (the PAT-01/OPS-02 patient appointment slice, which owns the only generic push
 payload in the repository): `GenericPushNotice`, `PatientAppointmentService`
 (`authorize`, `dispatch`, `confirm`, `notifyStatusChange`, `listAppointments`),
-`PatientAppointmentController` (`subject` guard and the list/confirm/notify
-routes), and the ports `PushGateway`, `DeviceTokenStore`, `VerifiedPatientLink`,
+`PatientAppointmentController` (its `subject` guard and list route are reached
+for the 403 unlinked case; the 401 cases are rejected by the interceptor before
+any controller route, and `confirm`/`notifyStatusChange` are proven at the
+service layer only), and the ports `PushGateway`, `DeviceTokenStore`, `VerifiedPatientLink`,
 `PatientAppointmentStore` and `AuditSink`. Cross-boundary classes:
 `com.aurevia.smartclinic.web.TenantContextInterceptor`,
 `com.aurevia.smartclinic.api.ApiErrorHandler` and
