@@ -3,7 +3,7 @@
  *
  * The bar is "strict, type-aware, zero warnings". Agents must write code that
  * passes these rules; they must never switch a rule off. The configuration
- * itself forbids inline `eslint-disable` directives and `@ts-ignore`, and
+ * itself forbids inline disable directives and ts-ignore, and
  * `scripts/check-constraints.py` rejects any change that edits this file to
  * weaken a rule. If a rule fires, fix the code.
  *
@@ -41,7 +41,7 @@ export default defineConfig(
   react.configs.flat.recommended,
   react.configs.flat['jsx-runtime'],
   jsxA11y.flatConfigs.strict,
-  // No inline `eslint-disable` / `eslint-enable` / `eslint-env` comments at all.
+  // No inline disable/enable/env comments at all.
   eslintComments.recommended,
   {
     files: sourceFiles,
