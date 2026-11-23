@@ -182,6 +182,26 @@ class MainDispatchCoverageTests(CliTestCase):
             self.assertEqual(swarm.main(["draft-triage"]), 0)
         self.assertEqual(self.emitted().get("drafts"), "2")
 
+    def test_main_plan_workers_returns_an_empty_wave_when_the_tracker_push_is_blocked(self):
+        include = [{"id": "CW-001", "kind": "story", "slot": 1, "title": "",
+                    "body": "", "fix": ""}]
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "live_workers", return_value=[]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value="text"), \
+                mock.patch.object(swarm, "reclaim", return_value="text"), \
+                mock.patch.object(swarm, "plan_workers", return_value=include), \
+                mock.patch.object(swarm, "update_todo",
+                                  side_effect=swarm.TrackerPushBlocked()), \
+                mock.patch.object(swarm, "note_claims") as note:
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        emitted = self.emitted()
+        self.assertEqual(emitted["matrix"], '{"include":[]}')
+        self.assertEqual(emitted["count"], "0")
+        self.assertIn("repository rules", emitted["reason"])
+        note.assert_not_called()
+
     def test_main_archive_todo_prints_the_archived_count(self):
         with mock.patch.object(swarm, "archive_todo", return_value=2):
             self.assertEqual(swarm.main(["archive-todo"]), 0)

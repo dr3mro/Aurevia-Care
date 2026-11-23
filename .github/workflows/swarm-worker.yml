@@ -44,7 +44,9 @@ jobs:
       run:
         shell: bash
     env:
-      MODEL: ${{ fromJSON(inputs.task).model }}
+      # Optional repository variable SWARM_MODEL overrides the model baked into
+      # the slot image. The slot model remains the default when it is not set.
+      MODEL: ${{ vars.SWARM_MODEL || fromJSON(inputs.task).model }}
       MODE: ${{ fromJSON(inputs.task).kind == 'fix' && 'fix' || 'story' }}
       BRANCH: ${{ fromJSON(inputs.task).branch }}
       BRANCH_PREFIX: swarm

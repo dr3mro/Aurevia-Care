@@ -149,7 +149,35 @@ def gh(*args, check=True):
         if done.stderr:
             print(f"gh {' '.join(str(a) for a in args[:3])}: {done.stderr.strip()}",
                   file=sys.stderr)
-        raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
+        raise subprocess.CalledProcessError(done.returncode, safe_command(args),
+                                            done.stdout, done.stderr)
+
+
+AUTH_HEADER_ARG = re.compile(r"(AUTHORIZATION:\s*basic\s+)\S+", re.I)
+
+
+def safe_command(args):
+    """Return command arguments safe to print or attach to an exception.
+
+    The git authentication helper passes a Basic header as a `-c` argument.
+    Actions masks the raw token but not its base64 encoding, so every command
+    is redacted here before it can reach a traceback or a log line.
+    """
+    return tuple(AUTH_HEADER_ARG.sub(r"\1***", str(arg)) for arg in args)
+
+
+class TrackerPushBlocked(RuntimeError):
+    """A tracker write was rejected by a repository rule and must not be retried."""
+
+    def __init__(self, reason="tracker push blocked by repository rules"):
+        self.reason = reason
+        super().__init__(reason)
+
+
+def repo_rule_rejection(stderr):
+    """True when git stderr reports a permanent protected-ref rejection."""
+    return bool(re.search(r"GH013|repository rule violations|push declined due to repository rule|"
+                          r"required status checks are expected|protected branch", stderr or "", re.I))
 
 
 def git(*args, check=True):
@@ -158,7 +186,8 @@ def git(*args, check=True):
         # Surface the real git error (for example a ruleset rejection) in the
         # trusted job log; CalledProcessError alone hides stderr from CI.
         print(f"git {args[0] if args else ''} failed: {done.stderr.strip()}", file=sys.stderr)
-        raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
+        raise subprocess.CalledProcessError(done.returncode, safe_command(args),
+                                            done.stdout, done.stderr)
     return done.stdout
 
 
@@ -217,6 +246,10 @@ CREDENTIALS = re.compile(r"Bad credentials|Resource not accessible|Requires auth
                          r"permission denied|HTTP 40[13]|token.*(?:expired|invalid)", re.I)
 TEST_STEP = re.compile(r"unittest|pytest|\bmvn\b|vitest|jest|npm (?:run )?test|check\.sh|verify|require every", re.I)
 QUOTA = re.compile(r"rate limit|quota|insufficient balance|budget", re.I)
+# Repository rules are policy, not a usage limit: the action must stop rather
+# than retry or wait for a quota that is not exhausted.
+REPO_RULES = re.compile(r"GH013|repository rule violations|push declined due to repository rule|"
+                       r"required status checks are expected|protected branch", re.I)
 TRUSTED_ASSOCIATIONS = {"OWNER", "MEMBER", "COLLABORATOR"}
 ISSUE_LABELS = {
     "swarm-issue": ("5319e7", "Opened and kept up to date by the swarm"),
@@ -387,6 +420,8 @@ def classify_failure(log, failed=None):
     database policy checks (for example the duplicate-approval assertion in
     db/check.sh) otherwise misclassify the run as a credentials problem."""
     failed = failed or []
+    if REPO_RULES.search(log or ""):
+        return "repository-rules"
     auth_step = any(re.search(r"auth|credential|token|login|permission", job + " " + step, re.I)
                     for job, step in failed)
     precise_auth = re.search(r"Bad credentials|Resource not accessible|Requires authentication|"
@@ -450,6 +485,7 @@ NAME_PATTERNS = (
 )
 # Why a run failed, in priority order: the most actionable cause wins.
 CLASS_SIGNATURES = (
+    ("repository-rules", REPO_RULES),
     ("infrastructure", re.compile(
         r"quota|rate limit|bad credentials|permission denied|connection refused|service unavailable|"
         r"timed? out|timeout|out of memory|\boom\b|killed|HTTP 5\d\d|no space left|ECONNRESET", re.I)),
@@ -586,7 +622,10 @@ def run_event(run_id):
         # watchdog's half hour, because nothing else merges while main is red.
         gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
     suspected = first_error(log) or where
-    if kind == "credentials":
+    if kind == "repository-rules":
+        proposed = ("A direct write to protected main was rejected by repository rules. "
+                    "Stop the push-based coordination path and route tracker updates through the PR workflow.")
+    elif kind == "credentials":
         proposed = "Check that the required secrets/permissions are configured for this workflow (token, OIDC env, NVD key)."
     elif kind == "quota":
         proposed = "Wait for the quota to reset or reduce concurrency; no code change needed."
@@ -595,7 +634,9 @@ def run_event(run_id):
     body = (f"**Workflow:** {name} · **Event:** {info.get('event')} · **Branch:** {info.get('headBranch')} "
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"
-            + (" (a person must fix this: a token, permission or limit)" if kind != "unknown" else "")
+            + (" (repository rule incompatibility: waiting for a quota will not help)"
+               if kind == "repository-rules" else
+               " (a person must fix this: a token, permission or limit)" if kind != "unknown" else "")
             + f"\n\n**Suspected cause:** {suspected}\n**Proposed fix:** {proposed}"
             + f"\n\n```text\n{clean(log, limit=60000, lines=2000)}\n```")
     number = record_issue("ci", [name, *[f"{j}::{s}" for j, s in failed], f"error::{first_error(log)}"],
@@ -1972,8 +2013,15 @@ def update_todo(edit, message, path="TODO.md", attempts=8):
         try:
             authed_git("push", "origin", "HEAD:main")
             return True
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as exc:
+            # A protected-ref rejection is permanent: repeating the same push only
+            # produces the same GH013 error and leaves the planner's working tree
+            # holding claims that were never published. Restore the tracker first.
+            if repo_rule_rejection(exc.stderr):
+                git("reset", "-q", "--hard", "origin/main")
+                raise TrackerPushBlocked() from None
             if attempt == attempts - 1:
+                git("reset", "-q", "--hard", "origin/main")
                 raise
             # Ten workers can finish together and all push TODO.md: spread the retries.
             time.sleep(random.uniform(1, 4))
@@ -4275,7 +4323,17 @@ def main(argv=None):
             granted.clear()
             granted.update(won)
             return current
-        update_todo(mark, f"Take {len(claims)} task(s) for the swarm", a.file)
+        try:
+            update_todo(mark, f"Take {len(claims)} task(s) for the swarm", a.file)
+        except TrackerPushBlocked as exc:
+            # No claim was persisted, so no story worker may start. A successful
+            # empty wave is distinct from a planning error: this is the former,
+            # with an explicit reason the watchdog can report.
+            print(f"planner: {exc.reason}; no workers started")
+            emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
+            emit("count", 0)
+            emit("reason", exc.reason)
+            return 0
         include = [t for t in include if t["kind"] != "story" or t["id"] in granted]
         note_claims(include)
         # GitHub skips a job output that contains anything it masks as a secret, which

@@ -1,5 +1,6 @@
 import importlib.util
 import datetime
+import base64
 import io
 import json
 import os
@@ -2978,6 +2979,49 @@ class BudgetTests(unittest.TestCase):
         self.assertTrue(fake.said("issue", "create"))
 
 
+class ProtectedBranchTests(unittest.TestCase):
+    def test_gh013_is_a_repository_rules_failure_not_quota(self):
+        log = ("remote: error: GH013: Repository rule violations found for refs/heads/main.\n"
+               "remote: - 3 of 3 required status checks are expected.\n"
+               "! [remote rejected] HEAD -> main\n")
+        self.assertEqual(swarm.classify_failure(log), "repository-rules")
+        self.assertNotEqual(swarm.classify_failure(log), "quota")
+        self.assertTrue(swarm.repo_rule_rejection(log))
+        self.assertFalse(swarm.repo_rule_rejection("rate limit exceeded"))
+
+    def test_safe_command_redacts_the_authorization_header(self):
+        args = ("-c", "http.https://github.com/.extraheader=AUTHORIZATION: basic ZmFrZS10b2tlbg==",
+                "push", "origin", "HEAD:main")
+        cleaned = swarm.safe_command(args)
+        self.assertNotIn("ZmFrZS10b2tlbg==", " ".join(cleaned))
+        self.assertIn("AUTHORIZATION: basic ***", " ".join(cleaned))
+        self.assertEqual(cleaned[-3:], ("push", "origin", "HEAD:main"))
+
+    def test_git_exception_does_not_carry_the_token(self):
+        credential = "SYN-TOKEN-123"
+        header = base64.b64encode(f"x-access-token:{credential}".encode()).decode()
+        args = ("-c", f"http.https://github.com/.extraheader=AUTHORIZATION: basic {header}", "push")
+        done = subprocess.CompletedProcess([], 1, "", "permission denied")
+        with mock.patch.object(swarm.subprocess, "run", return_value=done):
+            with self.assertRaises(subprocess.CalledProcessError) as caught:
+                swarm.git(*args)
+        self.assertNotIn(credential, str(caught.exception))
+        self.assertNotIn(header, str(caught.exception))
+
+    def test_permanent_push_rejection_stops_immediately_and_restores_tracker(self):
+        log = "error: GH013: Repository rule violations found for refs/heads/main."
+        failure = subprocess.CalledProcessError(1, ("push",), stderr=log)
+        with mock.patch.object(swarm, "todo_read", return_value="- [ ] A-1\n"), \
+                mock.patch.object(swarm, "todo_write"), \
+                mock.patch.object(swarm, "todo_paths", return_value=["tasks/A-1.md"]), \
+                mock.patch.object(swarm, "git") as git, \
+                mock.patch.object(swarm, "authed_git", side_effect=failure) as push:
+            with self.assertRaises(swarm.TrackerPushBlocked):
+                swarm.update_todo(lambda text: text + "- [x] A-2\n", "claim")
+        push.assert_called_once()
+        git.assert_any_call("reset", "-q", "--hard", "origin/main")
+
+
 class TwoTierTests(unittest.TestCase):
     def setUp(self):
         # These tests build a throwaway repository with a TODO.md; moving it into task files
@@ -3518,6 +3562,20 @@ class ArchiveTodoTest(unittest.TestCase):
             self.assertEqual(swarm.archived_done_ids(str(arc)), {"A-1", "A-4"})
             self.assertEqual(swarm.archived_done_ids(str(Path(tmp, "none.md"))), set())
             self.assertNotIn("[x]", todo.read_text())
+
+
+class ModelOverrideTests(unittest.TestCase):
+    def test_every_opencode_workflow_honours_the_swarm_model_variable(self):
+        for path in (ROOT / ".github/workflows").glob("*.yml"):
+            text = path.read_text()
+            if "MODEL:" not in text:
+                continue
+            self.assertIn("vars.SWARM_MODEL", text, path.name)
+            self.assertNotIn("MODEL: opencode-go/", text, path.name)
+
+    def test_the_worker_falls_back_to_the_slot_model(self):
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        self.assertIn("MODEL: ${{ vars.SWARM_MODEL || fromJSON(inputs.task).model }}", text)
 
 
 class FailureReportTests(unittest.TestCase):
