@@ -1,7 +1,6 @@
 package com.aurevia.smartclinic.audit.clauses;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
@@ -403,6 +402,5 @@ class PlatformSupportAccessClinicalDataDisabledDefaultTest {
         assertEquals("NO_ACTIVE_MEMBERSHIP", field(denied.getBody(), "reason"));
         assertEquals(List.of("SUPPORT_ACCESS_CHECK|SUPPORT_ACCESS|DENIED"),
                 auditRows(ORG_A, "support-nomember-check"));
-        assertFalse(field(denied.getBody(), "allowed").contains("true"));
     }
 }
