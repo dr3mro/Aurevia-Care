@@ -544,6 +544,30 @@ class IntegratorBatchTest(unittest.TestCase):
         self.assertIn("--- status ---", str(raised.exception.output))
         self.assertIn("--- staged ---", str(raised.exception.output))
 
+    def test_a_protected_main_rejection_stops_the_batch_without_retry(self):
+        self.repo()
+        error = subprocess.CalledProcessError(
+            1, ("push",), stderr="error: GH013: Repository rule violations found for refs/heads/main."
+        )
+        with mock.patch.object(swarm, "gh") as gh, \
+                mock.patch.object(swarm, "migrate_tasks"), \
+                mock.patch.object(swarm, "gh_json", return_value=self.view()), \
+                mock.patch.object(swarm, "is_repair", return_value=False), \
+                mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "git", return_value="main-sha"), \
+                mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
+                mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+                mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
+                mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+                mock.patch.object(swarm, "record_merges",
+                                  return_value=([(7, "CW-001", "abc")], ["comment"], [])), \
+                mock.patch.object(swarm, "authed_git", side_effect=error) as push, \
+                mock.patch.object(swarm, "emit") as emit:
+            self.assertEqual(swarm.integrate_batch([7], check_delivery=False), 0)
+        push.assert_called_once()
+        emit.assert_any_call("merged", 0)
+        self.assertTrue(any(c.args[:2] == ("pr", "comment") for c in gh.call_args_list))
+
     def test_a_reconciled_regate_uses_the_repair_gate_when_no_full_gate_was_used(self):
         self.repo()
         pushes = []

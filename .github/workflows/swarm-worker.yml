@@ -19,6 +19,7 @@ permissions:
 concurrency:
   group: swarm-worker-${{ github.run_id }}-${{ fromJSON(inputs.task).id }}
   cancel-in-progress: false
+  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -77,7 +78,7 @@ jobs:
         run: |
           runner=$(mktemp)
           trap 'rm -f "$runner"' EXIT
-          git show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
+          git -c safe.directory='*' show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
           bash "$runner" fetch-main || true
       # A fix worker starts on an existing branch that may be behind main: bring main in first, with the
       # agent resolving any conflicts, so the work starts from the current code.
@@ -94,7 +95,7 @@ jobs:
           # Older PR branches may lack the conflict skill loader.
           runner=$(mktemp)
           trap 'rm -f "$runner"' EXIT
-          git show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
+          git -c safe.directory='*' show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
           bash "$runner" merge-main || true
       # What earlier workers and the integrator wrote about this task in trusted
       # issues. Read here with the read-only token; the agent only sees the file.
@@ -106,7 +107,7 @@ jobs:
         run: |
           context=$(mktemp)
           trap 'rm -f "$context"' EXIT
-          git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"
+          git -c safe.directory='*' show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"
           python3 -I "$context" issue-context --task "$STORY_ID" || true
           if [[ "$MODE" == fix && "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
             python3 -I "$context" pr-context --pr "$PR_NUMBER" || true

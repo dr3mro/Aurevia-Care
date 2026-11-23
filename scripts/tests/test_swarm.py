@@ -1336,7 +1336,7 @@ class DebuggerWorkflowTests(unittest.TestCase):
         self.assertEqual(steps[0]["with"]["fetch-depth"], 0)
         agent = next(step for step in steps if step.get("id") == "debug")
         command = agent["run"]
-        self.assertIn('git show "$GITHUB_SHA:scripts/agent-run.sh" > "$runner"', command)
+        self.assertIn("git -c safe.directory='*' show \"$GITHUB_SHA:scripts/agent-run.sh\" > \"$runner\"", command)
         self.assertIn('bash "$runner" debug', command)
         self.assertNotIn("git checkout", command)
 
@@ -1351,7 +1351,7 @@ class DebuggerWorkflowTests(unittest.TestCase):
 
     def test_fix_workers_read_the_pull_request_comments_the_debugger_writes(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text(encoding="utf-8")
-        self.assertIn('git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"', text)
+        self.assertIn("git -c safe.directory='*' show \"origin/$BASE_BRANCH:scripts/swarm.py\" > \"$context\"", text)
         self.assertIn('python3 -I "$context" pr-context --pr "$PR_NUMBER"', text)
 
 
@@ -2375,7 +2375,7 @@ class ResolveConflictTests(unittest.TestCase):
         self.assertLess(worker.index("bash \"$runner\" fetch-main"), worker.index("agent-run.sh implement"))
         # The token-bearing step must run a trusted copy, never the PR's script.
         fetch_step = worker.split("- name: Fetch main", 1)[1].split("- name:", 1)[0]
-        self.assertIn("git show \"origin/$BASE_BRANCH:scripts/agent-run.sh\"", fetch_step)
+        self.assertIn("git -c safe.directory='*' show \"origin/$BASE_BRANCH:scripts/agent-run.sh\"", fetch_step)
         self.assertNotIn("secrets.SWARM_TOKEN", fetch_step)
         # After the agent has run, the only step that sees a token is the inline
         # fetch: no workspace script, repository hooks off, token sent to github.com.
@@ -3562,6 +3562,17 @@ class ArchiveTodoTest(unittest.TestCase):
             self.assertEqual(swarm.archived_done_ids(str(arc)), {"A-1", "A-4"})
             self.assertEqual(swarm.archived_done_ids(str(Path(tmp, "none.md"))), set())
             self.assertNotIn("[x]", todo.read_text())
+
+
+class TrustedCopyTests(unittest.TestCase):
+    def test_every_trusted_copy_in_a_container_marks_the_repo_safe(self):
+        for name in ("swarm-worker.yml", "swarm-debugger.yml"):
+            text = (ROOT / ".github/workflows" / name).read_text()
+            copies = [line for line in text.splitlines() if "git " in line and " show " in line
+                      and "scripts/" in line]
+            self.assertTrue(copies, name)
+            for line in copies:
+                self.assertIn("safe.directory='*'", line, (name, line))
 
 
 class ModelOverrideTests(unittest.TestCase):

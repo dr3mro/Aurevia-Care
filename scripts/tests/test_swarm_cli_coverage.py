@@ -9,6 +9,7 @@ output). All data is synthetic; no test reaches the network, a real repository,
 ``TODO.md``, ``.agent/`` or a real credential.
 """
 
+import contextlib
 import io
 import json
 import os
@@ -201,6 +202,13 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertEqual(emitted["count"], "0")
         self.assertIn("repository rules", emitted["reason"])
         note.assert_not_called()
+
+    def test_main_reconcile_tasks_reports_a_blocked_push_without_crashing(self):
+        with mock.patch.object(swarm, "reconcile_tasks",
+                               side_effect=swarm.TrackerPushBlocked()), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(swarm.main(["reconcile-tasks"]), 0)
+        self.assertIn("repository rules", err.getvalue())
 
     def test_main_archive_todo_prints_the_archived_count(self):
         with mock.patch.object(swarm, "archive_todo", return_value=2):
@@ -433,6 +441,16 @@ class MainDispatchCoverageTests(CliTestCase):
         emitted = self.emitted()
         self.assertEqual(emitted.get("queue"), "[7, 8]")
         self.assertEqual(emitted.get("count"), "2")
+
+    def test_main_plan_integration_caps_the_batch_for_the_job_timeout(self):
+        queue = list(range(1, 10))
+        with mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "plan_integration", return_value=queue), \
+                mock.patch.dict(os.environ, {"SWARM_INTEGRATE_BATCH": "3"}):
+            self.assertEqual(swarm.main(["plan-integration"]), 0)
+        emitted = self.emitted()
+        self.assertEqual(emitted.get("queue"), "[1, 2, 3]")
+        self.assertEqual(emitted.get("count"), "3")
 
     def test_main_resolve_publish_routes_to_resolve_publish(self):
         with mock.patch.object(swarm, "resolve_publish") as resolve:
