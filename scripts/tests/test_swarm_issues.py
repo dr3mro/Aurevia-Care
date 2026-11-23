@@ -391,6 +391,12 @@ class RunEventTests(unittest.TestCase):
         self.assertEqual(swarm.classify_failure(log, gate), "unknown")
         self.assertEqual(swarm.classify_failure(log, [("Publish", "Push the branch")]), "credentials")
 
+    def test_test_output_is_not_a_quota_failure(self):
+        log = "FAIL: test_budget_gate_allows_well_under_cap\nProcess completed with exit code 1"
+        failed = [("Delivery tooling tests", "Run python3 -I -m unittest discover -s scripts/tests -q")]
+        self.assertEqual(swarm.classify_failure(log, failed), "unknown")
+        self.assertEqual(swarm.classify_failure(log, [("Publish", "Push the branch")]), "quota")
+
 
 class WatchdogTests(unittest.TestCase):
     def setUp(self):
