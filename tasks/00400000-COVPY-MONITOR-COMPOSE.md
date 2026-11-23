@@ -1,4 +1,5 @@
 - [x] COVPY-MONITOR-COMPOSE · Script tests: monitor tool coverage, compose part (to 100% together with the other three parts)
+  - evidence: PR #419 merged to main (reconciled 2026-11-23)
   - pr: #419
   - attempts: 1
   - requirements: OPS-06

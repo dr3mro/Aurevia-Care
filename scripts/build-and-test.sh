@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Build and test the whole project locally, with the same gates CI runs, so a green
-# run here means a push cannot turn main red.
+# Build and test the whole project locally with the gates that can run here.
+# A green run is strong evidence, not a guarantee: Docker image smoke is skipped
+# when Docker is absent and the local JDK may differ from CI. Read the summary
+# for skipped steps before treating a local green as release evidence.
 #
 # It mirrors .github/workflows/delivery.yml job for job:
 #   policy         shell syntax/lint, actionlint, agent pack, docs, secrets, names,
@@ -31,7 +33,11 @@ BUILD_DIR="build"
 SUMMARY="$BUILD_DIR/build-and-test-summary.txt"
 FAILURES="$BUILD_DIR/build-and-test-failures.txt"
 LOG_DIR="$BUILD_DIR/logs"
-rm -rf "$LOG_DIR"
+# Preserve the previous run's logs: the failure file names them as evidence and
+# an agent fixing that file must be able to read the tail it quotes.
+if [[ -d "$LOG_DIR" ]]; then
+  mv "$LOG_DIR" "$BUILD_DIR/logs-$(date -u +%Y%m%dT%H%M%SZ)"
+fi
 mkdir -p "$BUILD_DIR" "$LOG_DIR"
 
 SKIP_DOCKER=0
@@ -252,7 +258,10 @@ else
   skip_step "policy: shell syntax and shellcheck" "shellcheck not installed"
 fi
 if command -v actionlint >/dev/null; then
-  run_step "policy: workflow lint (actionlint)" actionlint
+  # actionlint 1.7.12 predates GitHub's concurrency `queue` key; the queue
+  # contract itself is asserted by scripts/tests/test_workflow_concurrency.py.
+  run_step "policy: workflow lint (actionlint)" command actionlint \
+    -ignore 'unexpected key "queue" for "concurrency" section'
 else
   skip_step "policy: workflow lint (actionlint)" "actionlint not installed"
 fi

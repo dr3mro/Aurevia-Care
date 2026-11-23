@@ -19,6 +19,7 @@ permissions:
 concurrency:
   group: swarm-images
   cancel-in-progress: false
+  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -46,15 +47,22 @@ jobs:
           set -euo pipefail
           base="ghcr.io/${GITHUB_REPOSITORY,,}-agent:latest"
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker pull "$base"
+          # Resolve the mutable tag once, then build from the immutable digest.
+          # A tag that moves during the build cannot change the worker image.
+          base_ref="$base@$(docker buildx imagetools inspect "$base" \
+            --format '{{json .Manifest}}' | jq -er .digest)"
+          docker pull "$base_ref"
+          docker buildx imagetools inspect "$base_ref" >/dev/null
+          echo "Slot images build from $base_ref"
           GITHUB_OUTPUT=slots.out python3 -I scripts/swarm.py slot-matrix
           slots=$(sed -n 's/^matrix=//p' slots.out | jq -r '.slot[]')
           for slot in $slots; do
             image="ghcr.io/${GITHUB_REPOSITORY,,}-agent-${slot}"
             config=$(python3 -I scripts/swarm.py slot-config --slot "$slot")
             docker build -f .github/agent-image/Dockerfile.slot \
-              --build-arg "BASE=$base" --build-arg "SLOT=$slot" --build-arg "SLOT_CONFIG=$config" \
+              --build-arg "BASE=$base_ref" --build-arg "SLOT=$slot" --build-arg "SLOT_CONFIG=$config" \
               --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.base.digest=$base_ref" \
               -t "$image:latest" .github/agent-image
             docker push "$image:latest"
           done

@@ -32,6 +32,11 @@ class WorkflowConcurrencyTest(unittest.TestCase):
                 concurrency = config["concurrency"]
                 self.assertTrue(concurrency.get("group"))
                 self.assertIs(concurrency.get("cancel-in-progress"), False)
+                # cancel-in-progress:false protects only the running run. Without
+                # queue:max GitHub keeps a single pending run and replaces it with
+                # each newer trigger, so a frequently dispatched workflow can be
+                # starved indefinitely (the 18 unmerged green PRs incident).
+                self.assertEqual(concurrency.get("queue"), "max")
 
     def test_swarm_waves_overlap_with_a_group_per_run(self):
         """Waves run side by side; the plan job and the 20-worker cap keep them safe."""

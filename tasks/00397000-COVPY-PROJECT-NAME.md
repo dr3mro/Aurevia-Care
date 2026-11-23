@@ -1,4 +1,5 @@
 - [x] COVPY-PROJECT-NAME · Script tests: reach 100% line and branch coverage of `scripts/project-name.py`
+  - evidence: PR #392 merged to main (reconciled 2026-11-23)
   - pr: #392
   - attempts: 1
   - requirements: OPS-06

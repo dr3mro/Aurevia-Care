@@ -1,4 +1,5 @@
 - [x] FIX-METRICS-PERCENTILES · Expose latency distributions for OPS-03 percentile alerts
+  - evidence: PR #1215 merged to main (reconciled 2026-11-23)
   - pr: #1215
   - attempts: 2
   - requirements: OPS-03, WEB-06

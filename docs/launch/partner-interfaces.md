@@ -189,6 +189,94 @@ All boxes are intentionally unchecked; this pack asserts none of them.
 - [ ] Monitoring evidence that partner delivery and unmatched reports are observed and alerted, with a named on-call owner and escalation trail
 - [ ] Downtime and recovery runbooks covering manual capture, patient identification, critical contacts and supervised back-entry, with a recorded drill
 
+## Acceptance register
+
+The partner artifacts in [Decision needed](#decision-needed) and the shared
+market-policy artifacts named by OPS-01 and the G5 row of section 9 are collected
+here with the accountable owner role, where the repository evidence lives, the
+human artifact that must be attached, and the current status. Owner roles come
+from section 10 of [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md): the
+interface-contract decision belongs to the integration lead and partner owner;
+the market-policy topics belong to the roles named on each row. The evidence
+locations are code and document facts, not approvals; they do not change who is
+accountable. Status values are:
+
+- `approved` — a named person has signed and effective dates are recorded;
+- `open` — human approval is not yet supplied, and the repository can hold the
+  data once it is;
+- `blocked` — human approval is not yet supplied and a named engineering gap
+  prevents a durable, versioned approval record.
+
+All rows are `open` in this checkout. The register is itself the durable record a
+person completes and holds the attachable human artifact; the cited repository
+locations hold only platform evidence. No row is `blocked` by a persistence or
+reachability gap. A passing repository check, a synthetic fixture or a simulated
+review cannot move a row to `approved`.
+
+| Item | Spec clause | Owner role | Evidence location (repository) | Human evidence to attach (open item) | Status |
+|---|---|---|---|---|---|
+| Laboratory — signed interface contract | OPS-01; PRD-02; XCH-01, XCH-02, XCH-03; section 9 G5 row; section 10 | Integration lead and partner owner | [ARC-05 durable delivery contract](../../contracts/events/README.md), [REST API contract](../../contracts/openapi.yaml) | Signed, versioned contract naming the agreed profile and channel, authorised payload, recipient, purpose, retained-copy terms and duration, with a named site acceptor | `open` |
+| Laboratory — conformance result | ARC-05; LAB-02; XCH-04 | Integration lead and partner owner | [synthetic partner event fixtures](../../contracts/events/fixtures/partner-events.json), [conformance fixtures](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/conformance/ConformanceFixtures.java) | Recorded conformance run for identifier matching, a duplicate, a correction, an out-of-order event and a partial outage, with acceptor and result | `open` |
+| Laboratory — approved credential record | OPS-02; section 10 | Integration lead and partner owner | [production readiness evidence register](../../docs/operations/production-readiness/README.md), [launch checklist](../../docs/operations/production-readiness/launch-checklist.md) | Approved scoped credential ownership record with owner, scope, rotation schedule and revocation test; no credential value in the repository or evidence links | `open` |
+| Laboratory — reconciliation evidence | XCH-04; LAB-02; ARC-05 | Integration lead and partner owner | [queue catalog](../../docs/operations/ops-queues/queue-catalog.md), [result routing service](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRoutingService.java) | Evidence of final, corrected and critical results routed to a named owner and coverage queue, identifier matching before import, and unmatched or conflicting reports held for review | `open` |
+| Laboratory — timed outage drill | OPS-05; section 9 G5 row; section 10 | Integration lead and partner owner | [recovery drill evidence template](../../docs/operations/recovery/drill-evidence.md), [operational runbooks](../../docs/operations/recovery/operational-runbooks.md) | Completed timed drill record with scenario, duration, detection, fallback, backlog handling, recovery and reconciliation before writes resumed | `open` |
+| PACS / imaging — signed interface contract | OPS-01; PRD-02; XCH-01, XCH-02, XCH-03; RAD-01; section 9 G5 row; section 10 | Integration lead and partner owner | [ARC-05 durable delivery contract](../../contracts/events/README.md), [REST API contract](../../contracts/openapi.yaml) | Signed, versioned contract naming the study-association and reporting channel, study-instance-UID and accession rules, the partner workstation boundary and the contract's DICOMweb position | `open` |
+| PACS / imaging — conformance result | ARC-05; RAD-01; XCH-04 | Integration lead and partner owner | [synthetic partner event fixtures](../../contracts/events/fixtures/partner-events.json), [conformance fixtures](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/conformance/ConformanceFixtures.java) | Recorded conformance run covering study association, a wrong-patient or mismatched-accession refusal, a signed interpretation and an addendum reaching the referrer, with acceptor and result | `open` |
+| PACS / imaging — approved credential record | OPS-02; section 10 | Integration lead and partner owner | [production readiness evidence register](../../docs/operations/production-readiness/README.md), [launch checklist](../../docs/operations/production-readiness/launch-checklist.md) | Approved scoped credential ownership record with owner, scope, rotation schedule and revocation test; no credential value in the repository or evidence links | `open` |
+| PACS / imaging — reconciliation evidence | XCH-04; RAD-01; ARC-05 | Integration lead and partner owner | [queue catalog](../../docs/operations/ops-queues/queue-catalog.md), [result routing service](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRoutingService.java) | Evidence that a study is linked only after patient and accession match, a mismatch goes to review, and corrections or addenda preserve prior versions and reopen review | `open` |
+| PACS / imaging — timed outage drill | OPS-05; section 9 G5 row; section 10 | Integration lead and partner owner | [recovery drill evidence template](../../docs/operations/recovery/drill-evidence.md), [operational runbooks](../../docs/operations/recovery/operational-runbooks.md) | Completed timed drill with the association and reporting channel unavailable, recording refusal to link on mismatch, manual fallback, backlog handling and reconciliation after recovery | `open` |
+| Pharmacy — signed interface contract | OPS-01; PRD-02; XCH-01, XCH-02, XCH-03; RX-02; section 9 G5 row; section 10 | Integration lead and partner owner | [ARC-05 durable delivery contract](../../contracts/events/README.md), [REST API contract](../../contracts/openapi.yaml) | Signed, versioned contract naming the prescription channel, submission identifiers, pharmacy acceptance and rejection, and the boundary that the platform holds no inventory and does not dispense | `open` |
+| Pharmacy — conformance result | ARC-05; RX-02; XCH-04 | Integration lead and partner owner | [synthetic partner event fixtures](../../contracts/events/fixtures/partner-events.json), [conformance fixtures](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/conformance/ConformanceFixtures.java) | Recorded conformance run covering submission, delivery confirmation, pharmacy status, an ambiguous transmission and the absence of a duplicate on retry, with acceptor and result | `open` |
+| Pharmacy — approved credential record | OPS-02; section 10 | Integration lead and partner owner | [production readiness evidence register](../../docs/operations/production-readiness/README.md), [launch checklist](../../docs/operations/production-readiness/launch-checklist.md) | Approved scoped credential ownership record with owner, scope, rotation schedule and revocation test; no credential value in the repository or evidence links | `open` |
+| Pharmacy — reconciliation evidence | XCH-04; RX-02; ARC-05 | Integration lead and partner owner | [queue catalog](../../docs/operations/ops-queues/queue-catalog.md), [result routing service](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRoutingService.java) | Evidence that submitted, delivery-confirmed, accepted or rejected, clarification, renewal and cancellation events are tracked separately, dispensing is distinguished from acceptance, and an ambiguous transmission is verified before any retry | `open` |
+| Pharmacy — timed outage drill | OPS-05; section 9 G5 row; section 10 | Integration lead and partner owner | [recovery drill evidence template](../../docs/operations/recovery/drill-evidence.md), [operational runbooks](../../docs/operations/recovery/operational-runbooks.md) | Completed timed drill with the pharmacy channel unavailable, recording how an ambiguous transmission is held, verified and reconciled without a duplicate, and how the site falls back under its approved policy | `open` |
+| Hosting region and data residency | OPS-01; section 9 G5 row; section 10 | Product owner and privacy lead | [policy-pack.md](policy-pack.md), [deployment design handoff](../../infra/DEPLOYMENT.md) | Signed data handling map and cloud region attestation naming the approved region; this pack names none | `open` |
+| Applicable law and launch jurisdiction | OPS-01; section 10 | Product owner and privacy lead | [policy-pack.md](policy-pack.md) | Signed applicable-law record and jurisdictional legal review for the selected market; this pack names no jurisdiction | `open` |
+| Retention and legal hold rules | OPS-01; OPS-07 | Privacy lead | [policy-pack.md](policy-pack.md), [retention and offboarding](../../docs/operations/tenant-lifecycle/retention-and-offboarding.md) | Approved retention schedule by record class, named hold authority and hold placement and lift authorizations | `open` |
+| Patient release rules | OPS-01; section 10 | Privacy lead and clinical safety lead | [policy-pack.md](policy-pack.md), [release and recovery rules](release-and-recovery-rules.md) | Approved release rules with policy version, permitted modes, withdrawal handling, named approver and effective dates | `open` |
+| Incident notification | OPS-01; OPS-05 | Privacy lead and operations | [policy-pack.md](policy-pack.md), [incident response runbook](../../docs/operations/runbooks/incident-response.md) | Approved notification matrix with named internal roles, timeframes, external parties and named owners | `open` |
+| Supplier obligations | OPS-01; section 10 | Integration lead and partner owner with privacy lead | [policy-pack.md](policy-pack.md) | Signed supplier and subprocessor register with executed agreements, audit rights and credential inventory | `open` |
+| Prescribing constraints | OPS-01; RX-02 | Clinical safety lead and site medical director | [policy-pack.md](policy-pack.md), [pharmacy workflow](../../docs/operations/pharmacy-workflow/README.md) | Approved prescribing channel decision and market entitlement record with named approver and effective dates | `open` |
+| HIPAA security risk analysis (U.S. launch only) | OPS-01 | Privacy lead | [policy-pack.md](policy-pack.md), [personal data inventory](../../docs/security/data-inventory.md) | Signed security risk analysis before any ePHI is handled, with a named reviewer | `open` |
+| HIPAA required agreements (U.S. launch only) | OPS-01 | Privacy lead | [policy-pack.md](policy-pack.md) | Executed required agreements, including business-associate agreements where applicable, with named owner | `open` |
+| HIPAA vendor scope (U.S. launch only) | OPS-01 | Privacy lead | [policy-pack.md](policy-pack.md), [personal data inventory](../../docs/security/data-inventory.md) | Approved vendor scope inventory listing every processor that may handle ePHI, with named owner | `open` |
+| Jurisdiction-specific requirements and owners | OPS-01; section 10 | Product owner and privacy lead | [policy-pack.md](policy-pack.md) | Signed requirements-and-owners register with effective dates and review cycle; no jurisdiction or owner is named here | `open` |
+
+The partner rows are one section-10 decision, "Lab, PACS and pharmacy interface
+contracts", whose required evidence is "conformance results, approved credentials,
+reconciliation and outage drill"; the signed contract is the partner artifact that
+fixes the payload, recipient, purpose and duration. The G5 row of section 9
+additionally requires each site to approve its integrations and downtime drills and
+to have no unresolved patient-safety, tenant-isolation, record-integrity or
+critical-escalation defect in enabled scope; that last item is a human acceptance
+recorded in [site-launch-approvals.md](site-launch-approvals.md), not a row this pack
+can close.
+
+The shared rows are owned by the sibling [policy-pack.md](policy-pack.md) decision
+pack, which records the same OPS-01 topics with its own owner, evidence and status
+columns; scope of pilot, one market per deployment and the data handling map stay
+there and are not duplicated here. That pack labels the hosting-region row
+`blocked` under its broader definition (a missing region or cloud account is a
+named prerequisite); this register keeps the row `open` because the status legend
+above reserves `blocked` for a named engineering gap. Neither label is an approval.
+The supplier-obligations row is also the S-G5-04 hand-off in that pack's
+"What is missing" section; a task pointer is not evidence of a signed register.
+
+## Synthetic example (illustrative shape only — not an approval)
+
+The row below shows only the *shape* a completed acceptance entry takes. Every
+value is a placeholder token, not a person, date, jurisdiction, region, partner,
+credential or contract. It records no decision and must not be copied into the
+[Approval record](#approval-record).
+
+| Item | Partner (synthetic) | Evidence link (synthetic) | Acceptor (synthetic) | Effective from (synthetic) | Effective to (synthetic) | Status |
+|---|---|---|---|---|---|---|
+| Laboratory — signed interface contract | `SYNTHETIC-PARTNER-LAB` | `SYNTHETIC-EVIDENCE-LOCATION` | `SYNTHETIC-ACCEPTOR-INTEGRATION-LEAD` | `SYNTHETIC-DATE-FROM` | `SYNTHETIC-DATE-TO` | `open` |
+
+A real row replaces each token with the approved value and attaches the evidence
+named in the [Acceptance register](#acceptance-register). Until then the item stays
+`open`.
+
 ## Approval record
 
 Accountable roles from section 10 of the specification. Every cell below is

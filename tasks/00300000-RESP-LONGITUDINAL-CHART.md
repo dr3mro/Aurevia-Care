@@ -1,4 +1,5 @@
 - [x] RESP-LONGITUDINAL-CHART · Staff web: responsive `LongitudinalChart` (features-chart)
+  - evidence: PR #760 merged to main (reconciled 2026-11-23)
   - pr: #760
   - attempts: 1
   - requirements: WEB-07, UX-01

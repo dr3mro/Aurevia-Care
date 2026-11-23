@@ -1,4 +1,5 @@
 - [x] RESP-ACCESS-STATE-NOTICE · Staff web: responsive `AccessStateNotice` (features-admin)
+  - evidence: PR #710 merged to main (reconciled 2026-11-23)
   - pr: #710
   - attempts: 1
   - requirements: WEB-07, UX-01

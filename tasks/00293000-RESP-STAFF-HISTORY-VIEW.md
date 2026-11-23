@@ -1,4 +1,5 @@
 - [x] RESP-STAFF-HISTORY-VIEW · Staff web: responsive `StaffHistoryView` (features-admin)
+  - evidence: PR #736 merged to main (reconciled 2026-11-23)
   - pr: #736
   - attempts: 1
   - requirements: WEB-07, UX-01

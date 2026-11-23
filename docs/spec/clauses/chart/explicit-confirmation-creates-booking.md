@@ -36,6 +36,9 @@ domain, so the test reaches it through its real HTTP entry point rather than thr
   grant `APPOINTMENT_BOOK`, cannot confirm (HTTP 403) and books nothing.
 - `peerTenantCannotConfirmAnotherTenantsSuggestion` — negative proof. A user of another tenant
   cannot see or confirm the suggestion (HTTP 404) and books nothing against it.
+- `invalidVersionConfirmationCreatesNoBooking` — negative proof. A confirmation carrying a
+  non-positive `If-Match` version is refused at the HTTP precondition boundary (HTTP 422,
+  `INVALID_IF_MATCH`) before the command runs, and books nothing.
 
 Production classes exercised through the normal HTTP entry point:
 
@@ -57,11 +60,12 @@ Production classes exercised through the normal HTTP entry point:
   `booking_id`.
 
 Adjacent production found in the survey but not part of this clause's proof: `chart.record` holds
-the CLN-03 longitudinal chart and has no booking behaviour; the follow-up schedule, override,
-booking and task model lives in `scheduling.followup`, with its durable tables created by
-`db/migrations/V8__scheduling.sql` and the follow-up store migration. The follow-up routes are not
-currently published in `contracts/openapi.yaml`; that is a separate contract task and does not
-block this HTTP proof, because the routes are wired and served.
+the CLN-03 longitudinal chart and has no booking behaviour. The follow-up schedule, override,
+booking and task model lives in `scheduling.followup`; its durable `follow_up_suggestion` and
+`care_team_task` tables, each protected by row-level security with FORCE ROW LEVEL SECURITY, are
+created by `db/migrations/V74__build_05.sql`. All five follow-up routes are published in
+`contracts/openapi.yaml` (tasks 3492, suggest 7146, complete 7171, confirm 7200, override 7229),
+so this HTTP proof reaches the same routes the published contract describes.
 
 ## Gap
 

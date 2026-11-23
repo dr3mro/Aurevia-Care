@@ -1,4 +1,5 @@
 - [x] RESP-APP-PATIENT-PAGES · Patient app: tablet, landscape and large-text layout for `patientPages` (app)
+  - evidence: PR #626 merged to main (reconciled 2026-11-23)
   - pr: #626
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

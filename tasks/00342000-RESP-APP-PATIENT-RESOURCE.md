@@ -1,4 +1,5 @@
 - [x] RESP-APP-PATIENT-RESOURCE · Patient app: tablet, landscape and large-text layout for `PatientResource` (app)
+  - evidence: PR #609 merged to main (reconciled 2026-11-23)
   - pr: #609
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

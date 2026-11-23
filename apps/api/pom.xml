@@ -29,8 +29,11 @@
     <jacoco.version>0.8.16</jacoco.version>
     <owasp.version>13.0.0</owasp.version>
     <spotbugs.version>4.10.5.0</spotbugs.version>
-    <owasp.skip>true</owasp.skip>
-    <spotbugs.skip>true</spotbugs.skip>
+    <!-- Security scans are on unless a build explicitly selects -Pno-security.
+         An activeByDefault profile alone is unsafe: Maven disables it whenever
+         any other profile (-Pfast, -Pmutation) is selected. -->
+    <owasp.skip>false</owasp.skip>
+    <spotbugs.skip>false</spotbugs.skip>
     <pitest.threshold>65</pitest.threshold>
   </properties>
 

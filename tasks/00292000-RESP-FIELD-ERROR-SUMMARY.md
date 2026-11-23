@@ -1,4 +1,5 @@
 - [x] RESP-FIELD-ERROR-SUMMARY · Staff web: responsive `FieldErrorSummary` (features-admin)
+  - evidence: PR #734 merged to main (reconciled 2026-11-23)
   - pr: #734
   - attempts: 1
   - requirements: WEB-07, UX-01

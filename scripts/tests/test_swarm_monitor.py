@@ -487,6 +487,27 @@ class NotesTests(unittest.TestCase):
         self.assertEqual(len(taken), 4)
         self.assertLessEqual(len((self.dir / "in" / "2026-11-19.md").read_text()), 20_100)
 
+    def test_a_busy_day_is_sampled_across_its_notes(self):
+        for i in range(10):
+            (self.notes / f"N{i:02d}-20261120-150000.md").write_text(f"note {i}")
+        with mock.patch.object(swarm, "MAX_NOTE_FILES", 3):
+            days = swarm.notes_collect(self.dir / "in", str(self.notes), today="2026-11-21", keep=set())
+        self.assertEqual(days, ["2026-11-20"])
+        taken = (self.dir / "in" / "2026-11-20.files").read_text().split()
+        self.assertEqual(len(taken), 3)
+        self.assertEqual(taken, ["N00-20261120-150000.md", "N03-20261120-150000.md",
+                                 "N06-20261120-150000.md"])
+
+    def test_the_newest_day_is_not_starved_by_an_older_busy_day(self):
+        for i in range(10):
+            (self.notes / f"OLD{i:02d}-20261119-150000.md").write_text("x" * 5000)
+            (self.notes / f"NEW{i:02d}-20261120-150000.md").write_text("x" * 5000)
+        with mock.patch.object(swarm, "NOTES_BUDGET", 20_000):
+            days = swarm.notes_collect(self.dir / "in", str(self.notes), today="2026-11-21", keep=set())
+        self.assertEqual(days, ["2026-11-20"])
+        taken = (self.dir / "in" / "2026-11-20.files").read_text().split()
+        self.assertTrue(all(name.startswith("NEW") for name in taken))
+
     def test_archive_zips_the_originals_and_removes_them(self):
         import zipfile
         (self.notes / "A.md").write_text("a")

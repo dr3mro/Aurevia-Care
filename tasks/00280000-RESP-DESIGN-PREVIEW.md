@@ -1,4 +1,5 @@
 - [x] RESP-DESIGN-PREVIEW · Staff web: responsive `DesignPreview` (app)
+  - evidence: PR #708 merged to main (reconciled 2026-11-23)
   - pr: #708
   - attempts: 1
   - requirements: WEB-07, UX-01

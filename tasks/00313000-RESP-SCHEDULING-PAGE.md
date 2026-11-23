@@ -1,4 +1,5 @@
 - [x] RESP-SCHEDULING-PAGE · Staff web: responsive `SchedulingPage` (features-scheduling)
+  - evidence: PR #811 merged to main (reconciled 2026-11-23)
   - pr: #811
   - attempts: 1
   - requirements: WEB-07, UX-01

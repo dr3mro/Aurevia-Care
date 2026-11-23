@@ -256,7 +256,7 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
                                       "heading.md", "evidence.md", "missing.md"))
         for path, task in ((by_id, "CW-002"), (by_pr, "CW-009"), (has_evidence, "ISS-7")):
             self.assertIn(f"- [x] {task}", path.read_text())
-        self.assertIn("  - evidence: PR merged to main (auto-reconciled)\n", by_id.read_text())
+        self.assertIn("  - evidence: PR #42 merged to main (auto-reconciled)\n", by_id.read_text())
         self.assertIn("  - evidence: already recorded\n", has_evidence.read_text())
         self.assertNotIn("auto-reconciled", has_evidence.read_text())
         self.assertEqual(unknown.read_text(), "- [ ] CW-003 · unknown\n  - attempts: 1\n")
@@ -292,11 +292,20 @@ class DraftTriageCoverageTests(unittest.TestCase):
         # Non-drafts, undated, malformed and fresh drafts are all skipped; the
         # stale one is listed in the single issue the plan step opens.
         with mock.patch.object(swarm, "gh_json", return_value=self.drafts()), \
+                mock.patch.object(swarm, "ensure_labels"), \
                 mock.patch.object(swarm, "gh") as gh:
             self.assertEqual(swarm.draft_triage(threshold=0), 1)
         gh.assert_called_once()
         self.assertEqual(gh.call_args.args[:2], ("issue", "create"))
         self.assertIn("- #5 stale draft", " ".join(map(str, gh.call_args.args)))
+
+    def test_every_off_value_stops_the_issue(self):
+        for value in ("off", "0", "false", "no"):
+            with mock.patch.object(swarm, "gh_json", return_value=self.drafts()), \
+                    mock.patch.dict(os.environ, {"SWARM_ISSUES": value}), \
+                    mock.patch.object(swarm, "gh") as gh:
+                self.assertEqual(swarm.draft_triage(threshold=0), 1)
+            gh.assert_not_called()
 
     def test_the_kill_switch_stops_the_issue(self):
         # A disabled issue integration still counts the drafts but must not
@@ -306,6 +315,38 @@ class DraftTriageCoverageTests(unittest.TestCase):
                 mock.patch.object(swarm, "gh") as gh:
             self.assertEqual(swarm.draft_triage(threshold=0), 1)
         gh.assert_not_called()
+
+
+class PendingNotesTests(unittest.TestCase):
+    def test_old_worker_notes_without_a_daily_note_are_pending(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "T-1-20261122-101010.md").write_text("lesson")
+            now = datetime.datetime(2026, 11, 23, 12, 0,
+                                    tzinfo=datetime.timezone.utc)
+            with mock.patch.object(swarm, "NOTES_DIR", tmp), \
+                 mock.patch.object(swarm, "new_york_now", return_value=now), \
+                 mock.patch.object(swarm, "referenced_notes", return_value=set()):
+                self.assertTrue(swarm.pending_note_days())
+
+    def test_a_reconciled_day_and_current_notes_are_not_pending(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "T-1-20261122-101010.md").write_text("lesson")
+            Path(tmp, "2026-11-22.md").write_text("already reconciled")
+            Path(tmp, "T-2-20261123-101010.md").write_text("today")
+            now = datetime.datetime(2026, 11, 23, 12, 0,
+                                    tzinfo=datetime.timezone.utc)
+            with mock.patch.object(swarm, "NOTES_DIR", tmp), \
+                 mock.patch.object(swarm, "new_york_now", return_value=now), \
+                 mock.patch.object(swarm, "referenced_notes", return_value=set()):
+                self.assertFalse(swarm.pending_note_days())
+
+    def test_pending_notes_admit_the_daily_workflow(self):
+        with mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "active_runs", return_value=False), \
+                mock.patch.object(swarm, "pending_note_days", return_value=True), \
+                mock.patch.object(swarm, "live_workers", return_value=[]) as live:
+            self.assertTrue(swarm.daily_can_start())
+        live.assert_not_called()
 
 
 if __name__ == "__main__":

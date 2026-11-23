@@ -195,10 +195,6 @@ class CommandLineTests(unittest.TestCase):
         self.assertIn("cannot resolve no-such-ref", err.getvalue())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class WrittenBarTests(unittest.TestCase):
     def test_written_coverage_bar_cannot_be_lowered(self):
         diff = ("diff --git a/CONSTRAINTS.md b/CONSTRAINTS.md\n"
@@ -225,3 +221,7 @@ class WrittenBarTests(unittest.TestCase):
             with mock.patch.object(guard, "git", return_value=diff):
                 found = guard.written_bar_violations(root, "base")
         self.assertEqual(found, [])
+
+
+if __name__ == "__main__":
+    unittest.main()
