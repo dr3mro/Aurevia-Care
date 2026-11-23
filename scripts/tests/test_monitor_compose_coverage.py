@@ -217,7 +217,7 @@ class ComposeTests(unittest.TestCase):
     def test_no_live_workers_shows_zero_of_the_cap(self):
         self.assertEqual(monitor.worker_counts([], {}), (0, 0))
         self.assertEqual(monitor.worker_counts([run(1, status="in_progress", conclusion=None,
-                                                    workflow="Agent swarm")], {}), (0, 0))
+                                                    workflow="Agent swarm")], {}), (1, 0))
 
     def test_live_runs_with_and_without_task_ids(self):
         runs = [

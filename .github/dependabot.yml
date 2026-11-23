@@ -11,3 +11,23 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  - package-ecosystem: maven
+    directory: /apps/api
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /apps/staff-web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /apps/patient-mobile
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

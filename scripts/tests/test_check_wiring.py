@@ -86,6 +86,15 @@ class CheckWiringTests(unittest.TestCase):
         new, stale = wiring.compare(wiring.findings(self.root), wiring.load_baseline(self.root))
         self.assertEqual((new, stale), ([], [("inmemory-in-main", "gone.java")]))
 
+    def test_fail_on_stale_returns_one_for_a_fixed_baseline_finding(self):
+        # A baseline entry whose finding is gone is normally just a note; the
+        # --fail-on-stale mode must treat it as a failure so debt cannot linger.
+        (self.root / wiring.BASELINE).write_text(json.dumps({"inmemory-in-main": ["gone.java"]}))
+        self.assertEqual(self.run_gate("--fail-on-stale"), 1)
+
+    def test_fail_on_stale_passes_when_no_finding_is_stale(self):
+        self.assertEqual(self.run_gate("--fail-on-stale"), 0)
+
     def test_missing_source_tree_is_an_empty_clean_result(self):
         self.assertEqual(self.run_gate(), 0)
 

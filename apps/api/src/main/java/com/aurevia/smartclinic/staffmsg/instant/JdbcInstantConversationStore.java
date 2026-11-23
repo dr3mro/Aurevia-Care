@@ -217,6 +217,22 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
     }
 
     @Override
+    public boolean facilityWithinScope(String organizationId, String subject, String facilityId) {
+        // The fold is authoritative: legacy members with no assignment keep
+        // organization-wide scope, while assigned members are confined to it.
+        // A facility absent from this tenant makes the scalar subquery NULL,
+        // and COALESCE refuses it instead of throwing on an empty result.
+        return transactions.execute(status -> Boolean.TRUE.equals(jdbc.queryForObject("""
+                SELECT COALESCE((SELECT NOT public.is_facility_out_of_scope(:subject, f.code)
+                                   FROM public.facility f
+                                  WHERE f.organization_id = CAST(:organizationId AS uuid)
+                                    AND f.id = CAST(:facilityId AS uuid)), false)
+                """, new MapSqlParameterSource().addValue("organizationId", organizationId)
+                        .addValue("subject", subject)
+                        .addValue("facilityId", facilityId), Boolean.class)));
+    }
+
+    @Override
     public List<StaffConversation> conversationsForFacility(String organizationId, String facilityId,
                                                             String subject) {
         return transactions.execute(status -> jdbc.query("""
