@@ -123,7 +123,7 @@ class AudienceValidationHttpTest {
 
     private WebApplicationContextRunner newRunner(String audience) {
         return new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class)
                 .withBean("localJwtDecoder", JwtDecoder.class,
                         () -> NimbusJwtDecoder.withPublicKey(publicKey).build())
                 .withPropertyValues(
