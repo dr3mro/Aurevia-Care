@@ -6,6 +6,7 @@ import type { ApiLoader } from '../api/useApi';
 import { useBreakpoint } from '../theme/useBreakpoint';
 import { useSession } from './SessionContext';
 import { EmptyState, LoadingState, StateView } from './StateViews';
+import type { StateViewActions } from './StateViews';
 
 /** A loader and the values that identify one request for the page. */
 export interface ApiResource<T> {
@@ -20,6 +21,8 @@ export interface ApiPageProps<T> {
   resource: ApiResource<T>;
   children: (data: T) => ReactNode;
   isEmpty?: ((data: T) => boolean) | undefined;
+  /** Owning recovery actions for the mapped error state, when the screen has any. */
+  actions?: StateViewActions | undefined;
 }
 
 /**
@@ -34,8 +37,14 @@ export interface ApiPageProps<T> {
  * as `data-breakpoint` so structure can be asserted in jsdom, where media
  * queries cannot be evaluated. Direction stays with the document — no subtree
  * overrides it, so the same markup mirrors under right-to-left.
+ *
+ * The error view reuses request and session owners already in scope: Reload
+ * defaults to `useApi`'s `reload` and Sign in to the session context's
+ * `onSignIn`. Compare, Copy and Retry run only when a caller supplies them.
+ * Reporting expiry stays in the effect above, so clicking Sign in never emits
+ * a second `onSessionExpired` notification.
  */
-export function ApiPage<T>({ resource, children, isEmpty }: ApiPageProps<T>) {
+export function ApiPage<T>({ resource, children, isEmpty, actions }: ApiPageProps<T>) {
   const result = useApi<T>(resource.load, resource.deps);
   const breakpoint = useBreakpoint();
   const session = useSession();
@@ -66,7 +75,13 @@ export function ApiPage<T>({ resource, children, isEmpty }: ApiPageProps<T>) {
   if (result.status === 'error') {
     return (
       <section className="page" data-breakpoint={breakpoint} aria-label={resource.label}>
-        {StateView.forTransportError(result.error)}
+        {StateView.forTransportError(result.error, {
+          onReload: actions?.onReload ?? result.reload,
+          onSignIn: actions?.onSignIn ?? session.onSignIn,
+          onCompare: actions?.onCompare,
+          onCopy: actions?.onCopy,
+          onRetry: actions?.onRetry,
+        })}
       </section>
     );
   }
