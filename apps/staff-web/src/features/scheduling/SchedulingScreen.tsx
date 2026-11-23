@@ -46,6 +46,11 @@ export interface SchedulingScreenProps {
   onBook: (request: BookingInput) => void;
 }
 
+/** Scope a tenant-scoped list to the facility selected in the reception header. */
+function forFacility(appointments: readonly Appointment[], facilityCode: string): Appointment[] {
+  return appointments.filter((appointment) => appointment.facilityCode === facilityCode);
+}
+
 /** Props for the narrow check-in and booking-check column. */
 interface SidePanelsProps {
   appointment: Appointment | undefined;
@@ -75,7 +80,13 @@ function ReceptionSidePanels({
 }: SidePanelsProps) {
   return (
     <div style={{ display: 'grid', gap: 0, alignContent: 'start', minInlineSize: 0 }}>
-      <CheckInPanel appointment={appointment} identity={identity} checker={checker} onCheckIn={onCheckIn} />
+      <CheckInPanel
+        key={appointment?.id}
+        appointment={appointment}
+        identity={identity}
+        checker={checker}
+        onCheckIn={onCheckIn}
+      />
       <BookingCheckPanel staleSlot={receptionStaleSlot} onPickSlot={onPickSlot} />
       {reasonAppointment === undefined ? null : (
         <NoShowReasonForm
@@ -110,7 +121,9 @@ export function SchedulingScreen({
     ...appointmentsForTenant(appointments, organizationId),
   ]);
   const [announcement, setAnnouncement] = useState('');
-  const [facilityCode, setFacilityCode] = useState(receptionFacilities[0]?.code ?? '');
+  const [facilityCode, setFacilityCode] = useState(
+    defined(receptionFacilities[0], 'first reception facility').code,
+  );
   const [filter, setFilter] = useState<WorklistFilter>('all');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [reasonForId, setReasonForId] = useState<string | undefined>(undefined);
@@ -124,7 +137,7 @@ export function SchedulingScreen({
     setReasonForId(undefined);
   }
 
-  const visible = appointmentsForTenant(items, organizationId);
+  const visible = forFacility(appointmentsForTenant(items, organizationId), facilityCode);
   const stacked = breakpoint === 'compact';
   const wrappingStyle = { overflowWrap: 'anywhere' } as const;
   const panelAppointment =
@@ -242,7 +255,7 @@ export function SchedulingScreen({
             appointment={panelAppointment}
             identity={panelIdentity}
             reasonAppointment={reasonAppointment}
-            appointments={visible}
+            appointments={appointmentsForTenant(items, organizationId)}
             organizationId={organizationId}
             checker={receptionChecker}
             onCheckIn={(record) =>

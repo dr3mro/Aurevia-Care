@@ -59,7 +59,7 @@ export function StateSummaryCards({ appointments }: StateSummaryCardsProps) {
   };
 
   return (
-    <section aria-label={schedulingText(locale, 'cardBooked')} style={{ inlineSize: '100%', minInlineSize: 0 }}>
+    <section aria-label={schedulingText(locale, 'stateSummary')} style={{ inlineSize: '100%', minInlineSize: 0 }}>
       <div
         style={{
           display: 'grid',

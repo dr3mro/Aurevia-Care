@@ -13,9 +13,9 @@ export interface BookingCheckPanelProps {
 
 /**
  * Warn when a protected slot was just taken and offer the nearest free slots.
- * A single pick is latched locally: once one alternative is chosen no other
- * button can submit, so a stale double-click cannot book twice (CLN-01). The
- * server still owns real slot exclusivity; this guard is presentation only.
+ * A single pick is latched locally: once one alternative is chosen every
+ * alternative is disabled, so a stale double-click cannot book twice (CLN-01).
+ * The server still owns real slot exclusivity; this latch is presentation only.
  */
 export function BookingCheckPanel({ staleSlot, onPickSlot }: BookingCheckPanelProps) {
   const { locale } = useI18n();
@@ -34,9 +34,6 @@ export function BookingCheckPanel({ staleSlot, onPickSlot }: BookingCheckPanelPr
   }
 
   function pick(slot: FreeSlot) {
-    if (picked !== undefined) {
-      return;
-    }
     setPicked(slot);
     onPickSlot(slot);
   }

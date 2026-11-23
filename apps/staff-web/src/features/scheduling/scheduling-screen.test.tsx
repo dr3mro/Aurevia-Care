@@ -90,6 +90,13 @@ describe('SchedulingScreen', () => {
     expect(screen.getByTestId('scheduling-status').textContent).toBe('');
   });
 
+  it('shows the empty check-in panel for a tenant with no visible rows', () => {
+    wrap(<Harness organizationId="synthetic-empty-organization" />);
+    expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
+    expect(screen.getByText(schedulingText('en', 'noAppointments'))).toBeTruthy();
+    expect(screen.getByText(schedulingText('en', 'selectRow'))).toBeTruthy();
+  });
+
   it('sends check-in to the page callback and announces the request', () => {
     const onCheckIn = vi.fn();
     wrap(<Harness onCheckIn={onCheckIn} />);
@@ -161,6 +168,9 @@ describe('SchedulingScreen', () => {
 
   it('never treats the other tenant with the same local id as a conflict', () => {
     wrap(<Harness organizationId={betaOrganizationId} />);
+    fireEvent.change(screen.getByLabelText(schedulingText('en', 'facilitySelect')), {
+      target: { value: 'LAB' },
+    });
     fillBooking();
     fireEvent.change(screen.getByLabelText(schedulingText('en', 'resource')), {
       target: { value: 'clinician-7' },
@@ -253,12 +263,14 @@ describe('SchedulingScreen reception panels', () => {
     expect(screen.getByTestId('scheduling-status').textContent).toContain(schedulingText('en', 'openChart'));
   });
 
-  it('changes the facility and filters rows in the reception header', () => {
+  it('scopes the worklist to the selected facility and keeps the filters within it', () => {
     wrap(<Harness />);
-    fireEvent.change(screen.getByLabelText(schedulingText('en', 'facilitySelect')), {
-      target: { value: 'LAB' },
-    });
+    const facility = screen.getByLabelText(schedulingText('en', 'facilitySelect'));
+    fireEvent.change(facility, { target: { value: 'LAB' } });
     expect(screen.getAllByText('Harbor Family Clinic, Lab site').length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
+    fireEvent.change(facility, { target: { value: 'MAIN' } });
+    expect(screen.getAllByRole('rowheader')).toHaveLength(8);
     fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'filterNeedsCheckIn') }));
     expect(screen.getAllByRole('rowheader')).toHaveLength(3);
   });
