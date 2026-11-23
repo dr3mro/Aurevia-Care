@@ -35,16 +35,10 @@ Test methods (one positive rule proof and three negative refusals):
 - `malformedIssuerOrMissingNumberIsRejected` — a malformed issuer (`!`) and a request with no
   `accessionNo` are refused (422) at the API trust boundary before a transaction opens.
 
-Complete-but-disabled proofs for the missing type-qualified half:
-
-- `partnerIdentifiersAreUniqueWithinIssuerAndType` — `@Disabled("GAP: ...")`. Posts a partner
-  identifier as a 201, refuses the same issuer+type pair as 409, accepts a different type and a
-  different issuer as 201 each, and reads the durable row back. Stays disabled until the
-  partner-identifier surface below is built.
-- `accessionNumberIsUniqueWithinIssuerAndType` — `@Disabled("GAP: ...")`. Posts an accession with a
-  specimen type as a 201, refuses the same issuer+number+type as 409, accepts a different type and a
-  different issuer as 201 each, and reads the durable row back. Stays disabled until the type is
-  part of the accession key. Neither disabled test is counted as a pass.
+The missing type-qualified half is not proven here. Its intended acceptance contract is specified
+under `## Gap` and handed to the two follow-up tasks below; no skipped test is kept in the suite. A
+later implementation must add HTTP-level proofs for the partner-identifier issuer+type key and the
+type-qualified accession key when those surfaces exist.
 
 Production classes exercised through the normal HTTP entry point:
 
@@ -97,8 +91,7 @@ The issuer-scoped accession half is built and proven above. The literal clause i
    conflict rule, an injected thin controller, an HTTP integration test and an OpenAPI entry
    (plus regenerated client types). One cross-boundary backend, database and contract task.
 
-Follow-up: enable `partnerIdentifiersAreUniqueWithinIssuerAndType` and
-`accessionNumberIsUniqueWithinIssuerAndType` in
-`PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest` when those two tasks land. This evidence
-task changed no production code, existing test, migration or contract; status stays `Partly proven`
-until both disabled tests pass.
+Follow-up: add HTTP-level acceptance proofs for the partner-identifier issuer+type key and the
+type-qualified accession key to `PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest` when those
+two tasks land. This evidence task changed no production code, existing test, migration or contract;
+status stays `Partly proven` until both missing halves are implemented and proven.

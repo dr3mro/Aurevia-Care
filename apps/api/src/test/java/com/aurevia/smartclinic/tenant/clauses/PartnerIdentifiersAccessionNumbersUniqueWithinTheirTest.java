@@ -14,7 +14,6 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,9 +36,9 @@ import org.springframework.web.client.RestClient;
  * this proves tenant-scoped persistence rather than only unit behavior.</p>
  *
  * <p>The partner-identifier half and a type-qualified accession key are not
- * built. Their complete acceptance tests are present but disabled with an
- * explicit GAP reason, so the pull request stays green and a later
- * implementation task can enable them without rediscovering the contract.</p>
+ * built. The missing surfaces and their intended contract are recorded in the
+ * clause evidence note and in follow-up tasks, so a later implementation can
+ * add acceptance proofs without rediscovering the contract.</p>
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -263,101 +262,5 @@ class PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest {
                 missingNumber, "lab-a", ORG_A);
         assertEquals(422, badNumber.getStatusCode().value(), "an accession number is required");
         assertEquals("INVALID_ACCESSION", field(badNumber.getBody(), "code"));
-    }
-
-    /**
-     * Intended partner-identifier contract, complete but not yet implementable:
-     * a partner identifier must be unique within its issuer and type, so the
-     * same value may be reused under a different type or a different issuer.
-     */
-    @Test
-    @Disabled("GAP: no partner-identifier issuer+type key; specimenType is outside every accession UNIQUE constraint")
-    void partnerIdentifiersAreUniqueWithinIssuerAndType() throws Exception {
-        String patient = patient(ORG_A, "reception-a", "MRN-ARC01-PARTNER");
-        ResponseEntity<String> first = partnerIdentifier("PARTNER-ARC01-1", "PARTNER-A", "EXTERNAL",
-                patient, "lab-a", ORG_A);
-        assertEquals(HttpStatus.CREATED, first.getStatusCode(), first.getBody());
-
-        ResponseEntity<String> duplicate = partnerIdentifier("PARTNER-ARC01-1", "PARTNER-A", "EXTERNAL",
-                patient, "lab-a", ORG_A);
-        assertEquals(HttpStatus.CONFLICT, duplicate.getStatusCode(), duplicate.getBody());
-        assertEquals("CONFLICT", field(duplicate.getBody(), "code"));
-
-        assertEquals(HttpStatus.CREATED, partnerIdentifier("PARTNER-ARC01-1", "PARTNER-A", "INSURANCE",
-                patient, "lab-a", ORG_A).getStatusCode(),
-                "the same identifier and issuer may be reused under a different type");
-        assertEquals(HttpStatus.CREATED, partnerIdentifier("PARTNER-ARC01-1", "PARTNER-B", "EXTERNAL",
-                patient, "lab-a", ORG_A).getStatusCode(),
-                "the same identifier and type may be reused under a different issuer");
-        assertEquals(1, countPartnerIdentifier(ORG_A, "PARTNER-A", "EXTERNAL", "PARTNER-ARC01-1"));
-    }
-
-    /**
-     * Intended type-qualified accession contract, complete but not yet
-     * implementable: the specimen type is part of the accession identity key.
-     */
-    @Test
-    @Disabled("GAP: no partner-identifier issuer+type key; specimenType is outside every accession UNIQUE constraint")
-    void accessionNumberIsUniqueWithinIssuerAndType() throws Exception {
-        String patient = patient(ORG_A, "reception-a", "MRN-ARC01-TYPE");
-        ResponseEntity<String> first = accessionWithType("ARC01-TYPE-1", "LAB-A", "PLASMA",
-                patient, "ORD/TYPE-1", "lab-a", ORG_A);
-        assertEquals(HttpStatus.CREATED, first.getStatusCode(), first.getBody());
-
-        ResponseEntity<String> duplicate = accessionWithType("ARC01-TYPE-1", "LAB-A", "PLASMA",
-                patient, "ORD/TYPE-2", "lab-a", ORG_A);
-        assertEquals(HttpStatus.CONFLICT, duplicate.getStatusCode(), duplicate.getBody());
-        assertEquals("CONFLICT", field(duplicate.getBody(), "code"));
-
-        assertEquals(HttpStatus.CREATED, accessionWithType("ARC01-TYPE-1", "LAB-A", "SERUM",
-                patient, "ORD/TYPE-3", "lab-a", ORG_A).getStatusCode(),
-                "the same issuer and number may be reused under a different type");
-        assertEquals(HttpStatus.CREATED, accessionWithType("ARC01-TYPE-1", "LAB-B", "PLASMA",
-                patient, "ORD/TYPE-4", "lab-a", ORG_A).getStatusCode(),
-                "the same number and type may be reused under a different issuer");
-        assertEquals(1, countAccessionWithType(ORG_A, "LAB-A", "PLASMA", "ARC01-TYPE-1"));
-    }
-
-    private ResponseEntity<String> partnerIdentifier(String identifier, String issuer, String type,
-                                                     String patient, String actor, String org) {
-        String body = "{\"identifier\":\"" + identifier + "\",\"issuer\":\"" + issuer
-                + "\",\"type\":\"" + type + "\",\"patientId\":\"" + patient + "\"}";
-        return request(HttpMethod.POST, "/api/v1/partners/identifiers", body, actor, org);
-    }
-
-    private ResponseEntity<String> accessionWithType(String number, String issuer, String type,
-                                                     String patient, String order, String actor, String org) {
-        String body = "{\"accessionNo\":\"" + number + "\",\"accessionIssuer\":\"" + issuer
-                + "\",\"specimenType\":\"" + type + "\",\"patientId\":\"" + patient
-                + "\",\"sourceOrderRef\":\"" + order + "\"}";
-        return request(HttpMethod.POST, "/api/v1/lab/accessions", body, actor, org);
-    }
-
-    private int countPartnerIdentifier(String organization, String issuer, String type,
-                                       String identifier) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
-             Statement statement = connection.createStatement()) {
-            statement.execute("SET app.current_org = '" + organization + "'");
-            try (ResultSet result = statement.executeQuery(
-                    "SELECT count(*) FROM public.partner_identifier WHERE issuer = '" + issuer
-                            + "' AND type = '" + type + "' AND identifier = '" + identifier + "'")) {
-                assertTrue(result.next());
-                return result.getInt(1);
-            }
-        }
-    }
-
-    private int countAccessionWithType(String organization, String issuer, String type,
-                                       String number) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
-             Statement statement = connection.createStatement()) {
-            statement.execute("SET app.current_org = '" + organization + "'");
-            try (ResultSet result = statement.executeQuery(
-                    "SELECT count(*) FROM public.lab_accession WHERE accession_issuer = '" + issuer
-                            + "' AND accession_no = '" + number + "' AND specimen_type = '" + type + "'")) {
-                assertTrue(result.next());
-                return result.getInt(1);
-            }
-        }
     }
 }
