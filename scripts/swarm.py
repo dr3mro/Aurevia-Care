@@ -425,14 +425,14 @@ TOOL_SIGNATURES = (
     ("Maven", re.compile(r"BUILD FAILURE|\[ERROR\]|Tests run:.*(?:Failures: [1-9]|Errors: [1-9])", re.I)),
     ("Vitest", re.compile(r"Test Files\s+\d+ failed|FAIL\s+.+\.test\.tsx", re.I)),
     ("Jest", re.compile(r"Test Suites:.*failed|FAIL\s+.+\.test\.", re.I)),
-    ("Python unittest", re.compile(r"FAILED \(|Ran \d+ test.*FAILED", re.I)),
+    ("Python unittest", re.compile(r"FAILED \(|^FAIL:|Ran \d+ test.*FAILED", re.I | re.M)),
     ("SpotBugs", re.compile(r"\bspotbugs\b|BugInstance|Total bugs", re.I)),
     ("ESLint", re.compile(r"\beslint\b|@typescript-eslint|problems?\s*\(\d+", re.I)),
     ("TypeScript", re.compile(r"error TS\d+|\btsc\b", re.I)),
     ("Vitest (run)", re.compile(r"\bvitest\b|Test Files\s+\d+", re.I)),
     ("Jest (run)", re.compile(r"\bjest\b|Test Suites:|Tests:\s+\d+", re.I)),
     ("Maven (run)", re.compile(r"\bmvn\b|Tests run:", re.I)),
-    ("Python (run)", re.compile(r"Ran \d+ test|Traceback", re.I)),
+    ("Python unittest (run)", re.compile(r"Ran \d+ test|Traceback", re.I)),
     ("shell", re.compile(r"exit code|command not found|\bbash:|\./check\.sh|set -e", re.I)),
 )
 STEP_LINE = re.compile(
