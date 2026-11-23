@@ -42,6 +42,10 @@ class OffboardingCommandTest {
         return new OffboardingRequest(organization, authorizedBy, reference, exportId, reviewDays);
     }
 
+    private static ExportProvenance provenance() {
+        return new ExportProvenance("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "rev-1", "record_access");
+    }
+
     private static ExportRecord export() {
         return new ExportRecord("export-1", ORGANIZATION, "*", "authorized-admin",
                 NOW.minusSeconds(60), NOW.plusSeconds(60), PROVENANCE);
@@ -93,21 +97,21 @@ class OffboardingCommandTest {
     @Test
     void exportFromAnotherTenantIsRefused() {
         ExportRecord foreign = new ExportRecord("export-1", "55555555-5555-5555-5555-555555555555",
-                "*", "authorized-admin", NOW.minusSeconds(60), NOW.plusSeconds(60), PROVENANCE);
+                "*", "authorized-admin", NOW.minusSeconds(60), NOW.plusSeconds(60), provenance());
         assertEquals(409, refusal(() -> command.begin(request(), foreign)).status());
     }
 
     @Test
     void exportWithDifferentIdentifierIsRefused() {
         ExportRecord other = new ExportRecord("export-2", ORGANIZATION, "*", "authorized-admin",
-                NOW.minusSeconds(60), NOW.plusSeconds(60), PROVENANCE);
+                NOW.minusSeconds(60), NOW.plusSeconds(60), provenance());
         assertEquals(409, refusal(() -> command.begin(request(), other)).status());
     }
 
     @Test
     void expiredExportIsRefused() {
         ExportRecord expired = new ExportRecord("export-1", ORGANIZATION, "*", "authorized-admin",
-                NOW.minusSeconds(120), NOW.minusSeconds(1), PROVENANCE);
+                NOW.minusSeconds(120), NOW.minusSeconds(1), provenance());
         assertEquals(409, refusal(() -> command.begin(request(), expired)).status());
     }
 
