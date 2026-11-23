@@ -1885,7 +1885,7 @@ def reclaim(text, prs, live=()):
             continue
         if live & {task["id"], *task["aliases"]}:
             continue
-        mine = [p for p in prs if task_id_of(p["headRefName"]) in {task["id"], *task["aliases"]}]
+        mine = [p for p in prs if pr_task_id(p) in {task["id"], *task["aliases"]}]
         # An open PR still in progress keeps the claim. A needs-human PR is a
         # failure the swarm gave up on: return the task to the open pool.
         if any(p["state"] == "OPEN" and "needs-human" not in label_names(p) for p in mine):
