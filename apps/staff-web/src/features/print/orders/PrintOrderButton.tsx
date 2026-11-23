@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { Button } from '../../../components/Button';
+import { focusableItems } from '../../../components/focusableItems';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { HandoutLanguage, PrintReason } from '../components/messages';
 import { printReasonKey, printText } from '../components/messages';
@@ -57,9 +58,7 @@ function useDialogFocus(
       }
       // The dialog declares aria-modal, so Tab must not reach the controls
       // behind it. Wrap focus among this dialog's own controls.
-      const items = Array.from(
-        dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
-      );
+      const items = focusableItems(dialogRef.current, focusableSelector);
       const index = items.indexOf(document.activeElement as HTMLElement);
       event.preventDefault();
       if (event.shiftKey) {

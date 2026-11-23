@@ -4,6 +4,20 @@ import type { AddendumAcknowledgment } from './domain';
 import { openAddenda } from './domain';
 import { radreferrerText } from './labels';
 
+/**
+ * Split a translated sentence around its `{version}` placeholder into the text
+ * before and after the marker. Both bundle messages always contain the marker,
+ * so the returned parts are always strings and no nullish fallback is needed.
+ *
+ * @param text - Translated sentence containing exactly one `{version}` marker.
+ * @returns The literal text before and after the marker.
+ */
+function aroundVersion(text: string): readonly [string, string] {
+  const marker = '{version}';
+  const at = text.indexOf(marker);
+  return [text.slice(0, at), text.slice(at + marker.length)];
+}
+
 /** Props for the addendum acknowledgment banner shown above a report. */
 export interface AddendumBannerProps {
   /** All addendum receipts delivered with the report. */
@@ -38,8 +52,8 @@ export function AddendumBanner({
   }
   // Split each translated sentence around its named placeholder so the order-
   // local version digit is an isolated LTR run under an RTL interface.
-  const [bodyLead, bodyTail] = radreferrerText(locale, 'addendumBody').split('{version}');
-  const [actionLead, actionTail] = radreferrerText(locale, 'acknowledgeVersion').split('{version}');
+  const [bodyLead, bodyTail] = aroundVersion(radreferrerText(locale, 'addendumBody'));
+  const [actionLead, actionTail] = aroundVersion(radreferrerText(locale, 'acknowledgeVersion'));
   return (
     <div
       data-testid="addendum-banner"
@@ -67,7 +81,7 @@ export function AddendumBanner({
             </div>
             <button
               type="button"
-              aria-label={`${actionLead}${addendum.version}${actionTail ?? ''}`}
+              aria-label={`${actionLead}${addendum.version}${actionTail}`}
               onClick={() => onAcknowledge(addendum)}
             >
               {radreferrerText(locale, 'acknowledge')}
