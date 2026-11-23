@@ -31,12 +31,6 @@ Active domain proof (real `TemplateService` over the synthetic
 - `concealsATemplateVersionFromAnotherTenant` — negative proof. A version defined in one tenant
   is concealed from a clinician of another tenant (404) on read, validate and save.
 
-Complete-but-disabled proof for the missing HTTP entry point:
-
-- `capturesPediatricDevelopmentNoteThroughTheChartApi` — `@Disabled("GAP: …")`. It posts a pediatric
-  development note with the three fields to a template-capture route and asserts they are returned
-  (201). It stays disabled until the gap below is built; the pull request stays green.
-
 Production classes exercised by the active proof:
 
 - `com.aurevia.smartclinic.clinical.templates.BaselineTemplates` — the
@@ -72,8 +66,8 @@ HTTP surface that would let a caller capture the three fields:
    `contracts/openapi.yaml` or its generated client, and no staff-web form for a development note.
    `chart.record.EntryType` has only `PROBLEM`, `ALLERGY`, `MEDICATION` and `VITAL`, so the chart
    entry route cannot carry these fields either; `ClinicalNoteController` (`/api/v1/clinical-notes`)
-   stores free-text CLN-05 revisions, not template fields. The disabled test above is the complete
-   proof for the route a later task will add.
+   stores free-text CLN-05 revisions, not template fields. A later task that adds the route must
+   add its own HTTP-level test; this evidence task deliberately does not leave a skipped test behind.
 2. **Files a follow-up would change.** A thin template-capture controller wired by injection to
    `TemplateService` and `JdbcTemplateStore`; the OpenAPI operation (with a tag, an
    `Idempotency-Key` header on the POST, and route-parity registration) and the regenerated client;

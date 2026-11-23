@@ -17,17 +17,10 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.RestClient;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.clinical.templates.BaselineTemplates;
@@ -42,12 +35,12 @@ import com.aurevia.smartclinic.clinical.templates.ValidationReport;
 
 /**
  * CLN-04 clause 5 proof: a pediatric development note captures milestone domain,
- * observation and date. The active tests drive the real
+ * observation and date. The tests drive the real
  * {@link com.aurevia.smartclinic.clinical.templates.TemplateService} over a synthetic
  * in-memory store, because the rule is implemented in the domain and persistence
- * layers. The HTTP entry point does not exist yet; its complete proof is present
- * but disabled with an explicit gap reason for a later task to enable. Synthetic
- * fixtures only; this suite adds no production code and changes no existing test.
+ * layers. The HTTP entry point does not exist yet; the missing surface is described
+ * in the clause note's gap. Synthetic fixtures only; this suite adds no production
+ * code and changes no existing test.
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -67,11 +60,6 @@ class DevelopmentCapturesMilestoneDomainObservationDateTest {
     private final TemplateActor clinicianA = TemplateActor.of(ORG_A, "clinician-a", TemplateService.CLINICIAN);
     private final TemplateActor receptionA = TemplateActor.of(ORG_A, "reception-a", "reception");
     private final TemplateActor clinicianB = TemplateActor.of(ORG_B, "clinician-b", TemplateService.CLINICIAN);
-
-    @LocalServerPort
-    int port;
-
-    RestClient rest;
 
     TemplateService service;
 
@@ -144,48 +132,7 @@ class DevelopmentCapturesMilestoneDomainObservationDateTest {
 
     @BeforeEach
     void init() {
-        rest = RestClient.builder().baseUrl("http://localhost:" + port).build();
         service = new TemplateService(new InMemoryTemplateStore());
-    }
-
-    private HttpHeaders headers(String subject, String org, String correlation) {
-        HttpHeaders headers = new HttpHeaders();
-        if (subject != null) {
-            headers.set("X-Synthetic-Subject", subject);
-        }
-        if (org != null) {
-            headers.set("X-Active-Organization", org);
-        }
-        if (correlation != null) {
-            headers.set("X-Correlation-Id", correlation);
-        }
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        return headers;
-    }
-
-    private ResponseEntity<String> post(String uri, String body, String subject, String org, String correlation) {
-        return rest.post().uri(uri)
-                .headers(httpHeaders -> httpHeaders.addAll(headers(subject, org, correlation)))
-                .body(body).retrieve().onStatus(status -> true, (req, response) -> { })
-                .toEntity(String.class);
-    }
-
-    private static String field(String json, String key) {
-        String needle = "\"" + key + "\":";
-        int start = json.indexOf(needle);
-        if (start < 0) {
-            return "";
-        }
-        start += needle.length();
-        if (start < json.length() && json.charAt(start) == '"') {
-            int end = json.indexOf('"', start + 1);
-            return json.substring(start + 1, end);
-        }
-        int end = start;
-        while (end < json.length() && json.charAt(end) != ',' && json.charAt(end) != '}') {
-            end++;
-        }
-        return json.substring(start, end);
     }
 
     private void approveDevelopmentBaseline() {
@@ -291,31 +238,6 @@ class DevelopmentCapturesMilestoneDomainObservationDateTest {
                 developmentNote(1, "gross_motor", "sits unsupported", "en", "2026-10-03"))));
         assertEquals(404, status(() -> service.saveNote(clinicianB, "DEV-CROSS-TENANT",
                 developmentNote(1, "gross_motor", "sits unsupported", "en", "2026-10-03"))));
-    }
-
-    /**
-     * Complete HTTP-level proof for the missing template-capture entry point.
-     * Disabled because no controller, route or OpenAPI operation publishes the
-     * pediatric development template fields today; see the gap note at
-     * {@code docs/spec/clauses/chart/development-captures-milestone-domain-observation-date.md}.
-     */
-    @Test
-    @Disabled("GAP: no HTTP endpoint captures PEDIATRIC_DEVELOPMENT template fields; "
-            + "chart.record.EntryType has only PROBLEM/ALLERGY/MEDICATION/VITAL and "
-            + "ClinicalNoteController (/api/v1/clinical-notes) stores free-text CLN-05 revisions. "
-            + "No template controller, route or OpenAPI entry exists. Enabling needs a template "
-            + "capture controller wired to TemplateService/JdbcTemplateStore, OpenAPI plus a regenerated "
-            + "client and a staff-web development-note form across at least two tasks.")
-    void capturesPediatricDevelopmentNoteThroughTheChartApi() {
-        String body = "{\"kind\":\"PEDIATRIC_DEVELOPMENT\",\"templateVersion\":1,"
-                + "\"milestoneDomain\":\"gross_motor\",\"observation\":\"sits unsupported\","
-                + "\"date\":\"2026-10-03\"}";
-        ResponseEntity<String> created = post("/api/v1/templates/notes", body,
-                "clinician-a", ORG_A, "dev-capture");
-        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
-        assertEquals("gross_motor", field(created.getBody(), "milestoneDomain"));
-        assertEquals("sits unsupported", field(created.getBody(), "observation"));
-        assertEquals("2026-10-03", field(created.getBody(), "date"));
     }
 
     private static int status(ThrowingRunnable action) {
