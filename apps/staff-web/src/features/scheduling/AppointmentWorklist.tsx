@@ -3,6 +3,7 @@ import { Button } from '../../components/Button';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { displayLocalName, formatInstant } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
+import type { Locale } from '../../i18n/messages';
 import { useTheme } from '../../theme/ThemeProvider';
 import type { ThemeTokens } from '../../theme/tokens';
 import { useBreakpoint } from '../../theme/useBreakpoint';
@@ -44,6 +45,32 @@ const SCROLL_REGION_TAB_INDEX = 0;
 
 /** Fifteen minutes, the threshold of the waiting filter chip. */
 const WAIT_THRESHOLD_MS = 15 * 60 * 1000;
+
+/**
+ * Render the time-in-state note beneath a row's state badge. Booked rows show
+ * time until arrival, active rows show elapsed waiting or the state-entry
+ * instant, and terminal rows keep their recorded-outcome note. The fixed
+ * synthetic clock keeps the display deterministic (CLN-02, UX-01).
+ */
+export function timeInStateNote(appointment: Appointment, locale: Locale): string {
+  const minutes = Math.abs(
+    Math.round((Date.parse(receptionNow) - Date.parse(appointment.scheduledAt)) / 60000),
+  );
+  const instant = formatInstant(appointment.scheduledAt, appointment.timeZone, locale);
+  if (appointment.state === 'booked') {
+    return schedulingTextWithValue(locale, 'noteArrivesIn', minutes);
+  }
+  if (appointment.state === 'checked-in') {
+    return schedulingTextWithValue(locale, 'noteWaiting', minutes);
+  }
+  if (appointment.state === 'in-progress') {
+    return schedulingTextWithValue(locale, 'noteSince', instant);
+  }
+  if (appointment.state === 'completed') {
+    return schedulingTextWithValue(locale, 'noteDone', instant);
+  }
+  return schedulingText(locale, stateNoteMessageKey[appointment.state]);
+}
 
 /** Decide whether one row belongs to the active filter chip. */
 export function matchesFilter(appointment: Appointment, filter: WorklistFilter): boolean {
@@ -112,7 +139,11 @@ function WorklistRow({ appointment, tokens, cellStyle, cardStyle, callbacks }: R
   const name = displayLocalName(appointment.patientName, locale);
   const action = actionFor(appointment.state);
   const actionKey = action === 'check-in' ? 'checkIn' : action === 'handoff' ? 'handoff' : action === 'open-chart' ? 'openChart' : 'rebook';
-  const needsAssignee = action === 'handoff' && appointment.assignee === undefined;
+  // A blank assignee is no assignee; selecting the "Unassigned" option must not
+  // unlock handoff (CLN-02).
+  const needsAssignee =
+    action === 'handoff' &&
+    (appointment.assignee === undefined || appointment.assignee.trim() === '');
   return (
     <tr key={key} style={cardStyle}>
       <td style={cellStyle}>
@@ -135,7 +166,7 @@ function WorklistRow({ appointment, tokens, cellStyle, cardStyle, callbacks }: R
       </td>
       <td style={cellStyle}>
         <VisitStateBadge state={appointment.state} locale={locale} />
-        <div>{schedulingText(locale, stateNoteMessageKey[appointment.state])}</div>
+        <div>{timeInStateNote(appointment, locale)}</div>
       </td>
       <td style={cellStyle}>
         <span aria-hidden="true">{appointment.assignee ?? schedulingText(locale, 'unassigned')}</span>

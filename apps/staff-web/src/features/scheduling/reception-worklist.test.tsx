@@ -159,6 +159,8 @@ describe('ReceptionHeader', () => {
     fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'arabic') }));
     expect(document.documentElement.dir).toBe('rtl');
     expect(screen.getByRole('button', { name: schedulingText('ar', 'english') })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('ar', 'english') }));
+    expect(document.documentElement.dir).toBe('ltr');
   });
 });
 
@@ -204,6 +206,19 @@ describe('CheckInPanel', () => {
       <CheckInPanel appointment={undefined} identity={undefined} checker={receptionChecker} onCheckIn={vi.fn()} />,
     );
     expect(screen.getByText(schedulingText('en', 'selectRow'))).toBeTruthy();
+  });
+
+  it('names an unverified issuer when the identity is not verified', () => {
+    const unverified = required(syntheticAlphaAppointments.find((item) => item.id === 'apt-005'));
+    wrap(
+      <CheckInPanel
+        appointment={unverified}
+        identity={receptionIdentityFor(unverified, alphaOrganizationId)}
+        checker={receptionChecker}
+        onCheckIn={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(schedulingText('en', 'notVerified'))).toBeTruthy();
   });
 });
 
