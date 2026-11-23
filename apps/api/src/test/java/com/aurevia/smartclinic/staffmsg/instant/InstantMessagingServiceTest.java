@@ -54,6 +54,9 @@ class InstantMessagingServiceTest {
     void setUp() {
         TenantContext.set(new TenantContext(ORG, ACTOR, "STAFF_MESSAGING", "correlation-1"));
         store = mock(InstantConversationStore.class);
+        // Default allow: individual tests override a subject to model a revoked role.
+        when(store.activeStaff(anyString(), anyString())).thenReturn(true);
+        when(store.facilityWithinScope(anyString(), anyString(), anyString())).thenReturn(true);
         service = new InstantMessagingService(store, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -78,6 +81,33 @@ class InstantMessagingServiceTest {
     private ApiException failure(String facility) {
         return assertThrows(ApiException.class,
                 () -> service.send(new SendRequest(facility, CONVERSATION, "body"), "key-1"));
+    }
+
+    /**
+     * A subject whose staff role was revoked must not keep acting on a conversation
+     * whose participant row is still open — active staff status is re-checked on
+     * every command, not only when a conversation is first opened.
+     */
+    @Test
+    void aRevokedStaffMemberCannotKeepActingOnAnOpenConversation() {
+        when(store.activeStaff(ORG, ACTOR)).thenReturn(false);
+        when(store.conversation(ORG, CONVERSATION))
+                .thenReturn(Optional.of(conversation(FACILITY, ConversationKind.DIRECT)));
+        when(store.participants(ORG, CONVERSATION))
+                .thenReturn(List.of(participant(ACTOR, ParticipantRole.OWNER, null)));
+        when(store.sendMessage(anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenReturn(message(1L, ACTOR));
+
+        assertEquals(403, failure(FACILITY).status());
+        verify(store, never()).sendMessage(anyString(), anyString(), anyString(), anyString(), anyString(), any());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.markRead(new MarkReadRequest(FACILITY, CONVERSATION, 1L))).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.messages(FACILITY, CONVERSATION)).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.unreadCounts(FACILITY)).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.conversations(FACILITY)).status());
     }
 
     @Test
@@ -146,9 +176,15 @@ class InstantMessagingServiceTest {
 
     @Test
     void createGroupRequiresAtLeastOnePeer() {
-        ApiException error = assertThrows(ApiException.class,
+        ApiException empty = assertThrows(ApiException.class,
                 () -> service.createGroup(new CreateGroupRequest(FACILITY, "topic", List.of())));
-        assertEquals(422, error.status());
+        assertEquals(422, empty.status());
+
+        when(store.activeStaff(ORG, ACTOR)).thenReturn(true);
+        ApiException onlyActor = assertThrows(ApiException.class,
+                () -> service.createGroup(new CreateGroupRequest(FACILITY, "topic", List.of(ACTOR))));
+        assertEquals(422, onlyActor.status());
+        verify(store, never()).createConversation(anyString(), anyString(), any(), any(), anyString());
     }
 
     @Test
@@ -372,6 +408,64 @@ class InstantMessagingServiceTest {
         var view = service.conversations(FACILITY).get(0);
         assertEquals(4L, view.lastSequence());
         assertEquals(1L, view.unreadCount());
+    }
+
+    @Test
+    void openDirectRefusesAPeerOutsideTheFacility() {
+        when(store.activeStaff(ORG, ACTOR)).thenReturn(true);
+        when(store.activeStaff(ORG, PEER)).thenReturn(true);
+        when(store.facilityWithinScope(ORG, ACTOR, FACILITY)).thenReturn(true);
+        when(store.facilityWithinScope(ORG, PEER, FACILITY)).thenReturn(false);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.openDirect(new OpenDirectRequest(FACILITY, PEER)));
+        assertEquals(403, error.status());
+        verify(store, never()).createConversation(anyString(), anyString(), any(), any(), anyString());
+    }
+
+    @Test
+    void createGroupRefusesAPeerOutsideTheFacility() {
+        when(store.activeStaff(ORG, ACTOR)).thenReturn(true);
+        when(store.activeStaff(ORG, PEER)).thenReturn(true);
+        when(store.facilityWithinScope(ORG, ACTOR, FACILITY)).thenReturn(true);
+        when(store.facilityWithinScope(ORG, PEER, FACILITY)).thenReturn(false);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.createGroup(new CreateGroupRequest(FACILITY, "topic", List.of(PEER))));
+        assertEquals(403, error.status());
+        verify(store, never()).createConversation(anyString(), anyString(), any(), any(), anyString());
+    }
+
+    @Test
+    void addParticipantRefusesASubjectOutsideTheFacility() {
+        when(store.conversation(ORG, CONVERSATION))
+                .thenReturn(Optional.of(conversation(FACILITY, ConversationKind.GROUP)));
+        when(store.participants(ORG, CONVERSATION))
+                .thenReturn(List.of(participant(ACTOR, ParticipantRole.OWNER, null)));
+        when(store.activeStaff(ORG, PEER)).thenReturn(true);
+        when(store.facilityWithinScope(ORG, PEER, FACILITY)).thenReturn(false);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.addParticipant(new AddParticipantRequest(FACILITY, CONVERSATION, PEER)));
+        assertEquals(403, error.status());
+        verify(store, never()).addParticipant(anyString(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void aCallerOutsideTheFacilityIsRefusedOnEveryCommand() {
+        when(store.conversation(ORG, CONVERSATION))
+                .thenReturn(Optional.of(conversation(FACILITY, ConversationKind.DIRECT)));
+        when(store.participants(ORG, CONVERSATION))
+                .thenReturn(List.of(participant(ACTOR, ParticipantRole.OWNER, null)));
+        when(store.facilityWithinScope(ORG, ACTOR, FACILITY)).thenReturn(false);
+
+        assertEquals(403, failure(FACILITY).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.messages(FACILITY, CONVERSATION)).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.markRead(new MarkReadRequest(FACILITY, CONVERSATION, 1L))).status());
+        verify(store, never()).sendMessage(anyString(), anyString(), anyString(), anyString(),
+                anyString(), any());
     }
 
     @Test
