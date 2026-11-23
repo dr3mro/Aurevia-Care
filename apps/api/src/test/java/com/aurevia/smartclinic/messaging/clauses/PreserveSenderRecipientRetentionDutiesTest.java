@@ -2,6 +2,8 @@ package com.aurevia.smartclinic.messaging.clauses;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -9,41 +11,42 @@ import java.sql.Statement;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.RestClient;
+
+import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LegalHold;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.PlaceHoldRequest;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.RetentionDuty;
+import com.aurevia.smartclinic.messaging.governance.MessagingGovernanceService;
+import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
  * MSG-07 clause 6 (API evidence): a messaging resource's sender and recipient
  * retention windows are two distinct, durable values that survive a legal hold.
  *
- * <p>The domain contract ({@code MessagingAuditContract.RetentionDuty}), the
- * tenant-scoped store and V62's {@code messaging_retention_duty} table already
- * preserve the pair, and active tests prove those layers. This class records the
- * HTTP proof that is still missing: no controller route returns the duty pair and
- * no command creates one. Every test is complete but deliberately disabled with a
- * GAP reason so a later task can enable it when the route exists; no failing test
- * or production code is introduced here.</p>
+ * <p>These active tests drive the real
+ * {@link com.aurevia.smartclinic.messaging.governance.MessagingGovernanceService}
+ * against a real PostgreSQL database migrated from {@code db/migrations} under
+ * forced row-level security. The service is the authoritative application entry
+ * point for this clause: it derives the tenant from
+ * {@link com.aurevia.smartclinic.tenant.TenantContext},
+ * re-checks active membership and role, reads the tenant-scoped duty pair and
+ * conceals or refuses what the caller must not see. The HTTP adapter has no duty
+ * route yet, so the proofs stop at the service boundary; the remaining exposure
+ * work is recorded in the clause status document.</p>
  *
- * <p>Each test asserts a concrete status or code. In particular none of them reads
- * {@code GET /api/v1/messaging-governance/retention/{resourceId}}: that route
- * returns a retention eligibility decision, not the duty pair, so it cannot prove
- * this clause. Synthetic fixtures and forced row-level security only.</p>
+ * <p>Each test asserts a concrete value, status or code. All identifiers and
+ * subjects are synthetic and every seeded duty row lives in a disposable
+ * database dropped in {@link #cleanUp()}.</p>
  */
 @Tag("integration")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_retention_duty_it")
+@SpringBootTest(properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_retention_duty_it")
 @ActiveProfiles("synthetic-auth")
 class PreserveSenderRecipientRetentionDutiesTest {
 
@@ -56,22 +59,8 @@ class PreserveSenderRecipientRetentionDutiesTest {
     static final String ADMIN = System.getenv().getOrDefault(
             "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
 
-    /** Would-be read route; named here only as future work, not wired by this test-only change. */
-    static final String DUTY_ROUTE = "/api/v1/messaging-governance/retention-duty/";
-    static final String HOLD_ROUTE = "/api/v1/messaging-governance/legal-holds";
-
-    /** One reason shared by every disabled proof: the HTTP contract does not exist yet. */
-    private static final String GAP = "GAP: no HTTP route returns the sender/recipient duty pair; "
-            + "MessagingGovernanceService.retentionDuty has no controller entry point and no "
-            + "HTTP command creates a duty. Enable these tests when that route is built.";
-
-    RestClient rest;
-
-    /** Build a client against the randomly assigned HTTP port. */
-    @BeforeEach
-    void initRestClient(@LocalServerPort int port) {
-        rest = RestClient.builder().baseUrl("http://localhost:" + port).build();
-    }
+    @Autowired
+    MessagingGovernanceService service;
 
     /** Create a fresh database, apply migrations and seed two isolated tenants and their duties. */
     @BeforeAll
@@ -113,6 +102,17 @@ class PreserveSenderRecipientRetentionDutiesTest {
         }
     }
 
+    /** Remove the thread-bound tenant context so a test never leaks identity into another. */
+    @AfterEach
+    void clearContext() {
+        TenantContext.clear();
+    }
+
+    /** Bind the synthetic subject and active organization used by the service's tenant and role checks. */
+    private static void as(String subject, String organizationId) {
+        TenantContext.set(new TenantContext(organizationId, subject, "MSG_GOVERNANCE", "corr-1"));
+    }
+
     /** Create an organization, an active membership and one bounded role for a synthetic subject. */
     private static void seed(Statement statement, String org, String subject, String role) throws Exception {
         statement.execute("SET app.current_org = '" + org + "'");
@@ -137,7 +137,7 @@ class PreserveSenderRecipientRetentionDutiesTest {
                 + "VALUES ('" + org + "', '" + resource + "', 'conversation')");
     }
 
-    /** Seed distinct sender and recipient windows directly; V62 has no HTTP duty writer. */
+    /** Seed distinct sender and recipient windows directly; there is no HTTP duty writer yet. */
     private static void seedDuty(Statement statement, String org, String resource,
                                  long senderDays, long recipientDays) throws Exception {
         statement.execute("SET app.current_org = '" + org + "'");
@@ -146,112 +146,73 @@ class PreserveSenderRecipientRetentionDutiesTest {
                 + "VALUES ('" + org + "', '" + resource + "', " + senderDays + ", " + recipientDays + ")");
     }
 
-    /** Issue an HTTP request with explicit synthetic identity and active-organization headers. */
-    private ResponseEntity<String> request(HttpMethod method, String uri, String body,
-                                            String subject, String org) {
-        HttpHeaders headers = new HttpHeaders();
-        if (subject != null) {
-            headers.set("X-Synthetic-Subject", subject);
-        }
-        if (org != null) {
-            headers.set("X-Active-Organization", org);
-        }
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        RestClient.RequestBodySpec spec = rest.method(method).uri(uri)
-                .headers(httpHeaders -> httpHeaders.addAll(headers));
-        RestClient.RequestHeadersSpec<?> headerSpec = body == null ? spec : spec.body(body);
-        return headerSpec.retrieve()
-                .onStatus(status -> true, (req, response) -> { })
-                .toEntity(String.class);
-    }
-
-    /** Read one JSON scalar from a response body, quoted or numeric, without a JSON dependency. */
-    private static String field(String json, String key) {
-        String needle = "\"" + key + "\":";
-        int start = json.indexOf(needle);
-        if (start < 0) {
-            return "";
-        }
-        start += needle.length();
-        while (start < json.length() && Character.isWhitespace(json.charAt(start))) {
-            start++;
-        }
-        if (start < json.length() && json.charAt(start) == '"') {
-            int end = json.indexOf('"', start + 1);
-            return json.substring(start + 1, end);
-        }
-        int end = start;
-        while (end < json.length() && json.charAt(end) != ',' && json.charAt(end) != '}') {
-            end++;
-        }
-        return json.substring(start, end);
-    }
-
     /**
      * Rule met: the two windows are distinct durable values on the read path and a
-     * legal hold never waives either party's duty. Disabled until the route exists.
+     * legal hold never waives either party's duty.
      */
     @Test
-    @Disabled(GAP)
     void retentionDutyKeepsBothDistinctWindowsAfterALegalHold() {
-        ResponseEntity<String> before = request(HttpMethod.GET, DUTY_ROUTE + RESOURCE_A,
-                null, "auditor-a", ORG_A);
-        assertEquals(HttpStatus.OK, before.getStatusCode(), before.getBody());
-        assertEquals("30", field(before.getBody(), "senderRetentionDays"));
-        assertEquals("90", field(before.getBody(), "recipientRetentionDays"));
+        as("auditor-a", ORG_A);
+        RetentionDuty before = service.retentionDuty(RESOURCE_A);
+        assertEquals(30, before.senderRetentionDays());
+        assertEquals(90, before.recipientRetentionDays());
 
-        String hold = "{\"resourceId\":\"" + RESOURCE_A + "\",\"reason\":\"Synthetic dispute\"}";
-        ResponseEntity<String> placed = request(HttpMethod.POST, HOLD_ROUTE,
-                hold, "auditor-a", ORG_A);
-        assertEquals(HttpStatus.CREATED, placed.getStatusCode(), placed.getBody());
+        LegalHold hold = service.placeHold(new PlaceHoldRequest(RESOURCE_A, "Synthetic dispute"));
+        assertTrue(hold.active(), "the hold must be active for the survival claim to mean anything");
+        assertEquals(RESOURCE_A, hold.resourceId());
+        assertEquals(ORG_A, hold.organizationId());
 
-        ResponseEntity<String> after = request(HttpMethod.GET, DUTY_ROUTE + RESOURCE_A,
-                null, "auditor-a", ORG_A);
-        assertEquals(HttpStatus.OK, after.getStatusCode(), after.getBody());
-        assertEquals("30", field(after.getBody(), "senderRetentionDays"));
-        assertEquals("90", field(after.getBody(), "recipientRetentionDays"));
+        RetentionDuty after = service.retentionDuty(RESOURCE_A);
+        assertEquals(30, after.senderRetentionDays());
+        assertEquals(90, after.recipientRetentionDays());
+
+        // Release the hold so a rerun of this test does not hit 409 HOLD_EXISTS.
+        assertFalse(service.releaseHold(hold.id(), "Synthetic dispute resolved").active());
     }
 
     /**
      * Negative: a subject of another tenant must not see the first tenant's windows,
-     * and the refusal must not leak either value. Disabled until the route exists.
+     * and the refusal must not leak either value even though the duty exists there.
      */
     @Test
-    @Disabled(GAP)
     void anotherTenantCannotReadTheDutyAndSeesNoWindowValues() {
-        ResponseEntity<String> refused = request(HttpMethod.GET, DUTY_ROUTE + RESOURCE_A,
-                null, "auditor-b", ORG_B);
-        assertEquals(HttpStatus.NOT_FOUND, refused.getStatusCode(), refused.getBody());
-        assertEquals("NOT_FOUND", field(refused.getBody(), "code"));
-        assertEquals("", field(refused.getBody(), "senderRetentionDays"));
-        assertEquals("", field(refused.getBody(), "recipientRetentionDays"));
-        assertFalse(refused.getBody().contains("RetentionDays"),
-                "a cross-tenant refusal must not carry either duty window");
+        as("auditor-b", ORG_B);
+        ApiException refused = assertThrows(ApiException.class,
+                () -> service.retentionDuty(RESOURCE_A));
+        assertEquals(404, refused.status());
+        assertEquals("NOT_FOUND", refused.code());
+        assertFalse(refused.getMessage().contains("RetentionDays"),
+                "a cross-tenant refusal must not carry either duty field");
+        assertFalse(refused.getMessage().contains("30") || refused.getMessage().contains("90"),
+                "a cross-tenant refusal must not carry either duty window value");
+
+        as("auditor-a", ORG_A);
+        assertEquals(30, service.retentionDuty(RESOURCE_A).senderRetentionDays());
     }
 
     /**
      * Negative: AUDIT_READ is reserved for governance roles; a reception member is
-     * refused. Disabled until the route exists.
+     * refused.
      */
     @Test
-    @Disabled(GAP)
     void receptionCannotReadTheRetentionDuty() {
-        ResponseEntity<String> denied = request(HttpMethod.GET, DUTY_ROUTE + RESOURCE_A,
-                null, "reception-a", ORG_A);
-        assertEquals(HttpStatus.FORBIDDEN, denied.getStatusCode(), denied.getBody());
-        assertEquals("FORBIDDEN", field(denied.getBody(), "code"));
+        as("reception-a", ORG_A);
+        ApiException denied = assertThrows(ApiException.class,
+                () -> service.retentionDuty(RESOURCE_A));
+        assertEquals(403, denied.status());
+        assertEquals("FORBIDDEN", denied.code());
     }
 
     /**
      * Negative: an unknown resource is concealed as a not-found duty rather than
-     * answering with an empty or default pair. Disabled until the route exists.
+     * answering with an empty or default pair.
      */
     @Test
-    @Disabled(GAP)
     void unknownResourceHasNoReadableDuty() {
-        ResponseEntity<String> missing = request(HttpMethod.GET, DUTY_ROUTE + UNKNOWN_RESOURCE,
-                null, "auditor-a", ORG_A);
-        assertEquals(HttpStatus.NOT_FOUND, missing.getStatusCode(), missing.getBody());
-        assertEquals("NOT_FOUND", field(missing.getBody(), "code"));
+        as("auditor-a", ORG_A);
+        ApiException missing = assertThrows(ApiException.class,
+                () -> service.retentionDuty(UNKNOWN_RESOURCE));
+        assertEquals(404, missing.status());
+        assertEquals("NOT_FOUND", missing.code());
     }
 }

@@ -11,39 +11,43 @@ Partly proven
 ## Evidence
 
 The clause is preserved at the domain, persistence and service layers, and those layers
-are proven by active tests. It is not yet provable over HTTP: no controller route returns
-the duty pair and no command creates one. The new API-evidence class records that missing
-proof without leaving a failing test or changing production code.
+are now proven by active tests. It is not yet provable over HTTP: no controller route
+returns the duty pair and no command creates one. The API-evidence class therefore drives
+the authoritative application entry point that does exist — the real
+`MessagingGovernanceService` — against a real PostgreSQL database under forced row-level
+security, and leaves the remaining HTTP exposure as the documented gap.
 
 Test class: `com.aurevia.smartclinic.messaging.clauses.PreserveSenderRecipientRetentionDutiesTest`
 (`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/PreserveSenderRecipientRetentionDutiesTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile. It migrates a fresh
 `smartclinic_retention_duty_it` database from `db/migrations`, seeds two isolated tenants
 with a tracked resource and directly seeded duty rows (organization A: sender 30 days,
-recipient 90 days; organization B: sender 10 days, recipient 20 days), and drives the HTTP
-entry points with `X-Synthetic-Subject` and `X-Active-Organization` headers. All fixtures
-are synthetic.
+recipient 90 days; organization B: sender 10 days, recipient 20 days), binds a synthetic
+`TenantContext` for each proof and calls the injected service. All fixtures are synthetic.
+There are no disabled or skipped tests.
 
-Four complete tests are deliberately `@Disabled("GAP: ...")`, as the story requires for a
-partly built clause; they assert concrete statuses and codes, never a bare call:
+Four active tests prove the clause and its refusals; each asserts a concrete value, status
+or code:
 
-- `retentionDutyKeepsBothDistinctWindowsAfterALegalHold` (rule met) — reads the duty over
-  HTTP, asserts `senderRetentionDays` = 30 and `recipientRetentionDays` = 90, places a
-  legal hold through `POST /api/v1/messaging-governance/legal-holds`, then reads the duty
-  again and asserts both windows are still 30/90.
+- `retentionDutyKeepsBothDistinctWindowsAfterALegalHold` (rule met) — reads the duty as
+  auditor A, asserts `senderRetentionDays` = 30 and `recipientRetentionDays` = 90, places a
+  legal hold through `MessagingGovernanceService.placeHold` and asserts the returned hold is
+  active on that resource in that tenant (so the premise is proven, not assumed), then
+  re-reads and asserts both windows are still 30/90 and releases the hold for rerun safety.
 - `anotherTenantCannotReadTheDutyAndSeesNoWindowValues` (negative) — organization B's
-  `privacy_auditor` reading organization A's resource gets HTTP 404 with code `NOT_FOUND`
-  and neither window value.
-- `receptionCannotReadTheRetentionDuty` (negative) — a `reception` member gets HTTP 403
-  with code `FORBIDDEN`, enforcing `AUDIT_READ` role scope.
-- `unknownResourceHasNoReadableDuty` (negative) — an unknown resource is concealed as
-  HTTP 404 `NOT_FOUND`, not answered with an empty or default pair.
+  `privacy_auditor` reading organization A's resource gets a 404 `NOT_FOUND` `ApiException`
+  with no duty fields or window values in the refusal, while the same duty is readable
+  inside organization A.
+- `receptionCannotReadTheRetentionDuty` (negative) — a `reception` member gets a 403
+  `FORBIDDEN` `ApiException`, enforcing `AUDIT_READ` role scope.
+- `unknownResourceHasNoReadableDuty` (negative) — an unknown resource is concealed as a
+  404 `NOT_FOUND` `ApiException`, not answered with an empty or default pair.
 
 None of these reads `GET /api/v1/messaging-governance/retention/{resourceId}`: that route
 returns `RetentionDecision(resourceId, eligible, reason)` and carries no duty pair, so it
 cannot prove this clause.
 
-Active green tests proving the layers that do exist:
+Other active green tests proving the layers that do exist:
 
 - `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceServiceTest.retentionDutiesPreserveSenderAndRecipientWindows`
   — stores a 30/90 pair, reads it back with both fields and its resource/organization
@@ -78,11 +82,10 @@ Verification command and result (tool evidence):
 ```
 SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=PreserveSenderRecipientRetentionDutiesTest test
-Tests run: 4, Failures: 0, Errors: 0, Skipped: 4
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 ```
 
-The four skips are exactly the four intentionally disabled GAP proofs above; there is no
-unintended skip.
+All four tests ran; there is no unintended skip and no disabled test.
 
 ## Gap
 
@@ -105,13 +108,14 @@ Closing the gap needs one cross-boundary backend/contract task (plus independent
    `nextCursor` if any list GET is added, and a route-parity entry (do not add the routes to
    `contracts/openapi/missing-routes.txt`). Run `npm --prefix apps/staff-web run gen:api`
    and commit the regenerated `openapi.d.ts`; `gen:api:check` must pass.
-3. Enable the four disabled tests above and add a staff-web or operator surface that
+3. When the route exists, add HTTP-level proofs of the same four behaviors; the four
+   active service-level proofs above remain valid. Add a staff-web or operator surface that
    displays the two windows if the product needs them visible.
 
 Files that would change: `MessagingGovernanceController.java`,
 `MessagingGovernanceService.java`, `contracts/openapi.yaml`,
-`apps/staff-web/src/api/generated/openapi.d.ts`, the new clause test, and a staff-web view
-if visibility is required. No new Flyway migration is needed: V62 already provides the
-table, its RLS/FORCE RLS, grants and no-DELETE protection. Count: **one backend/contract
-task plus one optional staff-web task**. This evidence task changed only a test class and
-this note; no production code, existing test, migration or contract was edited.
+`apps/staff-web/src/api/generated/openapi.d.ts`, and a staff-web view if visibility is
+required. No new Flyway migration is needed: V62 already provides the table, its
+RLS/FORCE RLS, grants and no-DELETE protection. Count: **one backend/contract task plus one
+optional staff-web task**. This evidence task changed only a test class and this note; no
+production code, existing test, migration or contract was edited.
