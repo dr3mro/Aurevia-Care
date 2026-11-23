@@ -91,16 +91,28 @@ jobs:
       # integrator and earlier workers said about this pull request and task to files.
       - name: Fetch main
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
-        run: scripts/agent-run.sh fetch-main || true
+          # Read-only job: use the job token and a trusted copy of the script.
+          # The checkout is the candidate PR branch, so its own scripts are
+          # untrusted and must never receive a write-capable token.
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          runner=$(mktemp)
+          trap 'rm -f "$runner"' EXIT
+          git show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
+          bash "$runner" fetch-main || true
       - name: Collect the failure context
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
           SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           mkdir -p .agent
-          python3 -I scripts/swarm.py pr-context --pr "$PR_NUMBER" --out .agent/debug-context.md || true
-          python3 -I scripts/swarm.py issue-context --task "$STORY_ID" || true
+          runner=$(mktemp)
+          trap 'rm -f "$runner"' EXIT
+          git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$runner"
+          python3 -I "$runner" pr-context --pr "$PR_NUMBER" --out .agent/debug-context.md || true
+          python3 -I "$runner" issue-context --task "$STORY_ID" || true
       - name: Start PostgreSQL for the integration tests
         run: |
           if command -v start-postgres >/dev/null; then

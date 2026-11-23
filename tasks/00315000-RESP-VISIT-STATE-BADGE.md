@@ -1,4 +1,5 @@
 - [x] RESP-VISIT-STATE-BADGE · Staff web: responsive `VisitStateBadge` (features-scheduling)
+  - evidence: PR #801 merged to main (reconciled 2026-11-23)
   - pr: #801
   - attempts: 1
   - requirements: WEB-07, UX-01

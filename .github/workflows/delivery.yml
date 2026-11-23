@@ -182,7 +182,8 @@ jobs:
           pattern: smoke-tested-image-*
       - name: Require a green default-branch run for this commit
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          # Read-only API call: the job token is sufficient.
+          GH_TOKEN: ${{ github.token }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           total=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \

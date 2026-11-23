@@ -10,6 +10,7 @@ import base64
 import hashlib
 import datetime
 import fnmatch
+import glob
 import json
 import math
 import os
@@ -395,7 +396,9 @@ def classify_failure(log, failed=None):
     test_only = bool(failed) and all(TEST_STEP.search(step) for _, step in failed)
     if (auth_step or (precise_auth and not test_only)) and CREDENTIALS.search(log or ""):
         return "credentials"
-    if QUOTA.search(log or ""):
+    # Test names such as test_budget_gate... print the word "budget" into a
+    # red log; that is a code failure, not an exhausted runner quota.
+    if QUOTA.search(log or "") and not test_only:
         return "quota"
     return "unknown"
 
@@ -829,50 +832,73 @@ def issue_input(issue):
             + "".join(f"\n---\n{clean(c, 1500, 40)}\n" for c in comments))
 
 
-def reconcile_tasks(directory="tasks", file=""):
-    """Mark taken/todo tasks done when their pull request is merged (or their task id
-    appears in a merged pull request title). Writes the updated task files back."""
-    import subprocess, json, glob, os
+def reconcile_tasks(directory="tasks", file="", persist=False):
+    """Mark taken/todo tasks done when their PR merged, and persist the change.
+
+    This is the fallback for a manual or squash merge where ``record_merge``
+    could not update the tracker. Derived from the merged-PR list so the mark
+    carries real evidence; a file edit that is never committed is lost when the
+    runner ends and leaves the task stuck ``[-]`` forever.
+    """
     try:
         out = subprocess.check_output(["gh", "pr", "list", "--state", "merged", "--limit", "500",
-                                      "--json", "number,title"], text=True, stderr=subprocess.DEVNULL)
-        merged = json.loads(out)
-    except Exception:
+                                      "--json", "number,title"], text=True,
+                                     stderr=subprocess.DEVNULL)
+        merged = json.loads(out) if out else []
+    except (subprocess.CalledProcessError, ValueError, OSError, RuntimeError):
         merged = []
     merged_ids = set()
-    merged_prs = set()
+    merged_prs = {}
     for p in merged:
-        merged_prs.add(p["number"])
+        number = p["number"]
         key = p["title"].split(":")[0].strip()
         merged_ids.add(key)
         merged_ids.add(p["title"].split()[0])
+        merged_prs[key] = number
+        merged_prs[p["title"].split()[0]] = number
     files = [file] if file else sorted(glob.glob(os.path.join(directory, "*.md")))
-    changed = 0
+    changed = []
     for path in files:
         if not os.path.isfile(path):
             continue
-        text = open(path).read()
-        m = re.search(r'^- \[[- ]\] (\S+)', text, re.M)
-        if not m:
+        text = Path(path).read_text()
+        match = re.search(r'^- \[[- ]\] (\S+)', text, re.M)
+        if not match:
             continue
-        mark = m.group(0)
-        tid = m.group(1)
-        # extract pr number
-        pr_m = re.search(r'^\s*-\s*pr:\s*#?(\d+)', text, re.M)
-        pr_num = int(pr_m.group(1)) if pr_m else None
-        if tid not in merged_ids and (pr_num is None or pr_num not in merged_prs):
+        tid = match.group(1)
+        pr_match = re.search(r'^\s*-\s*pr:\s*#?(\d+)', text, re.M)
+        pr_num = int(pr_match.group(1)) if pr_match else None
+        pr = merged_prs.get(tid, pr_num)
+        if tid not in merged_ids and (pr_num is None or pr_num not in merged_prs.values()):
             continue
-        # only reconcile taken/todo tasks
-        if "- [-]" not in text and "- [ ]" not in text:
-            continue
-        new = text.replace("- [-] " + tid, "- [x] " + tid, 1).replace("- [ ] " + tid, "- [x] " + tid, 1)
-        if new != text:
-            if "evidence:" not in new:
-                new = new.replace("- [x] " + tid + "\n", "- [x] " + tid + "\n  - evidence: PR merged to main (auto-reconciled)\n", 1)
-            open(path, "w").write(new)
-            changed += 1
-            print(f"reconciled {tid}")
-    print(f"reconciled {changed} task(s)")
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        line_end = text.find("\n", match.start())
+        full_line = text[line_start:line_end]
+        marked = full_line.replace("- [-]", "- [x]").replace("- [ ]", "- [x]")
+        new = text[:line_start] + marked + text[line_end:]
+        insert_after = marked + "\n"
+        extra = ""
+        if "evidence:" not in new:
+            extra += f"  - evidence: PR #{pr} merged to main (auto-reconciled)\n" if pr else \
+                     "  - evidence: Task id found in a merged PR title (auto-reconciled)\n"
+        if pr and "pr:" not in new:
+            extra += f"  - pr: #{pr}\n"
+        if extra:
+            new = new.replace(insert_after, insert_after + extra, 1)
+        Path(path).write_text(new)
+        changed.append(path)
+        print(f"reconciled {tid}")
+    if not changed or not persist:
+        return len(changed)
+    git("add", *changed)
+    git(*IDENTITY, "commit", "-qm",
+        f"Reconcile {len(changed)} merged task(s) [skip ci]")
+    branch = os.environ.get("DEFAULT_BRANCH", "main")
+    if os.environ.get("GH_TOKEN"):
+        authed_git("push", "origin", f"HEAD:{branch}")
+    else:
+        print("GH_TOKEN not set: reconciliation was committed but not pushed", file=sys.stderr)
+    return len(changed)
 
 
 def draft_triage(threshold=3, age_minutes=120):
@@ -896,7 +922,8 @@ def draft_triage(threshold=3, age_minutes=120):
         if (now - dt).total_seconds() >= age_minutes * 60:
             old.append(p)
     print(f"old drafts: {len(old)} (threshold {threshold})")
-    if len(old) > threshold and os.environ.get("SWARM_ISSUES", "on") != "off":
+    if len(old) > threshold and issues_enabled():
+        ensure_labels()
         body = "Stale swarm draft PRs needing triage:\n\n" + "\n".join(
             f"- #{p['number']} {p['title']}" for p in old)
         gh("issue", "create", "--title", "Draft PR triage: too many stale drafts",
@@ -2500,12 +2527,13 @@ def open_rules_pr(day, patch_path):
     git("apply", "--index", str(patch.resolve()))
     # Delivery skips Markdown-only pull requests, so a broken link or an unknown requirement ID
     # would only turn main red on the next code push: check the docs here instead.
-    checked = subprocess.run([sys.executable, "-I", "scripts/check-docs.py"], capture_output=True, text=True)
-    if checked.returncode:
-        print(f"notes: rules patch fails the docs check, dropped:\n{checked.stderr[-2000:]}", file=sys.stderr)
-        git("reset", "-q", "--hard")
-        git("checkout", "-q", "-")
-        return ""
+    for check in ("check-docs.py", "check-secrets.py"):
+        checked = subprocess.run([sys.executable, "-I", f"scripts/{check}"], capture_output=True, text=True)
+        if checked.returncode:
+            print(f"notes: rules patch fails {check}, dropped:\n{checked.stderr[-2000:]}", file=sys.stderr)
+            git("reset", "-q", "--hard")
+            git("checkout", "-q", "-")
+            return ""
     git(*IDENTITY, "commit", "-qm", f"Notes {day}: instruction updates from the daily reconciliation")
     authed_git("push", "--force", "origin", f"HEAD:refs/heads/{branch}")
     out = gh("pr", "create", "--draft", "--base", "main", "--head", branch,
@@ -3663,10 +3691,32 @@ def continue_swarm(text, prs, red=False):
     return bool(plan_workers(1, [{"slot": 1, "model": ""}], text, prs, red=red))
 
 
+def pending_note_days():
+    """True when a finished day has worker notes but no reconciled daily note.
+
+    Reconciliation used to wait for an empty PR queue, so a busy wave could starve
+    it for days; the newest note then told agents to read a stale daily note.
+    """
+    today = new_york_now().strftime("%Y-%m-%d")
+    keep = referenced_notes()
+    notes = Path(NOTES_DIR)
+    for path in notes.glob("*.md") if notes.is_dir() else []:
+        if DAILY_NOTE.fullmatch(path.name) or path.name in keep:
+            continue
+        day = note_day(path)
+        if day and day < today and not (notes / f"{day}.md").is_file():
+            return True
+    return False
+
+
 def daily_can_start():
     """Admit optional scheduled agents only after higher-priority work has been offered capacity."""
     if main_is_red() or active_runs("swarm-integrator.yml") or active_runs("swarm-debugger.yml"):
         return False
+    # Unreconciled notes are time-sensitive: a green merge queue must not starve
+    # the daily notes that every later agent reads for lessons.
+    if pending_note_days():
+        return True
     live = live_workers()
     if len(live) >= MAX_ACTIVE_WORKERS:
         return False
@@ -3710,12 +3760,29 @@ def task_id_of_title(title):
     return match.group(1) if match else ""
 
 
+# The gate runs agent-written code. Every credential-shaped environment variable
+# is removed before it starts; NVD_API_KEY is the one exception because OWASP
+# needs it to analyse dependencies (it grants no GitHub access).
+GATE_SECRET_WORDS = ("TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "_KEY")
+GATE_KEY_ALLOWLIST = frozenset({"NVD_API_KEY"})
+
+
+def gate_environment():
+    """Return a copy of the process environment without credentials.
+
+    Gate scripts are candidate code and may be malicious. A name-based filter is
+    used instead of an explicit list so a newly introduced token variable cannot
+    silently reach the gate. ``NVD_API_KEY`` is retained because the dependency
+    scan needs it and it cannot write to GitHub.
+    """
+    return {name: value for name, value in os.environ.items()
+            if name in GATE_KEY_ALLOWLIST
+            or not any(word in name.upper() for word in GATE_SECRET_WORDS)}
+
+
 def run_gate(gate, extra_env=None):
     """Run the fast gate on the current merge. Returns (ok, log tail)."""
-    # Agent-written code is already merged locally at this point. Strip every
-    # credential from the gate subprocess so it cannot read or leak a token.
-    env = {k: v for k, v in os.environ.items()
-           if k not in ("GH_TOKEN", "GITHUB_TOKEN", "SWARM_TOKEN")}
+    env = gate_environment()
     env.update(extra_env or {})
     done = subprocess.run(["bash", gate], capture_output=True, text=True, env=env)
     log = (done.stdout + "\n" + done.stderr).strip()
@@ -4226,7 +4293,11 @@ def main(argv=None):
         everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                              "--json", "number,headRefName,state,labels") or []
         live = live_workers()
-        text = reclaim(todo_read(a.file), everything, live)
+        # Persist the reclaimed state. Computing it in memory only left merged
+        # or dead claims as `[-]` forever and blocked their dependants.
+        update_todo(lambda current: reclaim(current, everything, live),
+                    "Reclaim stale swarm claims", a.file)
+        text = todo_read(a.file)
         go = continue_swarm(text, prs, red=main_is_red())
         if go and (len(live) >= MAX_ACTIVE_WORKERS or waiting_waves()):
             go = False
@@ -4296,6 +4367,10 @@ def main(argv=None):
         emit("start", "true" if allowed else "false")
         # A wave never starts more workers than the remaining budget can pay for.
         emit("workers", affordable_workers(used, a.cap))
+    elif a.cmd == "reconcile-tasks":
+        print(f"reconciled {reconcile_tasks(a.dir, a.file, persist=True)} task(s)")
+    elif a.cmd == "draft-triage":
+        emit("drafts", draft_triage())
     elif a.cmd == "migrate-tasks":
         print(f"moved {migrate_tasks()} task(s)")
     elif a.cmd == "integrate-batch":

@@ -1,4 +1,5 @@
 - [x] COVPY-MONITOR-CLI · Script tests: monitor tool coverage, cli part (to 100% together with the other three parts)
+  - evidence: PR #416 merged to main (reconciled 2026-11-23)
   - pr: #416
   - attempts: 1
   - requirements: OPS-06

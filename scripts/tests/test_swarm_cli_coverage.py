@@ -171,6 +171,17 @@ class MainDispatchCoverageTests(CliTestCase):
             self.assertEqual(swarm.main(["ensure-labels"]), 0)
         ensure.assert_called_once_with()
 
+    def test_main_reconcile_tasks_persists_and_prints_the_count(self):
+        with mock.patch.object(swarm, "reconcile_tasks", return_value=3) as reconcile:
+            self.assertEqual(swarm.main(["reconcile-tasks", "--dir", "tasks"]), 0)
+        reconcile.assert_called_once_with("tasks", "", persist=True)
+        self.assertIn("reconciled 3 task(s)", self.stdout.getvalue())
+
+    def test_main_draft_triage_emits_the_count(self):
+        with mock.patch.object(swarm, "draft_triage", return_value=2):
+            self.assertEqual(swarm.main(["draft-triage"]), 0)
+        self.assertEqual(self.emitted().get("drafts"), "2")
+
     def test_main_archive_todo_prints_the_archived_count(self):
         with mock.patch.object(swarm, "archive_todo", return_value=2):
             self.assertEqual(swarm.main(["archive-todo"]), 0)
@@ -264,15 +275,23 @@ class MainDispatchCoverageTests(CliTestCase):
 
     def run_continue(self, go, waiting, live):
         """Dispatch `continue` with controlled readiness, worker counts and gh calls."""
+        state = {"text": "- [ ] T-1\n"}
+
+        def persist(edit, message, path="TODO.md", attempts=8):
+            state["text"] = edit(state["text"])
+            return True
+
         with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
-                mock.patch.object(swarm, "todo_read", return_value="text"), \
-                mock.patch.object(swarm, "reclaim", return_value="text"), \
+                mock.patch.object(swarm, "todo_read", side_effect=lambda path="TODO.md": state["text"]), \
+                mock.patch.object(swarm, "update_todo", side_effect=persist) as update, \
+                mock.patch.object(swarm, "reclaim", side_effect=lambda text, prs, live: text), \
                 mock.patch.object(swarm, "live_workers", return_value=[f"task-{n}" for n in range(live)]), \
                 mock.patch.object(swarm, "continue_swarm", return_value=go), \
                 mock.patch.object(swarm, "waiting_waves", return_value=waiting), \
                 mock.patch.object(swarm, "gh") as gh:
             self.assertEqual(swarm.main(["continue", "--file", str(self.dir / "TODO.md")]), 0)
+        self.assertEqual(update.call_args.args[1], "Reclaim stale swarm claims")
         return gh
 
     def test_main_continue_does_not_queue_a_waiting_wave(self):

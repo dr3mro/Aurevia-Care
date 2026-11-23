@@ -1,8 +1,11 @@
 name: Swarm integrator
 # Integrates every ready swarm pull request in one job: merge one at a time on
-# top of main, run the FULL gate (scripts/check.sh with PostgreSQL and NVD) after
-# each, then push once. A PR that fails SpotBugs, coverage, Doxygen or DB policy
-# never reaches main. Delivery then verifies the pushed commit on main.
+# top of main, run a gate after each, then push once. Story PRs run the full
+# scripts/integrator-gate.sh (check.sh with PostgreSQL and NVD): a PR that fails
+# SpotBugs, coverage, Doxygen or DB policy never reaches main. Repair PRs use the
+# reduced scripts/repair-gate.sh so one red class cannot block every other repair;
+# Delivery runs the full tier on the merged commit and the next repair fixes a
+# regression. Delivery then verifies the pushed commit on main.
 # Called by swarm.yml after the workers of every wave (one scheduler, no
 # workflow_run chain) and runnable by hand.
 on:
@@ -118,6 +121,8 @@ jobs:
         run: python3 -I scripts/swarm.py integrate-batch --queue "$QUEUE" --gate "$GATE"
       - name: Reconcile tasks whose PRs merged
         if: always()
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: python3 -I scripts/swarm.py reconcile-tasks --dir tasks
 
   # A PR that conflicts with main is not failed right away: the agent merges main

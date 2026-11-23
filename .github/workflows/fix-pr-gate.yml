@@ -34,6 +34,7 @@ jobs:
       contents: read
     outputs:
       passed: ${{ steps.gate.outputs.passed }}
+      head_sha: ${{ steps.gate.outputs.head_sha }}
     services:
       postgres:
         image: postgres:17.12@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c
@@ -65,17 +66,18 @@ jobs:
           restore-keys: |
             owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
       - uses: ./.github/actions/setup-tooling-python
-      - name: Run the full gate (no GitHub token in this job)
+      - name: Run the full gate (no GitHub token or NVD key in this job)
         id: gate
-        env:
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: |
           set +e
+          # PR-controlled code runs here. With no NVD key, check.sh scans the
+          # restored cache and still fails on a high-severity CVE.
           bash scripts/check.sh > fix-pr-gate.log 2>&1
           code=$?
           set -e
           tail -80 fix-pr-gate.log
           if [[ "$code" -eq 0 ]]; then echo "passed=true" >> "$GITHUB_OUTPUT"; fi
+          echo "head_sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
@@ -98,6 +100,7 @@ jobs:
       GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
       PR: ${{ github.event.pull_request.number }}
       PASSED: ${{ needs.validate.outputs.passed }}
+      VALIDATED_SHA: ${{ needs.validate.outputs.head_sha }}
     steps:
       # Trusted copy of the scripts: never the pull request's version.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -115,6 +118,13 @@ jobs:
           # The integrator runs its own full gate before main moves, so a forged
           # pass only queues the pull request; it never merges it.
           if [[ "$PASSED" == true ]]; then
+            # The PR can be pushed between validation and handoff. Never act on
+            # a pass for a head that is no longer the one that was gated.
+            current=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
+            if [[ "$current" != "$VALIDATED_SHA" ]]; then
+              echo "::error::PR head moved after validation ($current != $VALIDATED_SHA)"
+              exit 1
+            fi
             # Already-ready is fine; any other failure must stop here, not leave a draft.
             if [[ "$(gh pr view "$PR" --json isDraft --jq .isDraft)" == true ]]; then
               gh pr ready "$PR"

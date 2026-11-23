@@ -1,4 +1,5 @@
 - [x] RESP-APP-PATIENT-FLOW-HOME · Patient app: tablet, landscape and large-text layout for `PatientFlowHome` (flows)
+  - evidence: PR #654 merged to main (reconciled 2026-11-23)
   - pr: #654
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

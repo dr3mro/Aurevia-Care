@@ -1,4 +1,5 @@
 - [x] RESP-APP-SIGNED-OUT-SCREEN · Patient app: tablet, landscape and large-text layout for `SignedOutScreen` (app)
+  - evidence: PR #613 merged to main (reconciled 2026-11-23)
   - pr: #613
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

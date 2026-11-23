@@ -1,4 +1,5 @@
 - [x] COVPY-MONITOR-FETCH · Script tests: monitor tool coverage, fetch part (to 100% together with the other three parts)
+  - evidence: PR #393 merged to main (reconciled 2026-11-23)
   - pr: #393
   - attempts: 1
   - requirements: OPS-06

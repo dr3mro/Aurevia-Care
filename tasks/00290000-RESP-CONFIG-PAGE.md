@@ -1,4 +1,5 @@
 - [x] RESP-CONFIG-PAGE · Staff web: responsive `ConfigPage` (features-admin)
+  - evidence: PR #730 merged to main (reconciled 2026-11-23)
   - pr: #730
   - attempts: 1
   - requirements: WEB-07, UX-01

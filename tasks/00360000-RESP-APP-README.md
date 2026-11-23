@@ -1,4 +1,5 @@
 - [x] RESP-APP-README · Patient app README: tablets, landscape and how to test them
+  - evidence: PR #648 merged to main (reconciled 2026-11-23)
   - pr: #648
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
