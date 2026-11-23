@@ -1,5 +1,5 @@
-- [-] FIX-INSTANT-OPENAPI · Document the instant-messaging API in the OpenAPI contract (HIGH PRIORITY: Delivery fails on PR #1497, SMSG-03)
-  - agent: swarm-10
+- [x] FIX-INSTANT-OPENAPI · Document the instant-messaging API in the OpenAPI contract (HIGH PRIORITY: Delivery fails on PR #1497, SMSG-03)
+  - pr: #1297
   - attempts: 1
   - priority: high
   - requirements: MSG-02, ARC-07, WEB-05

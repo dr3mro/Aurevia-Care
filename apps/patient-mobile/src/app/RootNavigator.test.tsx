@@ -23,6 +23,14 @@ jest.mock('expo', () => ({
   registerRootComponent: jest.fn(),
 }));
 
+// The signed-in reports tab binds the OS credential store. Headless tests have
+// no native keychain, so supply the same narrow adapter the real module exposes.
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => undefined),
+  deleteItemAsync: jest.fn(async () => undefined),
+}));
+
 // The shell creates a transport on mount; headless tests supply synthetic
 // empty projections and observe token clearing without touching OS storage.
 jest.mock('../api/tokenStore', () => ({
