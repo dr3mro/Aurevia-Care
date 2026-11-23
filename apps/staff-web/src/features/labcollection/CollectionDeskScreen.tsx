@@ -98,8 +98,8 @@ export function CollectionDeskScreen({
     accessionConfirmed,
   ]);
 
-  // The command controls are only rendered with a selected order; `defined`
-  // narrows that invariant to the type checker instead of adding a dead branch.
+  // The command controls are only rendered with a selected order, so narrowing
+  // here is a defensive assertion rather than a visible empty state.
   function handleCollect() {
     const order = defined(selected, 'selected collection order');
     onCollect(order, {

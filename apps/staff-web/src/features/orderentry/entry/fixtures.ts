@@ -4,8 +4,14 @@ import type { CodedEntry } from '../../chart/domain';
 import type { ActiveOrder, CatalogItem, SavedOrderDraft } from './domain';
 
 /** Two synthetic tenants; the same local identifiers are reused across them. */
-export const entryAlphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
-export const entryBetaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
+export const entryAlphaOrganizationId = defined(
+  syntheticOrganizations[0],
+  'entry alpha organization',
+).id;
+export const entryBetaOrganizationId = defined(
+  syntheticOrganizations[1],
+  'entry beta organization',
+).id;
 
 /** Opaque local identifiers used only by synthetic fixtures. */
 export const syntheticPatientLocalId = 'patient-001';

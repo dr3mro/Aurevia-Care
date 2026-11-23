@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { TransportError } from '../api/transport';
@@ -26,12 +26,22 @@ function resource<T>(value: T | Promise<T>, deps: readonly unknown[] = []) {
   return { label: 'Synthetic rows', load: async () => value, deps };
 }
 
-function wrap(view: ReactNode, options: { sessionExpired?: () => void; locale?: Locale } = {}) {
+function wrap(
+  view: ReactNode,
+  options: {
+    sessionExpired?: () => void;
+    onSignIn?: () => void;
+    locale?: Locale;
+  } = {},
+) {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={options.locale ?? 'en'}>
         <SessionContext.Provider
-          value={{ onSessionExpired: options.sessionExpired ?? (() => undefined) }}
+          value={{
+            onSessionExpired: options.sessionExpired ?? (() => undefined),
+            onSignIn: options.onSignIn ?? (() => undefined),
+          }}
         >
           {view}
         </SessionContext.Provider>
@@ -170,6 +180,110 @@ describe('ApiPage', () => {
     );
 
     await waitFor(() => expect(screen.getByText('Your session has expired')).toBeTruthy());
+    const signIn = screen.getByRole('button', { name: 'Sign in' });
+    expect(signIn.tagName).toBe('BUTTON');
+    expect(() => fireEvent.click(signIn)).not.toThrow();
+  });
+});
+
+describe('ApiPage recovery actions', () => {
+  it('re-runs the loader from useApi when Reload is clicked', async () => {
+    const load = vi.fn(failure('conflict'));
+    wrap(<ApiPage resource={{ label: 'Synthetic rows', load, deps: [] }}>{children}</ApiPage>);
+
+    await waitFor(() => expect(screen.getByText('This record changed')).toBeTruthy());
+    expect(load).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  });
+
+  it('uses the session onSignIn action without re-notifying expiry on click', async () => {
+    const onSessionExpired = vi.fn();
+    const onSignIn = vi.fn();
+    wrap(
+      <ApiPage resource={{ label: 'Synthetic rows', load: failure('session-expired'), deps: [] }}>
+        {children}
+      </ApiPage>,
+      { sessionExpired: onSessionExpired, onSignIn },
+    );
+
+    await waitFor(() => expect(screen.getByText('Your session has expired')).toBeTruthy());
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes explicit Compare, Copy, Reload and Retry actions into the state views', async () => {
+    const onCompare = vi.fn();
+    const onCopy = vi.fn();
+    const onReload = vi.fn();
+    const onRetry = vi.fn();
+    const actions = { onCompare, onCopy, onReload, onRetry };
+
+    const conflict = wrap(
+      <ApiPage
+        resource={{ label: 'Synthetic rows', load: failure('conflict'), deps: [] }}
+        actions={actions}
+      >
+        {children}
+      </ApiPage>,
+    );
+    await waitFor(() => expect(screen.getByText('This record changed')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy my changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
+    expect(onCompare).toHaveBeenCalledTimes(1);
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onReload).toHaveBeenCalledTimes(1);
+    expect(onRetry).not.toHaveBeenCalled();
+    conflict.unmount();
+
+    wrap(
+      <ApiPage
+        resource={{ label: 'Synthetic rows', load: failure('server'), deps: [] }}
+        actions={actions}
+      >
+        {children}
+      </ApiPage>,
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('prefers explicit onReload and onSignIn actions over the context fallbacks', async () => {
+    const load = vi.fn(failure('conflict'));
+    const sessionSignIn = vi.fn();
+    const onReload = vi.fn();
+    const onSignIn = vi.fn();
+    const actions = { onReload, onSignIn };
+
+    const conflict = wrap(
+      <ApiPage resource={{ label: 'Synthetic rows', load, deps: [] }} actions={actions}>
+        {children}
+      </ApiPage>,
+      { onSignIn: sessionSignIn },
+    );
+    await waitFor(() => expect(screen.getByText('This record changed')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
+    expect(onReload).toHaveBeenCalledTimes(1);
+    expect(load).toHaveBeenCalledTimes(1);
+    conflict.unmount();
+
+    wrap(
+      <ApiPage
+        resource={{ label: 'Synthetic rows', load: failure('session-expired'), deps: [] }}
+        actions={actions}
+      >
+        {children}
+      </ApiPage>,
+      { onSignIn: sessionSignIn },
+    );
+    await waitFor(() => expect(screen.getByText('Your session has expired')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+    expect(sessionSignIn).not.toHaveBeenCalled();
   });
 
   it('renders the Arabic loading state in right-to-left direction', () => {

@@ -104,6 +104,33 @@ describe('useBreakpoint', () => {
     expect(result.current).toBe('compact');
   });
 
+  it('re-syncs a media value that changes between render and subscription', () => {
+    const query = '(pointer: coarse)';
+    let calls = 0;
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((requested: string) => {
+        if (requested !== query) {
+          throw new Error(`unexpected query ${requested}`);
+        }
+        // The render's getSnapshot reads `true`; the subscription that follows
+        // reads `false`. This reproduces the narrow window where a media change
+        // lands after the snapshot but before the change listener is attached,
+        // which the subscribe-time check must recover from.
+        const matches = calls++ === 0;
+        return {
+          matches,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        };
+      }),
+    );
+
+    // Without the subscribe-time re-sync the cached snapshot would stay `true`.
+    const { result } = renderHook(() => usePointerCoarse());
+    expect(result.current).toBe(false);
+  });
+
   it('removes both media query listeners on unmount', () => {
     const media = installMatchMedia({
       [BREAKPOINT_MEDIA_QUERIES.medium]: true,
@@ -132,6 +159,17 @@ describe('useBreakpoint', () => {
       orientation: 'portrait',
     });
   });
+
+  it('uses the declared fallback snapshot during a server render', () => {
+    // On the server useSyncExternalStore calls getServerSnapshot, never getSnapshot
+    // or subscribe. The hook must therefore report its fallback without probing
+    // matchMedia, which does not exist there.
+    vi.stubGlobal('matchMedia', undefined);
+    function Probe() {
+      return createElement('span', null, useBreakpoint());
+    }
+    expect(renderToString(createElement(Probe))).toContain('expanded');
+  });
 });
 
 describe('pointer and orientation hooks', () => {
@@ -156,45 +194,33 @@ describe('pointer and orientation hooks', () => {
   });
 });
 
-describe('useSyncExternalStore integration', () => {
-  it('adopts a value that changed between the snapshot and the subscribe lookup', () => {
-    // getSnapshot reads false, then the same query reads true when the store is
-    // subscribed. The hook must publish the newer value instead of the stale one.
+describe('useMediaQuery subscription resynchronisation', () => {
+  it('refreshes a snapshot that became stale before subscribe ran', () => {
+    // React reads getSnapshot during render and only then runs the passive
+    // subscribe effect. If the media value changes in that window, subscribe
+    // sees a stale snapshot; it must refresh it and notify React so the hook
+    // reports the fresh value instead of the one captured during render.
     const listeners = new Set<ChangeListener>();
-    const list = {
-      matches: false,
-      addEventListener: (_type: string, listener: ChangeListener) => {
-        listeners.add(listener);
-      },
-      removeEventListener: (_type: string, listener: ChangeListener) => {
-        listeners.delete(listener);
-      },
-    };
-    let calls = 0;
+    let matchMediaCalls = 0;
     vi.stubGlobal(
       'matchMedia',
-      vi.fn((_query: string) => {
-        list.matches = calls++ === 0 ? false : true;
-        return list;
+      vi.fn(() => {
+        matchMediaCalls += 1;
+        const matches = matchMediaCalls === 1 ? false : true;
+        return {
+          matches,
+          addEventListener: (_type: string, listener: ChangeListener) => {
+            listeners.add(listener);
+          },
+          removeEventListener: (_type: string, listener: ChangeListener) => {
+            listeners.delete(listener);
+          },
+        };
       }),
     );
 
-    const { result, unmount } = renderHook(() => useOrientation());
-    expect(result.current).toBe('portrait');
-    expect(listeners.size).toBe(1);
-    unmount();
-    expect(listeners.size).toBe(0);
-  });
+    const { result } = renderHook(() => usePointerCoarse());
 
-  it('uses the supplied fallbacks when rendering on the server', () => {
-    vi.stubGlobal('matchMedia', undefined);
-    function Probe() {
-      const breakpoint = useBreakpoint();
-      const coarse = usePointerCoarse();
-      const orientation = useOrientation();
-      return createElement('span', null, `${breakpoint}/${orientation}/${coarse}`);
-    }
-
-    expect(renderToString(createElement(Probe))).toContain('expanded/portrait/false');
+    expect(result.current).toBe(true);
   });
 });

@@ -36,11 +36,17 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiErrorHandler;
+import com.aurevia.smartclinic.authz.access.AccessRepository;
+import com.aurevia.smartclinic.staff.StaffRepository;
+import com.aurevia.smartclinic.staffmsg.directory.ActiveStaffGuard;
+import com.aurevia.smartclinic.staffmsg.directory.DirectoryPolicy;
+import com.aurevia.smartclinic.staffmsg.directory.StaffDirectoryService;
 import com.aurevia.smartclinic.staffmsg.mail.MailContract.DraftView;
 import com.aurevia.smartclinic.staffmsg.mail.MailContract.MailView;
 import com.aurevia.smartclinic.staffmsg.mail.MailContract.Recipient;
 import com.aurevia.smartclinic.staffmsg.mail.MailContract.SentMail;
 import com.aurevia.smartclinic.staffmsg.model.StaffMessagingContract.MailFolder;
+import com.aurevia.smartclinic.tenancy.FacilityRepository;
 import com.aurevia.smartclinic.tenant.TenantContext;
 import com.aurevia.smartclinic.web.TenantContextInterceptor;
 
@@ -59,8 +65,12 @@ class MailPersistenceIntegrationTest {
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     private static final String FACILITY_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     private static final String FACILITY_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+    private static final String FACILITY_C = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     private static final String SENDER = "nurse-a";
     private static final String READER = "nurse-b";
+    private static final String OTHER_FACILITY_READER = "nurse-d";
+    private static final String INACTIVE_READER = "former-nurse";
+    private static final String OTHER_ORG_READER = "nurse-x";
     private static final String GHOST = "ghost";
     private static final String DATABASE = "smartclinic_mail_it";
     private static final String PREFIX = "jdbc:postgresql://127.0.0.1:5432/";
@@ -94,7 +104,7 @@ class MailPersistenceIntegrationTest {
         as(SENDER, ORG_A);
         store = new JdbcMailStore(new NamedParameterJdbcTemplate(dataSource), transactions(dataSource));
         mapper = new ObjectMapper();
-        mvc = MockMvcBuilders.standaloneSetup(new MailController(service(store)))
+        mvc = MockMvcBuilders.standaloneSetup(new MailController(service(store, dataSource)))
                 .setControllerAdvice(new ApiErrorHandler())
                 .addInterceptors(new TenantContextInterceptor(mockEnvironment()))
                 .build();
@@ -120,7 +130,7 @@ class MailPersistenceIntegrationTest {
                 .andExpect(jsonPath("$.viewerFolder").value("sent")));
 
         MailService restarted = service(new JdbcMailStore(new NamedParameterJdbcTemplate(dataSource),
-                transactions(dataSource)));
+                transactions(dataSource)), dataSource);
         MailViewAfterRestart sent = new MailViewAfterRestart(
                 restarted.view(ORG_A, SENDER, messageId),
                 restarted.listFolder(ORG_A, SENDER, MailFolder.SENT),
@@ -197,8 +207,34 @@ class MailPersistenceIntegrationTest {
     }
 
     @Test
+    void roleRecipientsAreScopedToTheSelectedFacilityThroughHttp() throws Exception {
+        // Real production wiring over forced RLS: nurse-b is assigned to facility A and
+        // nurse-d to facility C, so the same role resolves to different holders.
+        String draftA = idOf(compose(SENDER, ORG_A, "Handover A",
+                List.of(Recipient.role("nurse")), FACILITY_A));
+        send(draftA, SENDER, ORG_A, List.of(READER), "facility-a-role")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message.resolvedRecipients.length()").value(1))
+                .andExpect(jsonPath("$.message.resolvedRecipients[0]").value(READER));
+
+        String draftC = idOf(compose(SENDER, ORG_A, "Handover C",
+                List.of(Recipient.role("nurse")), FACILITY_C));
+        send(draftC, SENDER, ORG_A, List.of(OTHER_FACILITY_READER), "facility-c-role")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message.resolvedRecipients.length()").value(1))
+                .andExpect(jsonPath("$.message.resolvedRecipients[0]").value(OTHER_FACILITY_READER));
+
+        // A revoked holder and a holder in another organization are never resolved.
+        String stale = idOf(compose(SENDER, ORG_A, "Stale",
+                List.of(Recipient.role("nurse")), FACILITY_A));
+        send(stale, SENDER, ORG_A, List.of(READER, INACTIVE_READER, OTHER_ORG_READER), "facility-stale")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RECIPIENT_CONFIRMATION_MISMATCH"));
+    }
+
+    @Test
     void aLostRetryClaimStillResolvesToTheWinningMessage() {
-        DraftView draft = service(store).createDraft(new MailCommands.CreateDraftCommand(
+        DraftView draft = service(store, dataSource).createDraft(new MailCommands.CreateDraftCommand(
                 ORG_A, FACILITY_A, SENDER, "Handover", "body", List.of(Recipient.person(READER)),
                 List.of(), List.of(), List.of()));
         String firstId = "33333333-3333-3333-3333-333333333333";
@@ -227,9 +263,15 @@ class MailPersistenceIntegrationTest {
         return new TransactionTemplate(new DataSourceTransactionManager(source));
     }
 
-    private static MailService service(MailStore store) {
-        RecipientDirectory directory = (organizationId, facilityId, role) -> List.of();
-        return new MailService(Clock.fixed(NOW, ZoneOffset.UTC), directory, store);
+    /** Production wiring of the mail kernel, including the real facility-scoped directory. */
+    private static MailService service(MailStore store, SingleConnectionDataSource source) {
+        NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(source);
+        TransactionTemplate transactions = transactions(source);
+        StaffRepository staff = new StaffRepository(jdbc);
+        StaffDirectoryService directory = new StaffDirectoryService(staff, new FacilityRepository(jdbc),
+                transactions, new ActiveStaffGuard(staff));
+        return new MailService(Clock.fixed(NOW, ZoneOffset.UTC), staff, transactions, directory,
+                new AccessRepository(jdbc), new DirectoryPolicy(), store);
     }
 
     private void as(String subject, String organization) throws Exception {
@@ -256,11 +298,35 @@ class MailPersistenceIntegrationTest {
             seedOrg(statement, ORG_A, FACILITY_A);
             seedOrg(statement, ORG_B, FACILITY_B);
             statement.execute("SET app.current_org = '" + ORG_A + "'");
-            for (String subject : List.of(SENDER, READER)) {
-                statement.execute("INSERT INTO public.user_identity (organization_id, subject, display_name) "
-                        + "VALUES ('" + ORG_A + "', '" + subject + "', '" + subject + "')");
-            }
+            statement.execute("INSERT INTO public.facility (organization_id, id, code, name) "
+                    + "VALUES ('" + ORG_A + "', '" + FACILITY_C + "', 'f-c', 'Facility C')");
+            statement.execute("INSERT INTO public.user_identity (organization_id, subject, display_name) "
+                    + "VALUES ('" + ORG_A + "', '" + SENDER + "', '" + SENDER + "')");
+            seedRoleHolder(statement, ORG_A, READER, FACILITY_A, "active");
+            seedRoleHolder(statement, ORG_A, OTHER_FACILITY_READER, FACILITY_C, "active");
+            seedRoleHolder(statement, ORG_A, INACTIVE_READER, FACILITY_A, "revoked");
+            seedRoleHolder(statement, ORG_B, OTHER_ORG_READER, FACILITY_B, "active");
         }
+    }
+
+    /** Seed one active-role holder with an assigned facility; status may be revoked. */
+    private static void seedRoleHolder(Statement statement, String org, String subject, String facility,
+                                       String status) throws Exception {
+        statement.execute("SET app.current_org = '" + org + "'");
+        statement.execute("SET app.actor = '" + subject + "'");
+        statement.execute("INSERT INTO public.user_identity (organization_id, subject, display_name) "
+                + "VALUES ('" + org + "', '" + subject + "', '" + subject + "')");
+        statement.execute("INSERT INTO public.membership (organization_id, user_id, status) "
+                + "SELECT '" + org + "', id, '" + status + "' FROM public.user_identity "
+                + "WHERE organization_id = '" + org + "' AND subject = '" + subject + "'");
+        statement.execute("INSERT INTO public.role_assignment (organization_id, membership_id, role_key, granted_by) "
+                + "SELECT '" + org + "', m.id, 'nurse', u.id FROM public.membership m "
+                + "JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id "
+                + "WHERE u.subject = '" + subject + "'");
+        statement.execute("INSERT INTO public.membership_facility (organization_id, membership_id, facility_id) "
+                + "SELECT '" + org + "', m.id, '" + facility + "' FROM public.membership m "
+                + "JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id "
+                + "WHERE u.subject = '" + subject + "'");
     }
 
     private static void seedOrg(Statement statement, String org, String facility) throws Exception {
@@ -280,14 +346,24 @@ class MailPersistenceIntegrationTest {
     }
 
     private ResultActions compose(String actor, String org, String subject, List<Recipient> to) throws Exception {
+        return compose(actor, org, subject, to, FACILITY_A);
+    }
+
+    private ResultActions compose(String actor, String org, String subject, List<Recipient> to,
+                                  String facilityId) throws Exception {
         as(actor, org);
         return mvc.perform(withHeaders(post(BASE + "/drafts"), actor, org)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(mapper.writeValueAsString(composeBody(subject, to))));
+                .content(mapper.writeValueAsString(composeBody(subject, to, facilityId))));
     }
 
     private static MailController.ComposeRequest composeBody(String subject, List<Recipient> to) {
-        return new MailController.ComposeRequest(FACILITY_A, subject, "body", to,
+        return composeBody(subject, to, FACILITY_A);
+    }
+
+    private static MailController.ComposeRequest composeBody(String subject, List<Recipient> to,
+                                                              String facilityId) {
+        return new MailController.ComposeRequest(facilityId, subject, "body", to,
                 List.of(), List.of(), List.of());
     }
 

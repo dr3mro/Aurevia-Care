@@ -43,7 +43,7 @@ class SecurityConfigurationTest {
     @Test
     void syntheticProfileBuildsAPermissiveChainWithoutAnIssuer() {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class)
                 .withPropertyValues("spring.profiles.active=synthetic-auth")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
@@ -54,7 +54,7 @@ class SecurityConfigurationTest {
     @Test
     void productionProfileBuildsTheOidcChainWithAnIssuerAndAudience() {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class, DocsEnabled.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=" + ISSUER, AUDIENCE_PROPERTY + "=" + AUDIENCE)
                 .run(context -> {
                     assertNull(context.getStartupFailure());
@@ -65,7 +65,7 @@ class SecurityConfigurationTest {
     @Test
     void productionProfileFailsClosedWithoutAnIssuer() {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class, DocsEnabled.class)
                 .run(context -> {
                     Throwable failure = context.getStartupFailure();
                     assertNotNull(failure);
@@ -76,7 +76,7 @@ class SecurityConfigurationTest {
     @Test
     void productionProfileFailsClosedWithoutAnAudience() {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class, DocsEnabled.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=" + ISSUER)
                 .run(context -> {
                     Throwable failure = context.getStartupFailure();
@@ -90,7 +90,7 @@ class SecurityConfigurationTest {
         IllegalStateException failure = org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalStateException.class,
                 () -> new SecurityConfiguration("   ", AUDIENCE)
-                        .oidcSecurityFilterChain(null, new DecoderStub().jwtDecoder()));
+                        .oidcSecurityFilterChain(null, new DecoderStub().jwtDecoder(), disabledDocs()));
         assertEquals(FAILURE_MESSAGE, failure.getMessage());
     }
 
@@ -99,7 +99,7 @@ class SecurityConfigurationTest {
         IllegalStateException failure = org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalStateException.class,
                 () -> new SecurityConfiguration(ISSUER, "   ")
-                        .oidcSecurityFilterChain(null, new DecoderStub().jwtDecoder()));
+                        .oidcSecurityFilterChain(null, new DecoderStub().jwtDecoder(), disabledDocs()));
         assertEquals(AUDIENCE_FAILURE_MESSAGE, failure.getMessage());
     }
 
@@ -120,6 +120,11 @@ class SecurityConfigurationTest {
     @Test
     void missingHeaderIsNotRecognized() {
         assertFalse(SecurityConfiguration.isBearerRequest(new MockHttpServletRequest()));
+    }
+
+    /** @return a disabled flag built from an environment with no active profile */
+    private static DocsEnabled disabledDocs() {
+        return new DocsEnabled(new org.springframework.mock.env.MockEnvironment());
     }
 
     private static String failureMessageChain(Throwable failure) {

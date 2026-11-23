@@ -95,8 +95,9 @@ public class SecurityConfiguration {
      * The decoder is wrapped so the issuer, timestamp and audience validators
      * run on every bearer token.</p>
      *
-     * @param http       shared web security builder
-     * @param jwtDecoder the decoder supplied by the OAuth2 resource-server setup
+     * @param http        shared web security builder
+     * @param jwtDecoder  the decoder supplied by the OAuth2 resource-server setup
+     * @param docsEnabled shared decision on whether browser documentation is exposed
      * @return the OIDC filter chain
      * @throws Exception when the chain cannot be built
      * @throws IllegalStateException when no OIDC issuer or audience is configured
@@ -104,7 +105,8 @@ public class SecurityConfiguration {
     @Bean
     @Order(2)
     @Profile("!synthetic-auth")
-    SecurityFilterChain oidcSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
+    SecurityFilterChain oidcSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder,
+            DocsEnabled docsEnabled) throws Exception {
         if (issuerUri.isBlank()) {
             throw new IllegalStateException("SMARTCLINIC_OIDC_ISSUER_URI must be set");
         }
@@ -113,12 +115,17 @@ public class SecurityConfiguration {
         }
         return http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.ignoringRequestMatchers(SecurityConfiguration::isBearerRequest))
-                .authorizeHttpRequests(authorize -> authorize
-                        // WEB-05/WEB-06: exact unauthenticated routes only; never a /health/** wildcard.
-                        // Section 7: the static OpenAPI document is public API documentation.
-                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics",
-                                "/api/v1/openapi.yaml").permitAll()
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(authorize -> {
+                    // WEB-05/WEB-06: exact unauthenticated routes only; never a /health/** wildcard.
+                    // Section 7: the static OpenAPI document is public API documentation.
+                    authorize.requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics",
+                            "/api/v1/openapi.yaml").permitAll();
+                    if (docsEnabled.isEnabled()) {
+                        // Static, tenant-free browser documentation; no permit rule exists when off.
+                        authorize.requestMatchers(HttpMethod.GET, "/swagger-ui", "/swagger-ui/**").permitAll();
+                    }
+                    authorize.anyRequest().authenticated();
+                })
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(
                         withClaimValidation(jwtDecoder, issuerUri, audience))))
                 .build();

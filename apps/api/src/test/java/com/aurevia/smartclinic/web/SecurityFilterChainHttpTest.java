@@ -83,7 +83,7 @@ class SecurityFilterChainHttpTest {
     @Test
     void unauthenticatedGetReturns401() throws Throwable {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, DecoderStub.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
@@ -96,7 +96,7 @@ class SecurityFilterChainHttpTest {
     @Test
     void unauthenticatedLiveProbeReturns200() throws Throwable {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, DecoderStub.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
@@ -109,7 +109,7 @@ class SecurityFilterChainHttpTest {
     @Test
     void unauthenticatedReadyProbeReturns200() throws Throwable {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, DecoderStub.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
@@ -122,7 +122,7 @@ class SecurityFilterChainHttpTest {
     @Test
     void postWithoutAuthorizationIsRejectedByCsrf() {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, DecoderStub.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> mvc(context).perform(post("/api/v1/probe")
                                 .header("X-Active-Organization", ORG))
@@ -132,7 +132,7 @@ class SecurityFilterChainHttpTest {
     @Test
     void postWithNonBearerAuthorizationIsRejectedByCsrf() {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, DecoderStub.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> mvc(context).perform(post("/api/v1/probe")
                                 .header("Authorization", "Basic dXNlcjpwYXNz")
@@ -143,7 +143,7 @@ class SecurityFilterChainHttpTest {
     @Test
     void postWithBearerAuthorizationSkipsCsrfAndRequiresAuthentication() {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, DecoderStub.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> mvc(context).perform(post("/api/v1/probe")
                                 .header("Authorization", "Bearer synthetic-token")

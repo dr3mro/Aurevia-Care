@@ -71,10 +71,10 @@ export function SchedulingScreen({
   const wrappingStyle = { overflowWrap: 'anywhere' } as const;
 
   function handleCheckIn(id: string) {
-    // Row actions exist only for visible ids; `defined` records that invariant.
+    // Row actions exist only for visible ids, so the target is always present.
     const target = defined(
       items.find((appointment) => appointment.id === id),
-      'checked-in appointment',
+      'check-in target',
     );
     setAnnouncement(`${target.patientName.latinName}: ${schedulingText(locale, 'commandSent')}`);
     onCheckIn(id);
@@ -83,7 +83,7 @@ export function SchedulingScreen({
   function handleAssign(id: string, assignee: string) {
     const target = defined(
       items.find((appointment) => appointment.id === id),
-      'assigned appointment',
+      'assign target',
     );
     setItems((current) =>
       replaceAppointment(current, organizationId, id, (appointment) =>
