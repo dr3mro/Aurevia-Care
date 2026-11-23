@@ -662,6 +662,13 @@ class PlanTests(unittest.TestCase):
         blocked = [pr(7, "swarm/CW-001-4", "swarm", "needs-human")]
         self.assertTrue(swarm.continue_swarm(TASKS, blocked))
 
+    def test_red_main_continues_a_repair_even_when_an_ordinary_pr_waits(self):
+        text = TASKS + "\n- [ ] FIX-9 · Repair main\n  - scope: *\n"
+        ordinary = pr(7, "swarm/CW-001-4", "swarm")
+        repair = pr(9, "swarm/FIX-10-4", "swarm")
+        self.assertTrue(swarm.continue_swarm(text, [ordinary], red=True))
+        self.assertFalse(swarm.continue_swarm(text, [repair], red=True))
+
     def test_stories_without_a_scope_are_never_dispatched(self):
         self.assertNotIn("S-G9-01", [t["id"] for t in self.plan()])
 
@@ -1248,7 +1255,8 @@ class DebuggerWorkflowTests(unittest.TestCase):
 
     def test_fix_workers_read_the_pull_request_comments_the_debugger_writes(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text(encoding="utf-8")
-        self.assertIn('swarm.py pr-context --pr "$PR_NUMBER"', text)
+        self.assertIn('git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"', text)
+        self.assertIn('python3 -I "$context" pr-context --pr "$PR_NUMBER"', text)
 
 
 class DebuggerTests(unittest.TestCase):
@@ -1359,6 +1367,13 @@ class DebuggerTests(unittest.TestCase):
                 mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(Path(tmp) / "out")}):
             self.assertEqual(swarm.debug_select(), [1, 2, 3, 4])
             self.assertIn("count=4\n", (Path(tmp) / "out").read_text())
+
+    def test_red_main_debugger_selects_only_repair_pull_requests(self):
+        prs = [pr(8, "swarm/CW-001-4", "needs-debug"),
+               pr(9, "swarm/FIX-9-4", "needs-debug")]
+        with mock.patch.object(swarm, "gh", FakeGh(prs=prs)), \
+                mock.patch.object(swarm, "main_is_red", return_value=True):
+            self.assertEqual(swarm.debug_select(), [9])
 
     def test_select_with_nothing_waiting_reports_zero(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", FakeGh(prs=[])), \
@@ -1856,15 +1871,96 @@ class PrFlowTests(unittest.TestCase):
              mock.patch.object(swarm, "delivery_requested", return_value=requested), \
              mock.patch.object(swarm, "active_runs", return_value=active), \
              mock.patch.object(swarm, "waiting_waves", return_value=waiting), \
-             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "fail", return_value=False) as failed, \
              mock.patch.object(swarm, "report_pr_stuck") as stuck:
             acted = swarm.pr_flow(self.NOW)
         return acted, fake, failed, stuck
 
+    def test_actionable_delivery_failures_launch_one_shared_fix_wave(self):
+        fake = FakeGh()
+        prs = [self.pr(7), self.pr(8)]
+        runs = [{"headSha": pr["headRefOid"], "databaseId": pr["number"],
+                 "conclusion": "failure", "status": "completed"} for pr in prs]
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "delivery_listing", return_value=runs), \
+                mock.patch.object(swarm, "gh_json", side_effect=lambda *a: prs if a[:2] == ("pr", "list") else {}), \
+                mock.patch.object(swarm, "delivery_failure_log", return_value="FAIL: synthetic_test") as log, \
+                mock.patch.object(swarm, "wave_has_room", return_value=True):
+            acted = swarm.pr_flow(self.NOW)
+        self.assertEqual(log.call_args_list, [mock.call(7), mock.call(8)])
+        self.assertEqual(acted, [(7, "delivery failed, queued for fix"), (8, "delivery failed, queued for fix"),
+                                 ("-", "fix wave started")])
+        self.assertEqual(sum(call[:3] == ("workflow", "run", "swarm.yml") for call in fake.calls), 1)
+        comments = " ".join(" ".join(call) for call in fake.calls if call[:2] == ("pr", "comment"))
+        self.assertIn("synthetic_test", comments)
+        self.assertIn("actions/runs/7", comments)
+        self.assertIn(prs[0]["headRefOid"], comments)
+
+    def test_first_debug_queue_entry_can_join_the_fix_wave(self):
+        fake = FakeGh()
+        candidates = [self.pr(7, ("needs-debug",)), self.pr(8, ("needs-debug", "fix-1"))]
+        run = {"headSha": candidates[0]["headRefOid"], "databaseId": 70,
+               "conclusion": "failure", "status": "completed"}
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "delivery_listing", return_value=[run]), \
+                mock.patch.object(swarm, "gh_json", side_effect=lambda *a: (
+                    candidates if a[:2] == ("pr", "list") else {"labels": labels("needs-debug")})), \
+                mock.patch.object(swarm, "delivery_failure_log", return_value="FAIL: synthetic_test"), \
+                mock.patch.object(swarm, "wave_has_room", return_value=True), \
+                mock.patch.object(swarm, "active_runs", return_value=0):
+            acted = swarm.pr_flow(self.NOW)
+        self.assertIn((7, "delivery failed, queued for fix"), acted)
+        self.assertNotIn((8, "delivery failed, queued for fix"), acted)
+        self.assertIn(("-", "fix wave started"), acted)
+        self.assertIn(("-", "debugger started"), acted)
+        self.assertTrue(any(arg.endswith("/issues/7/labels/needs-debug")
+                            for call in fake.calls for arg in call))
+
+    def test_delivery_evidence_uses_exact_head_and_omits_untrusted_log_text(self):
+        runs = [{"databaseId": 1, "headSha": "old", "conclusion": "failure"},
+                {"databaseId": 2, "headSha": "current", "conclusion": "cancelled"}]
+        with mock.patch.object(swarm, "gh", return_value="FAIL: synthetic_test\nException: PRIVATE TEXT") as gh, \
+                mock.patch.object(swarm, "fail") as send:
+            swarm.queue_delivery_failure(7, "current", runs)
+        gh.assert_called_once_with("run", "view", "2", "--log-failed", check=False)
+        self.assertFalse(send.call_args.kwargs["simple"])
+        self.assertIn("current", send.call_args.kwargs["evidence"])
+        self.assertNotIn("PRIVATE TEXT", send.call_args.kwargs["evidence"])
+
+    def test_ambiguous_delivery_build_failure_keeps_the_debugger(self):
+        runs = [{"databaseId": 1, "headSha": "current", "conclusion": "failure"}]
+        with mock.patch.object(swarm, "delivery_failure_log", return_value="BUILD FAILURE"), \
+                mock.patch.object(swarm, "fail") as send:
+            swarm.queue_delivery_failure(7, "current", runs)
+        self.assertFalse(send.call_args.kwargs["simple"])
+        with mock.patch.object(swarm, "delivery_failure_log", return_value="BUILD FAILURE"), \
+                mock.patch.object(swarm, "fail") as send:
+            self.assertFalse(swarm.queue_delivery_failure(7, "current", runs, only_actionable=True))
+            self.assertFalse(swarm.queue_delivery_failure(7, "different", runs, only_actionable=True))
+            send.assert_not_called()
+
+    def test_ambiguous_failures_launch_one_shared_debugger_run(self):
+        fake = FakeGh()
+        prs = [self.pr(7), self.pr(8)]
+        runs = [{"headSha": pr["headRefOid"], "databaseId": pr["number"],
+                 "conclusion": "failure", "status": "completed"} for pr in prs]
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "delivery_listing", return_value=runs), \
+                mock.patch.object(swarm, "gh_json", side_effect=lambda *a: prs if a[:2] == ("pr", "list") else {}), \
+                mock.patch.object(swarm, "active_runs", return_value=0), \
+                mock.patch.object(swarm, "delivery_failure_log", return_value="BUILD FAILURE"):
+            acted = swarm.pr_flow(self.NOW)
+        self.assertEqual(acted, [(7, "delivery failed, sent to debugger"),
+                                 (8, "delivery failed, sent to debugger"), ("-", "debugger started")])
+        self.assertEqual(sum(call[:3] == ("workflow", "run", "swarm-debugger.yml") for call in fake.calls), 1)
+
     def test_a_failed_delivery_goes_to_the_debugger_at_once(self):
         acted, _, failed, _ = self.run_flow([self.pr(7)], state="failed")
-        failed.assert_called_once_with(7, "Delivery failed on the current head")
-        self.assertEqual(acted, [(7, "delivery failed, sent to debugger")])
+        failed.assert_called_once_with(7, "Delivery failed on the current head", dispatch=False)
+        self.assertEqual(acted, [(7, "delivery failed, sent to debugger"), ("-", "debugger started")])
 
     def test_a_draft_nobody_took_goes_to_a_fix_worker_and_starts_a_wave(self):
         acted, fake, failed, _ = self.run_flow([self.pr(7, draft=True)])
@@ -1965,6 +2061,13 @@ class PrFlowTests(unittest.TestCase):
         self.assertFalse(fake.said("swarm-integrator.yml"))
         _, fake, _, _ = self.run_flow([self.pr(9, title="FIX-123: Repair main")], red=True)
         self.assertTrue(fake.said("swarm-integrator.yml"))
+
+    def test_red_main_defers_unrelated_pr_flow_actions(self):
+        prs = [self.pr(7, labels=("needs-debug",)),
+               self.pr(8, labels=("needs-fix",))]
+        acted, fake, _, _ = self.run_flow(prs, state="failed", red=True)
+        self.assertEqual(acted, [])
+        self.assertFalse(fake.said("workflow", "run"))
 
     def test_pending_runs_wait_and_a_long_green_wait_raises_an_alert(self):
         acted, fake, _, _ = self.run_flow([self.pr(7)], state="pending")
@@ -2160,6 +2263,20 @@ class RepairTests(unittest.TestCase):
         plan = swarm.plan_workers(10, SLOTS, TASKS, fixing)
         self.assertEqual((plan[0]["kind"], plan[0]["id"]), ("fix", "FIX-9"))
 
+    def test_red_main_ignores_focused_stories_and_unrelated_scope_locks(self):
+        text = TASKS + "\n- [ ] FIX-9 · Repair main\n  - scope: *\n"
+        prs = [pr(4, "swarm/CW-002-2", "swarm", "needs-fix"),
+               pr(5, "swarm/FIX-OPENAPI-04-2", "swarm", "needs-fix")]
+        plan = swarm.plan_workers(10, SLOTS, text, prs, focus="CW-001", red=True)
+        self.assertEqual([task["id"] for task in plan], ["FIX-9"])
+
+    def test_red_main_waits_for_live_repair_instead_of_starting_unrelated_work(self):
+        prs = [pr(4, "swarm/CW-002-2", "swarm", "needs-fix"),
+               pr(5, "swarm/FIX-9-2", "swarm", "needs-fix")]
+        plan = swarm.plan_workers(10, SLOTS, TASKS, prs, red=True)
+        self.assertEqual([(task["kind"], task["id"]) for task in plan], [("fix", "FIX-9")])
+        self.assertEqual(swarm.plan_workers(10, SLOTS, TASKS, prs, live=["FIX-9"], red=True), [])
+
     def gate(self, prs, now="2026-11-19T00:00:00+00:00"):
         fake = FakeGh(prs=prs)
         with mock.patch.object(swarm, "gh", fake):
@@ -2168,6 +2285,10 @@ class RepairTests(unittest.TestCase):
 
     def test_gate_allows_a_first_repair(self):
         self.assertTrue(self.gate([])[0])
+
+    def test_named_product_fix_does_not_block_an_automatic_repair(self):
+        prs = [{"number": 1, "title": "FIX-OPENAPI-04: Contract backlog", "state": "OPEN"}]
+        self.assertTrue(self.gate(prs)[0])
 
     def test_gate_waits_while_a_repair_is_open(self):
         prs = [{"number": 1, "title": "FIX-1: x", "state": "OPEN", "createdAt": "2026-11-18T23:00:00Z"}]
@@ -2219,6 +2340,14 @@ class RepairTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
             self.assertEqual(swarm.plan_integration(red=True), [2, 3])
 
+    def test_red_main_does_not_recover_ordinary_drafts(self):
+        ordinary = {"number": 1, "title": "CW-001: Draft", "labels": labels("swarm"),
+                    "isCrossRepository": False, "isDraft": True}
+        with mock.patch.object(swarm, "gh", FakeGh(prs=[ordinary])), \
+                mock.patch.object(swarm, "draft_recovery") as recover:
+            self.assertEqual(swarm.plan_integration(red=True), [])
+            recover.assert_not_called()
+
     def test_repairs_get_the_repair_gate_and_their_named_classes(self):
         todo = ("- [ ] DLV-02 · Repair identity\n  - scope: apps/api\n  - details:\n"
                 "    Classes: `IdentityProofingIsolationTest` and `ConsolidationIsolationTest`.\n")
@@ -2268,6 +2397,11 @@ class RepairTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
             self.assertEqual(swarm.plan_integration(red=True), [2])
             self.assertEqual(swarm.plan_integration(red=False), [1, 2])
+
+    def test_red_main_survives_cancelled_and_skipped_delivery_runs(self):
+        runs = [{"conclusion": state} for state in ("cancelled", "skipped", "failure", "success")]
+        with mock.patch.object(swarm, "gh_json", return_value=runs):
+            self.assertTrue(swarm.main_is_red())
 
     def test_main_is_red_reads_the_latest_finished_run(self):
         for conclusion, expected in (("failure", True), ("success", False), (None, False)):
