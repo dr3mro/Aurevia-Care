@@ -7,14 +7,20 @@ import { ReconciliationPanel } from './ReconciliationPanel';
 import { matchedReconciliation, mismatchedReconciliation } from './fixtures';
 import type { ReconciliationCase } from './types';
 
+/** Optional mount inputs for the reconciliation panel. */
+interface PanelOptions {
+  readonly onAskLab?: () => void;
+  readonly onAssignOwner?: () => void;
+  readonly onLink?: () => void;
+  readonly locale?: 'en' | 'ar';
+}
+
 /** Mount the panel with injectable callbacks. */
-function renderPanel(
-  reconciliation: ReconciliationCase | undefined,
-  onAskLab = vi.fn(),
-  onAssignOwner = vi.fn(),
-  onLink = vi.fn(),
-  locale: 'en' | 'ar' = 'en',
-) {
+function renderPanel(reconciliation: ReconciliationCase | undefined, options: PanelOptions = {}) {
+  const onAskLab = options.onAskLab ?? vi.fn();
+  const onAssignOwner = options.onAssignOwner ?? vi.fn();
+  const onLink = options.onLink ?? vi.fn();
+  const locale = options.locale ?? 'en';
   const view = render(
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
@@ -63,7 +69,7 @@ describe('ReconciliationPanel', () => {
   });
 
   it('shows both name forms with correct language tags in Arabic', () => {
-    renderPanel(mismatchedReconciliation, vi.fn(), vi.fn(), vi.fn(), 'ar');
+    renderPanel(mismatchedReconciliation, { locale: 'ar' });
     const latin = screen.getAllByText(/Lina Farouk|Lina Farouq/);
     expect(latin.length).toBeGreaterThan(0);
     expect(latin.every((run) => run.getAttribute('lang') === 'en')).toBe(true);
@@ -80,7 +86,7 @@ describe('ReconciliationPanel', () => {
         patient: { latinName: 'Synthetic LatinOnly' },
       },
     };
-    renderPanel(withoutLocal, vi.fn(), vi.fn(), vi.fn(), 'ar');
+    renderPanel(withoutLocal, { locale: 'ar' });
     expect(screen.getByText('Synthetic LatinOnly').getAttribute('lang')).toBe('en');
   });
 

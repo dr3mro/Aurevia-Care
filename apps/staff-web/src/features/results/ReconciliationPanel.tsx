@@ -30,7 +30,9 @@ function IdentityLine({
   // When identity matters, the Arabic interface shows both the local form and
   // the Latin form: two records can share one local spelling while their Latin
   // identifiers differ, which is exactly the mismatch this panel explains.
-  const showLatin = nameRun.lang === 'ar' && identity.patient.localName !== undefined;
+  // `lang === 'ar'` is only returned when a non-empty local name exists, so the
+  // local form is present whenever this branch is taken (see annotatedName).
+  const showLatin = nameRun.lang === 'ar';
   return (
     <p>
       <span>{label}</span>{' '}

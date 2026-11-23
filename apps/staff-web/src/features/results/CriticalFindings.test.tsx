@@ -190,23 +190,32 @@ describe('CriticalFindings announcement', () => {
   });
 
   it('suppresses the announcement while the user is typing', () => {
-    render(
-      <ThemeProvider>
-        <I18nProvider initialLocale="en">
-          <input autoFocus aria-label="Synthetic entry" />
-          <CriticalFindings
-            findings={[overdueFinding]}
-            locale="en"
-            now={NOW}
-            timeZone={resultsTimeZone}
-            onReadBack={vi.fn()}
-            onAcknowledge={vi.fn()}
-            onEscalate={vi.fn()}
-          />
-        </I18nProvider>
-      </ThemeProvider>,
-    );
-    expect(screen.getByRole('status').textContent).toBe('');
+    // Focus a text field before mounting the region: the announcement decision
+    // is made from the active element at load, and autoFocus is an a11y defect.
+    const entry = document.createElement('input');
+    entry.setAttribute('aria-label', 'Synthetic entry');
+    document.body.appendChild(entry);
+    entry.focus();
+    try {
+      render(
+        <ThemeProvider>
+          <I18nProvider initialLocale="en">
+            <CriticalFindings
+              findings={[overdueFinding]}
+              locale="en"
+              now={NOW}
+              timeZone={resultsTimeZone}
+              onReadBack={vi.fn()}
+              onAcknowledge={vi.fn()}
+              onEscalate={vi.fn()}
+            />
+          </I18nProvider>
+        </ThemeProvider>,
+      );
+      expect(screen.getByRole('status').textContent).toBe('');
+    } finally {
+      entry.remove();
+    }
   });
 });
 

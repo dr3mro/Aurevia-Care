@@ -11,8 +11,9 @@ const ResultsPage = lazy(() =>
  * Results routes.
  *
  * Both patterns already exist in `app/navigation.ts`; this feature owns them.
- * `/results/critical` opens the same screen with the critical queue at the top,
- * and its clinician-only role is enforced by the navigation access table.
+ * Both render the same screen, whose critical panel is the first region after
+ * the heading. The clinician-only access to `/results/critical` is enforced by
+ * the navigation access table.
  */
 export const routes: AppRoute[] = [
   { pattern: '/results', component: ResultsPage },

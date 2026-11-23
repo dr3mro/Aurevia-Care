@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { Button } from '../../components/Button';
 import { MixedScriptText } from '../../components/MixedScriptText';
@@ -162,15 +162,16 @@ export interface CriticalFindingsProps extends Omit<FindingCardProps, 'finding'>
 /** Render the persistent critical queue with its count and escalation policy. */
 export function CriticalFindings({ findings, locale, now, timeZone, onReadBack, onAcknowledge, onEscalate }: CriticalFindingsProps) {
   const { tokens } = useTheme();
-  const [announcement, setAnnouncement] = useState('');
   const heading = resultsText(locale, 'criticalTitle');
   const count = resultsMessage(locale, 'criticalCount', { count: String(findings.length) });
 
   // One polite announcement of the same visible text on load, never a focus
   // move. Typing in a field takes priority, so the announcement is suppressed.
-  useEffect(() => {
-    setAnnouncement(shouldAnnounceCritical(document.activeElement) ? `${heading}: ${count}` : '');
-  }, [heading, count]);
+  // This is derived, not stored: an effect that wrote state on mount caused a
+  // cascading render, and React's compiler rules forbid that pattern.
+  const announcement = shouldAnnounceCritical(document.activeElement)
+    ? `${heading}: ${count}`
+    : '';
 
   return (
     <section
