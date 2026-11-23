@@ -49,10 +49,10 @@ Production classes exercised through the entry point:
   derives magic prefix, SHA-256 checksum and byte size from verified payload bytes and builds the
   actor from the server-side grant; never logs or returns payload bytes.
 - `com.aurevia.smartclinic.messaging.attachments.AttachmentService` — `upload` validates type,
-  leading bytes, file name, size and checksum format before storing into quarantine; the SHA-256
-  digest itself is derived from the payload bytes at the adapter and verified at the private object
-  boundary, not compared here; `scan` records an independent verdict; `download` permits only a
-  published attachment.
+  leading bytes, file name, size and checksum format before storing into quarantine; the adapter
+  derives the checksum from the payload bytes and the positive test compares it to an independently
+  computed SHA-256, while verification at the private object boundary is out of scope; `scan`
+  records an independent verdict; `download` permits only a published attachment.
 - `com.aurevia.smartclinic.messaging.attachments.AttachmentActions` — bounds `SCAN` to the distinct
   `security_scanner` principal and refuses a patient scanner.
 - `com.aurevia.smartclinic.messaging.attachments.AttachmentInputs` and
