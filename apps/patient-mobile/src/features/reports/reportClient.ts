@@ -7,8 +7,8 @@ import type {
   TokenStore,
 } from './types';
 
-/** Protected report resource family. */
-const REPORT_PATH = '/api/v1/released-reports';
+/** Protected patient report resource family served by the deployed controller. */
+const REPORT_PATH = '/api/v1/patient/reports';
 
 /** Narrow a decoded JSON value to a non-empty string. */
 function isText(value: unknown): value is string {
@@ -122,6 +122,15 @@ function parseAuthorization(
   return { reportId, revision, documentId, checksum, language, patientId, releaseState };
 }
 
+/**
+ * The narrow read capability the client needs from a protected transport.
+ *
+ * Both report operations are GETs, so no write port is required here. Keeping
+ * this seam read-only prevents a caller from silently reinstating the retired
+ * POST download command.
+ */
+export type ReportReader = Pick<ReportTransport, 'getJson'>;
+
 /** The narrow capability the download confirmation flow needs from a client. */
 export type DownloadAuthorizer = Pick<ReleasedReportClient, 'authorizeDownload'>;
 
@@ -144,7 +153,7 @@ export class ReleasedReportClient {
    * @throws Error with code `INVALID_PATIENT` when the patient identity is blank
    */
   constructor(
-    private readonly transport: ReportTransport,
+    private readonly transport: ReportReader,
     private readonly tokens: TokenStore,
     private readonly patientId: string,
   ) {
@@ -174,10 +183,11 @@ export class ReleasedReportClient {
       throw new Error('INVALID_REVISION');
     }
     const token = await this.requireToken();
-    const body = await this.transport.postJson(
-      `${REPORT_PATH}/${encodeURIComponent(reportId)}/download`,
+    // The deployed route is a GET with the revision in the query string; a JSON
+    // body would never reach the controller's @RequestParam binding.
+    const body = await this.transport.getJson(
+      `${REPORT_PATH}/${encodeURIComponent(reportId)}/download?revision=${revision}`,
       token,
-      { revision },
     );
     return parseAuthorization(body, reportId, revision, this.patientId);
   }

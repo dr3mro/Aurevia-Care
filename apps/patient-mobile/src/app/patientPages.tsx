@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import * as SafeArea from 'react-native-safe-area-context';
 
+import { TransportError } from '../api/transport';
 import type { Transport } from '../api/transport';
 import { AppointmentDetail } from '../features/appointments/AppointmentDetail';
 import { AppointmentListScreen } from '../features/appointments/AppointmentListScreen';
@@ -34,7 +35,12 @@ import {
 import { screenText } from '../features/appointments/patientDesign';
 import type { DeviceToken } from '../features/appointments/types';
 import { ConversationInbox } from '../features/conversations/ConversationInbox';
+import { SecureCredentialStore } from '../features/reports/credentials';
+import { createAlertConfirmer, downloadWithHandoff } from '../features/reports/downloadFlow';
+import type { Confirmer, DocumentHandoff } from '../features/reports/downloadFlow';
+import { ReleasedReportClient } from '../features/reports/reportClient';
 import { ReleasedReportsScreen } from '../features/reports/ReleasedReportsScreen';
+import type { DownloadAuthorization, ReleasedReport, TokenStore } from '../features/reports/types';
 
 import type { WindowClass, WindowLayout } from './layout/useWindowClass';
 import { windowClassFor } from './layout/useWindowClass';
@@ -405,14 +411,75 @@ export function AppointmentListPage({
   );
 }
 
+/** Injectable ports for the reports tab's download command. */
+export interface ReportDownloadSeam {
+  /** OS-backed session credential; the installed page uses the native secure store. */
+  readonly tokens?: TokenStore;
+  /** Explicit intent prompt; the installed page uses the native alert. */
+  readonly confirm?: Confirmer;
+  /** Authorized document handoff; the installed page uses the deferred seam below. */
+  readonly handoff?: DocumentHandoff;
+}
+
+/** Inputs to the reports tab, including its optional download seams. */
+export interface ReleasedReportsPageProps extends PatientPageProps {
+  readonly reportDownload?: ReportDownloadSeam;
+}
+
+/**
+ * Installed document handoff until a patient-document fetch route exists.
+ *
+ * The deployed report GET replies with an authorized reference, not bytes or a
+ * signed URL, so this seam retains no document, checksum or clinical state. The
+ * authorization is valid for the one confirmed action and must not outlive it;
+ * a platform save action is a recorded dependency, not a local cache.
+ */
+function deferredDocumentHandoff(_authorization: DownloadAuthorization): void {
+  // The reference is consumed by the host's download surface in a later release.
+}
+
 /** Reports tab: revisions currently released to the verified patient. */
 export function ReleasedReportsPage({
   transport,
   locale,
+  patientId,
   onSessionExpired,
-}: PatientPageProps): React.JSX.Element {
+  reportDownload,
+}: ReleasedReportsPageProps): React.JSX.Element {
   const messages = useMemo(() => screenMessages(locale), [locale]);
   const load = useCallback(() => loadReports(transport), [transport]);
+
+  /**
+   * Confirm intent, authorize the tapped revision and hand off the reference.
+   *
+   * The client validates the OS credential before the request, while the
+   * credentialed transport re-reads that credential and sends it in the
+   * Authorization header. The validated token is never placed in the URL or
+   * page state. An unauthenticated reply ends the session; every other refusal
+   * produces no document and no cached clinical content.
+   */
+  const download = useMemo(() => {
+    const tokens = reportDownload?.tokens ?? new SecureCredentialStore();
+    const confirm = reportDownload?.confirm ?? createAlertConfirmer();
+    const handoff = reportDownload?.handoff ?? deferredDocumentHandoff;
+    const client = new ReleasedReportClient(
+      { getJson: (path: string, _token: string) => transport.get<unknown>(path) },
+      tokens,
+      patientId,
+    );
+    return async (report: ReleasedReport): Promise<void> => {
+      try {
+        await downloadWithHandoff(client, report, confirm, handoff);
+      } catch (error) {
+        if (error instanceof TransportError && error.kind === 'unauthenticated') {
+          onSessionExpired();
+        }
+        // A refused authorization leaves no document behind. The page stays
+        // stateless, so the patient simply remains on the list and can retry.
+      }
+    };
+  }, [reportDownload, transport, patientId, onSessionExpired]);
+
   return (
     <PatientPageFrame pageId="reports" locale={locale}>
       <PatientResource
@@ -422,7 +489,13 @@ export function ReleasedReportsPage({
         messages={messages}
         onSessionExpired={onSessionExpired}>
         {(reports) => (
-          <ReleasedReportsScreen reports={reports} error={null} onDownload={placeholderAction} />
+          <ReleasedReportsScreen
+            reports={reports}
+            error={null}
+            onDownload={(report) => {
+              void download(report);
+            }}
+          />
         )}
       </PatientResource>
     </PatientPageFrame>

@@ -2,11 +2,11 @@
  * PAT-02 clause 2 acceptance proof: every released-report download is authorized
  * against the linked patient and the still-current release.
  *
- * The patient app never decides access locally. It posts for a fresh server
- * authorization and then binds that authorization to the authenticated patient,
- * the exact revision tapped and a current release before exposing a document
- * reference. The negative cases vary exactly one field of a valid authorization
- * so the refusal can only come from the rule under test; if that check were
+ * The patient app never decides access locally. It requests a fresh server
+ * authorization over the deployed GET route and then binds that authorization
+ * to the authenticated patient, the exact revision tapped and a current release
+ * before exposing a document reference. The negative cases vary exactly one field
+ * of a valid authorization so the refusal can only come from the rule under test; if that check were
  * removed, the promise would resolve and the test would fail.
  *
  * Fixtures are synthetic identifiers only: no credential, network or clinical
@@ -61,14 +61,14 @@ function tokens(token: string | null): TokenStore {
   };
 }
 
-/** Protected transport that returns one canned authorization and records the request. */
-function transport(postResult: unknown) {
-  const get = recorder(async (_path: string, _token: string): Promise<unknown> => []);
+/** Protected transport that returns one canned authorization on GET and records every request. */
+function transport(getResult: unknown) {
+  const get = recorder(async (_path: string, _token: string): Promise<unknown> => getResult);
   const post = recorder(
-    async (_path: string, _token: string, _body: unknown): Promise<unknown> => postResult,
+    async (_path: string, _token: string, _body: unknown): Promise<unknown> => undefined,
   );
   const api: ReportTransport = { getJson: get.fn, postJson: post.fn };
-  return { api, postCalls: post.calls };
+  return { api, getCalls: get.calls, postCalls: post.calls };
 }
 
 /**
@@ -101,11 +101,12 @@ describe('authorize download against linked patient and current release (PAT-02 
     expect(granted).toEqual(authorization);
     expect(granted.patientId).toBe('patient-1');
     expect(granted.releaseState).toBe('current');
-    expect(fake.postCalls[0]).toEqual([
-      '/api/v1/released-reports/report-1/download',
+    expect(fake.getCalls[0]).toEqual([
+      '/api/v1/patient/reports/report-1/download?revision=2',
       'token-1',
-      { revision: 2 },
     ]);
+    expect(fake.getCalls.length).toBe(1);
+    expect(fake.postCalls.length).toBe(0);
   });
 
   it('refuses an authorization linked to another patient even when every other field matches', async () => {
@@ -114,7 +115,8 @@ describe('authorize download against linked patient and current release (PAT-02 
 
     await expectRefusalWithoutDocument(client, 'WRONG_PATIENT');
 
-    expect(fake.postCalls.length).toBe(1);
+    expect(fake.getCalls.length).toBe(1);
+    expect(fake.postCalls.length).toBe(0);
   });
 
   it('refuses a withdrawn release even when an older authorization exists', async () => {
@@ -123,7 +125,8 @@ describe('authorize download against linked patient and current release (PAT-02 
 
     await expectRefusalWithoutDocument(client, 'RELEASE_WITHDRAWN');
 
-    expect(fake.postCalls.length).toBe(1);
+    expect(fake.getCalls.length).toBe(1);
+    expect(fake.postCalls.length).toBe(0);
   });
 
   it('refuses an authorization for another report or revision', async () => {
@@ -137,7 +140,25 @@ describe('authorize download against linked patient and current release (PAT-02 
 
       await expectRefusalWithoutDocument(client, 'AUTHORIZATION_MISMATCH');
 
-      expect(fake.postCalls.length).toBe(1);
+      expect(fake.getCalls.length).toBe(1);
+      expect(fake.postCalls.length).toBe(0);
+    }
+  });
+
+  it('refuses a malformed authorization before releasing any document reference', async () => {
+    const malformed: unknown[] = [
+      'not an object',
+      { ...authorization, documentId: '' },
+      { ...authorization, releaseState: 'pending' },
+    ];
+    for (const payload of malformed) {
+      const fake = transport(payload);
+      const client = new ReleasedReportClient(fake.api, tokens('token-1'), 'patient-1');
+
+      await expectRefusalWithoutDocument(client, 'MALFORMED_AUTHORIZATION');
+
+      expect(fake.getCalls.length).toBe(1);
+      expect(fake.postCalls.length).toBe(0);
     }
   });
 
@@ -147,6 +168,7 @@ describe('authorize download against linked patient and current release (PAT-02 
 
     await expectRefusalWithoutDocument(client, 'NOT_AUTHENTICATED');
 
+    expect(fake.getCalls.length).toBe(0);
     expect(fake.postCalls.length).toBe(0);
   });
 });
