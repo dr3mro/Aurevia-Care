@@ -1,7 +1,8 @@
-- [-] OPS-WIRING-CLI-CONTRACT · Restore the trusted integrator CLI dispatch contract.
-  - agent: Codex
+- [ ] OPS-WIRING-CLI-CONTRACT · Restore the trusted integrator CLI dispatch contract.
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm.py, scripts/tests/test_swarm_delivery_state.py
   - details: Preserve CLI dispatch without an extra keyword. Keep trusted wiring refresh active before candidate verification.
   - evidence: Both reported CLI assertions failed locally before the edit and passed unchanged afterward. The trusted checker loads in the batch before merging. The Python tooling review confirmed the dispatch and trust boundary.
   - evidence: 84 focused tests and 373 coverage-run tests passed. The changed-script coverage gate passed. The scratch Git CLI test covers no-op, stale and current baselines, candidate edits, new violations, moved heads, and gate rollback. Only unrelated synthetic merge fixtures stub the wiring boundary.
+  - evidence: `PATH="/opt/homebrew/bin:$PATH" /opt/homebrew/bin/python3 -I -m unittest discover -s scripts/tests -q` passed all 1,307 tests. The system Bash 3.2 run reported ten failures/errors confined to agent-run fixtures; they passed with Homebrew Bash 5.3. Root typecheck, lint, format check and tests passed. Strict wiring, documentation, secret and whitespace checks passed.
+  - pending: Git fetch was blocked by the read-only .git directory and gh could not reach api.github.com. The fix remains local and hosted Delivery has not been verified.

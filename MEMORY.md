@@ -5,6 +5,7 @@ Current checkpoint: TODO.md, dispatch-3 run 3 on `opencode/dispatch-3-3`: cloud 
 | Decision | Rationale and evidence |
 |---|---|
 | User directive (2026-11-23): automate wiring-baseline cleanup | OPS-WIRING-REFRESH uses the trusted integrator to reject candidate baseline edits and new findings, then prune resolved exemptions before gating the merge commit. |
+| User directive (2026-11-23): implement production wiring during API work | AGENTS.md requires agents to wire the real entry point and verify it through an integration test in the same API change. The existing baseline ownership rules govern cleanup. |
 | User directive (2026-11-23): agents refresh wiring after production Java or Flyway changes | AGENTS.md requires a check before handoff. Interactive maintainer agents prune resolved exemptions after a passing check. Workers report them and the trusted integrator prunes them. |
 | One delivery story in progress | Keeps changes reviewable and resume state small |
 | Monitor autostart toggle (2026-11-21) | In `scripts/monitor.sh`, `s` toggles automatic wave dispatch for the session. Keep the configured wait and cooldown. Starting with `--no-autostart` starts disabled and enabling uses the default 10-minute wait. Verified by the monitor TUI tests. |

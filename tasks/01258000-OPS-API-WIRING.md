@@ -1,0 +1,6 @@
+- [ ] OPS-API-WIRING · Require agents to implement and verify production wiring as part of API work.
+  - requirements: OPS-06, WEB-05
+  - scope: AGENTS.md, MEMORY.md
+  - details: Require real production callers, constructor injection, HTTP integration evidence for endpoint behavior, and baseline checks. Retain maintainer and swarm ownership for baseline refresh.
+  - evidence: The API delivery specialist confirmed the rule preserves authorized routing, runtime integration evidence and baseline ownership. Both OpenCode profiles already load AGENTS.md. OpenCode generation, pack validation, docs, secrets, strict wiring and whitespace checks passed locally.
+  - pending: Repository publication and hosted verification.

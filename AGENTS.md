@@ -16,9 +16,13 @@ Read project.json for the current display name and suggested repository slug. Us
 
 Use docs/WORKFLOW.md to route routine, cross-boundary and safety-critical changes. Document changed public contracts, build scripts/docs.sh, and include a short entry-point-to-test trace in review evidence.
 
-## Wiring baseline after code changes
+## Production API wiring and baseline
 
-After editing production Java or Flyway migrations, and before handing off the change, run `python3 -I scripts/check-wiring.py`. Fix new wiring violations in the code and rerun the check. Record the result with the task evidence.
+Implement or update the production Spring wiring in the same change as the API behavior. Connect each new service to its intended entry point through constructor injection. Reuse the existing authorized route or application flow when it owns the behavior. Add a route only when the API contract requires one. When adding persistence, inject the JDBC implementation through the store interface and apply the repository's tenant and migration rules.
+
+For HTTP behavior, name the route and trace it through the real controller and service to the store when applicable. Add or extend an HTTP integration test that exercises that path with the production Spring wiring. For a public contract change, update OpenAPI and regenerate the client. For a non-HTTP entry point, verify the real caller through an integration test.
+
+Before handing off API implementation, production Java, or Flyway migration changes, run `python3 -I scripts/check-wiring.py`. Fix new wiring violations in the code and rerun the check. Record the entry point, integration test, and checker result with the task evidence.
 
 - **Interactive maintainer agents:** When the check passes and reports resolved entries, run `python3 -I scripts/check-wiring.py && python3 -I scripts/check-wiring.py --write-baseline` from the same checkout. Review the baseline diff for removals only, then run `python3 -I scripts/check-wiring.py --fail-on-stale`. Include the cleanup with the change that resolved the entries.
 - **Swarm workers:** Record resolved entries under `## Findings` in the assigned notes file. The trusted integrator regenerates the baseline before the merge gate. Keep the protected baseline out of worker pull requests.
