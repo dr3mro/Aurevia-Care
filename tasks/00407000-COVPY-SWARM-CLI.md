@@ -1,5 +1,5 @@
-- [-] COVPY-SWARM-CLI · Script tests: swarm.py coverage, cli part (to 100% together with the other parts)
-  - agent: swarm-5
+- [x] COVPY-SWARM-CLI · Script tests: swarm.py coverage, cli part (to 100% together with the other parts)
+  - pr: #1218
   - attempts: 2
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm_cli_coverage.py

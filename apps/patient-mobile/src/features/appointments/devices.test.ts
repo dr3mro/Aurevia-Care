@@ -1,7 +1,10 @@
 import type { DeviceToken } from './types';
 import {
+  devicesForPatient,
   eligibleTokens,
+  findEligibleDevice,
   invalidateToken,
+  refreshVisibleDevices,
   revokeToken,
   withInvalidatedDevice,
   withRegisteredDevice,
@@ -42,6 +45,48 @@ describe('eligibleTokens', () => {
       token('dev-2', 'active', 'patient-2'),
     ]);
     expect(eligibleTokens(devices, 'org-a', 'patient-3')).toEqual([]);
+  });
+});
+
+describe('scoped device projection for the appointments page', () => {
+  /** Flat seed as supplied by the signed-in host, containing a foreign row. */
+  const seed: readonly DeviceToken[] = [
+    token('dev-1', 'active'),
+    token('dev-2', 'active', 'patient-2'),
+    token('dev-3', 'revoked'),
+  ];
+
+  it('loads only active devices of the verified patient in the active organization', () => {
+    expect(devicesForPatient(seed, 'org-a', 'patient-1')).toEqual([token('dev-1', 'active')]);
+    expect(devicesForPatient(seed, 'org-a', 'patient-2')).toEqual([
+      token('dev-2', 'active', 'patient-2'),
+    ]);
+    expect(devicesForPatient([], 'org-a', 'patient-1')).toEqual([]);
+  });
+
+  it('re-resolves a pressed id and refuses foreign, stale and revoked devices', () => {
+    // The host supplies a tenant-scoped flat list; these helpers key it under
+    // the active organization before it can become a command target.
+    expect(findEligibleDevice(seed, 'org-a', 'dev-1', 'patient-1')).toEqual(
+      token('dev-1', 'active'),
+    );
+    expect(findEligibleDevice(seed, 'org-a', 'dev-2', 'patient-1')).toBeUndefined();
+    expect(findEligibleDevice(seed, 'org-a', 'dev-3', 'patient-1')).toBeUndefined();
+    expect(findEligibleDevice(seed, 'org-a', 'missing', 'patient-1')).toBeUndefined();
+    expect(findEligibleDevice([], 'org-a', 'dev-1', 'patient-1')).toBeUndefined();
+  });
+
+  it('refreshes the offered devices after one revocation without touching a foreign row', () => {
+    expect(refreshVisibleDevices(seed, 'org-a', 'dev-1', 'patient-1')).toEqual([]);
+    expect(refreshVisibleDevices(seed, 'org-a', 'dev-2', 'patient-1')).toEqual([
+      token('dev-1', 'active'),
+    ]);
+    expect(refreshVisibleDevices(seed, 'org-a', 'missing', 'patient-1')).toEqual([
+      token('dev-1', 'active'),
+    ]);
+    const source = [token('dev-1', 'active')];
+    expect(refreshVisibleDevices(source, 'org-a', 'dev-1', 'patient-1')).toEqual([]);
+    expect(source).toEqual([token('dev-1', 'active')]);
   });
 });
 
