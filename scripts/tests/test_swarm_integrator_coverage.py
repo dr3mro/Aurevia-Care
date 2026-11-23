@@ -396,5 +396,254 @@ class NotesPublishFailureTest(unittest.TestCase):
         self.assertIn("could not open the rules pull request", err)
 
 
+class IntegratorMergeDecisionTest(unittest.TestCase):
+    """Already-integrated pull requests are recognised without a second gate run."""
+
+    def test_an_ancestor_head_is_already_in_main(self):
+        calls = []
+
+        def run(args, **kwargs):
+            calls.append(args)
+            return mock.Mock(returncode=0, stdout="")
+
+        with mock.patch.object(swarm.subprocess, "run", side_effect=run):
+            self.assertTrue(swarm.pr_already_in_main(7, "abc123", "main"))
+        self.assertEqual(calls, [["git", "merge-base", "--is-ancestor", "abc123", "main"]])
+
+    def test_an_empty_merge_tree_is_treated_as_not_integrated(self):
+        def run(args, **kwargs):
+            if args[1] == "merge-base":
+                return mock.Mock(returncode=1, stdout="")
+            return mock.Mock(returncode=0, stdout="")
+
+        with mock.patch.object(swarm.subprocess, "run", side_effect=run):
+            self.assertFalse(swarm.pr_already_in_main(7, "abc123", "main"))
+
+    def test_a_git_io_error_is_treated_as_not_integrated(self):
+        def run(args, **kwargs):
+            if args[1] == "merge-base":
+                return mock.Mock(returncode=1, stdout="")
+            raise OSError("git unavailable")
+
+        with mock.patch.object(swarm.subprocess, "run", side_effect=run):
+            self.assertFalse(swarm.pr_already_in_main(7, "abc123", "main"))
+
+    def test_closing_an_integrated_pr_marks_both_open_task_forms_done(self):
+        fake = FakeGh()
+        edits = []
+        rewritten = []
+
+        def update(edit, message):
+            edits.append((edit, message))
+            # The real update_todo invokes the callback; do the same so the
+            # no-match return and both replacement forms actually execute.
+            rewritten.append(edit("- [-] CW-001\n"))
+            rewritten.append(edit("- [ ] CW-001\n"))
+            rewritten.append(edit("nothing to change"))
+            return "updated"
+
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "update_todo", side_effect=update):
+            swarm.close_integrated_pr(7, "CW-001")
+        self.assertTrue(fake.calls_for("pr", "close"))
+        self.assertEqual(len(edits), 1)
+        self.assertIn("CW-001", edits[0][1])
+        self.assertEqual(rewritten, ["- [x] CW-001\n", "- [x] CW-001\n", "nothing to change"])
+
+    def test_closing_an_integrated_pr_without_a_task_still_comments(self):
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "update_todo") as update:
+            swarm.close_integrated_pr(7, "")
+        self.assertTrue(fake.calls_for("pr", "close"))
+        update.assert_not_called()
+
+    def test_a_tracker_write_failure_does_not_stop_the_close(self):
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "update_todo", side_effect=OSError("locked")):
+            swarm.close_integrated_pr(7, "CW-001")
+        self.assertTrue(fake.calls_for("pr", "close"))
+
+
+class IntegratorBatchTest(unittest.TestCase):
+    """Batch decisions for blocked, already-present and reconciled pull requests."""
+
+    def repo(self):
+        root = scratch()
+        self.addCleanup(shutil.rmtree, root)
+        (root / "TODO.md").write_text("# TODO\n")
+        previous = Path.cwd()
+        os.chdir(root)
+        self.addCleanup(os.chdir, previous)
+        return root
+
+    def view(self):
+        return {"headRefOid": "abc", "headRefName": "swarm/CW-001-1"}
+
+    def test_a_protected_pr_is_skipped_before_any_merge(self):
+        self.repo()
+        merged = mock.Mock()
+        with mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "migrate_tasks"), \
+                mock.patch.object(swarm, "gh_json", return_value=self.view()), \
+                mock.patch.object(swarm, "is_repair", return_value=False), \
+                mock.patch.object(swarm, "guard", return_value=["scripts/swarm.py"]), \
+                mock.patch.object(swarm, "merge_local", merged), \
+                mock.patch.object(swarm, "emit"):
+            self.assertEqual(swarm.integrate_batch([7], check_delivery=False), 0)
+        merged.assert_not_called()
+
+    def test_an_already_integrated_pr_is_closed_and_marked_done(self):
+        self.repo()
+        out = io.StringIO()
+        with mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "migrate_tasks"), \
+                mock.patch.object(swarm, "gh_json", return_value=self.view()), \
+                mock.patch.object(swarm, "is_repair", return_value=False), \
+                mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "git", return_value="main-sha"), \
+                mock.patch.object(swarm, "pr_already_in_main", return_value=True), \
+                mock.patch.object(swarm, "close_integrated_pr") as closed, \
+                mock.patch.object(swarm, "merge_local") as merged, \
+                mock.patch.object(swarm, "emit"), \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(swarm.integrate_batch([7], check_delivery=False), 0)
+        closed.assert_called_once_with(7, "CW-001")
+        merged.assert_not_called()
+        self.assertIn("already in main", out.getvalue())
+
+    def test_a_failed_integrator_commit_reports_status_and_staged_diff(self):
+        self.repo()
+        error = subprocess.CalledProcessError(1, "git commit")
+
+        def git(*args, **kwargs):
+            if "commit" in args:
+                raise error
+            if args[:1] == ("status",):
+                return "?? leftover\n"
+            if "--cached" in args:
+                return "TODO.md | 1 +\n"
+            return "main-sha\n"
+
+        with mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "migrate_tasks"), \
+                mock.patch.object(swarm, "gh_json", return_value=self.view()), \
+                mock.patch.object(swarm, "is_repair", return_value=False), \
+                mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "git", side_effect=git), \
+                mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
+                mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+                mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
+                mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+                mock.patch.object(swarm, "record_merges",
+                                  return_value=([(7, "CW-001", "abc")], ["comment"], [])), \
+                mock.patch.object(swarm, "emit"):
+            with self.assertRaises(subprocess.CalledProcessError) as raised:
+                swarm.integrate_batch([7], check_delivery=False)
+        self.assertIn("--- status ---", str(raised.exception.output))
+        self.assertIn("--- staged ---", str(raised.exception.output))
+
+    def test_a_reconciled_regate_uses_the_repair_gate_when_no_full_gate_was_used(self):
+        self.repo()
+        pushes = []
+
+        def authed(*args, **kwargs):
+            if args[:2] == ("push", "origin"):
+                pushes.append(args)
+                if len(pushes) == 1:
+                    raise subprocess.CalledProcessError(1, args, "", "fetch first")
+            return ""
+
+        def git(*args, **kwargs):
+            if args[:1] == ("merge-base",):
+                return "oldbase\n"
+            if args[:1] == ("diff",) and "oldbase" in args:
+                return "tasks/0001-A.md\0"
+            return "main-sha\n"
+
+        with mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "migrate_tasks"), \
+                mock.patch.object(swarm, "gh_json", return_value=self.view()), \
+                mock.patch.object(swarm, "is_repair", return_value=False), \
+                mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "git", side_effect=git), \
+                mock.patch.object(swarm, "authed_git", side_effect=authed), \
+                mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
+                mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+                mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
+                mock.patch.object(swarm, "gate_for", return_value=("custom-gate", {})), \
+                mock.patch.object(swarm, "run_gate", return_value=(True, "ok")) as gate, \
+                mock.patch.object(swarm, "record_merges",
+                                  return_value=([(7, "CW-001", "abc")], ["comment"], [])), \
+                mock.patch.object(swarm, "restore_trackers"), \
+                mock.patch.object(swarm, "close_merged_issues"), \
+                mock.patch.object(swarm, "dispatch_delivery"), \
+                mock.patch.object(swarm, "emit"):
+            self.assertEqual(swarm.integrate_batch([7], check_delivery=False), 1)
+        self.assertEqual(len(pushes), 2)
+        gate.assert_any_call(swarm.REPAIR_GATE, {})
+
+
+class IntegratorConflictPublishTest(unittest.TestCase):
+    """A conflict resolution that cannot be applied is reported, never pushed."""
+
+    def outcomes(self):
+        root = scratch()
+        self.addCleanup(shutil.rmtree, root)
+        (root / "5").write_text("merged")
+        (root / "5.bundle").write_text("synthetic bundle")
+        return root
+
+    def info(self):
+        return {"headRefName": "swarm/CW-001-1", "isCrossRepository": False}
+
+    def test_an_unreadable_bundle_is_reported_and_not_pushed(self):
+        root = self.outcomes()
+
+        def git(*args, **kwargs):
+            if args[:1] == ("fetch",):
+                raise subprocess.CalledProcessError(1, args, "", "bad bundle")
+            return ""
+
+        with mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "gh_json", return_value=self.info()), \
+                mock.patch.object(swarm, "git", side_effect=git), \
+                mock.patch.object(swarm, "authed_git") as pushed, \
+                mock.patch.object(swarm, "fail") as failed, \
+                mock.patch.object(swarm, "emit"):
+            self.assertEqual(swarm.resolve_publish(str(root)), [])
+        pushed.assert_not_called()
+        self.assertIn("could not be read", failed.call_args.args[1])
+
+    def test_a_branch_that_moved_during_resolution_is_sent_back(self):
+        root = self.outcomes()
+
+        def authed(*args, **kwargs):
+            if args[:1] == ("push",):
+                raise subprocess.CalledProcessError(1, args, "", "non fast forward")
+            return ""
+
+        with mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "gh_json", return_value=self.info()), \
+                mock.patch.object(swarm, "git", return_value=""), \
+                mock.patch.object(swarm, "authed_git", side_effect=authed), \
+                mock.patch.object(swarm, "fail") as failed, \
+                mock.patch.object(swarm, "emit"):
+            self.assertEqual(swarm.resolve_publish(str(root)), [])
+        self.assertIn("branch moved", failed.call_args.args[1])
+
+
+class IntegratorIssueCloseTest(unittest.TestCase):
+    """The issue hand-off kill switch stops issue closure on merge."""
+
+    def test_no_issue_is_closed_when_the_issue_handoff_is_off(self):
+        fake = FakeGh()
+        with mock.patch.dict(os.environ, {"SWARM_ISSUES": "off"}), \
+                mock.patch.object(swarm, "gh", fake):
+            swarm.close_merged_issues([(7, "ISS-5")])
+        self.assertEqual(fake.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
