@@ -6,11 +6,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['frontend/**/*.test.ts'],
+    include: ['tools/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      include: ['frontend/**/*.ts'],
-      exclude: ['frontend/**/*.test.ts'],
+      include: ['tools/**/*.ts'],
+      exclude: ['tools/**/*.test.ts'],
       all: false,
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
     },
