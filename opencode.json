@@ -192,6 +192,11 @@
         },
         {
           "action": "subagent",
+          "resource": "smartclinic-code-simplify",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
           "resource": "smartclinic-context-optimizer",
           "effect": "allow"
         },
@@ -427,6 +432,50 @@
       ]
     },
     "smartclinic-code-reviewer": {
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "skill",
+          "resource": "*",
+          "effect": "allow"
+        }
+      ]
+    },
+    "smartclinic-code-simplify": {
       "permissions": [
         {
           "action": "*",
