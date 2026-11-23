@@ -1968,6 +1968,20 @@ def task_id_of(branch):
     return match.group(1) if match else ""
 
 
+def pr_task_id(pr):
+    """Resolve a PR's task id from its branch, then its title.
+
+    Standard swarm branches carry the id in the name. A non-standard branch (a
+    fix worker that renamed it, a fork, a hand-made PR) still links to a task
+    through the conventional "TASK-ID: title" PR title. Returning the id here
+    keeps the in-flight and scope locks working for every open PR.
+    """
+    tid = task_id_of(pr.get("headRefName", "") or "")
+    if tid:
+        return tid
+    return task_id_of_title(pr.get("title", "") or "")
+
+
 def frontend_gate_rule(scope):
     """Mandatory typecheck command for a frontend scope, or empty when not applicable."""
     paths = " ".join(scope or [])
@@ -2058,7 +2072,7 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
     fix_busy = [t["scope"] for t in tasks if t["id"] in assigned
                 and (not red or main_repair_id(t["id"], t["task"]))]
     for pr in sorted(open_prs, key=lambda p: p["number"]):
-        tid = task_id_of(pr["headRefName"])
+        tid = pr_task_id(pr)
         task = by_id.get(tid)
         if task is None and tid:
             archived_scope = archived_task_scope(tid)
@@ -2084,7 +2098,7 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
                          "branch": pr["headRefName"], "title": task["task"],
                          "body": task_text(task),
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
-    in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
+    in_flight = {pr_task_id(p) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     done |= archived_done_ids()
     # Repairs of main come first: a red main blocks every other merge.
