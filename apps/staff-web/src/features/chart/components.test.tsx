@@ -355,6 +355,22 @@ describe('PatientBanner', () => {
     expect(onPrescribe).toHaveBeenCalledTimes(1);
   });
 
+  it('shows the coded verification state of an allergy rather than a constant verified label', () => {
+    const base = summary();
+    const allergy = must(base.allergy);
+    wrap(
+      <PatientBanner
+        summary={{ ...base, allergy: { ...allergy, verification: 'unverified' } }}
+        locale="en"
+        onNewOrder={noop}
+        onPrescribe={noop}
+      />,
+    );
+    const chip = must(screen.getByTestId('allergy-chip'));
+    expect(chip.textContent).toContain(chartText('en', 'verificationUnverified'));
+    expect(chip.textContent).not.toContain(chartText('en', 'verificationVerified'));
+  });
+
   it('omits the allergy chip when the summary has no reaction', () => {
     wrap(
       <PatientBanner

@@ -262,7 +262,7 @@ describe('ChartScreen approved-design chrome', () => {
     expect(chips.textContent).toContain(chartText('en', 'allergy'));
     expect(chips.textContent).toContain('Synthetic penicillin');
     expect(chips.textContent).toContain('rash');
-    expect(chips.textContent).toContain(chartText('en', 'verified'));
+    expect(chips.textContent).toContain(chartText('en', 'verificationVerified'));
     expect(chips.textContent).toContain(chartText('en', 'language'));
     expect(chips.textContent).toContain(chartText('en', 'languageEn'));
     expect(chips.textContent).toContain('1');

@@ -4,7 +4,7 @@ import { displayLocalName, formatCivilDate } from '../../i18n/format';
 import type { Locale } from '../../i18n/messages';
 import { useTheme } from '../../theme/ThemeProvider';
 import type { PatientSummary } from './domain';
-import { chartText } from './messages';
+import { chartText, verificationMessageKey } from './messages';
 
 /** Props for the synthetic patient identity banner (CLN-03, UX-01). */
 export interface PatientBannerProps {
@@ -74,7 +74,7 @@ export function PatientBanner({ summary, locale, onNewOrder, onPrescribe }: Pati
             <MixedScriptText text={summary.allergy.display} lang={locale} /> (
             {chartText(locale, 'reaction')}:{' '}
             <MixedScriptText text={summary.allergy.reaction} lang={locale} />,{' '}
-            {chartText(locale, 'verified')})
+            {chartText(locale, verificationMessageKey[summary.allergy.verification])})
           </span>
         )}
         <span data-testid="language-chip" role="note" style={chipStyle}>
