@@ -19,3 +19,18 @@
     cancel-in-progress so a new head is verified immediately. Main, tag,
     dispatch and merge-group pushes still queue and keep every exact-SHA
     verdict. Defender comments, tests and docs updated in the same change.
+
+## Why this is not finished
+
+    The fix is on main but the GitHub verdict is not yet available. At
+    23:43Z Delivery runs 45289808826 (e33a2ae7) and 45289961489 (69eafc47)
+    were still pending behind a pre-existing backlog: 37 of the last 60
+    Delivery runs were non-terminal, with roughly 10 PR runs in_progress in
+    separate per-ref concurrency groups. This is runner capacity, not a
+    failing check. No PR run has yet used the new workflow: the newest PR
+    Delivery run was created at 23:31:28Z, before the fix landed at 23:31:30Z.
+    GitHub docs confirm pull_request runs the workflow from the PR merge
+    commit, so open PRs inherit the fix from main on their next run.
+    Next step: after the backlog clears, confirm both runs report success,
+    confirm a newly created or rebased PR reports `Delivery gate` on its head,
+    then change this entry to [x] with the run id.
