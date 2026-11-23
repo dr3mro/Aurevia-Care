@@ -23,6 +23,12 @@ Up to 20 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 **Worker preflight.** Before launching the first implementation segment, the work job checks Java wiring, installs each present frontend app from its lockfile with development dependencies, and runs its typecheck. Any failure stops the job at preflight.
 
+**Wiring baseline.** The trusted integrator validates each merge candidate against
+its first-parent baseline using the checker loaded from main. It rejects candidate
+baseline edits or new findings. Resolved exemptions are removed in the merge
+commit before the normal or repair gate runs. A failed check rolls back the
+candidate and its baseline cleanup together.
+
 Maintainers can refresh the wiring baseline from a stable checkout by running
 `python3 -I scripts/check-wiring.py && python3 -I scripts/check-wiring.py --write-baseline`.
 The first command rejects new wiring violations before the second rewrites the

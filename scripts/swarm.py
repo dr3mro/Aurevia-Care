@@ -3712,7 +3712,7 @@ def migrate_tasks(attempts=4):
                 return 0
 
 
-def refresh_wiring_baseline(checker):
+def refresh_wiring_baseline(checker, base):
     """Validate the candidate against the first parent and prune only resolved entries.
 
     The checker is loaded from main before any PR merge. Return an error message
@@ -3721,7 +3721,7 @@ def refresh_wiring_baseline(checker):
     Git and filesystem errors propagate and stop publication.
     """
     path = checker.BASELINE
-    if git("diff", "--name-only", "HEAD^1", "HEAD", "--", path).strip():
+    if git("diff", "--name-only", base, "HEAD", "--", path).strip():
         return f"The PR changes {path}; the integrator owns automatic baseline cleanup"
     root = Path.cwd()
     current = checker.findings(root)
@@ -3758,6 +3758,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None, w
             # wait/fix/request PRs stay open and unstaged; the gate already took
             # the appropriate label or comment action for each verdict.
             continue
+        base = git("rev-parse", "HEAD").strip()
         sha, task_id, conflicts = merge_local(pr)
         if sha is None:
             reason = (f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
@@ -3774,18 +3775,20 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None, w
             continue
         if head != sha:
             fail(pr, "the branch changed after planning; it will be retested", simple=True)
-            git("merge", "--abort", check=False)
+            git("reset", "--hard", base)
             continue
-        wiring_error = refresh_wiring_baseline(wiring_checker) if wiring_checker is not None else ""
+        if wiring_checker is not None and git("rev-parse", "HEAD").strip() == base:
+            continue  # An already-integrated head produced no merge commit to gate or amend.
+        wiring_error = refresh_wiring_baseline(wiring_checker, base) if wiring_checker is not None else ""
         if wiring_error:
             fail(pr, "Wiring baseline validation failed on the merge of main and this branch", wiring_error)
-            git("reset", "--hard", "HEAD~1")
+            git("reset", "--hard", base)
             continue
         pr_gate, pr_env = gate_for(pr, gate)
         ok, log = run_gate(pr_gate, pr_env)
         if not ok:
             fail(pr, f"Merge gate ({pr_gate}) failed on the merge of main and this branch", log)
-            git("reset", "--hard", "HEAD~1", check=False)
+            git("reset", "--hard", base)
             continue
         gates[pr] = (pr_gate, pr_env)
         merged.append((pr, task_id, sha))

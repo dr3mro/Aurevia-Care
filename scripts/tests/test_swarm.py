@@ -2295,12 +2295,12 @@ class ResolveConflictTests(unittest.TestCase):
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=("old-sha", "CW-001", [])), \
-             mock.patch.object(swarm, "git") as local, \
+             mock.patch.object(swarm, "git", return_value="base-sha\n") as local, \
              mock.patch.object(swarm, "fail") as failed, \
              mock.patch.object(swarm, "emit"):
             swarm.integrate_batch([5])
         failed.assert_called_once_with(5, "the branch changed after planning; it will be retested", simple=True)
-        self.assertTrue(any(c.args[:2] == ("merge", "--abort") for c in local.call_args_list))
+        local.assert_called_with("reset", "--hard", "base-sha")
 
     def results(self, tmp, **outcomes):
         for pr, outcome in outcomes.items():
@@ -2995,7 +2995,7 @@ class TwoTierTests(unittest.TestCase):
     def test_integrator_prunes_wiring_before_gating_the_merge_commit(self):
         wiring = load("check-wiring")
         original = Path.cwd()
-        for case in ("stale", "current", "forged", "new finding", "gate failure", "moved head"):
+        for case in ("stale", "current", "forged", "new finding", "gate failure", "moved head", "already merged"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
                 os.chdir(directory)
                 try:
@@ -3024,6 +3024,8 @@ class TwoTierTests(unittest.TestCase):
                     swarm.git("checkout", "-q", "main")
 
                     def merge(_):
+                        if case == "already merged":
+                            return head, "CW-001", []
                         swarm.git(*swarm.IDENTITY, "merge", "--no-ff", "-qm", "merge", "candidate")
                         return base if case == "moved head" else head, "CW-001", []
 
@@ -3051,8 +3053,9 @@ class TwoTierTests(unittest.TestCase):
                     blocked_before_gate = case in ("forged", "new finding", "moved head")
                     rejected = blocked_before_gate or case == "gate failure"
                     self.assertEqual(fail.call_count, int(rejected))
-                    self.assertEqual(verify.call_count, int(not blocked_before_gate))
-                    self.assertEqual(swarm.git("rev-parse", "HEAD").strip() == base, rejected)
+                    self.assertEqual(verify.call_count, int(not blocked_before_gate and case != "already merged"))
+                    self.assertEqual(swarm.git("rev-parse", "HEAD").strip() == base,
+                                     rejected or case == "already merged")
                     self.assertEqual(swarm.git("status", "--porcelain"), "")
                 finally:
                     os.chdir(original)
