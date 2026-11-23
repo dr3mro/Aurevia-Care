@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { ApiPage } from '../../src/components/ApiPage';
@@ -70,6 +70,9 @@ describe('responsive ApiPage', () => {
       expect(region.classList.contains('page')).toBe(true);
       expect(region.getAttribute('data-breakpoint')).toBe(breakpoint);
       expect(region.getAttribute('aria-label')).toBe('Synthetic rows');
+      // The region also exists while loading; wait for the resolved rows before
+      // asserting their text.
+      await within(region).findByText('SYN-0001, SYN-0002');
       expect(region.textContent).toContain('SYN-0001, SYN-0002');
       expect(region.classList.contains('hide-compact')).toBe(false);
       expect(region.getAttribute('style')).toBeNull();
