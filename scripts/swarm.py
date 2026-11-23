@@ -670,7 +670,7 @@ def watchdog():
         print(f"No wave for {idle} minutes while work waits; started one.")
     if not active and work and idle >= STALL_MINUTES:
         number = record_issue("stall", ["swarm"], "Swarm stalled: no wave is running",
-                              f"{facts}\n\nThe hourly schedule or a push to TODO.md should have started a wave. "
+                              f"{facts}\n\nThe hourly schedule or a push to a task file in tasks/ should have started a wave. "
                               "Check the latest Agent swarm run and the plan job's log.",
                               labels=("stalled", "needs-human"), markers={"kind": "stall"})
         print(f"Stalled; issue {number or 'not written'}. {facts}")
@@ -2059,7 +2059,7 @@ def task_text(task):
               ("Requirements", task.get("requirements", "")),
               ("Scope (stay inside these paths)", ", ".join(task["scope"])),
               ("Reserved migration version", task.get("reserved", "")),
-              ("Read first", "The section 'Instructions for every agent' at the top of TODO.md, then "
+              ("Read first", "The section 'Instructions for every agent' in tasks/_head.md, then "
                              "AGENTS.md and CODING_STYLE.md."),
               ("Naming rule", "Name every new folder and Java package after its business domain, "
                               "never after a task, story or gate ID; the build fails otherwise."),
@@ -4280,10 +4280,10 @@ def main(argv=None):
         note_claims(include)
         # GitHub skips a job output that contains anything it masks as a secret, which
         # leaves the worker matrix empty. Story text is the part that can trip it, so
-        # stories travel as an id only and the worker reads their text from TODO.md.
+        # stories travel as an id only and the worker reads their text from its task file.
         # GitHub skips a job output that contains anything it masks as a secret, which
         # leaves the worker matrix empty. No task text travels through the output: stories
-        # and fix tasks alike are read from TODO.md (and the issue context file) by the
+        # and fix tasks alike are read from tasks/ (and the issue context file) by the
         # worker, so strip every free-text field here.
         lean = [{**t, "title": "", "body": "", "fix": ""} for t in include]
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
