@@ -1,3 +1,5 @@
+import { createElement } from 'react';
+import { renderToString } from 'react-dom/server';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -130,6 +132,17 @@ describe('useBreakpoint', () => {
       orientation: 'portrait',
     });
   });
+
+  it('uses the declared fallback snapshot during a server render', () => {
+    // On the server useSyncExternalStore calls getServerSnapshot, never getSnapshot
+    // or subscribe. The hook must therefore report its fallback without probing
+    // matchMedia, which does not exist there.
+    vi.stubGlobal('matchMedia', undefined);
+    function Probe() {
+      return createElement('span', null, useBreakpoint());
+    }
+    expect(renderToString(createElement(Probe))).toContain('expanded');
+  });
 });
 
 describe('pointer and orientation hooks', () => {
@@ -151,5 +164,36 @@ describe('pointer and orientation hooks', () => {
 
     act(() => media.fire(query, false));
     expect(result.current).toBe('landscape');
+  });
+});
+
+describe('useMediaQuery subscription resynchronisation', () => {
+  it('refreshes a snapshot that became stale before subscribe ran', () => {
+    // React reads getSnapshot during render and only then runs the passive
+    // subscribe effect. If the media value changes in that window, subscribe
+    // sees a stale snapshot; it must refresh it and notify React so the hook
+    // reports the fresh value instead of the one captured during render.
+    const listeners = new Set<ChangeListener>();
+    let matchMediaCalls = 0;
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => {
+        matchMediaCalls += 1;
+        const matches = matchMediaCalls === 1 ? false : true;
+        return {
+          matches,
+          addEventListener: (_type: string, listener: ChangeListener) => {
+            listeners.add(listener);
+          },
+          removeEventListener: (_type: string, listener: ChangeListener) => {
+            listeners.delete(listener);
+          },
+        };
+      }),
+    );
+
+    const { result } = renderHook(() => usePointerCoarse());
+
+    expect(result.current).toBe(true);
   });
 });

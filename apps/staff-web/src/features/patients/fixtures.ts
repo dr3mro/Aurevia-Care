@@ -59,18 +59,18 @@ export const syntheticBetaPatients: readonly PatientResponse[] = [
 /** The Arabic-script patient used by the mixed-script rendering tests. */
 export const arabicPatientResponse: PatientResponse = defined(
   syntheticAlphaPatients[1],
-  'second synthetic alpha patient',
+  'second alpha patient',
 );
 
 /** A patient view whose likely-duplicate warning is present. */
 export const syntheticPatientView: PatientViewResponse = {
-  patient: defined(syntheticAlphaPatients[0], 'synthetic alpha patient'),
-  duplicates: [defined(syntheticAlphaPatients[1], 'second synthetic alpha patient')],
+  patient: defined(syntheticAlphaPatients[0], 'alpha patient'),
+  duplicates: [defined(syntheticAlphaPatients[1], 'second alpha patient')],
 };
 
 /** A patient view with no likely-duplicate warning. */
 export const syntheticPatientViewNoDuplicates: PatientViewResponse = {
-  patient: defined(syntheticAlphaPatients[0], 'synthetic alpha patient'),
+  patient: defined(syntheticAlphaPatients[0], 'alpha patient'),
   duplicates: [],
 };
 

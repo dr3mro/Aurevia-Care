@@ -98,11 +98,9 @@ export function CollectionDeskScreen({
     accessionConfirmed,
   ]);
 
-  // The command controls are only rendered with a selected order, so the
-  // guards below only narrow the type.
+  // The command controls are only rendered with a selected order, so narrowing
+  // here is a defensive assertion rather than a visible empty state.
   function handleCollect() {
-    // Command controls render only with a selected order; the shared invariant
-    // narrows the type without leaving an unreachable early return.
     const order = defined(selected, 'selected collection order');
     onCollect(order, {
       patientId: presented.patientId,

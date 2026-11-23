@@ -161,15 +161,14 @@ function useNoteCommands(ctx: NoteCommandContext) {
   const { setReason, setSignedAttestation } = ctx;
 
   async function handleSave(): Promise<void> {
-    // The save action only renders once the authoritative revision is loaded.
-    const current = defined(draft, 'note draft');
-    const currentSource = defined(source, 'note source');
+    const current = defined(draft, 'loaded note draft');
+    const origin = defined(source, 'loaded note source');
     setStatus(chartText(locale, 'saving'));
     try {
       await updateNote(
         noteId,
         current.version,
-        { title: currentSource.title, content: soapToContent(current.content) },
+        { title: origin.title, content: soapToContent(current.content) },
         organizationId,
       );
       setDirty(false);
@@ -183,7 +182,7 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleSign(): Promise<void> {
-    const current = defined(draft, 'note draft');
+    const current = defined(draft, 'loaded note draft');
     const attestation = chartText(locale, 'attestation');
     try {
       const signed =
@@ -206,7 +205,7 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleAmend(): Promise<void> {
-    const current = defined(draft, 'note draft');
+    const current = defined(draft, 'loaded note draft');
     try {
       await amendNote(noteId, current.version, organizationId);
       setCommandError(undefined);
@@ -218,13 +217,13 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleEnteredInError(): Promise<void> {
-    const current = defined(draft, 'note draft');
-    const currentSource = defined(source, 'note source');
+    const current = defined(draft, 'loaded note draft');
+    const origin = defined(source, 'loaded note source');
     try {
       await markEnteredInError(
         noteId,
         current.version,
-        { reason, affectedRecipients: [currentSource.dataEntrySubject] },
+        { reason, affectedRecipients: [origin.dataEntrySubject] },
         organizationId,
       );
       setConfirm(undefined);
@@ -285,7 +284,7 @@ function useNoteWorkflow(
   }
 
   function handleContentChange(field: keyof SoapContent, value: string): void {
-    const current = defined(draft, 'note draft');
+    const current = defined(draft, 'loaded note draft');
     setDraft({ ...current, content: { ...current.content, [field]: value } });
     setDirty(true);
     setStatus('');
@@ -319,7 +318,7 @@ function useNoteWorkflow(
   }
 
   function handleCopy(): void {
-    const current = defined(draft, 'note draft');
+    const current = defined(draft, 'loaded note draft');
     if ('clipboard' in navigator) {
       void navigator.clipboard.writeText(soapToContent(current.content));
     }
@@ -418,14 +417,14 @@ function NoteConfirmations({
 }: {
   workflow: NoteWorkflow;
   draft: NoteRevision;
-  source: ClinicalNoteRevisionResponse | undefined;
+  source: ClinicalNoteRevisionResponse;
   locale: Locale;
 }) {
   const { confirm, reason } = workflow;
   const title = (
     <p>
-      <MixedScriptText text={defined(source, 'note source').title} lang={locale} /> ·{' '}
-      {chartText(locale, 'revision')} {draft.version}
+      <MixedScriptText text={source.title} lang={locale} /> · {chartText(locale, 'revision')}{' '}
+      {draft.version}
     </p>
   );
   if (confirm === 'sign') {
@@ -579,7 +578,12 @@ export function NotePage() {
         </Button>
       </div>
 
-      <NoteConfirmations workflow={workflow} draft={draft} source={source} locale={locale} />
+      <NoteConfirmations
+        workflow={workflow}
+        draft={draft}
+        source={defined(source, 'loaded note source')}
+        locale={locale}
+      />
     </div>
   );
 }

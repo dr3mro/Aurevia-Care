@@ -151,7 +151,7 @@ class MetricsHttpTest {
 
     private static WebApplicationContextRunner newProductionRunner() {
         return new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, StaffWebLoginConfiguration.class, Stubs.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, StaffWebLoginConfiguration.class, Stubs.class)
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,
                         AUDIENCE_PROPERTY + "=synthetic-api",
@@ -161,7 +161,7 @@ class MetricsHttpTest {
 
     private static WebApplicationContextRunner newSyntheticRunner() {
         return new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class, Stubs.class)
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, Stubs.class)
                 .withPropertyValues("spring.profiles.active=synthetic-auth");
     }
 

@@ -1,5 +1,8 @@
 package com.aurevia.smartclinic.web;
 
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -87,5 +90,36 @@ class SecurityHeadersFilterTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Strict-Transport-Security",
                         "max-age=31536000; includeSubDomains"));
+    }
+
+    /**
+     * The docs subtree gets a same-origin policy so local bundles can run,
+     * without inline or remote script sources.
+     *
+     * @throws Exception when the request fails
+     */
+    @Test
+    void swaggerPathGetsScopedCsp() throws Exception {
+        mvc.perform(get("/swagger-ui/"))
+                .andExpect(header().string("Content-Security-Policy", allOf(
+                        containsString("script-src 'self'"),
+                        containsString("style-src 'self'"),
+                        containsString("connect-src 'self'"),
+                        containsString("frame-ancestors 'none'"),
+                        not(containsString("unsafe-inline")),
+                        not(containsString("unsafe-eval")))));
+    }
+
+    /**
+     * The exact docs path without a trailing slash is scoped too, so the two
+     * sides of the path predicate are both exercised.
+     *
+     * @throws Exception when the request fails
+     */
+    @Test
+    void exactSwaggerPathGetsScopedCsp() throws Exception {
+        mvc.perform(get("/swagger-ui"))
+                .andExpect(header().string("Content-Security-Policy",
+                        containsString("script-src 'self'")));
     }
 }

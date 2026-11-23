@@ -259,6 +259,9 @@ jobs:
           AGENT_TIMEOUT: 20m
         timeout-minutes: 35
         run: scripts/agent-run.sh merge-main
+      - name: Sync generated OpenAPI client
+        if: always()
+        run: scripts/agent-run.sh sync-generated
       - name: Pack the commits
         if: always()
         run: scripts/agent-run.sh bundle || true

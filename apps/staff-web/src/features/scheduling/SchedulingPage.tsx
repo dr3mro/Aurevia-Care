@@ -3,8 +3,8 @@ import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { useApi } from '../../api/useApi';
 import { Button } from '../../components/Button';
-import { EmptyState, LoadingState, StateView } from '../../components/StateViews';
 import { defined } from '../../components/invariant';
+import { EmptyState, LoadingState, StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useBreakpoint } from '../../theme/useBreakpoint';
 import type { BookingInput } from './BookingForm';
@@ -105,10 +105,9 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
   }, [refetch, setCursor, setAccumulated, setNextCursor, setCommandError]);
 
   async function handleCheckIn(id: string) {
-    // Row actions are offered only for loaded ids, so the lookup is guaranteed.
     const target = defined(
       loaded.find((appointment) => appointment.id === id),
-      'scheduled appointment',
+      'check-in target',
     );
     try {
       await checkIn(id, target.version, organizationId);

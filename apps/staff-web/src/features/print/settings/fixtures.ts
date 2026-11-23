@@ -1,6 +1,6 @@
+import { defined } from '../../../components/invariant';
 /** Synthetic, non-patient fixtures for the print profile settings screen. */
 
-import { defined } from '../../../components/invariant';
 import type { ApprovedLogoAsset, PrintProfileVersion } from './domain';
 
 /** Active tenant used by every synthetic print profile fixture. */
@@ -46,7 +46,7 @@ export const syntheticVersions: readonly PrintProfileVersion[] = [
     version: 2,
     facilityName: 'Synthetic Main Clinic v2',
     address: '2 Synthetic Way, Test City',
-    logoReference: defined(approvedLogoAssets[1], 'second approved logo asset').reference,
+    logoReference: defined(approvedLogoAssets[1], 'other approved logo asset').reference,
     footerText: 'Synthetic footer v2 — not a real notice',
     defaultLanguage: 'ar',
     paperSize: 'LETTER',

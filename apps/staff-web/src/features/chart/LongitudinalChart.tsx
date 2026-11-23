@@ -92,8 +92,6 @@ function CodedEntryTable({
         ) : (
           entries.map((entry) => {
             const key = `${entry.organizationId}:${entry.id}`;
-            // Resolve the optional local display once: a missing local name
-            // falls back to the Latin display rather than showing an empty cell.
             const localDisplay = entry.displayLocal ?? '';
             const shown = locale === 'ar' && localDisplay !== '' ? localDisplay : entry.display;
             return (

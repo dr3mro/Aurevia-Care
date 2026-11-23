@@ -7,6 +7,7 @@ so the tests never touch the network or a real repository.
 """
 import datetime
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -191,6 +192,120 @@ class SlotImageCoverageTests(unittest.TestCase):
                 mock.patch.object(swarm, "repo_slug", lambda: "o/r"):
             self.assertFalse(swarm.slot_manifests_exist([{"slot": 1}]))
         self.assertEqual(len(fake.calls), 1)
+
+
+class ReconcileTasksCoverageTests(unittest.TestCase):
+    """Close out task files when a merged pull request finishes their work.
+
+    The merged-PR list comes from a mocked `gh pr list`, and every task file is a
+    synthetic fixture in a temporary directory, so no repository or network is used.
+    """
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+
+    def write(self, name, text):
+        path = self.dir / name
+        path.write_text(text)
+        return path
+
+    def reconcile(self, merged, names=(), explicit=None):
+        """Run reconcile_tasks with a canned merged-PR list and a fixed file set.
+
+        `merged` is a JSON-ready list of pull requests, or an exception for the
+        failed-`gh` path. `names` controls the patched glob result; `explicit`
+        exercises the single-file entry point instead.
+        """
+        answer = (mock.patch.object(subprocess, "check_output", side_effect=merged)
+                  if isinstance(merged, Exception)
+                  else mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)))
+        paths = [str(self.dir / name) for name in names]
+        with answer, mock.patch("glob.glob", return_value=paths):
+            return swarm.reconcile_tasks(directory=str(self.dir), file=explicit or "")
+
+    def test_a_failed_pr_list_leaves_the_task_untouched(self):
+        # Without the merged list the monitor cannot know what finished: a task
+        # must never be closed on a guess, and the explicit-file path is used.
+        path = self.write("one.md", "- [-] CW-001 · one\n  - attempts: 4\n")
+        self.reconcile(RuntimeError("gh is down"), explicit=str(path))
+        self.assertEqual(path.read_text(), "- [-] CW-001 · one\n  - attempts: 4\n")
+
+    def test_a_malformed_pr_list_is_ignored(self):
+        # A non-JSON response is as unusable as a transport failure: treat it
+        # as an empty merged set rather than crashing the reconcile step.
+        path = self.write("one.md", "- [ ] CW-001 · one\n  - attempts: 4\n")
+        with mock.patch.object(subprocess, "check_output", return_value="not json"):
+            swarm.reconcile_tasks(directory=str(self.dir), file=str(path))
+        self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n  - attempts: 4\n")
+
+    def test_only_open_tasks_named_by_a_merged_pr_are_closed(self):
+        # A merged title identifies a task by id; a merged PR number identifies
+        # one by its `pr:` field. Unrelated, unknown and malformed files stay put.
+        merged = [
+            {"number": 42, "title": "CW-002: fix the thing"},
+            {"number": 43, "title": "ISS-7: other thing"},
+        ]
+        by_id = self.write("by_id.md", "- [-] CW-002\n  - attempts: 5\n  - details:\n    body\n")
+        by_pr = self.write("by_pr.md", "- [ ] CW-009 · pr\n  - pr: #42\n  - details:\n    body\n")
+        unknown = self.write("unknown.md", "- [ ] CW-003 · unknown\n  - attempts: 1\n")
+        wrong_pr = self.write("wrong_pr.md", "- [ ] CW-004 · wrong pr\n  - pr: #99\n")
+        heading = self.write("heading.md", "# Just a heading\n")
+        has_evidence = self.write("evidence.md", "- [ ] ISS-7 · evidence\n"
+                                                 "  - evidence: already recorded\n")
+        self.reconcile(merged, names=("by_id.md", "by_pr.md", "unknown.md", "wrong_pr.md",
+                                      "heading.md", "evidence.md", "missing.md"))
+        for path, task in ((by_id, "CW-002"), (by_pr, "CW-009"), (has_evidence, "ISS-7")):
+            self.assertIn(f"- [x] {task}", path.read_text())
+        self.assertIn("  - evidence: PR merged to main (auto-reconciled)\n", by_id.read_text())
+        self.assertIn("  - evidence: already recorded\n", has_evidence.read_text())
+        self.assertNotIn("auto-reconciled", has_evidence.read_text())
+        self.assertEqual(unknown.read_text(), "- [ ] CW-003 · unknown\n  - attempts: 1\n")
+        self.assertEqual(wrong_pr.read_text(), "- [ ] CW-004 · wrong pr\n  - pr: #99\n")
+        self.assertEqual(heading.read_text(), "# Just a heading\n")
+
+
+class DraftTriageCoverageTests(unittest.TestCase):
+    """Count stale draft pull requests and open one triage issue when needed."""
+
+    def drafts(self):
+        """Five PRs, one per skip path plus one genuine stale draft."""
+        def stamp(minutes):
+            return (datetime.datetime.now(datetime.timezone.utc)
+                    - datetime.timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return [
+            {"number": 1, "title": "not a draft", "isDraft": False, "createdAt": stamp(500)},
+            {"number": 2, "title": "no timestamp", "isDraft": True, "createdAt": None},
+            {"number": 3, "title": "bad timestamp", "isDraft": True, "createdAt": "not a date"},
+            {"number": 4, "title": "fresh draft", "isDraft": True, "createdAt": stamp(1)},
+            {"number": 5, "title": "stale draft", "isDraft": True, "createdAt": stamp(500)},
+        ]
+
+    def test_no_run_history_does_not_open_an_issue(self):
+        # An empty or absent run list means nothing to triage; the registry, not
+        # a missing Actions history, is what decides image readiness elsewhere.
+        with mock.patch.object(swarm, "gh_json", return_value=None), \
+                mock.patch.object(swarm, "gh") as gh:
+            self.assertEqual(swarm.draft_triage(), 0)
+        gh.assert_not_called()
+
+    def test_only_old_drafts_count_and_trigger_an_issue(self):
+        # Non-drafts, undated, malformed and fresh drafts are all skipped; the
+        # stale one is listed in the single issue the plan step opens.
+        with mock.patch.object(swarm, "gh_json", return_value=self.drafts()), \
+                mock.patch.object(swarm, "gh") as gh:
+            self.assertEqual(swarm.draft_triage(threshold=0), 1)
+        gh.assert_called_once()
+        self.assertEqual(gh.call_args.args[:2], ("issue", "create"))
+        self.assertIn("- #5 stale draft", " ".join(map(str, gh.call_args.args)))
+
+    def test_the_kill_switch_stops_the_issue(self):
+        # A disabled issue integration still counts the drafts but must not
+        # write to GitHub, so the plan step stays a pure observation.
+        with mock.patch.object(swarm, "gh_json", return_value=self.drafts()), \
+                mock.patch.dict(os.environ, {"SWARM_ISSUES": "off"}), \
+                mock.patch.object(swarm, "gh") as gh:
+            self.assertEqual(swarm.draft_triage(threshold=0), 1)
+        gh.assert_not_called()
 
 
 if __name__ == "__main__":
