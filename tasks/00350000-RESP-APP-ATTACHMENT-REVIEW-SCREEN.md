@@ -1,4 +1,5 @@
 - [x] RESP-APP-ATTACHMENT-REVIEW-SCREEN · Patient app: tablet, landscape and large-text layout for `AttachmentReviewScreen` (attachments)
+  - evidence: PR #642 merged to main (reconciled 2026-11-23)
   - pr: #642
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

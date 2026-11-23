@@ -1,4 +1,6 @@
 - [x] COVPY-GATE · Script tests: switch the Python coverage gate from "changed lines" to "every script at 100%" once all scripts are covered
+  - evidence: PR #1398 merged to main (reconciled 2026-11-23)
+  - pr: #1398
   - agent: swarm-3
   - attempts: 1
   - requirements: OPS-06

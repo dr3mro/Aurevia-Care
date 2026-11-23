@@ -1,4 +1,5 @@
 - [x] RESP-DATATABLE · Staff web: responsive `DataTable` component
+  - evidence: PR #584 merged to main (reconciled 2026-11-23)
   - pr: #584
   - attempts: 1
   - requirements: WEB-07, UX-01

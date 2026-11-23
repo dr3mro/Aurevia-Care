@@ -1,4 +1,5 @@
 - [x] RESP-NOT-FOUND-PAGE-2 · Staff web: responsive `NotFoundPage` (features-system)
+  - evidence: PR #795 merged to main (reconciled 2026-11-23)
   - pr: #795
   - attempts: 1
   - requirements: WEB-07, UX-01

@@ -1,4 +1,5 @@
 - [x] RESP-APP-CARE-UNIT-DIRECTORY · Patient app: tablet, landscape and large-text layout for `CareUnitDirectory` (units)
+  - evidence: PR #660 merged to main (reconciled 2026-11-23)
   - pr: #660
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

@@ -1,4 +1,5 @@
 - [x] GATE-DECISION-SITE-LAUNCH-APPROVALS · Decision pack for a person to approve: Per-site launch approvals and final G5 acceptance
+  - evidence: PR #372 merged to main (reconciled 2026-11-23)
   - pr: #372
   - attempts: 1
   - requirements: OPS-01, MSG-06

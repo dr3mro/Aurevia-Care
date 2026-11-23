@@ -1,4 +1,5 @@
 - [x] RESP-STATEVIEWS · Staff web: responsive `StateViews` component
+  - evidence: PR #585 merged to main (reconciled 2026-11-23)
   - pr: #585
   - attempts: 1
   - requirements: WEB-07, UX-01

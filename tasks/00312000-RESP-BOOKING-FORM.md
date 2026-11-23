@@ -1,4 +1,5 @@
 - [x] RESP-BOOKING-FORM · Staff web: responsive `BookingForm` (features-scheduling)
+  - evidence: PR #797 merged to main (reconciled 2026-11-23)
   - pr: #797
   - attempts: 1
   - requirements: WEB-07, UX-01

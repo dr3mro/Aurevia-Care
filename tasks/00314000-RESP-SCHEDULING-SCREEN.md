@@ -1,4 +1,5 @@
 - [x] RESP-SCHEDULING-SCREEN · Staff web: responsive `SchedulingScreen` (features-scheduling)
+  - evidence: PR #799 merged to main (reconciled 2026-11-23)
   - pr: #799
   - attempts: 1
   - requirements: WEB-07, UX-01

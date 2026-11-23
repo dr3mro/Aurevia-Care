@@ -1,4 +1,5 @@
 - [x] COVPY-CHECK-DOCS · Script tests: reach 100% line and branch coverage of `scripts/check-docs.py`
+  - evidence: PR #666 merged to main (reconciled 2026-11-23)
   - pr: #666
   - attempts: 1
   - requirements: OPS-06
