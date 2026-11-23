@@ -6,3 +6,4 @@
   - evidence: Mobile ESLint 9.39.5 rejected duplicate plugin registration before the fix. Normalizing plugin identity and resolving Expo's installed TypeScript resolver preserved the rule presets and produced zero lint diagnostics. Mobile typecheck and Jest coverage passed (1,264 tests).
   - evidence: Staff-web typecheck, ESLint, generated API check and all 2,613 Vitest tests passed. Formatting, secret scanning and whitespace checks passed.
   - pending: Staff-web coverage fails at the unchanged 100% threshold for 19 source files. npm production audit was blocked by registry DNS. Repository fetch was blocked by read-only Git metadata.
+  - follow-up evidence: At a09317a7 mobile lint reproduced an unused _shared binding. Copying the plugin map and deleting its duplicate key preserves the config without an unused binding. Mobile lint, typecheck and config formatting passed. The current Facilities test passed all 17 cases.

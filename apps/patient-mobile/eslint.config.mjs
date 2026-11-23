@@ -10,7 +10,8 @@ const typescriptResolver = expoRequire.resolve('eslint-import-resolver-typescrip
 /** Remove the shared TypeScript plugin from a config so it is only defined once. */
 function withoutSharedPlugin(config) {
   if (!config.plugins?.['@typescript-eslint']) return config;
-  const { '@typescript-eslint': _shared, ...plugins } = config.plugins;
+  const plugins = { ...config.plugins };
+  delete plugins['@typescript-eslint'];
   return { ...config, plugins };
 }
 
