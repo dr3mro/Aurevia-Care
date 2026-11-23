@@ -16,6 +16,13 @@ Read project.json for the current display name and suggested repository slug. Us
 
 Use docs/WORKFLOW.md to route routine, cross-boundary and safety-critical changes. Document changed public contracts, build scripts/docs.sh, and include a short entry-point-to-test trace in review evidence.
 
+## Wiring baseline after code changes
+
+After editing production Java or Flyway migrations, and before handing off the change, run `python3 -I scripts/check-wiring.py`. Fix new wiring violations in the code and rerun the check. Record the result with the task evidence.
+
+- **Interactive maintainer agents:** When the check passes and reports resolved entries, run `python3 -I scripts/check-wiring.py && python3 -I scripts/check-wiring.py --write-baseline` from the same checkout. Review the baseline diff for removals only, then run `python3 -I scripts/check-wiring.py --fail-on-stale`. Include the cleanup with the change that resolved the entries.
+- **Swarm workers:** Record resolved entries under `## Findings` in the assigned notes file. The trusted integrator regenerates the baseline before the merge gate. Keep the protected baseline out of worker pull requests.
+
 ## Shared knowledge loop
 
 Every user instruction or choice is durable input. Route it to the owning tracker in the same turn. After any completed task, write the outcome to the owning tracker so the next agent resumes without re-asking.
