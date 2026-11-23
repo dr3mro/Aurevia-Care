@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Reception browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only browser harness for the reception journey (WEB-10). Vite dev
+         serves this at /e2e/reception/reception-harness.html. The real patients
+         and scheduling pages are mounted with their production providers; no
+         patient record, appointment service or credential is present here. -->
+    <main>
+      <div id="reception-harness" data-testid="reception-harness"></div>
+    </main>
+    <script type="module" src="./reception-harness.tsx"></script>
+  </body>
+</html>

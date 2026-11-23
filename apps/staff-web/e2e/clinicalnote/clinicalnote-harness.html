@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Clinical note browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only browser harness for the clinician note journey (WEB-10). Vite
+         dev serves this at /e2e/clinicalnote/clinicalnote-harness.html. The real
+         note page is mounted with its production providers and a deterministic
+         note route; no patient record, note service or credential is present. -->
+    <main>
+      <div id="clinicalnote-harness" data-testid="clinicalnote-harness"></div>
+    </main>
+    <script type="module" src="./clinicalnote-harness.tsx"></script>
+  </body>
+</html>
