@@ -82,17 +82,26 @@ jobs:
           AGENT_TIMEOUT: 15m
           SYNC_ONLY: '1'
         timeout-minutes: 20
-        run: scripts/agent-run.sh merge-main || true
+        run: |
+          # Older PR branches may lack the conflict skill loader.
+          runner=$(mktemp)
+          trap 'rm -f "$runner"' EXIT
+          git show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
+          bash "$runner" merge-main || true
       # What earlier workers and the integrator wrote about this task in trusted
       # issues. Read here with the read-only token; the agent only sees the file.
       - name: Read earlier findings about this task
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          python3 -I scripts/swarm.py issue-context --task "$STORY_ID" || true
+          context=$(mktemp)
+          trap 'rm -f "$context"' EXIT
+          git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"
+          python3 -I "$context" issue-context --task "$STORY_ID" || true
           if [[ "$MODE" == fix && "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
-            python3 -I scripts/swarm.py pr-context --pr "$PR_NUMBER" || true
+            python3 -I "$context" pr-context --pr "$PR_NUMBER" || true
           fi
       # PostgreSQL ships in the agent image; the integration suites need it.
       - name: Start PostgreSQL for the worker checks

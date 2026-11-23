@@ -179,12 +179,16 @@ class DeliveryGateTest(unittest.TestCase):
         gh.assert_not_called()
         failed.assert_not_called()
 
-    def test_failed_goes_to_the_fix_workers(self):
+    def test_failed_goes_to_the_fix_workers_with_exact_run_evidence(self):
         with mock.patch.object(swarm, "delivery_runs", return_value=[]), \
-             mock.patch.object(swarm, "gh") as gh, mock.patch.object(swarm, "fail") as failed:
+             mock.patch.object(swarm, "gh", return_value="FAIL: synthetic_test") as gh, \
+             mock.patch.object(swarm, "fail") as failed:
             self.assertEqual(swarm.delivery_gate(7, HEAD, runs=[delivery_run(conclusion="failure")]), "fix")
-        failed.assert_called_once_with(7, "Delivery failed on the current head")
-        gh.assert_not_called()
+        gh.assert_called_once_with("run", "view", "7", "--log-failed", check=False)
+        self.assertEqual(failed.call_args.args, (7, "Delivery failed on the current head"))
+        self.assertTrue(failed.call_args.kwargs["simple"])
+        self.assertIn(HEAD, failed.call_args.kwargs["evidence"])
+        self.assertIn("synthetic_test", failed.call_args.kwargs["evidence"])
 
     def test_pending_waits_without_a_label(self):
         with mock.patch.object(swarm, "delivery_runs", return_value=[]), \
