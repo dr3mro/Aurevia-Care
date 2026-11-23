@@ -313,14 +313,10 @@ def worker_counts(live, jobs):
     Running means a job of the worker is in progress; queued means it has jobs but none running."""
     running, queued = set(), set()
     for run in live:
+        if run.get("workflowName") != "Agent swarm":
+            continue
         run_jobs = jobs.get(run.get("databaseId"))
         if not run_jobs:
-            # Jobs not loaded yet: count the run itself as one running worker so
-            # the dashboard never reports 0/20 while a wave is actually live.
-            # Count every live run that spawns workers (any workflow whose jobs
-            # match the worker pattern, or "Agent swarm" runs), not just one name.
-            if run.get("workflowName") == "Agent swarm" or "worker" in (run.get("name") or "").lower():
-                running.add((run.get("databaseId"), run.get("databaseId")))
             continue
         has_worker = False
         for job in run_jobs:
@@ -332,14 +328,8 @@ def worker_counts(live, jobs):
                 continue
             key = (run.get("databaseId"), match.group("id") or job.get("name"))
             (running if job.get("status") == "in_progress" else queued).add(key)
-        if not has_worker and run.get("workflowName") == "Agent swarm":
+        if not has_worker:
             running.add((run.get("databaseId"), run.get("databaseId")))
-    # If no jobs loaded at all, fall back to counting all live runs that look
-    # like swarm workers.
-    if not jobs and live:
-        running = {(r.get("databaseId"), r.get("databaseId")) for r in live
-                   if r.get("workflowName") == "Agent swarm" or "worker" in (r.get("name") or "").lower()}
-        queued = set()
     return len(running), len(queued - running)
 
 
