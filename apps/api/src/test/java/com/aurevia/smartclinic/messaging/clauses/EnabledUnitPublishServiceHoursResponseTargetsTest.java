@@ -68,6 +68,11 @@ class EnabledUnitPublishServiceHoursResponseTargetsTest {
         store.seedApprovedChannels(ORG, "msg06.approved_downtime_channels", "downtime-channel");
         // The same local unit identifier in another tenant must stay isolated.
         store.addUnit(OTHER_ORG, OTHER_ORG_UNIT);
+        // Publish now fails closed on unapproved time-sensitive channels. These
+        // legacy fixture codes are the tenant's approved site policy for this
+        // class, so the field/version refusals below are the ones actually tested.
+        store.seedApprovedChannels(ORG, "msg06.approved_urgent_channels", "urgent-channel");
+        store.seedApprovedChannels(ORG, "msg06.approved_downtime_channels", "downtime-channel");
     }
 
     @AfterEach

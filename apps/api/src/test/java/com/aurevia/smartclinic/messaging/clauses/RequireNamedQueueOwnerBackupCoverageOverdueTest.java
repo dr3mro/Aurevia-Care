@@ -129,6 +129,11 @@ class RequireNamedQueueOwnerBackupCoverageOverdueTest {
         factStore.addMember(ORG_B, STAFF, "lab_collector", true);
         factStore.assignStaffUnit(ORG_A, STAFF, UNIT);
         factStore.addConnection(ORG_A, PATIENT, UNIT, true);
+        // Publish now fails closed on unapproved time-sensitive channels. The
+        // codes published below are the tenant's approved site policy so the
+        // owner/backup refusals are the ones actually exercised by this class.
+        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_urgent_channels", "urgent-phone");
+        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_downtime_channels", "downtime-phone");
     }
 
     /** Clear the thread-bound tenant context after each test. */
