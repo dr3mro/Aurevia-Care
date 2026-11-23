@@ -7,6 +7,13 @@ import { configs as tseslintConfigs, plugin as tseslintPlugin } from 'typescript
 const expoRequire = createRequire(import.meta.resolve('eslint-config-expo/flat.js'));
 const typescriptResolver = expoRequire.resolve('eslint-import-resolver-typescript');
 
+/** Remove the shared TypeScript plugin from a config so it is only defined once. */
+function withoutSharedPlugin(config) {
+  if (!config.plugins?.['@typescript-eslint']) return config;
+  const { '@typescript-eslint': _shared, ...plugins } = config.plugins;
+  return { ...config, plugins };
+}
+
 /** Share the plugin instance and resolve Expo's import resolver from its package. */
 function configureExpo(config) {
   const plugins = config.plugins;
@@ -36,14 +43,11 @@ function configureExpo(config) {
  */
 export default defineConfig(
   { ignores: ['dist/**', 'coverage/**', '.expo/**', 'build/**'] },
-  // Define the plugin once so ESLint does not see it redefined by Expo and
-  // typescript-eslint configs.
+  // Define the TypeScript plugin once; keep other plugins (e.g. import) from
+  // the source configs so their rules can resolve.
   { plugins: { '@typescript-eslint': tseslintPlugin } },
-  ...tseslintConfigs.recommended.map(({ plugins, ...config }) => config),
-  ...expoConfig.map((config) => {
-    const { plugins, ...rest } = configureExpo(config);
-    return rest;
-  }),
+  ...tseslintConfigs.recommended.map((config) => withoutSharedPlugin(config)),
+  ...expoConfig.map((config) => withoutSharedPlugin(configureExpo(config))),
   {
     files: ['**/*.ts', '**/*.tsx'],
     rules: {
