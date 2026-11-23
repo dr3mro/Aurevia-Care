@@ -46,11 +46,9 @@ const wrappingStyle = {
  * @returns The wrapped title, each labelled field, the status and void state.
  */
 function documentValues(document: DocumentAssociation, locale: Locale): DocumentValues {
+  const localTitle = document.titleLocal ?? '';
   return {
-    title:
-      locale === 'ar' && (document.titleLocal ?? '') !== ''
-        ? (document.titleLocal ?? '')
-        : document.title,
+    title: locale === 'ar' && localTitle !== '' ? localTitle : document.title,
     kind: document.kind.toUpperCase(),
     version: document.version,
     language: chartText(locale, document.language === 'ar' ? 'languageAr' : 'languageEn'),
