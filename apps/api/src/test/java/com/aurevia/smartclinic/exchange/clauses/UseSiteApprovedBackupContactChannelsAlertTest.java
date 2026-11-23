@@ -188,6 +188,20 @@ class UseSiteApprovedBackupContactChannelsAlertTest {
         assertNoEscalationAudited();
     }
 
+    /** An in-hours alert refuses a recipient other than the responsible owner. */
+    @Test
+    void inHoursAlertRefusesRecipientOtherThanOwner() {
+        String id = driveToAwaitingAck();
+
+        ApiException failure = reject(() -> service.escalate(id,
+                new EscalateRequest(PRIMARY, BACKUP, "delivered", "synthetic", false), 3));
+
+        assertEquals(422, failure.status());
+        assertEquals("PRIMARY_CHANNEL_REQUIRED", failure.code());
+        assertNoEscalationAttemptWritten();
+        assertNoEscalationAudited();
+    }
+
     /** A revoked backup recipient fails closed with a durable roster-gap fact. */
     @Test
     void escalationIsRefusedWhenBackupRecipientIsNotActive() {

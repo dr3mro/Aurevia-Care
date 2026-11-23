@@ -63,9 +63,15 @@ class EnabledUnitPublishServiceHoursResponseTargetsTest {
         // unit, version and field checks are reached.
         store.addMember(ORG, PUBLISHER, "tenant_admin", true);
         store.addUnit(ORG, UNIT);
+
+        // publish() now enforces the site's approved-channel fold before any other
+        // field check. Seed the codes this fixture publishes so the tests reach the
+        // behaviour they assert (topics, instructions, version) instead of failing
+        // closed at the UNAPPROVED_CHANNEL guard (MSG-06 clause 6).
         // Publish enforces site-approved urgent and downtime channels before it
         // parses the fields this clause proves. Seed the synthetic codes used by
         // these requests so the refusals below reach their intended validators.
+
         store.seedApprovedChannels(ORG, "msg06.approved_urgent_channels", "urgent-channel");
         store.seedApprovedChannels(ORG, "msg06.approved_downtime_channels", "downtime-channel");
         // The same local unit identifier in another tenant must stay isolated.

@@ -117,9 +117,16 @@ class RequireNamedQueueOwnerBackupCoverageOverdueTest {
         profileStore.addMember(ORG_B, PATIENT_USER, "patient", true);
         profileStore.addUnit(ORG_A, UNIT);
         profileStore.addUnit(ORG_B, UNIT);
+
+        // publish() now enforces the site's approved-channel fold before staffing
+        // validation. Seed the codes this fixture publishes so the HTTP publish
+        // tests reach their queue-owner/backup assertions instead of failing closed
+        // at the UNAPPROVED_CHANNEL guard (MSG-06 clause 6).
+
         // Publish enforces site-approved urgent and downtime channels before the
         // queue-owner and backup validators this clause proves. Seed the synthetic
         // codes carried by publishBody so those validators are actually reached.
+
         profileStore.seedApprovedChannels(ORG_A, "msg06.approved_urgent_channels", "urgent-phone");
         profileStore.seedApprovedChannels(ORG_A, "msg06.approved_downtime_channels", "downtime-phone");
         profileStore.linkPatient(ORG_A, PATIENT_USER, PATIENT);
