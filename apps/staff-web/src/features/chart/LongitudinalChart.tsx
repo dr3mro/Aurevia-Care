@@ -47,7 +47,7 @@ const LABEL_STYLE = {
  * page-level horizontal scroll (WEB-07, UX-01). Cells use logical wrapping so a
  * long value never clips or forces the region wider than the viewport.
  */
-function CodedEntryTable({
+export function CodedEntryTable({
   caption,
   entries,
   locale,
@@ -155,7 +155,7 @@ function CodedEntryTable({
  * therefore chronological order — is unchanged, so right-to-left mirrors
  * presentation without reversing the data.
  */
-function VitalTimeline({
+export function VitalTimeline({
   vitals,
   locale,
   emptyLabel,

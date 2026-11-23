@@ -9,6 +9,7 @@ import {
   chartsForTenant,
   createAmendment,
   currentRevision,
+  isEditable,
   markEnteredInError,
   markSuperseded,
   replaceDocument,
@@ -26,9 +27,13 @@ import {
   syntheticVoidReason,
 } from './fixtures';
 import { chartText } from './messages';
+import { ChartTabs } from './ChartTabs';
 import { DocumentList } from './DocumentList';
-import { LongitudinalChart } from './LongitudinalChart';
+import { FollowUpCard } from './FollowUpCard';
 import { NoteEditor } from './NoteEditor';
+import { OverviewCards } from './OverviewCards';
+import { PatientBanner } from './PatientBanner';
+import { RecentResults } from './RecentResults';
 
 /** Keyboard-focusable scroll regions join the natural tab order. */
 const FOCUSABLE_TAB_INDEX = 0;
@@ -72,11 +77,12 @@ function tenantState(charts: readonly Chart[], organizationId: string): TenantCh
   };
 }
 
-/** Amend, entered-in-error, void and rotate commands over the tenant chart state. */
+/** All draft, signature and document commands over the tenant chart state. */
 function useChartActions(
   setState: Dispatch<SetStateAction<TenantChartState>>,
   organizationId: string,
   locale: Locale,
+  patientLocalId: string,
 ) {
   function handleAmend(current: NoteRevision) {
     const amendment = createAmendment(current, `${current.id}-a${current.version + 1}`);
@@ -137,53 +143,7 @@ function useChartActions(
     }));
   }
 
-  return { handleAmend, handleMarkEnteredInError, handleVoid, handleRotate };
-}
-
-/**
- * Compose the longitudinal chart, note editor and document list for one tenant.
- *
- * All mutable state is keyed to the active organization and reset during render,
- * so a switch can never paint the previous tenant's revisions or documents next
- * to the new tenant's chart (IAM-01/ARC-02): React discards a render that calls
- * `setState` on the same component and re-renders before any child is committed.
- */
-export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
-  const { locale } = useI18n();
-  const breakpoint = useBreakpoint();
-  const chart = chartsForTenant(charts, organizationId)[0];
-  const [state, setState] = useState<TenantChartState>(() => tenantState(charts, organizationId));
-
-  if (state.organizationId !== organizationId) {
-    setState(tenantState(charts, organizationId));
-  }
-
-  const { handleAmend, handleMarkEnteredInError, handleVoid, handleRotate } = useChartActions(
-    setState,
-    organizationId,
-    locale,
-  );
-
-  const { revisions, documents, announcement, error } = state;
-
-  if (!chart) {
-    return (
-      <section
-        className="page"
-        data-breakpoint={breakpoint}
-        data-layout="single-column"
-        aria-label={chartText(locale, 'chart')}
-      >
-        <h2>{chartText(locale, 'chart')}</h2>
-        <p>{chartText(locale, 'noChart')}</p>
-      </section>
-    );
-  }
-
-  const activeChart: Chart = chart;
-  const revision = currentRevision(revisions);
-  const layout = CHART_LAYOUT[breakpoint];
-
+  /** Change one SOAP field of the named draft and announce the update. */
   function handleContentChange(current: NoteRevision, field: keyof SoapContent, value: string) {
     setState((currentState) => ({
       ...currentState,
@@ -195,6 +155,7 @@ export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
     }));
   }
 
+  /** Sign the named draft; a domain rejection becomes an accessible alert. */
   function handleSign(current: NoteRevision) {
     try {
       const signed = signDraft(current, {
@@ -202,7 +163,7 @@ export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
         attested: true,
         signedAt: '2026-03-09T12:00:00Z',
         effectiveOn: '2026-03-09',
-        patientLocalId: activeChart.localId,
+        patientLocalId,
         encounterLocalId: syntheticEncounterLocalId,
         expectedVersion: current.version,
       });
@@ -224,66 +185,168 @@ export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
     }
   }
 
+  return {
+    handleAmend,
+    handleMarkEnteredInError,
+    handleVoid,
+    handleRotate,
+    handleContentChange,
+    handleSign,
+  };
+}
+
+/**
+ * Compose the longitudinal chart, note editor and document list for one tenant.
+ *
+ * All mutable state is keyed to the active organization and reset during render,
+ * so a switch can never paint the previous tenant's revisions or documents next
+ * to the new tenant's chart (IAM-01/ARC-02): React discards a render that calls
+ * `setState` on the same component and re-renders before any child is committed.
+ */
+export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
+  const { locale } = useI18n();
+  const breakpoint = useBreakpoint();
+  const chart = chartsForTenant(charts, organizationId)[0];
+  const [state, setState] = useState<TenantChartState>(() => tenantState(charts, organizationId));
+
+  if (state.organizationId !== organizationId) {
+    setState(tenantState(charts, organizationId));
+  }
+
+  const {
+    handleAmend,
+    handleMarkEnteredInError,
+    handleVoid,
+    handleRotate,
+    handleContentChange,
+    handleSign,
+  } = useChartActions(setState, organizationId, locale, chart?.localId ?? '');
+
+  const { revisions, documents, announcement, error } = state;
+
+  if (!chart) {
+    return (
+      <section
+        className="page"
+        data-breakpoint={breakpoint}
+        data-layout="single-column"
+        aria-label={chartText(locale, 'chart')}
+      >
+        <h2>{chartText(locale, 'chart')}</h2>
+        <p>{chartText(locale, 'noChart')}</p>
+      </section>
+    );
+  }
+
+  const revision = currentRevision(revisions);
+  const layout = CHART_LAYOUT[breakpoint];
+
+  /** Banner commands and follow-up outcomes are announced, never fabricated. */
+  function announce(messageKey: 'previewNotice' | 'bookedNotice' | 'overrideNotice'): void {
+    setState((currentState) => ({
+      ...currentState,
+      announcement: chartText(locale, messageKey),
+      error: '',
+    }));
+  }
+
+  // The approximate 320–440 px left rail uses rem so it scales with the
+  // reader's font preference; below the medium band the cards stack.
+  const chartColumns =
+    breakpoint === 'compact'
+      ? 'minmax(0, 1fr)'
+      : 'minmax(var(--chart-aside-inline-size, 20rem), 27.5rem) minmax(0, 1fr)';
+
   return (
-    <section className="page" data-breakpoint={breakpoint} aria-label={chartText(locale, 'chart')}>
-      <h2>{chartText(locale, 'chart')}</h2>
-      <p>{chartText(locale, 'syntheticNotice')}</p>
-      {error === '' ? null : (
-        <p role="alert" data-testid="chart-error">
-          {error}
-        </p>
+    <div className="chart-screen" data-breakpoint={breakpoint}>
+      {chart.patientSummary === undefined ? null : (
+        <PatientBanner
+          summary={chart.patientSummary}
+          locale={locale}
+          onNewOrder={() => announce('previewNotice')}
+          onPrescribe={() => announce('previewNotice')}
+        />
       )}
-      <p role="status" data-testid="chart-status" aria-label={chartText(locale, 'status')}>
-        {announcement}
-      </p>
-      <div className={layout.className} data-part="chart-content" data-layout={layout.columns}>
-        {/*
-         * The wide clinical tables stay real tables with every column; a
-         * labelled, keyboard-scrollable region contains the overflow so a
-         * narrow viewport never scrolls the whole page sideways (WCAG 1.4.10).
-         */}
+      <ChartTabs locale={locale} />
+      <section className="page" data-breakpoint={breakpoint} aria-label={chartText(locale, 'chart')}>
+        <h2>{chartText(locale, 'chart')}</h2>
+        <p>{chartText(locale, 'syntheticNotice')}</p>
+        {error === '' ? null : (
+          <p role="alert" data-testid="chart-error">
+            {error}
+          </p>
+        )}
+        <p role="status" data-testid="chart-status" aria-label={chartText(locale, 'status')}>
+          {announcement}
+        </p>
+        <div
+          className={layout.className}
+          data-part="chart-content"
+          data-layout={layout.columns}
+          style={{ gridTemplateColumns: chartColumns }}
+        >
+          {/*
+           * The wide clinical tables stay real tables with every column; a
+           * labelled, keyboard-scrollable region contains the overflow so a
+           * narrow viewport never scrolls the whole page sideways (WCAG 1.4.10).
+           */}
+          <div
+            className="table-region"
+            data-part="longitudinal"
+            role="region"
+            aria-label={chartText(locale, 'longitudinalChart')}
+            tabIndex={FOCUSABLE_TAB_INDEX}
+            style={{ minInlineSize: '0px', overflowWrap: 'anywhere' }}
+          >
+            <OverviewCards chart={chart} locale={locale} />
+          </div>
+          <div data-part="note" style={{ minInlineSize: '0px', overflowWrap: 'anywhere' }}>
+            {revision ? (
+              <>
+                <NoteEditor
+                  key={revision.id}
+                  revision={revision}
+                  history={revisions.filter((item) => item.id !== revision.id)}
+                  locale={locale}
+                  planRequired
+                  onContentChange={(field, value) => handleContentChange(revision, field, value)}
+                  onSign={() => handleSign(revision)}
+                  onAmend={() => handleAmend(revision)}
+                  onMarkEnteredInError={() => handleMarkEnteredInError(revision)}
+                />
+                {isEditable(revision) && chart.followUp !== undefined ? (
+                  <FollowUpCard
+                    suggestion={chart.followUp}
+                    locale={locale}
+                    onConfirmBook={() => announce('bookedNotice')}
+                    onOverride={() => announce('overrideNotice')}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <p>{chartText(locale, 'noRevisions')}</p>
+            )}
+          </div>
+        </div>
+        {chart.recentResults === undefined ? null : (
+          <RecentResults results={chart.recentResults} locale={locale} />
+        )}
         <div
           className="table-region"
-          data-part="longitudinal"
+          data-part="documents"
           role="region"
-          aria-label={chartText(locale, 'longitudinalChart')}
+          aria-label={chartText(locale, 'documentList')}
           tabIndex={FOCUSABLE_TAB_INDEX}
           style={{ minInlineSize: '0px', overflowWrap: 'anywhere' }}
         >
-          <LongitudinalChart chart={chart} locale={locale} />
+          <DocumentList
+            documents={documents}
+            locale={locale}
+            onVoid={handleVoid}
+            onRotate={handleRotate}
+          />
         </div>
-        <div data-part="note" style={{ minInlineSize: '0px', overflowWrap: 'anywhere' }}>
-          {revision ? (
-            <NoteEditor
-              key={revision.id}
-              revision={revision}
-              history={revisions.filter((item) => item.id !== revision.id)}
-              locale={locale}
-              onContentChange={(field, value) => handleContentChange(revision, field, value)}
-              onSign={() => handleSign(revision)}
-              onAmend={() => handleAmend(revision)}
-              onMarkEnteredInError={() => handleMarkEnteredInError(revision)}
-            />
-          ) : (
-            <p>{chartText(locale, 'noRevisions')}</p>
-          )}
-        </div>
-      </div>
-      <div
-        className="table-region"
-        data-part="documents"
-        role="region"
-        aria-label={chartText(locale, 'documentList')}
-        tabIndex={FOCUSABLE_TAB_INDEX}
-        style={{ minInlineSize: '0px', overflowWrap: 'anywhere' }}
-      >
-        <DocumentList
-          documents={documents}
-          locale={locale}
-          onVoid={handleVoid}
-          onRotate={handleRotate}
-        />
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
