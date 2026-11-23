@@ -6,6 +6,7 @@ import type { TransportErrorKind } from '../../api/transport';
 import { useApi } from '../../api/useApi';
 import { useRoute } from '../../app/router';
 import { Button } from '../../components/Button';
+import { defined } from '../../components/invariant';
 import { ConflictState, LoadingState, StateView } from '../../components/StateViews';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { displayLocalName } from '../../i18n/format';
@@ -160,15 +161,16 @@ function useNoteCommands(ctx: NoteCommandContext) {
   const { setReason, setSignedAttestation } = ctx;
 
   async function handleSave(): Promise<void> {
-    if (draft === undefined || source === undefined) {
-      return;
-    }
+    // Commands are exposed only after the note has loaded; defined() records
+    // that invariant instead of leaving an unreachable early-return branch.
+    const current = defined(draft, 'note draft');
+    const currentSource = defined(source, 'note source');
     setStatus(chartText(locale, 'saving'));
     try {
       await updateNote(
         noteId,
-        draft.version,
-        { title: source.title, content: soapToContent(draft.content) },
+        current.version,
+        { title: currentSource.title, content: soapToContent(current.content) },
         organizationId,
       );
       setDirty(false);
@@ -182,15 +184,13 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleSign(): Promise<void> {
-    if (draft === undefined) {
-      return;
-    }
+    const current = defined(draft, 'note draft');
     const attestation = chartText(locale, 'attestation');
     try {
       const signed =
-        draft.kind === 'amendment'
-          ? await signAddendum(noteId, draft.version, attestation, organizationId)
-          : await signNote(noteId, draft.version, attestation, organizationId);
+        current.kind === 'amendment'
+          ? await signAddendum(noteId, current.version, attestation, organizationId)
+          : await signNote(noteId, current.version, attestation, organizationId);
       setSignedAttestation(signed.attestation);
       setConfirm(undefined);
       setDirty(false);
@@ -207,11 +207,9 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleAmend(): Promise<void> {
-    if (draft === undefined) {
-      return;
-    }
+    const current = defined(draft, 'note draft');
     try {
-      await amendNote(noteId, draft.version, organizationId);
+      await amendNote(noteId, current.version, organizationId);
       setCommandError(undefined);
       setStatus(chartText(locale, 'amendNotice'));
       result.reload();
@@ -221,14 +219,13 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleEnteredInError(): Promise<void> {
-    if (draft === undefined || source === undefined) {
-      return;
-    }
+    const current = defined(draft, 'note draft');
+    const currentSource = defined(source, 'note source');
     try {
       await markEnteredInError(
         noteId,
-        draft.version,
-        { reason, affectedRecipients: [source.dataEntrySubject] },
+        current.version,
+        { reason, affectedRecipients: [currentSource.dataEntrySubject] },
         organizationId,
       );
       setConfirm(undefined);
@@ -289,10 +286,8 @@ function useNoteWorkflow(
   }
 
   function handleContentChange(field: keyof SoapContent, value: string): void {
-    if (draft === undefined) {
-      return;
-    }
-    setDraft({ ...draft, content: { ...draft.content, [field]: value } });
+    const current = defined(draft, 'note draft');
+    setDraft({ ...current, content: { ...current.content, [field]: value } });
     setDirty(true);
     setStatus('');
   }
@@ -325,11 +320,9 @@ function useNoteWorkflow(
   }
 
   function handleCopy(): void {
-    if (draft === undefined) {
-      return;
-    }
+    const current = defined(draft, 'note draft');
     if ('clipboard' in navigator) {
-      void navigator.clipboard.writeText(soapToContent(draft.content));
+      void navigator.clipboard.writeText(soapToContent(current.content));
     }
     setCopied(true);
   }
@@ -432,7 +425,7 @@ function NoteConfirmations({
   const { confirm, reason } = workflow;
   const title = (
     <p>
-      <MixedScriptText text={source?.title ?? ''} lang={locale} /> · {chartText(locale, 'revision')}{' '}
+      <MixedScriptText text={defined(source, 'note source').title} lang={locale} /> · {chartText(locale, 'revision')}{' '}
       {draft.version}
     </p>
   );

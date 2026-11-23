@@ -1,13 +1,14 @@
 import type { PersonName } from '../../i18n/format';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { Appointment, BookingRequest } from './domain';
+import { defined } from '../../components/invariant';
 
 /** Monday anchor used by the day and week worklist fixtures. */
 export const schedulingAnchorCivilDate = '2026-03-09';
 
 /** The two synthetic tenants; their local identifiers intentionally collide. */
-export const alphaOrganizationId = required(syntheticOrganizations[0]).id;
-export const betaOrganizationId = required(syntheticOrganizations[1]).id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
 
 /** Synthetic walk-in used when the form creates a local booking. */
 const syntheticWalkInPatient: PersonName = {
@@ -176,11 +177,4 @@ export function createSyntheticAppointment(request: BookingRequest): Appointment
     state: 'booked',
     version: 1,
   };
-}
-
-function required<T>(value: T | null | undefined): T {
-  if (value === null || value === undefined) {
-    throw new Error('Expected value to be present');
-  }
-  return value;
 }

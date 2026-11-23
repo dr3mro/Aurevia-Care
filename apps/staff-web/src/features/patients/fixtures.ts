@@ -1,9 +1,10 @@
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { PatientResponse, PatientViewResponse, RegistrationDraft } from './domain';
+import { defined } from '../../components/invariant';
 
 /** The two synthetic tenants; their local MRNs intentionally collide. */
-export const alphaOrganizationId = required(syntheticOrganizations[0]).id;
-export const betaOrganizationId = required(syntheticOrganizations[1]).id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
 
 /** Synthetic alpha patients with mixed-script and unknown-date identities. */
 export const syntheticAlphaPatients: readonly PatientResponse[] = [
@@ -56,17 +57,17 @@ export const syntheticBetaPatients: readonly PatientResponse[] = [
 ];
 
 /** The Arabic-script patient used by the mixed-script rendering tests. */
-export const arabicPatientResponse: PatientResponse = required(syntheticAlphaPatients[1]);
+export const arabicPatientResponse: PatientResponse = defined(syntheticAlphaPatients[1], 'fixture value');
 
 /** A patient view whose likely-duplicate warning is present. */
 export const syntheticPatientView: PatientViewResponse = {
-  patient: required(syntheticAlphaPatients[0]),
-  duplicates: [required(syntheticAlphaPatients[1])],
+  patient: defined(syntheticAlphaPatients[0], 'fixture value'),
+  duplicates: [defined(syntheticAlphaPatients[1], 'fixture value')],
 };
 
 /** A patient view with no likely-duplicate warning. */
 export const syntheticPatientViewNoDuplicates: PatientViewResponse = {
-  patient: required(syntheticAlphaPatients[0]),
+  patient: defined(syntheticAlphaPatients[0], 'fixture value'),
   duplicates: [],
 };
 
@@ -79,10 +80,3 @@ export const syntheticRegistrationDraft: RegistrationDraft = {
   dobUnknownReason: '',
   language: 'en',
 };
-
-function required<T>(value: T | null | undefined): T {
-  if (value === null || value === undefined) {
-    throw new Error('Expected value to be present');
-  }
-  return value;
-}

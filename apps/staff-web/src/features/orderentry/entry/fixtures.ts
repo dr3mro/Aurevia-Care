@@ -1,10 +1,11 @@
 import { syntheticOrganizations } from '../../../fixtures/synthetic';
 import type { CodedEntry } from '../../chart/domain';
 import type { ActiveOrder, CatalogItem, SavedOrderDraft } from './domain';
+import { defined } from '../../../components/invariant';
 
 /** Two synthetic tenants; the same local identifiers are reused across them. */
-export const entryAlphaOrganizationId = required(syntheticOrganizations[0]).id;
-export const entryBetaOrganizationId = required(syntheticOrganizations[1]).id;
+export const entryAlphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
+export const entryBetaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
 
 /** Opaque local identifiers used only by synthetic fixtures. */
 export const syntheticPatientLocalId = 'patient-001';
@@ -149,10 +150,3 @@ export const syntheticSavedDraft: SavedOrderDraft = {
     deliveryMode: 'both',
   },
 };
-
-function required<T>(value: T | null | undefined): T {
-  if (value === null || value === undefined) {
-    throw new Error('Expected value to be present');
-  }
-  return value;
-}

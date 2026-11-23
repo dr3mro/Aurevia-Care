@@ -4,6 +4,7 @@ import { Button } from '../../../components/Button';
 import { ErrorState, ForbiddenState, LoadingState } from '../../../components/StateViews';
 import { useI18n } from '../../../i18n/I18nProvider';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { focusableItems } from '../focus';
 import { printStyleId, printStylesheet } from '../styles/printStyles';
 import { printReasonKey, printText, refusalReasonKey } from './messages';
 import type { HandoutLanguage, PrintReason, RefusalReason } from './messages';
@@ -30,9 +31,6 @@ export interface PrintPreviewDialogProps {
   onDownload: (language: HandoutLanguage) => void;
   onClose: () => void;
 }
-
-/** Native controls only; the iframe is intentionally not a tab stop. */
-const focusableSelector = 'button:not([disabled]), select:not([disabled]), input:not([disabled])';
 
 /** Ordered reason choices; the order is stable in both directions. */
 const printReasons: readonly PrintReason[] = ['give-to-patient', 'referral', 'patient-request'];
@@ -71,9 +69,7 @@ function useModalFocus(
       if (event.key !== 'Tab') {
         return;
       }
-      const items = Array.from(
-        containerRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
-      );
+      const items = focusableItems(containerRef.current);
       const index = items.indexOf(document.activeElement as HTMLElement);
       event.preventDefault();
       if (event.shiftKey) {
