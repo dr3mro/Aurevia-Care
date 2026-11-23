@@ -70,7 +70,7 @@ HTTP/PostgreSQL proof in `it.prescription.PrescriptionFlowTest` (`fullWorkflowKe
 `searchHidesUnapprovedAndFutureVersionsAndForcesRLS`, `authorizationAndTenantIsolationHoldOnEveryCommand`)
 and `it.prescription.PrescriptionHttpSecurityTest`, and the versioned-search proof in
 `prescription.VersionedPrescriptionCatalogTest`. The route remains baselined as missing from
-OpenAPI in `contracts/openapi/missing-routes.txt`; that contract debt is outside this task's scope.
+OpenAPI in `contracts/openapi.yaml`; that contract debt is outside this task's scope.
 
 ## Gap
 

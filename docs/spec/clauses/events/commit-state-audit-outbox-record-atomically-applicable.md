@@ -86,5 +86,5 @@ None.
 
 The clause is built and proven by active tests. This task added proof only; it did not change
 production code, an existing test, the OpenAPI contract, a migration or a dependency. The delivery
-routes remain listed in `contracts/openapi/missing-routes.txt`, a pre-existing contract gap owned by
+routes remain listed in `contracts/openapi.yaml`, a pre-existing contract gap owned by
 a separate OpenAPI task and outside this story's scope.

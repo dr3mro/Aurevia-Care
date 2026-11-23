@@ -47,7 +47,7 @@ has no foreign key into any sender chart table (lines 100-129).
 
 Contract note: `GET /api/v1/exchange/work-items` and
 `POST /api/v1/exchange/work-items/{}/verify-patient` are absent from `contracts/openapi.yaml`; both are
-baselined in `contracts/openapi/missing-routes.txt` (lines 45 and 207). That documentation gap is
+baselined in `contracts/openapi.yaml` (lines 45 and 207). That documentation gap is
 tracked separately and was deliberately left unchanged.
 
 ## Gap

@@ -87,7 +87,7 @@ append-only ledger, lives in `it/exchangeresult/CriticalResultFlowTest`
 by `it/exchangeresult/CriticalResultControllerHttpTest.allowedSubjectReachesSuccessStatusOnEveryRoute`.
 
 Contract survey: the escalate route is baselined in
-`contracts/openapi/missing-routes.txt` as
+`contracts/openapi.yaml` as
 `POST /api/v1/critical-results/{}/escalate` and is not described as an operation
 in `contracts/openapi.yaml`. That is contract-documentation debt recorded
 elsewhere and does not affect whether the behaviour is implemented and proven.

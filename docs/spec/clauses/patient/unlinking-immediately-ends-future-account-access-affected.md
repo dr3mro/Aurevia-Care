@@ -59,7 +59,7 @@ latter is `coalesce(bool_or(event = 'linked'), false)` over the current events,
 so an `unlinked` event ends access on the next request without editing history.
 The `/api/v1/patient-identity` routes (including `/links/unlink` and
 `/accounts/{subject}/access`) are currently baselined as missing from
-`contracts/openapi.yaml` in `contracts/openapi/missing-routes.txt`, not
+`contracts/openapi.yaml` in `contracts/openapi.yaml`, not
 documented there. That is a separate contract-completeness gap and does not
 change this clause's runtime proof.
 

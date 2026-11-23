@@ -53,7 +53,7 @@ Production classes and files exercised by the request path:
 - `db/migrations/V7__patient_registration.sql` — `patient_record` with the
   `contacts`, `identifiers` and `consents` jsonb columns, the DOB/reason exclusivity
   check, forced row-level security, append-only triggers and tenant grants.
-- `contracts/openapi/missing-routes.txt` — the `POST /api/v1/patients` entry is
+- `contracts/openapi.yaml` — the `POST /api/v1/patients` entry is
   baselined here; the route is reachable over HTTP but not yet described in
   `contracts/openapi.yaml` (see Findings in the worker notes).
 

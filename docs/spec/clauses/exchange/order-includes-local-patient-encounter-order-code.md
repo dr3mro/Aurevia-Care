@@ -82,6 +82,6 @@ that the order routes are published in the committed OpenAPI contract.
 None for the clause behaviour. Out of scope and pre-existing:
 `POST /api/v1/orders`, `GET /api/v1/orders/{id}` and
 `GET /api/v1/exchange/work-items` are listed in
-`contracts/openapi/missing-routes.txt`; publishing them would change
+`contracts/openapi.yaml`; publishing them would change
 `contracts/openapi.yaml`, the generated client and the contract tests — a
 separate contract-publication task.

@@ -63,7 +63,7 @@ authorization matrix. This clause test adds the HTTP-level, durable-row and per-
 evidence those tests do not provide.
 
 The primary contract `contracts/openapi.yaml` documents the finance list route; the create
-route used by this test appears in `contracts/openapi/missing-routes.txt` (a separately tracked
+route used by this test appears in `contracts/openapi.yaml` (a separately tracked
 traceability discrepancy). No contract change is in this task's scope.
 
 ## Gap

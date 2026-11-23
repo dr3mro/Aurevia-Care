@@ -67,6 +67,6 @@ Verified locally: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=PreservePr
 None for the clause rule: authorization, tenant/patient binding, provenance persistence and
 audit are implemented and now proven through the HTTP entry point. One separately owned
 contract-coverage item remains outside this story's scope: the route is absent from the
-published OpenAPI contract and is baselined in `contracts/openapi/missing-routes.txt:245`;
+published OpenAPI contract and is baselined in `contracts/openapi.yaml:245`;
 closing it needs one task changing `contracts/openapi.yaml` and regenerating the clients.
 No production, contract or migration change is needed to prove this clause.

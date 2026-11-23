@@ -76,7 +76,7 @@ OpenAPI contract.
 
 None for the clause behavior. Out of scope and pre-existing: the committed OpenAPI
 contract has no `/api/v1/prescription-drafts` paths or override fields
-(`contracts/openapi/missing-routes.txt` lists the create, allergy-check,
+(`contracts/openapi.yaml` lists the create, allergy-check,
 select-medication and read routes). Publishing them would change
 `contracts/openapi.yaml`, the generated client and the contract tests; that debt is
 tracked by owner task `FIX-OPENAPI-02` (WEB-05), one separate contract-publication

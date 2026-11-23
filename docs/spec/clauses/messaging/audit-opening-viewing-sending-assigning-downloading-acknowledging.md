@@ -79,7 +79,7 @@ that the two governance routes are published in the committed OpenAPI contract.
 
 None for the clause behaviour. Out of scope and pre-existing: both governance
 routes are absent from `contracts/openapi.yaml` and appear in
-`contracts/openapi/missing-routes.txt` (`GET /api/v1/messaging-governance/audit`
+`contracts/openapi.yaml` (`GET /api/v1/messaging-governance/audit`
 and `POST /api/v1/messaging-governance/actions`). Publishing them, with the
 required tag, POST `Idempotency-Key`, list `cursor`/`limit`/`nextCursor` and a
 regenerated client, is one separate ARC-04/WEB-05 contract task; no contract

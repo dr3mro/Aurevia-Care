@@ -82,7 +82,7 @@ Production classes and schema exercised through that entry point:
   RLS; cited only to show the outbox table the reply path does **not** write today.
 
 The reply route is pre-existing and currently baselined in
-`contracts/openapi/missing-routes.txt`; this proof-only change adds no OpenAPI entry
+`contracts/openapi.yaml`; this proof-only change adds no OpenAPI entry
 and does not claim contract coverage for it.
 
 All fixtures are synthetic (two tenants with identical local codes, no patient data or

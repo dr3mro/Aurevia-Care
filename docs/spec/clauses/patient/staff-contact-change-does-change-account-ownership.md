@@ -79,6 +79,6 @@ Source survey — where the clause is implemented today:
 
 None for the clause rule: it is implemented and proven over the HTTP route and the
 durable store. Separately, `POST /api/v1/patient/access/accounts/contact` is currently
-listed in `contracts/openapi/missing-routes.txt` instead of being declared in
+listed in `contracts/openapi.yaml` instead of being declared in
 `contracts/openapi.yaml`; that OpenAPI contract-parity debt is already tracked as a
 separate gate task and is not a gap in this clause's behavior.

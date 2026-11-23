@@ -78,7 +78,7 @@ connection and never calls `MessagingGovernanceService.requireAttachmentAccess`
 route that would invoke it. `recordRevocation` (`:324-342`) persists
 `messagingBlocked` and `attachmentAccessBlocked` as audit facts; a fact alone
 does not block a request. Both governance routes are already baselined as
-missing from `contracts/openapi.yaml` in `contracts/openapi/missing-routes.txt`
+missing from `contracts/openapi.yaml` in `contracts/openapi.yaml`
 (`:244-250`), which this task cites and does not edit.
 
 Closing the gap would change `AttachmentService.download` (bind the guard to

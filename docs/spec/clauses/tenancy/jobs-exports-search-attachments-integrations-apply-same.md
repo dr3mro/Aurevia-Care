@@ -94,7 +94,7 @@ prevent an unqualified "Proven by tests" status:
    an ISO-8601 instant (for example `getObject(..., OffsetDateTime.class)` rendered
    with `Instant.toString()`).
 3. The three export routes are absent from `contracts/openapi.yaml` and are listed
-   in `contracts/openapi/missing-routes.txt` (lines 116, 333, 334). No OpenAPI
+   in `contracts/openapi.yaml` (lines 116, 333, 334). No OpenAPI
    parity is claimed here. Publishing them with a tag, `Idempotency-Key` on the
    POST operations and a regenerated client needs one separate contract task.
 

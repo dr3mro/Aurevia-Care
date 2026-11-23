@@ -47,7 +47,7 @@ Production classes exercised through the normal consolidation command path:
 Source survey (not changed by this task): the alternate-process behaviour lives in the chart
 consolidation path under `apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation`.
 The HTTP entry is `POST /api/v1/duplicate-reviews/{reviewId}/consolidate`, mapped by
-`ConsolidationController` (it is currently listed in `contracts/openapi/missing-routes.txt`,
+`ConsolidationController` (it is currently listed in `contracts/openapi.yaml`,
 not documented in `contracts/openapi.yaml`); the append-only `consolidation`, `chart_association`
 and `audit_event` tables are created by the Flyway migrations under `db/migrations`. Neighbouring tests that
 already exercise this behaviour are `it/patientidentity/ConsolidationServiceTest` (unit) and
@@ -65,6 +65,6 @@ application rule in this clause.
 
 Separate pre-existing debt, outside this clause's scope and not changed by this task: the
 `POST /api/v1/duplicate-reviews/{reviewId}/consolidate` route is mapped by `ConsolidationController`
-but listed in `contracts/openapi/missing-routes.txt` rather than documented in
+but listed in `contracts/openapi.yaml` rather than documented in
 `contracts/openapi.yaml`. Closing that needs one contract task (`contracts/openapi.yaml` plus
 regenerated client types); it is not missing clause-6 behaviour.

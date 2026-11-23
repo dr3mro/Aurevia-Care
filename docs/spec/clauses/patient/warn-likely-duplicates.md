@@ -61,7 +61,7 @@ This task added proof only; it did not change production code, an existing test,
 contract or a migration.
 
 One adjacent, non-blocking debt is recorded for completeness: `GET /api/v1/patients/{id}` is
-currently listed in `contracts/openapi/missing-routes.txt` as a baselined route, so the view's
+currently listed in `contracts/openapi.yaml` as a baselined route, so the view's
 `duplicates` field is not yet published in the authoritative OpenAPI contract. Publishing that
 route (and regenerating the staff client) is a separate cross-cutting contract task under WEB-05,
 outside this clause's test-only scope and not required to prove the warning rule.

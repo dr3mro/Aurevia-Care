@@ -68,7 +68,7 @@ Where the clause is implemented today (survey result):
   forced row-level security.
 - Contract: the patient routes (`GET /api/v1/patients` with the `name` query
   parameter and `POST /api/v1/patients` for registration) are currently baselined
-  in `contracts/openapi/missing-routes.txt` rather than declared in the primary
+  in `contracts/openapi.yaml` rather than declared in the primary
   `contracts/openapi.yaml`; a generated form also exists at
   `contracts/openapi/generated/openapi.yaml`. Promoting these routes into the
   primary contract is outside this clause-test task.

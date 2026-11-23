@@ -67,7 +67,7 @@ Production classes and files surveyed and exercised by the entry point:
 - Contract survey: `contracts/openapi.yaml` documents the staff scan route and a
   `ScanRequest` note about a bounded failure detail, but no sender-facing view,
   events, remove or replace operation. The three patient file routes are baselined
-  in `contracts/openapi/missing-routes.txt`. No contract file was changed here.
+  in `contracts/openapi.yaml`. No contract file was changed here.
 
 Supporting evidence already on the branch, not repeated here: the focused service
 branches live in `AttachmentAcceptanceTest` — `recordsCleanAndFailedVerdictsAsSeparateFacts`,

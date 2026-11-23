@@ -67,7 +67,7 @@ and `GET /api/v1/documents/associations/{id}[/content]`:
   the no-delete/no-truncate triggers that pin the original bytes and history.
 
 The void route is not yet published in `contracts/openapi.yaml`; it is baselined
-in `contracts/openapi/missing-routes.txt:199` as separate, already-tracked
+in `contracts/openapi.yaml:199` as separate, already-tracked
 contract debt. The tests drive the real controller route directly.
 
 ## Gap

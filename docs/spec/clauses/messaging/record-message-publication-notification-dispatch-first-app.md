@@ -101,7 +101,7 @@ that these routes are published in the committed OpenAPI contract.
 
 The committed OpenAPI contract has no `/api/v1/instructions/publish`,
 `/dispatch/retry`, `/first-view`, `/acknowledge` or `/{id}/facts` operations
-(`contracts/openapi/missing-routes.txt`, lines 51–52 and 223–227). Publishing
+(`contracts/openapi.yaml`, lines 51–52 and 223–227). Publishing
 them would change `contracts/openapi.yaml`, the generated client and the contract
 tests — one separate ARC-04/WEB-05 contract task. No production code, migration,
 existing test or contract file was changed by this story, so there is no other

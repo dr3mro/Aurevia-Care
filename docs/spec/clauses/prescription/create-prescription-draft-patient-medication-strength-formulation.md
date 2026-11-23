@@ -62,7 +62,7 @@ Production classes and files exercised by the request path:
 - `db/migrations/V43__prescription_drafts.sql` — `prescription_draft` and `drug_catalog_entry` with
   forced row-level security, tenant policies and the `set_rx_draft_author_from_actor` trigger that
   derives the prescriber from `app.actor` and never from a request body.
-- `contracts/openapi/missing-routes.txt` — `POST /api/v1/prescription-drafts` and
+- `contracts/openapi.yaml` — `POST /api/v1/prescription-drafts` and
   `POST /api/v1/prescription-drafts/{}/select-medication` are baselined here; the routes are
   reachable over HTTP but not yet described in `contracts/openapi.yaml` (see Findings in the worker
   notes). This test cites that baseline and edits no contract file.

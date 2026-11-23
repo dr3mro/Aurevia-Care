@@ -79,19 +79,15 @@ named staff queue or G5 evidence artifact exists in this repository. The
 related manual record-request process is analysed as Not built in
 [staff-handle-proxy-dependent-other-record-requests.md](../product/staff-handle-proxy-dependent-other-record-requests.md).
 
-The `POST /api/v1/messaging-governance/copy-requests` route is also absent from
-the generated OpenAPI contract and is baselined as missing in
-[missing-routes.txt](../../../../contracts/openapi/missing-routes.txt) (line 247),
-so no regenerated client exposes it. No production file is changed here.
+The `POST /api/v1/messaging-governance/copy-requests` route is published in the
+authoritative [OpenAPI contract](../../../../contracts/openapi.yaml), so the
+regenerated staff client exposes it. No production file is changed here.
 
-Files that would change once the work is authorized: a site-owned approved
+Files that would still change once the work is authorized: a site-owned approved
 procedure and signed market policy pack under `docs/operations/`;
-`contracts/openapi.yaml`, the generated spec and client and the removal of the
-route from `missing-routes.txt`; a staff-web intake and independent-approval
-workflow; and a G5 evidence artifact.
+a staff-web intake and independent-approval workflow; and a G5 evidence artifact.
 
-This needs at least three separate tasks: (1) a human-owned task for the
+This needs at least two separate tasks: (1) a human-owned task for the
 approved site procedure, market policy binding and G5 acceptance; (2) a
-contract task for the OpenAPI entry, regenerated client and route-parity
-baseline; (3) a staff-web intake and independent-review slice. The first task
+staff-web intake and independent-review slice. The first task
 cannot be delivered by code and its evidence is not in this repository.

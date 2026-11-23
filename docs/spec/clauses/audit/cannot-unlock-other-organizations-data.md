@@ -57,7 +57,7 @@ Production classes and files exercised by these requests:
   `emergency_access_review` with forced row-level security and a composite
   `(organization_id, grant_id)` foreign key.
 
-The access endpoints are currently listed in `contracts/openapi/missing-routes.txt`
+The access endpoints are currently listed in `contracts/openapi.yaml`
 (baselined as not yet documented in `contracts/openapi.yaml`); this is a documentation
 gap on a separate contract task and does not affect the isolation behaviour proven here.
 

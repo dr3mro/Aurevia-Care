@@ -70,7 +70,7 @@ the public entry point. It remains proven by the unchanged service-level
 `com.aurevia.smartclinic.messaging.attachments.AttachmentAcceptanceTest`
 (`deniesUnknownInactiveAndForeignGrants`, `deniesMismatchedPatientAndStaffUnitBindings`).
 This class proves the clause as observable and enforceable through HTTP and the
-database. The route is currently listed in `contracts/openapi/missing-routes.txt`,
+database. The route is currently listed in `contracts/openapi.yaml`,
 a pre-existing contract-publication gap owned elsewhere and outside this
 test-only story.
 

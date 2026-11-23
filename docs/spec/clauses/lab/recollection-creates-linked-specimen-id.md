@@ -76,6 +76,6 @@ captured final lines).
 None. The clause is implemented and proven end to end through the real controller,
 service, repository and V26 schema. The published `contracts/openapi.yaml` does not yet
 list `POST /api/v1/lab/accessions/{}/recollect` (it appears only in
-`contracts/openapi/missing-routes.txt`), but that contract publication is a separate,
+`contracts/openapi.yaml`), but that contract publication is a separate,
 already-tracked debt (FIX-OPENAPI-03) outside this test-only story; the tests drive the
 real controller route directly.

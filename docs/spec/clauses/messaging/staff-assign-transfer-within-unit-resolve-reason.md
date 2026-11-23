@@ -82,7 +82,7 @@ Production classes and files surveyed and exercised by the entry points:
   the assignment survive a restart and cannot be rewritten.
 
 Contract survey: the three work-item routes are listed in
-`contracts/openapi/missing-routes.txt` (assign on line 164, resolve on line 168
+`contracts/openapi.yaml` (assign on line 164, resolve on line 168
 and transfer on line 169) as `POST /api/v1/conversations/{}/assign`, `/resolve`
 and `/transfer`; they are baselined there and are not described as operations in
 `contracts/openapi.yaml`.

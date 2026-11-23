@@ -71,7 +71,7 @@ Production classes exercised through their normal entry points:
   RLS on all exchange tables (136-146), a two-party read policy for sender or destination, a
   sender-only insert policy and a destination-only update policy (165-171), plus the check that a
   verified item has a local patient, verifier and verification time.
-- `contracts/openapi/missing-routes.txt` — both work-item routes are already baselined (lines 45 and
+- `contracts/openapi.yaml` — both work-item routes are already baselined (lines 45 and
   207), so this proof task adds no route and changes no contract.
 
 The service-layer tests above prove delegation, audit and refusal at the domain boundary only;

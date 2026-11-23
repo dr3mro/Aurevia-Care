@@ -55,7 +55,7 @@ Production classes and files surveyed and exercised by the entry point:
   re-checks `has_active_membership()` at write time, so deactivation also fails
   closed in the database.
 - Contract survey: the handoff route is listed in
-  `contracts/openapi/missing-routes.txt` as
+  `contracts/openapi.yaml` as
   `POST /api/v1/clinic/worklist/{}/handoff`; it is baselined there and is not
   described as an operation in `contracts/openapi.yaml`. That is separate
   contract-documentation debt and does not affect whether the behaviour is

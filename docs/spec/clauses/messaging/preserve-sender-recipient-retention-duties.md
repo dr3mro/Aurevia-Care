@@ -106,7 +106,7 @@ Closing the gap needs one cross-boundary backend/contract task (plus independent
 2. Add both operations to `contracts/openapi.yaml` with the required contract rules: a tag
    on every operation, an `Idempotency-Key` header on the POST, `cursor`, `limit` and
    `nextCursor` if any list GET is added, and a route-parity entry (do not add the routes to
-   `contracts/openapi/missing-routes.txt`). Run `npm --prefix apps/staff-web run gen:api`
+   `contracts/openapi.yaml`). Run `npm --prefix apps/staff-web run gen:api`
    and commit the regenerated `openapi.d.ts`; `gen:api:check` must pass.
 3. When the route exists, add HTTP-level proofs of the same four behaviors; the four
    active service-level proofs above remain valid. Add a staff-web or operator surface that

@@ -87,7 +87,7 @@ This class proves the API contract, not the client surfaces named in the clause.
 The mobile inbox is consumed by `apps/patient-mobile/src/features/conversations/ConversationInbox.tsx`
 and its tests; no staff-portal work-queue view consumes these routes in
 `apps/staff-web/src`. The conversation routes are also absent from
-`contracts/openapi.yaml` and are listed in `contracts/openapi/missing-routes.txt`,
+`contracts/openapi.yaml` and are listed in `contracts/openapi.yaml`,
 which is pre-existing tracked debt. Client rendering and OpenAPI publication
 are separate stories and were out of scope here: no production code, existing
 test, contract or migration was changed.

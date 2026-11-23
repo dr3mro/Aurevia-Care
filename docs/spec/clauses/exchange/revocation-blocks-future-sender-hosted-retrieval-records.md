@@ -88,7 +88,7 @@ by the service against the current order row, not by an in-memory cache.
 
 The `/api/v1/xch03/orders/{}/revoke` and `/api/v1/xch03/orders/{}/retrieve`
 routes (and the other XCH-03 order routes) are currently baselined as missing
-from `contracts/openapi.yaml` in `contracts/openapi/missing-routes.txt`
+from `contracts/openapi.yaml` in `contracts/openapi.yaml`
 (lines 349 and 121). That is a separate contract-completeness gap and does not
 change this clause's runtime proof; no contract file was edited by this task.
 

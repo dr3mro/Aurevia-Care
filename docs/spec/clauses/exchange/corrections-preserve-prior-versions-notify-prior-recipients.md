@@ -83,6 +83,6 @@ does not claim that these routes are published in the committed OpenAPI contract
 
 None for the clause behaviour. Out of scope and pre-existing: the committed
 `contracts/openapi.yaml` has no `/api/v1/xch04` paths — the routes are listed in
-`contracts/openapi/missing-routes.txt`. Documenting them would change the
+`contracts/openapi.yaml`. Documenting them would change the
 contract, the generated client and the contract tests: one separate
 ARC-04/WEB-05 contract task.

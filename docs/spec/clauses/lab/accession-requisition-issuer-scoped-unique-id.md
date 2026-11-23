@@ -71,7 +71,7 @@ Where the clause is implemented today (survey result):
   laboratory action policy and input validation, and the tenant-guarded repository.
 - Controller: `apps/api/src/main/java/com/aurevia/smartclinic/lab/accession/LabAccessionController.java`.
 - Contract: `POST /api/v1/lab/accessions` is currently baselined as a missing route in
-  `contracts/openapi/missing-routes.txt`; adding the OpenAPI entry is a separate
+  `contracts/openapi.yaml`; adding the OpenAPI entry is a separate
   contract story and is intentionally out of scope for this clause-evidence change.
 
 ## Gap

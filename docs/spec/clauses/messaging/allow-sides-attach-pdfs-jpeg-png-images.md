@@ -74,7 +74,7 @@ media types and whose attachment tables have row-level security with forced enfo
 Contract state: the staff routes are published in `contracts/openapi.yaml` under
 `/api/v1/staff/attachments/*`. The patient routes `POST /api/v1/patient/files/upload`,
 `POST /api/v1/patient/files/{}/scan` and `GET /api/v1/patient/files/{}/download` remain
-listed in `contracts/openapi/missing-routes.txt` as pre-existing OpenAPI-parity debt. That
+listed in `contracts/openapi.yaml` as pre-existing OpenAPI-parity debt. That
 is a separate documentation concern and does not mean a side cannot attach a file.
 
 ## Gap

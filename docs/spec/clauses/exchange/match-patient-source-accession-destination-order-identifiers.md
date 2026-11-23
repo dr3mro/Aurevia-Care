@@ -83,7 +83,7 @@ the xch04 routes are published in the committed OpenAPI contract.
 
 None for the clause behaviour. Out of scope and pre-existing: the committed
 OpenAPI contract publishes none of the seven `/api/v1/xch04/*` routes; all are
-listed in `contracts/openapi/missing-routes.txt` (lines 122-124 and 350-353).
+listed in `contracts/openapi.yaml` (lines 122-124 and 350-353).
 Publishing them, adding the required operation tags and request headers, and
 regenerating the client would change `contracts/openapi.yaml`, the generated
 client and the contract tests — one separate ARC-04 contract task. No migration,

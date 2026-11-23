@@ -45,7 +45,7 @@ per-tenant receipt counter). The requirement and its boundary are defined in
 [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md), FIN-01.
 
 This note proves the HTTP behaviour only. The published OpenAPI contract documents the finance list
-route; the POST entry routes are baselined in `contracts/openapi/missing-routes.txt` as pre-existing
+route; the POST entry routes are baselined in `contracts/openapi.yaml` as pre-existing
 debt outside this clause's scope.
 
 ## Gap

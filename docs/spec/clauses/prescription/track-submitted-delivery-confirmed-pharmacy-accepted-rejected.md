@@ -101,6 +101,6 @@ None. All seven clause event types are implemented as separate append-only
 facts and proven end to end through the HTTP boundary. The
 `/api/v1/prescriptions` action routes are not yet published in
 `contracts/openapi.yaml` (they are listed in
-`contracts/openapi/missing-routes.txt`), which is pre-existing, separately
+`contracts/openapi.yaml`), which is pre-existing, separately
 tracked contract debt outside this test-only story; the test drives the real
 controller routes directly.

@@ -77,7 +77,7 @@ The configuration routes used here are published in `contracts/openapi.yaml` at 
 93 and 109; line 135 is the history route, exercised by the sibling C02 evidence rather than
 by this class. The facility and catalog routes are wired and served, while
 `POST /api/v1/scheduling/visit-types` is currently recorded in
-`contracts/openapi/missing-routes.txt` rather than the primary contract. Promoting that route
+`contracts/openapi.yaml` rather than the primary contract. Promoting that route
 is outside this test-only evidence, so no contract or client change is needed here.
 
 The second ADM-01 sentence — named approval, effective dates, audit and version history —

@@ -90,7 +90,7 @@ Production classes and files surveyed and exercised by the entry point:
   and database trail, so together they justify `Proven by tests`.
 
 Contract survey: the dispensing route is baselined in
-[missing-routes.txt](../../../../contracts/openapi/missing-routes.txt) but is
+[missing-routes.txt](../../../../contracts/openapi.yaml) but is
 not described as an operation in
 [openapi.yaml](../../../../contracts/openapi.yaml). That is pre-existing
 contract-documentation debt, recorded here and in the task notes; it does not

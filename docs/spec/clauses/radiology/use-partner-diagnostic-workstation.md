@@ -82,7 +82,7 @@ slice, outside this clause test.
 
 Contract survey: there is no imaging or DICOM operation in
 `contracts/openapi.yaml`. The imaging routes, including the study-link route
-used here, are baselined in `contracts/openapi/missing-routes.txt` (lines 49-50
+used here, are baselined in `contracts/openapi.yaml` (lines 49-50
 and 220-222). That is separate contract-publication debt, not a gap in this
 clause's behavior. The imaging kernel is also in-memory, so this clause is
 proven at the HTTP/domain boundary and does not claim restart durability.

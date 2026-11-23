@@ -75,7 +75,7 @@ Production classes exercised:
 
 Discovery found no HTTP route for these commands: `TherapyController` publishes
 only `POST /api/v1/therapy/episodes` and `GET /api/v1/therapy/episodes/{id}`, and
-`contracts/openapi/missing-routes.txt` lists those two routes only. The existing
+`contracts/openapi.yaml` lists those two routes only. The existing
 suites `TherapyCoverageTest`, `TherapySafetyTest`, `TherapyEpisodeFlowTest`,
 `TherapyDischargeAcceptanceTest` and `JdbcTherapyStoreIntegrationTest` already
 exercise the domain branches; this class adds per-command protection of the
@@ -101,7 +101,7 @@ regenerated client exists for the three closure commands:
    declaring an `Idempotency-Key` on the POSTs. `contracts/openapi.yaml` needs
    those operations with a tag, request/response schemas, `Idempotency-Key` and
    `nextCursor`-free command semantics, the generated client must be regenerated,
-   the routes removed from `contracts/openapi/missing-routes.txt`, and an
+   the routes removed from `contracts/openapi.yaml`, and an
    HTTP-level integration test added so the chain is proven through the real REST
    boundary. This class is the service-level test to extend to that boundary.
 2. **Staff workflow surface.** Once the routes exist, the physical-therapy staff

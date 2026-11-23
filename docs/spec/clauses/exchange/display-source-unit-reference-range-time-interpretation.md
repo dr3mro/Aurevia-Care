@@ -53,6 +53,6 @@ and `TrendingTest.tenantsStayIsolatedAndRolesAreEnforced`.
 
 None. The clause is implemented and proven end to end. Separately, the
 `/api/v1/trends` routes are not yet published in `contracts/openapi.yaml` (they
-are already listed in `contracts/openapi/missing-routes.txt`); that contract
+are already listed in `contracts/openapi.yaml`); that contract
 publication is pre-existing, separately tracked debt and is outside this
 test-only story's scope.

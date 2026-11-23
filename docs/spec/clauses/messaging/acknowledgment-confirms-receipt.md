@@ -60,7 +60,7 @@ Production classes and files surveyed and exercised by the entry point:
   `instruction_fact_*` tables with tenant keys, `FORCE ROW LEVEL SECURITY`, a tenant isolation
   policy and unique constraints, so the receipt survives a restart and stays inside its tenant.
 - Contract survey: `POST /api/v1/instructions/acknowledge` is baselined at
-  `contracts/openapi/missing-routes.txt:223` (the first-view route at :225). There is no
+  `contracts/openapi.yaml:223` (the first-view route at :225). There is no
   operation in `contracts/openapi.yaml` and therefore no regenerated client entry. That is
   contract-documentation debt handled separately; it does not mean the behaviour is absent.
 

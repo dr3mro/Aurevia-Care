@@ -49,7 +49,7 @@ Production classes and files exercised by the request path:
   `db/migrations/V2__rls_roles_policies.sql` — forced row-level security keyed on
   `app.current_org()`.
 - Discovery note: the `/api/v1/duplicate-reviews/**` operations are currently baselined
-  in `contracts/openapi/missing-routes.txt` rather than published in `contracts/openapi.yaml`;
+  in `contracts/openapi.yaml` rather than published in `contracts/openapi.yaml`;
   adding them to the contract is outside this test-only story's scope.
 
 Verified locally with the command and final line from the surefire report:

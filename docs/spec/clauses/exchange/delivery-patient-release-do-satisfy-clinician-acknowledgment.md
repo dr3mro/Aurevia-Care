@@ -49,7 +49,7 @@ to `tenant_admin`, `ACKNOWLEDGE` to `clinician`),
 append-only `EventType` facts), `com.aurevia.smartclinic.web.TenantContextInterceptor`
 and `com.aurevia.smartclinic.tenant.TenantContext`, with tenant RLS and FORCE RLS
 supplied by the Flyway migrations under `db/migrations`. These routes are listed
-in `contracts/openapi/missing-routes.txt` (pre-existing, out of this story's scope).
+in `contracts/openapi.yaml` (pre-existing, out of this story's scope).
 
 Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=DeliveryPatientReleaseDoSatisfyClinicianAcknowledgmentTest test`
 — `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0`.

@@ -50,7 +50,7 @@ branch of `confirmationFailure` and `confirmationOutcome` as unit tests, and
 `com.aurevia.smartclinic.it.patientidentity.ConsolidationIsolationTest.identifierConfirmationIsEnforcedAgainstTheTwoRecords`
 covers the same HTTP route including the documented `ALTERNATE:site_witness`
 outcome. The route is currently baselined as missing from the OpenAPI contract in
-`contracts/openapi/missing-routes.txt`; no public contract entry proves it yet.
+`contracts/openapi.yaml`; no public contract entry proves it yet.
 
 Survey result for the collection half: `com.aurevia.smartclinic.web.PatientController`
 (`POST /api/v1/patients`) and `com.aurevia.smartclinic.patient.PatientService.register`

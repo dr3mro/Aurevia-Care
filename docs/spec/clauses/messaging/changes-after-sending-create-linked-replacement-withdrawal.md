@@ -99,7 +99,7 @@ built and proven over HTTP. The durable, published and delivered parts are missi
    store; the disabled-free proof above would then be extended. One backend/integration task.
 3. **Published API contract.** The `/api/v1/patient-instructions`, `/templates`, `/{}/replace` and
    `/{}/withdraw` routes are absent from `contracts/openapi.yaml` and listed in
-   `contracts/openapi/missing-routes.txt` (lines 70–71 and 257–260). Files that would change: add the
+   `contracts/openapi.yaml` (lines 70–71 and 257–260). Files that would change: add the
    operations with tags, `Idempotency-Key` on POST and route-parity entries to `contracts/openapi.yaml`,
    then regenerate the staff-web generated client with `gen:api`. One contract/client task.
 

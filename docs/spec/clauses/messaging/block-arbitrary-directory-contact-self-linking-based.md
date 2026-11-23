@@ -73,7 +73,7 @@ Source survey (unchanged by this task): the relevant production packages are
 `db/migrations/V60__care_units.sql`, and `patient_link`, `conversation`, `conversation_message`
 and `work_item_event` from `db/migrations/V33__conversation_lifecycle.sql`. The published
 OpenAPI contract does **not** currently carry the care-unit or conversation routes: they are
-baselined as missing in `contracts/openapi/missing-routes.txt`. No OpenAPI contract proof is
+baselined as missing in `contracts/openapi.yaml`. No OpenAPI contract proof is
 claimed here; the rule is proven at the domain command boundary. This is simulated engineering
 evidence, not real-patient approval or a substitute for the database isolation suites that
 the integrator runs.
@@ -85,8 +85,8 @@ Verified locally: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=BlockArbit
 
 None for the three bans: each is implemented in production and proven by an active test above.
 The care-unit and conversation routes are absent from the published OpenAPI contract
-(`contracts/openapi/missing-routes.txt`); publishing them is a separate, already-tracked
+(`contracts/openapi.yaml`); publishing them is a separate, already-tracked
 contract gap, not missing behaviour of this clause. Closing it would change
-`contracts/openapi.yaml`, the generated client and `contracts/openapi/missing-routes.txt`, and
+`contracts/openapi.yaml`, the generated client and `contracts/openapi.yaml`, and
 needs one separate contract-publication task. This task changed only the test and this document
 — no production code, existing test, contract or migration.

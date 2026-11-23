@@ -72,7 +72,7 @@ declares `conversation` with one `unit_key` and one `connection_id`, and its
 `guard_conversation_update()` makes `unit_key`, `connection_id`, `patient_id` and `patient_subject`
 immutable (42501). That is the database-level proof that a new recipient needs a *new*
 conversation. The `/api/v1/conversations/**` routes are currently baselined in
-`contracts/openapi/missing-routes.txt` rather than published in `contracts/openapi.yaml`;
+`contracts/openapi.yaml` rather than published in `contracts/openapi.yaml`;
 contract work is outside this test-only story's scope. `V91__staff_messaging.sql` and
 `V62__messaging_governance.sql` belong to separate staff-mail and retention features and carry
 no disclosure path.

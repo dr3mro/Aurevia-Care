@@ -71,7 +71,7 @@ or migration was changed.
 
 One adjacent, non-blocking debt is recorded for completeness: the routes
 `POST /api/v1/patient/files/upload`, `POST /api/v1/patient/files/{}/scan` and
-`GET /api/v1/patient/files/{}/download` are listed in `contracts/openapi/missing-routes.txt` as
+`GET /api/v1/patient/files/{}/download` are listed in `contracts/openapi.yaml` as
 baselined routes, so the attachment API is not yet published in the authoritative OpenAPI contract.
 Publishing those routes (and regenerating the client) is a separate cross-cutting contract task,
 outside this clause's test-only scope and not required to prove the validation-and-quarantine rule.

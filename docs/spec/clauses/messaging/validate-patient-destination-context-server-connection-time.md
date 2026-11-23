@@ -94,7 +94,7 @@ Where the clause is implemented today (source survey result):
   contracts; the conversation-side verifier and resolver live under
   `messaging/conversations/`.
 - Contract note: the care-unit and patient-unit-connection routes above are
-  currently recorded in `contracts/openapi/missing-routes.txt`, not yet declared
+  currently recorded in `contracts/openapi.yaml`, not yet declared
   in `contracts/openapi.yaml`. This is pre-existing contract-parity debt tracked
   separately and is not part of this clause's validation rule.
 
