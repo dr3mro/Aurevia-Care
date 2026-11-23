@@ -17,14 +17,14 @@ export default tseslint.config(
   },
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
-    files: ['frontend/**/*.ts', 'vitest.config.ts'],
+    files: ['tools/**/*.ts', 'vitest.config.ts'],
   })),
   ...tseslint.configs.strictTypeChecked.map((config) => ({
     ...config,
-    files: ['frontend/**/*.ts', 'vitest.config.ts'],
+    files: ['tools/**/*.ts', 'vitest.config.ts'],
   })),
   {
-    files: ['frontend/**/*.ts', 'vitest.config.ts'],
+    files: ['tools/**/*.ts', 'vitest.config.ts'],
     languageOptions: {
       parserOptions: {
         projectService: true,

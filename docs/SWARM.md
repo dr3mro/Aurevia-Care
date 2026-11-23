@@ -39,6 +39,42 @@ file. Review the diff for removals, then verify with
 
 **Batching.** The integrator sets up Java/Maven once, merges every ready PR in one job, pushes once, and Delivery verifies the pushed commit on main. Each worker has its own publish job, so a PR opens as soon as its worker ends; the worker keeps no GitHub token and only the trusted publish job holds one.
 
+## Labels
+
+The swarm drives its fix/debug/repair loops with GitHub labels. They are defined in `scripts/swarm.py` (`LABELS` and `ISSUE_LABELS`) and created by `ensure-labels`.
+
+### Pull request labels
+
+| Label | Applied when | What it triggers | Removed when |
+|---|---|---|---|
+| `swarm` | A swarm worker opens the PR | Marks it as swarm-owned; the integrator and PR flow only act on `swarm` PRs | PR merged/closed |
+| `autofix` | The watchdog opens a `FIX-` repair PR for a red main | `fix-pr-gate.yml` runs the full gate on it; the integrator fast-tracks a green result | PR merged/closed |
+| `needs-fix` | Integration failed (gate red, or conflict after retries) | A fix worker is dispatched with fresh attempts | Worker fixes and pushes |
+| `needs-human` | Three fix attempts exhausted, or a protected/unknown cause | The swarm stops; a person must decide | A person intervenes |
+| `needs-debug` | A failing fix needs root-cause analysis | `swarm-debugger.yml` runs a debugger agent | Debugger publishes its report and adds a `debug-N` label |
+| `fix-1` / `fix-2` / `fix-3` | Each fix-worker attempt | Attempt counter; after `fix-3` the next failure goes to `needs-human` | Reset on re-dispatch |
+| `debug-1` / `debug-2` / `debug-3` | Each debugger round | Round counter; after `debug-3` one more failure goes to `needs-human` | Reset on re-dispatch |
+
+### Issue labels
+
+| Label | Applied when | What it triggers | Removed when |
+|---|---|---|---|
+| `swarm-issue` | The swarm opens or updates an issue | Flags it for the issue monitor | Issue closed |
+| `ci-failure` | A Delivery or scheduled workflow fails | The monitor classifies the cause; may open a repair task or `needs-human` | Issue closed |
+| `stalled` | No wave is running while work waits | The watchdog starts a wave | A wave starts |
+| `needs-review` | The PR works as designed but needs approval | A person approves/merges | Person approves |
+| `worker-handoff` | A worker stopped mid-task | The next worker reads its notes and continues | Task done |
+| `swarm-review` | The six-hourly review has suggestions | A person decides on task order/workflow changes | Person decides |
+| `protected-change` | A protected file merged under `SWARM_ALLOW_PROTECTED` | Oversight audit trail only | Never (permanent record) |
+
+### Typical flows
+
+- **Red PR:** `needs-fix` + `fix-N` → fix worker → repeat; after 3 → `needs-human`, or `needs-debug` → `debug-N` → fix → repeat.
+- **Red main:** watchdog opens an `autofix` `FIX-` PR → fix-pr-gate → green → integrator; red → back to workers.
+- **Issues:** `ci-failure` / `worker-handoff` / `swarm-issue` → monitor triage → task or `needs-human`.
+
+Task state itself uses marks in `tasks/*.md` (`[ ]` open, `[-]` taken, `[x]` done), not GitHub labels.
+
 ## Priority
 
 Each task may carry `priority: high|normal|low`. Without it a task is **high** when its title contains `(HIGH PRIORITY` and **low** when its id starts with `QAD-`, `DSO-` or `AUD-` (the daily QA, DevSecOps and audit findings); everything else is normal. Inside the backlog lane the task file breaks ties in high, normal and low priority. The PR fix and merge lanes are handled first. Low-priority backlog tasks use spare slots. Scheduled audit, QA, DevSecOps, notes and strategist agents wait for a later scheduled run if higher-priority work is ready or currently using all slots. `aurevia monitor` shows the queue in this order with `H` and `L` markers.
