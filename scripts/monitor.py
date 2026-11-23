@@ -184,6 +184,10 @@ def fetch(emit=None, full=True):
                  and r.get("updatedAt") and (now - ts(r["updatedAt"])).total_seconds() < 86400]
         done = {r["databaseId"] for r in runs if r.get("status") == "completed"}
         with guard:
+            # Drop stale job lists for any run that is live again, so a re-run is not
+            # masked by a cached completed-run snapshot.
+            for i in [r["databaseId"] for r in runs if r.get("status") != "completed"]:
+                CACHE["jobs"].pop(i, None)
             cached = dict(CACHE["jobs"])
             want = [i for i in dict.fromkeys(want) if i not in claimed and i not in cached]
             claimed.update(want)
