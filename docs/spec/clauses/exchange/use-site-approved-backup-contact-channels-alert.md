@@ -35,6 +35,10 @@ at `POST /api/v1/critical-results/{id}/escalate`.
 - `inHoursAlertRefusesBackupChannel` — before the deadline, the backup channel and
   recipient are refused with 422 `PRIMARY_CHANNEL_REQUIRED` and no attempt event
   (negative: forbidden channel for the current state).
+- `inHoursAlertRefusesRecipientOtherThanOwner` — before the deadline, the approved
+  primary channel with a recipient other than the responsible owner is refused
+  with 422 `PRIMARY_CHANNEL_REQUIRED` and no attempt event (negative: the second
+  operand of the in-hours recipient guard).
 - `escalationIsRefusedWhenBackupRecipientIsNotActive` — a revoked backup
   recipient yields 409 `ROSTER_GAP`, a `ROSTER_GAP` event and a `CONFLICT` audit
   row, with no attempt event (negative: revoked membership fails closed on the
