@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createRoutes } from '../../app/routes';
 import { defined } from '../../components/invariant';
 import { ActiveOrganizationProvider } from '../../api/activeOrganization';
@@ -258,5 +258,62 @@ describe('QueuesPage commands', () => {
     expect(screen.queryByTestId('operations-command-error')).toBeNull();
     expect(screen.queryByText('owner accepted the handover')).toBeNull();
     expect(descriptorAt(2).headers['X-Active-Organization']).toBe('org-beta');
+  });
+
+  it('ignores a queue action that fails after the tenant changes', async () => {
+    let rejectAction!: (reason: unknown) => void;
+    const pending = new Promise<typeof alphaQueuesView>((_, reject) => {
+      rejectAction = reject;
+    });
+    sendMock
+      .mockResolvedValueOnce(alphaQueuesView)
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(betaQueuesView);
+    const { rerender } = wrap();
+    await screen.findByText(operationsText('en', 'unsigned-encounters'));
+    startResolve();
+    confirmAction();
+
+    rerender(element(<QueuesPage />, 'org-beta'));
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
+    await act(async () => {
+      rejectAction(failure('server'));
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId('operations-command-error')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText('owner accepted the handover')).toBeNull();
+    expect(sendMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not clear a beta reason when an alpha action settles after the switch', async () => {
+    let resolveAction!: (value: typeof alphaQueuesView) => void;
+    const pending = new Promise<typeof alphaQueuesView>((done) => {
+      resolveAction = done;
+    });
+    sendMock
+      .mockResolvedValueOnce(alphaQueuesView)
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(betaQueuesView);
+    const { rerender } = wrap();
+    await screen.findByText(operationsText('en', 'unsigned-encounters'));
+    startResolve();
+    confirmAction();
+
+    rerender(element(<QueuesPage />, 'org-beta'));
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
+    startResolve();
+    const reasonField = within(screen.getByRole('dialog')).getByLabelText(
+      operationsText('en', 'reasonLabel'),
+    );
+    fireEvent.change(reasonField, { target: { value: 'beta reason' } });
+    await act(async () => {
+      resolveAction(alphaQueuesView);
+      await Promise.resolve();
+    });
+
+    expect((reasonField as HTMLTextAreaElement).value).toBe('beta reason');
+    expect(screen.queryByTestId('operations-command-error')).toBeNull();
   });
 });

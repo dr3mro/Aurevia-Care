@@ -2,9 +2,10 @@ import type { InboxMessageKey } from './labels';
 import type { ScanState, ThreadState } from './types';
 
 /**
- * Pure unit-inbox rules. Work-item creation and state words are derived here so
- * the screen never decides clinical state from presentation, and an unscanned
- * file is never offered as an openable control.
+ * Pure unit-inbox rules. State and scan words are resolved here so the screen
+ * never decides a clinical or file-safety state from colour or presentation,
+ * and an unscanned file is never offered as an openable control. Work items
+ * themselves are created server-authoritatively and arrive through `listInbox`.
  */
 export type ThreadTone = 'urgent' | 'waiting' | 'calm';
 

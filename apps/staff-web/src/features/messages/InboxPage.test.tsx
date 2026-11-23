@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createRoutes } from '../../app/routes';
 import { defined } from '../../components/invariant';
 import { ActiveOrganizationProvider } from '../../api/activeOrganization';
@@ -309,5 +309,138 @@ describe('InboxPage tenant isolation', () => {
     fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
     expect(sendMock).toHaveBeenCalledTimes(3);
     expect(descriptorAt(2).headers['X-Active-Organization']).toBe('org-beta');
+  });
+
+});
+
+describe('InboxPage late command settlement', () => {
+  it('ignores a reply that fails after the tenant changes', async () => {
+    let rejectReply!: (reason: unknown) => void;
+    const pending = new Promise<typeof alphaInboxView>((_, reject) => {
+      rejectReply = reject;
+    });
+    sendMock
+      .mockResolvedValueOnce(alphaInboxView)
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(betaInboxView);
+    const { rerender } = wrap();
+    await screen.findByRole('button', { name: /Synthetic Grace Okafor: Appointment change/ });
+    fireEvent.change(composer(), { target: { value: 'alpha late reply' } });
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
+
+    rerender(element(<InboxPage />, 'org-beta'));
+    expect(
+      await screen.findByRole('button', { name: /Synthetic Hassan Ibrahim beta: Refill question/ }),
+    ).toBeTruthy();
+    await act(async () => {
+      rejectReply(failure('server'));
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId('inbox-command-error')).toBeNull();
+    expect(screen.queryByText('alpha late reply')).toBeNull();
+    expect((composer() as HTMLTextAreaElement).value).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
+    expect(sendMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not clear a beta draft when an alpha reply settles after the switch', async () => {
+    let resolveReply!: (value: typeof alphaInboxView) => void;
+    const pending = new Promise<typeof alphaInboxView>((done) => {
+      resolveReply = done;
+    });
+    sendMock
+      .mockResolvedValueOnce(alphaInboxView)
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(betaInboxView);
+    const { rerender } = wrap();
+    await screen.findByRole('button', { name: /Synthetic Grace Okafor: Appointment change/ });
+    fireEvent.change(composer(), { target: { value: 'alpha late reply' } });
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
+
+    rerender(element(<InboxPage />, 'org-beta'));
+    expect(
+      await screen.findByRole('button', { name: /Synthetic Hassan Ibrahim beta: Refill question/ }),
+    ).toBeTruthy();
+    fireEvent.change(composer(), { target: { value: 'beta draft' } });
+    await act(async () => {
+      resolveReply(alphaInboxView);
+      await Promise.resolve();
+    });
+
+    expect((composer() as HTMLTextAreaElement).value).toBe('beta draft');
+    expect(screen.queryByText('alpha late reply')).toBeNull();
+    expect(screen.queryByTestId('inbox-command-error')).toBeNull();
+  });
+
+  it('ignores a work action that fails after the tenant changes', async () => {
+    let rejectAction!: (reason: unknown) => void;
+    const pending = new Promise<typeof alphaInboxView>((_, reject) => {
+      rejectAction = reject;
+    });
+    sendMock
+      .mockResolvedValueOnce(alphaInboxView)
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(betaInboxView);
+    const { rerender } = wrap();
+    await screen.findByRole('button', { name: /Synthetic Grace Okafor: Appointment change/ });
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'resolve') }));
+    const dialog = within(screen.getByRole('dialog'));
+    fireEvent.change(dialog.getByLabelText(inboxText('en', 'reasonLabel')), {
+      target: { value: 'alpha late action' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: inboxText('en', 'recordAction') }));
+
+    rerender(element(<InboxPage />, 'org-beta'));
+    expect(
+      await screen.findByRole('button', { name: /Synthetic Hassan Ibrahim beta: Refill question/ }),
+    ).toBeTruthy();
+    await act(async () => {
+      rejectAction(failure('server'));
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId('inbox-command-error')).toBeNull();
+    expect(screen.queryByText('alpha late action')).toBeNull();
+    expect(sendMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not clear a beta reason when an alpha action settles after the switch', async () => {
+    let resolveAction!: (value: typeof alphaInboxView) => void;
+    const pending = new Promise<typeof alphaInboxView>((done) => {
+      resolveAction = done;
+    });
+    sendMock
+      .mockResolvedValueOnce(alphaInboxView)
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(betaInboxView);
+    const { rerender } = wrap();
+    await screen.findByRole('button', { name: /Synthetic Grace Okafor: Appointment change/ });
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'resolve') }));
+    const alphaDialog = within(screen.getByRole('dialog'));
+    fireEvent.change(alphaDialog.getByLabelText(inboxText('en', 'reasonLabel')), {
+      target: { value: 'alpha late action' },
+    });
+    fireEvent.click(alphaDialog.getByRole('button', { name: inboxText('en', 'recordAction') }));
+
+    rerender(element(<InboxPage />, 'org-beta'));
+    expect(
+      await screen.findByRole('button', { name: /Synthetic Hassan Ibrahim beta: Refill question/ }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'assign') }));
+    const betaDialog = within(screen.getByRole('dialog'));
+    fireEvent.change(betaDialog.getByLabelText(inboxText('en', 'reasonLabel')), {
+      target: { value: 'beta work reason' },
+    });
+    await act(async () => {
+      resolveAction(alphaInboxView);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(
+      betaDialog.getByLabelText<HTMLInputElement>(inboxText('en', 'reasonLabel')).value,
+    ).toBe('beta work reason');
+    expect(screen.queryByTestId('inbox-command-error')).toBeNull();
   });
 });

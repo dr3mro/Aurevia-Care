@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { ApiPage } from '../../components/ApiPage';
@@ -44,6 +44,9 @@ export function InboxPage() {
   const [recoveryNotice, setRecoveryNotice] = useState<string | undefined>(undefined);
   const [generation, setGeneration] = useState(0);
   const [draftOrganization, setDraftOrganization] = useState(organizationId);
+  // A ref keeps the *current* tenant visible to command closures from an older
+  // render, so a late response cannot mutate the new tenant's page state.
+  const activeOrganization = useRef(organizationId);
 
   // A tenant switch clears every draft synchronously during render. The page
   // stays mounted while useApi refetches, so without this a reply or reason
@@ -58,6 +61,10 @@ export function InboxPage() {
     setRecoveryNotice(undefined);
   }
 
+  useEffect(() => {
+    activeOrganization.current = organizationId;
+  }, [organizationId]);
+
   const reload = (): void => setGeneration((value) => value + 1);
 
   const resource = {
@@ -70,13 +77,20 @@ export function InboxPage() {
     if (!hasDraftContent(draft.draft)) {
       return;
     }
+    const submittingOrganization = organizationId;
     try {
       await sendReply(draft, organizationId);
+      if (activeOrganization.current !== submittingOrganization) {
+        return;
+      }
       setReplyText('');
       setCommandError(undefined);
       setRetry(undefined);
       reload();
     } catch (failure: unknown) {
+      if (activeOrganization.current !== submittingOrganization) {
+        return;
+      }
       setRetry(() => () => {
         void submitReply(draft);
       });
@@ -89,14 +103,21 @@ export function InboxPage() {
       setReasonError(inboxText(locale, 'reasonRequired'));
       return;
     }
+    const submittingOrganization = organizationId;
     try {
       await recordThreadAction(draft, organizationId);
+      if (activeOrganization.current !== submittingOrganization) {
+        return;
+      }
       setWorkDraft(undefined);
       setReasonError(undefined);
       setCommandError(undefined);
       setRetry(undefined);
       reload();
     } catch (failure: unknown) {
+      if (activeOrganization.current !== submittingOrganization) {
+        return;
+      }
       setRetry(() => () => {
         void submitWork(draft);
       });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { ApiPage } from '../../components/ApiPage';
@@ -43,6 +43,9 @@ export function QueuesPage() {
   const [recoveryNotice, setRecoveryNotice] = useState<string | undefined>(undefined);
   const [generation, setGeneration] = useState(0);
   const [draftOrganization, setDraftOrganization] = useState(organizationId);
+  // Command closures from an older render can settle after a tenant switch;
+  // this ref lets them recognise that their result is no longer current.
+  const activeOrganization = useRef(organizationId);
 
   // A tenant switch clears every draft synchronously during render. The page
   // stays mounted while useApi refetches, so without this a reason typed for
@@ -55,6 +58,10 @@ export function QueuesPage() {
     setCommandError(undefined);
     setRecoveryNotice(undefined);
   }
+
+  useEffect(() => {
+    activeOrganization.current = organizationId;
+  }, [organizationId]);
 
   const reload = (): void => setGeneration((value) => value + 1);
 
@@ -69,14 +76,21 @@ export function QueuesPage() {
       setReasonError(operationsText(locale, 'reasonRequired'));
       return;
     }
+    const submittingOrganization = organizationId;
     try {
       await recordQueueAction(next, organizationId);
+      if (activeOrganization.current !== submittingOrganization) {
+        return;
+      }
       setDraft(undefined);
       setReasonError(undefined);
       setCommandError(undefined);
       setFailedDraft(undefined);
       reload();
     } catch (failure: unknown) {
+      if (activeOrganization.current !== submittingOrganization) {
+        return;
+      }
       setFailedDraft(next);
       setCommandError(toTransportError(failure));
     }
