@@ -63,6 +63,9 @@ class EnabledUnitPublishServiceHoursResponseTargetsTest {
         // unit, version and field checks are reached.
         store.addMember(ORG, PUBLISHER, "tenant_admin", true);
         store.addUnit(ORG, UNIT);
+        // Seed the site-approved urgent and downtime channels the clause requires.
+        store.seedApprovedChannels(ORG, "msg06.approved_urgent_channels", "urgent-channel");
+        store.seedApprovedChannels(ORG, "msg06.approved_downtime_channels", "downtime-channel");
         // The same local unit identifier in another tenant must stay isolated.
         store.addUnit(OTHER_ORG, OTHER_ORG_UNIT);
     }
