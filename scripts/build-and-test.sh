@@ -219,6 +219,7 @@ finish() {
 # --- policy -----------------------------------------------------------------
 shell_files=(scripts/*.sh infra/bootstrap/start.sh apps/api/check.sh db/check.sh)
 
+# shellcheck disable=SC2329,SC2317
 check_shell() {
   local file
   for file in "${shell_files[@]}"; do bash -n "$file"; done
@@ -227,6 +228,7 @@ check_shell() {
 
 # check-constraints diffs against origin/main; CI passes --require-base, so do the same
 # whenever the base can be resolved and warn when it cannot.
+# shellcheck disable=SC2329,SC2317
 check_policy() {
   if git rev-parse --verify --quiet origin/main >/dev/null; then
     set -- --require-base
