@@ -1777,8 +1777,6 @@ esac
             calls |= set(re.findall(r"swarm\.py ([a-z-]+)", path.read_text()))
         self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-validate",
                          "integrate-publish", "plan-integration", "slot-config", "slot-matrix",
-        self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-validate",
-                         "integrate-publish", "plan-integration", "slot-config", "slot-matrix",
                          "images-ready", "ensure-labels"} <= calls)
         for command in calls:
             done = subprocess.run(["python3", "-I", str(ROOT / "scripts/swarm.py"), command, "--help"],
