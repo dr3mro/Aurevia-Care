@@ -1,5 +1,5 @@
 -- Requirement IDs: ARC-03, OPS-06
--- Change: expand (identifier-only; no row data, constraint or privilege changes)
+-- Change: expand
 --
 -- Purpose: historical task IDs XCH-03 and RX-02 were used as PostgreSQL
 -- identifier prefixes in V21, V44 and V59. The domain names are stable business
