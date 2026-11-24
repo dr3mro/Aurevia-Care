@@ -1164,7 +1164,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 
 **Keys/constraints.** PK `(organization_id, id)`; CHECKs on checksum format, trimmed text and code patterns; a trigger validates `local_patient_id` against `patient_record` in the active tenant; update guard pins ownership/content and forbids leaving a terminal state.
 **Isolation / writes.** Forced RLS declared here (uses the local `exchange_response_app_org()` equivalent); bounded UPDATE via the state guard; DELETE/TRUNCATE rejected by triggers.
-**Migration.** Created V21__exchange_response_order_response.sql (XCH-03, XCH-01, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); conditional DDL.
+**Migration.** Created V21__xch03_order_response.sql (XCH-03, XCH-01, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); conditional DDL.
 
 ### `exchange_response_revision`
 
@@ -1765,7 +1765,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 
 **Keys/constraints.** PK `(organization_id, id)`; `UNIQUE (organization_id, submission_id)` so a replay cannot create a second downstream prescription; FKs to patient and author. Update guard pins clinical columns, freezes channel/submission id once set, requires `version + 1` and enumerates transitions. V59 widened the guard to allow `attested → ambiguous` and `submitted → ambiguous`.
 **Isolation / writes.** Forced RLS declared here (conditional DDL); bounded UPDATE via the state machine; DELETE/TRUNCATE rejected by triggers.
-**Migration.** Created V44__prescription_transmission_transmission.sql (RX-02, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); guard last changed V59.
+**Migration.** Created V44__rx02_prescription_transmission.sql (RX-02, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); guard last changed V59.
 
 ### `prescription_submission`
 

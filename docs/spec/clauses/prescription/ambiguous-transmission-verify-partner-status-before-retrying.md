@@ -61,8 +61,8 @@ covered by the corroborating suites named below),
 `VerifyRequest`, `RetryRequest`, `PARTNER_STATUS_VERIFIED` event),
 `com.aurevia.prescription.rx.RxRepository` (`reconcile`,
 `retrySubmission`, `submissionAttempts`) and the tenant RLS/FORCE RLS plus the
-guarded state machine in `db/migrations/V44__prescription_transmission_transmission.sql`
-and `db/migrations/V59__prescription_ambiguous_transition.sql`.
+guarded state machine in `db/migrations/V44__rx02_prescription_transmission.sql`
+and `db/migrations/V59__rx02_ambiguous_transition.sql`.
 
 Corroborating suites already on `main` (not re-tested here):
 `com.aurevia.it.prescription.RxTransmissionFlowTest`

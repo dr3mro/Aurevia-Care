@@ -62,7 +62,7 @@ Production classes and files surveyed and exercised by the entry point:
 - [RxController.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxController.java)
   `POST /api/v1/prescriptions/{id}/dispensing` is the HTTP entry point; it
   injects the service and parses the `If-Match` version.
-- [V44__prescription_transmission_transmission.sql](../../../../db/migrations/V44__prescription_transmission_transmission.sql)
+- [V44__rx02_prescription_transmission.sql](../../../../db/migrations/V44__rx02_prescription_transmission.sql)
   enforces the separation in storage: `dispensed` is an allowed state,
   `dispensing_evidence` is an allowed event type, the `accepted -> dispensed`
   update guard is the only dispensing transition, and the event ledger is

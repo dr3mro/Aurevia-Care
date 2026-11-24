@@ -77,7 +77,7 @@ Production classes exercised (all pre-existing, none changed by this task):
   parsing and the uniform error body.
 - `apps/api/src/main/java/com/aurevia/web/TenantContextInterceptor.java` — derives
   tenant identity from the synthetic headers; the request body cannot select a tenant.
-- `db/migrations/V44__prescription_transmission_transmission.sql` — the durable tables, RLS with
+- `db/migrations/V44__rx02_prescription_transmission.sql` — the durable tables, RLS with
   FORCE RLS and the immutable-event/state guards behind the mocked repository.
 
 ## Gap

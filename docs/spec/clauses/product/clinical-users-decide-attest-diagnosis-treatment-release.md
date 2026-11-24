@@ -56,7 +56,7 @@ LAB-02, RAD-01, PT-01, RX-02, XCH-06).
 
 **Persistence and contract.**
 
-- Production migrations with tenant RLS and FORCE RLS for this state: [V15__clinical_note_signing.sql](../../../../db/migrations/V15__clinical_note_signing.sql), [V24__patient_release.sql](../../../../db/migrations/V24__patient_release.sql), [V43__prescription_drafts.sql](../../../../db/migrations/V43__prescription_drafts.sql), [V44__prescription_transmission_transmission.sql](../../../../db/migrations/V44__prescription_transmission_transmission.sql), [V46__specialty_attestation.sql](../../../../db/migrations/V46__specialty_attestation.sql), [V84__report_release_store.sql](../../../../db/migrations/V84__report_release_store.sql).
+- Production migrations with tenant RLS and FORCE RLS for this state: [V15__clinical_note_signing.sql](../../../../db/migrations/V15__clinical_note_signing.sql), [V24__patient_release.sql](../../../../db/migrations/V24__patient_release.sql), [V43__prescription_drafts.sql](../../../../db/migrations/V43__prescription_drafts.sql), [V44__rx02_prescription_transmission.sql](../../../../db/migrations/V44__rx02_prescription_transmission.sql), [V46__specialty_attestation.sql](../../../../db/migrations/V46__specialty_attestation.sql), [V84__report_release_store.sql](../../../../db/migrations/V84__report_release_store.sql).
 - [contracts/openapi/generated/openapi.yaml](../../../../contracts/openapi/generated/openapi.yaml), [manifest.json](../../../../contracts/openapi/generated/manifest.json) and [client.ts](../../../../contracts/openapi/generated/client.ts) publish `SPECIALTY_ATTEST`, `SPECIALTY_LAB_VERIFY_RELEASE`, `RELEASE_AUTHORIZE`, `RELEASE_CORRECT` and `RELEASE_WITHDRAW` (with the other release decisions in the owning service). [delivery.yml](../../../../.github/workflows/delivery.yml) runs the Java/database verification job that executes the test suites below.
 
 **Synthetic acceptance tests (files read, not executed here).** The entry-point-to-test traces are:
@@ -91,8 +91,8 @@ $ grep -nE '^  /api/v1/' contracts/openapi.yaml | grep -iE 'note|prescri|chart|r
 
 $ ls db/migrations | grep -iE 'note|release|attest|specialt|prescri|rx|chart'
 V15__clinical_note_signing.sql V24__patient_release.sql V43__prescription_drafts.sql
-V44__prescription_transmission_transmission.sql V46__specialty_attestation.sql
-V59__prescription_ambiguous_transition.sql V84__report_release_store.sql
+V44__rx02_prescription_transmission.sql V46__specialty_attestation.sql
+V59__rx02_ambiguous_transition.sql V84__report_release_store.sql
 ```
 
 ## Gap

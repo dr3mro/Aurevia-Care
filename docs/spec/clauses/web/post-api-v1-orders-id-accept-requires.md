@@ -79,7 +79,7 @@ Production classes exercised through those routes and their transactions:
   malformed).
 - `com.aurevia.audit.AuditAppender` — appends the append-only audit row inside the same
   transaction.
-- `db/migrations/V21__exchange_response_order_response.sql` — supplies the order, revision, event and retained
+- `db/migrations/V21__xch03_order_response.sql` — supplies the order, revision, event and retained
   ledgers with tenant policies and forced RLS.
 
 The neighbouring suite

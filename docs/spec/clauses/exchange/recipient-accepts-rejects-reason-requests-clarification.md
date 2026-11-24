@@ -63,7 +63,7 @@ Production classes exercised through the controllers
   `ExchangeResponseCommands` — trust-boundary validation and immutable commands.
 - `com.aurevia.exchange.response.ExchangeResponseRepository` — the
   tenant-scoped, append-only persistence behind the HTTP reads.
-- `db/migrations/V21__exchange_response_order_response.sql` — the order/revision/event/
+- `db/migrations/V21__xch03_order_response.sql` — the order/revision/event/
   retained-copy tables, forced tenant RLS, immutable-ledger triggers and the
   actor-from-context trigger.
 

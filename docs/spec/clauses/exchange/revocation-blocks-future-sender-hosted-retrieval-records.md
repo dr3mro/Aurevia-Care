@@ -80,7 +80,7 @@ Production classes exercised through the real HTTP entry point:
   `RevokeRequest` payload and `Notification` / `OrderView` projections asserted
   through the response body.
 
-Database evidence: `db/migrations/V21__exchange_response_order_response.sql` creates
+Database evidence: `db/migrations/V21__xch03_order_response.sql` creates
 `exchange_response_notification` with `event_id` as the tenant-scoped deduplication key,
 enables and forces row-level security on every XCH-03 table through
 `exchange_response_app_org()`, and owns the actor/immutability triggers. The `410` is raised

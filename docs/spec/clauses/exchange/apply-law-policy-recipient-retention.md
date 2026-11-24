@@ -63,7 +63,7 @@ Production classes exercised through the normal HTTP entry point:
   the purpose, policy and hold flag; `retained` reads the immutable ledger used by the HTTP view.
 - `com.aurevia.exchange.response.ExchangeResponseCommands.AcceptRequest` and
   `RetainedCopy` — the command payload and the immutable retained-copy projection.
-- `db/migrations/V21__exchange_response_order_response.sql` — `exchange_response_retained_copy` with `retention_policy`,
+- `db/migrations/V21__xch03_order_response.sql` — `exchange_response_retained_copy` with `retention_policy`,
   `legal_hold`, an append-only guard and ENABLE/FORCE row-level security; the forced-RLS check is
   the peer-tenant proof.
 

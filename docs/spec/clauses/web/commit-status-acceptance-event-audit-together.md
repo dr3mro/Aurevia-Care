@@ -72,7 +72,7 @@ Production classes exercised through the normal HTTP entry point:
   correlation id from request headers before the controller runs.
 - `com.aurevia.api.ApiErrorHandler` — renders the 403, 404, 409, 412 and 422 machine-readable
   error bodies asserted by the negative tests.
-- `db/migrations/V21__exchange_response_order_response.sql` — `exchange_response_order` and the append-only `exchange_response_event` ledger,
+- `db/migrations/V21__xch03_order_response.sql` — `exchange_response_order` and the append-only `exchange_response_event` ledger,
   with forced RLS and actor-derived authorship.
 - `db/migrations/V1__tenant_schema.sql` and `db/migrations/V3__audit_chain.sql` — `audit_event` with its
   `correlation_id`, outcome and immutable hash chain, with forced RLS.

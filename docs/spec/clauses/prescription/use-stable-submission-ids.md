@@ -44,7 +44,7 @@ asserts against both the HTTP response and the persisted `prescription_submissio
 Entry-point-to-assertion trace: `POST /api/v1/prescriptions/{id}/transmit` →
 `RxController.transmit` → `RxService.transmit` (`RxInputs.newSubmissionId`,
 `RxRepository.insertSubmission` with `ON CONFLICT DO NOTHING`, `repository.transmit`) →
-`db/migrations/V44__prescription_transmission_transmission.sql` (`prescription_submission` with
+`db/migrations/V44__rx02_prescription_transmission.sql` (`prescription_submission` with
 `UNIQUE (organization_id, submission_id)`, forced RLS and an immutability guard). The retry and
 mismatch paths reach `RxService.retry` and `RxService.requireSubmission`, which reuses or refuses
 the same id.
