@@ -375,28 +375,43 @@ class JobsExportsSearchAttachmentsIntegrationsApplySameTest {
                 .getBytes(StandardCharsets.UTF_8);
     }
 
-    /** Capture the service refusal for a download without asserting the exception type. */
+    /**
+     * Capture the service refusal for a download without asserting the exception type.
+     *
+     * <p>The service opens its own tenant-guarded transaction. Do not wrap the call in
+     * another {@code TransactionTemplate}: the refusal marks that inner transaction
+     * rollback-only, so committing an outer one would raise
+     * {@link org.springframework.transaction.UnexpectedRollbackException} before the
+     * {@link com.aurevia.api.ApiException} status can be asserted. Catch the refusal outside any
+     * transaction so the service's transaction rolls back on its own.</p>
+     */
     private ApiException exportDownloadRefusal(String organization, String subject, String jobId) {
-        return as(organization, subject, () -> transactions.execute(status -> {
+        return as(organization, subject, () -> {
             try {
                 tenantExportService.download(jobId);
                 throw new AssertionError("expected the download to be refused");
             } catch (ApiException exception) {
                 return exception;
             }
-        }));
+        });
     }
 
-    /** Capture the service refusal when a role tries to start an export. */
+    /**
+     * Capture the service refusal when a role tries to start an export.
+     *
+     * <p>As with {@link #exportDownloadRefusal(String, String, String)}, the service owns
+     * its transaction; catching outside it lets the refusal propagate and the transaction
+     * roll back cleanly without a spurious rollback-only commit.</p>
+     */
     private ApiException exportStartRefusal(String organization, String subject) {
-        return as(organization, subject, () -> transactions.execute(status -> {
+        return as(organization, subject, () -> {
             try {
                 tenantExportService.start();
                 throw new AssertionError("expected the export start to be refused");
             } catch (ApiException exception) {
                 return exception;
             }
-        }));
+        });
     }
 
     @Test
