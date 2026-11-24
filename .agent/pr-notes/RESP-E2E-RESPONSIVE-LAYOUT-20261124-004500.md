@@ -48,7 +48,7 @@ Code-review fixes in `91918c59`: (1) the shell heading selector is scoped to `he
 
 ## Coverage
 
-No production file changed, so Vitest/JaCoCo coverage is unchanged and no new production branch exists. `bash apps/staff-web/check.sh` reached `test:coverage` with 3044 passing tests; the only failure is the out-of-scope stale tripwire. The deliverable's branches are enumerated by the Playwright list command (`Total: 320 tests in 1 file`) and each is exercised by a named test in the same file:
+No production file changed, so Vitest/JaCoCo coverage is unchanged and no new production branch exists. `bash apps/staff-web/check.sh` initially reached `test:coverage` with 3044 passing tests and one failure on a stale tripwire pin; that pin was refreshed under coverage repair attempt 1 (below) and the gate is now 3045/3045 green. The deliverable's branches are enumerated by the Playwright list command (`Total: 320 tests in 1 file`) and each is exercised by a named test in the same file:
 
 | Branch | Test |
 |---|---|
@@ -64,6 +64,33 @@ No production file changed, so Vitest/JaCoCo coverage is unchanged and no new pr
 
 No `.skip`, `.only`, `test.fixme`, exclusion, lowered threshold or coverage-ignore comment was added; no assertion was weakened. A live browser run would be required to convert this enumeration into executed green results; it is blocked by the absent browser binaries recorded above.
 
+## Coverage repair — attempt 1 (tripwire pin refresh)
+
+The coverage gate failed because the GAP tripwire's `currentSpecs` pin
+(`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:86`)
+listed 9 e2e spec paths while the committed `e2e/` tree contains 15. The pin was
+refreshed to all 15 paths. The tripwire stays fully active: it still asserts the
+complete filesystem set and fails on any future addition. No threshold was
+lowered and no skip, exclusion, ignore comment or weakened assertion was added.
+No production source changed, so line/branch coverage of production code is
+unchanged.
+
+Every changed branch / assertion and the deterministic test that exercises it:
+
+| Branch / assertion | Test (deterministic evidence) |
+|---|---|
+| `specs.sort()` vs refreshed 15-path `currentSpecs.sort()` pin (`:166`) | `GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded` reads the real committed `e2e/` tree via `filesBelow()`; `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` → `Test Files 1 passed (1)`, `Tests 3 passed (3)` |
+| `workflows.sort()` equals `[]` (`:171`) | same `GAP` test scans `.github/workflows` and filters playwright/e2e; empty, corroborated by an independent shell scan (no matching workflow) |
+| `visualChecks.sort()` equals `[]` (`:178`) | same `GAP` test scans all 15 specs for `toHaveScreenshot`/`toMatchSnapshot`/`getComputedStyle`/`data-theme`/`colorScheme`; empty, corroborated by an independent grep (no matches) |
+| `expectTypeOf<Role>()` union (`:180`, compile-time branch) | `npm run typecheck` → exit 0, no `error TS…` |
+
+Full gate after the fix (`apps/staff-web`):
+- `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` → `Test Files 1 passed (1)` / `Tests 3 passed (3)`.
+- `npm run test:coverage` → `Test Files 268 passed (268)` / `Tests 3045 passed (3045)`; `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`, `No files with missing coverage.`
+- `npm run typecheck` → exit 0; `npm run lint` → exit 0; `python3 -I scripts/check-constraints.py --base origin/main` → exit 0.
+
+Evidence source: executed tool commands in the worker checkout at HEAD `83bca3d1` on branch `swarm/RESP-E2E-RESPONSIVE-LAYOUT-1361`. The jsdom "Not implemented: navigation" lines in the coverage run are pre-existing non-fatal noise; the run reported 3045/3045 passing.
+
 ## Clinical and architecture review
 
 Not required: the change makes no clinical decision, signs or releases no data, changes no patient identity or sharing boundary and adds no architectural contract. Evidence is simulated and synthetic; it is not clinical or human acceptance.
@@ -77,7 +104,7 @@ Not required: the change makes no clinical decision, signs or releases no data, 
 
 ## Findings
 
-- **Pre-existing red gate (tool evidence, out of scope):** `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` pins the e2e spec set to 9 names. With the new spec temporarily moved out of the tree the test still failed with 14 received vs 9 expected; with it present, 15 vs 9. The stale list predates this task and belongs to the already-complete `SPEC-WEB-10-C02` task. This change adds one more entry to an already-failing assertion but does not introduce the failure. No assertion or threshold was changed to hide it; a task request is filed below.
+- **Pre-existing red gate — RESOLVED in coverage repair attempt 1 (tool evidence):** `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` pinned the e2e spec set to 9 names while the tree holds 15. With the new spec temporarily moved out of the tree the test still failed with 14 received vs 9 expected; with it present, 15 vs 9. The stale list predates this task and belongs to the already-complete `SPEC-WEB-10-C02` task. The pin was refreshed to all 15 committed paths under coverage repair attempt 1; the tripwire remains active and the full gate is green (see "Coverage repair — attempt 1"). No assertion or threshold was weakened. The first task request below is now satisfied and can be closed.
 - **Role limitation (plan reviewer, simulated):** production role is fixed to `reception`, so routes granted only to other roles render `ForbiddenPage` inside the same real `AppShell`. The matrix still measures the production shell's width, navigation, landmarks and overflow on every registered route path, but it does not prove the layout of the intended content screens on those denied routes. A dev-only role-override harness needs a production-scope change; requested below rather than attempted out of scope.
 - **320 px floor (design doc, simulated):** `docs/design/responsive-layout.md` §13 and decision 0004 set 320 px as the compact floor, but `playwright.config.ts` has no 320 px project (its narrowest is 360 px). Out of scope here; cross-reference task `RESP-E2E-REFLOW-AND-ZOOM` for the 320 px and zoom evidence. This spec does not claim full supported-width coverage.
 - **`/design-preview` (route table, tool evidence):** registered only when `import.meta.env.DEV` is true. The default `playwright.config.ts` dev server makes the case apply; if a caller supplies `E2E_BASE_URL` pointing at a production build it degrades to the catch-all, which still exercises the shell but not the preview screen.
@@ -93,7 +120,12 @@ Not required: the change makes no clinical decision, signs or releases no data, 
 
 ## Why this is not finished
 
-The scoped deliverable is complete and passes ESLint, the constraint scanner and Playwright enumeration, but `bash apps/staff-web/check.sh` exits 1 on a pre-existing stale tripwire test that is outside this task's scope, and the live Playwright run cannot execute because no browser binaries are installed. Exact failing command and final lines: `bash apps/staff-web/check.sh` → `Test Files  1 failed | 267 passed (268)` / `Tests  1 failed | 3044 passed (3045)`, failing test `automate-critical-journey-supported-role-real-browser.test.ts > GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded` at line 166 (`expected 15 specs to deeply equal 9`). Most likely cause: e2e specs added by completed tasks were never added to the pinned `currentSpecs` list; verified by removing this spec and rerunning the single test, which still failed with 14 vs 9. Already tried: ran the full gate, isolated the single test, reran it with the new spec temporarily moved out of tree, and checked `SPEC-WEB-10-C02` owns that file. Exact next steps: (1) a worker scoped to `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` updates the pinned spec list to the 15 current paths; (2) a runner with Playwright browsers installed executes `npx playwright test --config e2e/playwright.config.ts e2e/responsiveLayout.spec.ts` and any genuine defect is handled with a single `test.fixme` plus a follow-up task, never a weakened assertion.
+The coverage-check failure that triggered this repair is resolved: the stale
+`currentSpecs` pin was refreshed to the 15 committed e2e spec paths and the full
+`npm run test:coverage` gate is now green (268/268 files, 3045/3045 tests, 100%
+statements/branches/functions/lines). The only remaining unverified item is the
+live Playwright run, which cannot execute in this sandbox because no browser
+binaries are installed. Original failing command and final lines: `bash apps/staff-web/check.sh` → `Test Files  1 failed | 267 passed (268)` / `Tests  1 failed | 3044 passed (3045)`, test `automate-critical-journey-supported-role-real-browser.test.ts > GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded` at line 166 (`expected 15 specs to deeply equal 9`). Cause: e2e specs added by completed tasks were never added to the pinned `currentSpecs` list; verified by removing this spec and rerunning the single test, which still failed with 14 vs 9. Already tried: ran the full gate, isolated the single test, reran it with the new spec temporarily moved out of tree, and checked `SPEC-WEB-10-C02` owns that file. Exact next step: a runner with Playwright browsers installed executes `npx playwright test --config e2e/playwright.config.ts e2e/responsiveLayout.spec.ts`; any genuine defect is handled with a single `test.fixme` plus a follow-up task, never a weakened assertion.
 
 ```task-requests
 [

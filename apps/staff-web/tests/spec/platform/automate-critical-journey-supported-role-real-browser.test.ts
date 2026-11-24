@@ -84,15 +84,21 @@ const e2eSpecs = (): string[] =>
 
 /** The exact e2e spec set committed today; a new journey must replace this pin. */
 const currentSpecs: readonly string[] = [
+  'adminflow/admin-journey.spec.ts',
   'clinicalnote/clinicalnote-journey.spec.ts',
+  'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
+  'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
+  'responsiveLayout.spec.ts',
   'smoke.spec.ts',
+  'therapyflow/therapy-journey.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {
