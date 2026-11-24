@@ -70,3 +70,14 @@
     `Ran 1579 tests in 245.816s / OK` and `bash scripts/python-coverage.sh` →
     `python coverage: every changed script line is covered`. No gate was
     weakened in either task.
+  - reviews: aurevia-github-workflow GO, aurevia-code-reviewer GO,
+    aurevia-coverage-auditor GO, aurevia-devsecops GO (read-only reviewers,
+    no Critical or Required finding remained at the final re-check).
+  - ci-status: PR 1613 merged to main as 098354af. Tool: Delivery run
+    45337601399 on head 190cf7dc had Policy, tooling, frontend and canonical
+    frontend gates green; Java verification failed only on the upstream test
+    compile error now fixed on main. Tool: Delivery run 45339545141 for the
+    later main SHA 5a86e60f remained `pending` with zero jobs for over 40
+    minutes behind 30+ queued main runs and one in_progress run on another
+    branch (45342528638); the exact-SHA verdict is unavailable from this
+    environment, not a failure of these changes. No check was bypassed.
