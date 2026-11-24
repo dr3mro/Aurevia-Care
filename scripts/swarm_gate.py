@@ -356,12 +356,27 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None)
     return _collect_manifest(ctx, tested_root)
 
 
+def _task_file(root, task_id):
+    """Resolve a task ID to its file on the protected base revision.
+
+    Repository task files carry a numeric prefix (``00906000-START-18.md``),
+    while a worker PR names only the task ID. Prefer an exact match so callers
+    can also point at an unnumbered file, then fall back to the numbered name.
+    """
+    tasks = Path(root) / "tasks"
+    exact = tasks / f"{task_id}.md"
+    if exact.is_file():
+        return exact
+    numbered = sorted(tasks.glob(f"[0-9]*-{task_id}.md"))
+    return numbered[0] if numbered else exact
+
+
 def _collect_task_and_evidence(ctx, root):
     """Read the task and notes from the trusted base checkout."""
     _, task_id = classify_pull_request(ctx.head_ref, ctx.labels, ctx.title, ctx.commit_authors)
     if not task_id:
         return ctx
-    task_path = Path(root) / "tasks" / f"{task_id}.md"
+    task_path = _task_file(root, task_id)
     notes = sorted((Path(root) / "docs" / "pr" / "notes").glob(f"{task_id}-*.md"))
     return GateContext(**{**ctx.__dict__,
                           "task_text": task_path.read_text() if task_path.is_file() else "",

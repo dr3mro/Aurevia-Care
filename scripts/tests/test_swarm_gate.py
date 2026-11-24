@@ -10,7 +10,6 @@ import runpy
 import json
 import subprocess
 import tempfile
-import runpy
 import sys
 import unittest
 from pathlib import Path
@@ -357,7 +356,7 @@ class CoverageTests(unittest.TestCase):
             self.assertEqual(caught.exception.code, 1)
 
 
-class CoverageTests(unittest.TestCase):
+class AdditionalCoverageTests(unittest.TestCase):
     """Exercise the few branches not reached by the behaviour tests."""
 
     def test_gh_json_empty_output_is_an_empty_object(self):
@@ -424,6 +423,34 @@ class MaintenancePRTests(unittest.TestCase):
         kind, _ = gate.classify_pull_request(
             "feature/odd-branch", labels=("swarm",), author_association="NONE")
         self.assertEqual(kind, gate.UNKNOWN)
+
+
+class TaskFileLookupTests(unittest.TestCase):
+    """Worker PRs name a task ID; the repository stores numbered task files."""
+
+    def test_numbered_task_file_is_found(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tasks").mkdir()
+            (root / "tasks" / "00906000-START-18.md").write_text(
+                "- [-] START-18 · work it\n  - evidence: tool evidence\n")
+            ctx = context(head_ref="swarm/START-18-1436", title="START-18: link the index")
+            found = gate._collect_task_and_evidence(ctx, str(root))
+        self.assertIn("tool evidence", found.task_text)
+
+    def test_exact_task_file_wins_over_numbered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tasks").mkdir()
+            (root / "tasks" / "START-18.md").write_text("exact")
+            (root / "tasks" / "00906000-START-18.md").write_text("numbered")
+            self.assertEqual(gate._task_file(str(root), "START-18").read_text(), "exact")
+
+    def test_missing_task_file_has_empty_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = context(head_ref="swarm/START-18-1436", title="START-18: link the index")
+            found = gate._collect_task_and_evidence(ctx, tmp)
+        self.assertEqual(found.task_text, "")
 
 
 class GitHubContextTests(unittest.TestCase):
