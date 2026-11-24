@@ -59,6 +59,20 @@ def frontmatter(text):
     return pairs
 
 
+def system_skill(text):
+    """Return whether a skill is supplied by the runtime, not owned by the project.
+
+    OpenCode may materialise its built-in skills into ``.opencode/skills`` (for
+    example ``run-workflow``). They carry a ``system`` namespace and are rewritten
+    by the runtime, so the project's process sections and skill inventory do not
+    apply to them. Their description is still checked: agents select skills by it.
+    """
+    meta = frontmatter(text)
+    if meta is None:
+        return False
+    return meta.get("namespace", "") == "system"
+
+
 def load_generator(root):
     spec = importlib.util.spec_from_file_location(
         "gen_opencode", root / "scripts/gen-opencode.py")
@@ -161,17 +175,20 @@ def check(root=ROOT):
             errors.append(f"skill {name}: the description must say when to use it (\"Use when ...\")")
         if len(description) > SKILL_DESCRIPTION_LIMIT:
             errors.append(f"skill {name}: the description is over {SKILL_DESCRIPTION_LIMIT} characters")
-        if name in NO_PROCESS_SECTIONS:
+        if name in NO_PROCESS_SECTIONS or system_skill(text):
             continue
         for heading in PROCESS_SECTIONS:
             if not re.search(rf"(?mi)^##\s+{re.escape(heading)}\s*$", text):
                 errors.append(f"skill {name}: missing the section \"## {heading}\"")
     # Agent files are short names; each specialist loads the skill of the same
     # name with the aurevia- prefix, and the primary loads the delivery skill.
+    # Runtime-supplied skills are not part of that project inventory.
     expected_skills = {f"aurevia-{name}" for name in specialists} | {"aurevia-delivery"}
-    if expected_skills != set(skills):
+    project_skills = {name: text for name, text in skills.items()
+                      if not system_skill(text)}
+    if expected_skills != set(project_skills):
         errors.append("skills differ from specialists plus aurevia-delivery: "
-                      f"{sorted(expected_skills ^ set(skills))}")
+                      f"{sorted(expected_skills ^ set(project_skills))}")
 
     workflow = root / "docs/WORKFLOW.md"
     role_sources = definitions.get(primary, "")

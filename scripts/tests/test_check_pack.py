@@ -208,6 +208,37 @@ class PackTests(unittest.TestCase):
         self.assertLessEqual(pack.NO_PROCESS_SECTIONS, skills)
 
 
+    def test_system_namespace_skill_is_not_a_project_skill(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        folder = tmp / ".opencode/skills/extra-system"
+        folder.mkdir()
+        (folder / "SKILL.md").write_text(
+            '---\nname: extra-system\ndescription: "Use when a workflow fans out"\n'
+            'metadata:\n    namespace: system\n---\n\n# Extra\n')
+        self.assertEqual(pack.check(tmp), [])
+
+    def test_project_skill_still_needs_process_sections_and_an_inventory_entry(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        folder = tmp / ".opencode/skills/extra-project"
+        folder.mkdir()
+        (folder / "SKILL.md").write_text(
+            '---\nname: extra-project\ndescription: "Use when a task needs it"\n---\n\n# Extra\n')
+        errors = pack.check(tmp)
+        self.assertTrue(any('missing the section "## Common rationalizations"' in e
+                            for e in errors), errors)
+        self.assertTrue(any("skills differ from specialists" in e for e in errors), errors)
+
+    def test_skill_without_frontmatter_is_not_treated_as_system(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        folder = tmp / ".opencode/skills/extra-broken"
+        folder.mkdir()
+        (folder / "SKILL.md").write_text("no frontmatter\n")
+        errors = pack.check(tmp)
+        self.assertTrue(any("frontmatter needs matching name" in e for e in errors), errors)
+
 class GeneratorTests(unittest.TestCase):
     def test_force_push_is_denied_and_env_files_unreadable(self):
         config = gen.build(["orca", "qa-reviewer"])
