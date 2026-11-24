@@ -249,13 +249,16 @@ describe('WEB-09 clause 1 — resilient screens', () => {
     fireEvent.change(replyField(), { target: { value: 'Synthetic corrected reply' } });
     submitSettings();
     expect(await screen.findByText(settingsText('en', 'saved'))).toBeTruthy();
-    // The save resolves in a microtask; its setDirty(false) cleanup is a
-    // passive effect that may land after 'saved' is visible. Match the
-    // SettingsPage pattern and wait for the guard to be observably gone.
+    // The dirty guard is removed by a passive effect after the successful save
+    // commits. Under parallel load that cleanup can lag the "saved" text that
+    // findByText observes, so poll until the listener is genuinely gone rather
+    // than asserting on the same tick the status appears. waitFor re-dispatches
+    // a fresh cancelable event each pass and retries while the guard still
+    // calls preventDefault, keeping the assertion strict and deterministic.
     await waitFor(() => {
-      const savedLeave = new Event('beforeunload', { cancelable: true });
-      window.dispatchEvent(savedLeave);
-      expect(savedLeave.defaultPrevented).toBe(false);
+      const leaveAfterSave = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(leaveAfterSave);
+      expect(leaveAfterSave.defaultPrevented).toBe(false);
     });
   });
 
