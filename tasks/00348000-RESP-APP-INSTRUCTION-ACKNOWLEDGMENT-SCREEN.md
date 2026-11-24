@@ -1,6 +1,6 @@
 - [-] RESP-APP-INSTRUCTION-ACKNOWLEDGMENT-SCREEN · Patient app: tablet, landscape and large-text layout for `InstructionAcknowledgmentScreen` (acknowledgments)
-  - agent: swarm-2
-  - attempts: 8
+  - agent: swarm-9
+  - attempts: 9
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/acknowledgments/InstructionAcknowledgmentScreen.tsx, apps/patient-mobile/src/features/acknowledgments/InstructionAcknowledgmentScreen.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
