@@ -64,7 +64,9 @@
     `Policy and tooling` (queued) and a `Policy and tooling` check run:
     the workflow now passes GitHub validation and creates jobs, unlike the
     zero-job runs before the fix. The full `Delivery gate` verdict is still
-    pending behind the existing runner backlog; the full Python suite is red
-    on pristine `origin/main` with 15 pre-existing failures/errors (same list
-    reproduced in an unmodified worktree), so this PR cannot be green until
-    that baseline is repaired by its owners. No gate was weakened here.
+    pending behind the existing runner backlog. The later task
+    01274000-FIX-INTEGRATOR-GUARD-BLOCKERS-TESTS repaired the baseline suite;
+    after that fix `python3 -I -m unittest discover -s scripts/tests -q` →
+    `Ran 1572 tests in 214.071s / OK` and `bash scripts/python-coverage.sh` →
+    `python coverage: every changed script line is covered`. No gate was
+    weakened in either task.
