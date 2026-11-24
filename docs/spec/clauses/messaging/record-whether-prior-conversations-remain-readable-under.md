@@ -21,7 +21,7 @@ both the HTTP response and the persisted effect in the synthetic store, so a
 test would fail if the effect were computed but never recorded, or recorded but
 never returned.
 
-Executed proof (tool evidence): `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecordWhetherPriorConversationsRemainReadableUnderTest test` — exit 0; Surefire report `tests="7" errors="0" skipped="0" failures="0"`. Static analysis: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check` — exit 0, no findings. Full commands, gate stages and environment observations are recorded in `.agent/pr-notes/SPEC-MSG-07-C05-20261123-011808.md` under `## Test evidence`.
+Executed proof (tool evidence): `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecordWhetherPriorConversationsRemainReadableUnderTest test` — exit 0; Surefire report `tests="7" errors="0" skipped="0" failures="0"`. Static analysis: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check` — exit 0, no findings. Full commands, gate stages and environment observations are recorded in `docs/pr/notes/SPEC-MSG-07-C05-20261123-011808.md` under `## Test evidence`.
 
 - `revocationEffectRecordsPriorConversationsReadableFromVerifiedPolicy` —
   positive proof. `POST /api/v1/messaging-governance/connections/{id}/revocation-effects`

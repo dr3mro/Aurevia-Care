@@ -9,7 +9,7 @@ reads; no reviewer, simulated user or human participant evidence.
 
 ## 1. Inventory of story-ID packages
 
-The earlier refactor (`.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md`, merged) already
+The earlier refactor (`docs/pr/notes/REFACTOR-PACKAGES-20261119-201815.md`, merged) already
 renamed every `g0/s_g0_*` … `g4/s_g4_*` and `messaging/s_g3_*` package, plus their test
 mirrors. Verified on the current tree: no package directory matches `s_g*`, `g[0-4]`, and no
 class/interface/enum/record name contains a story ID.
@@ -26,7 +26,7 @@ Test mirrors: `api/x_01` (`ApiContractPrimitivesTest`, `IdempotencyLedgerTest`),
 (`DocumentArtifactTest`), `api/x_04` (`CommandAuthorizationTest`,
 `CommandClientGeneratorTest`) — 7 files.
 
-Story titles were read from `TODO.md` and `.agent/pr-notes/X-03.md` / `X-04.md`.
+Story titles were read from `TODO.md` and `docs/pr/notes/X-03.md` / `X-04.md`.
 `docs/swarm/X-01.md` … `X-04.md` do not exist (that directory holds `S-G*` notes only).
 
 ## 2. Proposed mapping
@@ -35,7 +35,7 @@ Story titles were read from `TODO.md` and `.agent/pr-notes/X-03.md` / `X-04.md`.
 |---|---|---|
 | `com.aurevia.api.x_01` | `com.aurevia.api.contract` | The classes are the versioned HTTP contract itself (version, error codes, paging, idempotency, digest). Alternative: merge into the existing `api` root next to `ApiException`/`ApiErrorHandler`/`IfMatch`. |
 | `com.aurevia.api.x_02` | `com.aurevia.events` | Durable event delivery/outbox is its own platform domain (ARC-05); it is not partner `exchange`, and `db/migrations/V55__durable_event_outbox.sql` already names the concept `durable_event_outbox`. |
-| `com.aurevia.api.x_03` | `com.aurevia.documents` (merge) | `documents` already owns original-document associations and PDF rendering (CLN-07, V17). ARC-06 upload/quarantine/binding is the same domain. `.agent/pr-notes/X-03.md` already records this convergence as the intended follow-up. |
+| `com.aurevia.api.x_03` | `com.aurevia.documents` (merge) | `documents` already owns original-document associations and PDF rendering (CLN-07, V17). ARC-06 upload/quarantine/binding is the same domain. `docs/pr/notes/X-03.md` already records this convergence as the intended follow-up. |
 | `com.aurevia.api.x_04` | `com.aurevia.api.authorization` | API-command authorization + generated client. This is also the path TODO X-04 already declares as its scope, so no tracker edit is needed. Alternative: `authz.command`. |
 
 | Old test package | New test package |

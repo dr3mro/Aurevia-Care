@@ -295,7 +295,7 @@ class AgentRunTests(unittest.TestCase):
         self.run_cmd("implement", FAKE_MODE="commit", QUALITY_ARGS=str(args))
         base, notes = args.read_text().split()
         self.assertRegex(base, r"^[0-9a-f]{40}$")
-        self.assertRegex(notes, r"^\.agent/pr-notes/issue-5-.*\.md$")
+        self.assertRegex(notes, r"^docs/pr/notes/issue-5-.*\.md$")
         self.assertEqual(self.outputs()["checks"], "passed")
 
     def test_a_quality_gate_miss_gets_two_repairs_then_opens_a_draft(self):
@@ -526,20 +526,20 @@ class AgentRunTests(unittest.TestCase):
         log = self.tmp / "prompt.log"
         done = self.run_cmd("implement", FAKE_MODE="none", PROMPT_LOG=str(log), SWARM="1", **env)
         self.assertTrue(log.exists(), done.stderr[-600:])
-        found = re.findall(r"\.agent/pr-notes/[A-Za-z0-9._-]+\.md", log.read_text())
+        found = re.findall(r"docs/pr/notes/[A-Za-z0-9._-]+\.md", log.read_text())
         self.assertTrue(found, log.read_text()[:400])
         return found[0]
 
     def test_a_story_names_its_notes_after_the_task(self):
-        self.assertRegex(self.notes_path(STORY_ID="CW-001"), r"^\.agent/pr-notes/CW-001-\d{8}-\d{6}\.md$")
+        self.assertRegex(self.notes_path(STORY_ID="CW-001"), r"^docs/pr/notes/CW-001-\d{8}-\d{6}\.md$")
 
     def test_a_fix_pass_keeps_the_task_id(self):
         self.assertRegex(self.notes_path(STORY_ID="CW-001", MODE="fix", BRANCH="main", FIX_COMMENT="x"),
-                         r"^\.agent/pr-notes/CW-001-fix-\d{8}-\d{6}\.md$")
+                         r"^docs/pr/notes/CW-001-fix-\d{8}-\d{6}\.md$")
 
     def test_a_fix_without_a_task_id_uses_the_pull_request_number(self):
         self.assertRegex(self.notes_path(STORY_ID="", MODE="fix", BRANCH="main", PR_NUMBER="42", FIX_COMMENT="x"),
-                         r"^\.agent/pr-notes/pr-42-fix-\d{8}-\d{6}\.md$")
+                         r"^docs/pr/notes/pr-42-fix-\d{8}-\d{6}\.md$")
 
 
 

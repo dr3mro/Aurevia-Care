@@ -11,5 +11,5 @@
     1. List every `.md` file in `docs/spec/clauses/localization` except `index.md`. Read the `## Status` line of each.
     2. Write `docs/spec/clauses/localization/index.md`: a table with the clause (first sentence of `## Clause`, shortened), the requirement id, the status and a link to the note, then a count per status at the top.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

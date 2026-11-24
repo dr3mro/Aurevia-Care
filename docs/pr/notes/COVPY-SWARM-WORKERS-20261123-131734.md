@@ -79,15 +79,15 @@ All commands were run from the repository root on branch `swarm/COVPY-SWARM-WORK
 - `python3 -I scripts/check-constraints.py --base origin/main --require-base` -> exit 0
   (no suppression, exclusion, skip or weakened threshold).
 - `python3 -I scripts/check-docs.py` -> exit 0 (Markdown/notes formatting).
-- `python3 -I scripts/check-verdicts.py .agent/pr-notes/COVPY-SWARM-WORKERS-20261123-131734.md --base origin/main`
+- `python3 -I scripts/check-verdicts.py docs/pr/notes/COVPY-SWARM-WORKERS-20261123-131734.md --base origin/main`
   -> `verdicts: only documentation changed; nothing to review` (exit 0). Because this pass has zero
   code delta, the only changed file is the notes file, so the checker takes its docs-only path; the
   three GO verdicts are still recorded below as the brief requires.
-- `bash scripts/quality-gate.sh origin/main .agent/pr-notes/COVPY-SWARM-WORKERS-20261123-131734.md`
+- `bash scripts/quality-gate.sh origin/main docs/pr/notes/COVPY-SWARM-WORKERS-20261123-131734.md`
   -> `verdicts: only documentation changed; nothing to review` (exit 0; constraints check passed).
 - `git show --name-status --format="" 352ae2ae` -> only
-  `.agent/pr-notes/COVPY-SWARM-WORKERS-20261122-143326.md`,
-  `.agent/pr-notes/COVPY-SWARM-WORKERS-fix-20261122-145156.md` and
+  `docs/pr/notes/COVPY-SWARM-WORKERS-20261122-143326.md`,
+  `docs/pr/notes/COVPY-SWARM-WORKERS-fix-20261122-145156.md` and
   `scripts/tests/test_swarm_workers_coverage.py` were added. This closes the code reviewer's
   request to confirm the committed change is test-only.
 
@@ -163,7 +163,7 @@ is needed; aurevia-context-optimizer supplied the symbol/stale-prose briefing.)
   so only this notes file is new.
 - **Notes filename discrepancy (brief vs prompt):** the advisor brief carries a generic
   `-fix-<timestamp>` parenthetical and the task file's step 4 names a bare `<task-id>.md`, but the
-  worker prompt names the exact path `.agent/pr-notes/COVPY-SWARM-WORKERS-20261123-131734.md`.
+  worker prompt names the exact path `docs/pr/notes/COVPY-SWARM-WORKERS-20261123-131734.md`.
   AGENTS.md says the prompt path wins; it is a unique timestamped file (not a bare filename), so it
   was used verbatim and passed to `quality-gate.sh`. No additional notes file was created.
 - Optional (code-reviewer): `_checker` is not patched in the two `update_todo` tests, so

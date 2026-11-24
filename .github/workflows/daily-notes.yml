@@ -1,7 +1,7 @@
 name: Daily notes
 # Shortly after midnight New York the worker notes of each finished day are reconciled
-# by a read-only worker into one dated file under .agent/pr-notes/. The originals are
-# zipped to docs/archive/pr-notes/<day>.zip and removed; new problems become issues for the
+# by a read-only worker into one dated file under docs/pr/notes/. The originals are
+# zipped to docs/pr/notes/archive/<day>.zip and removed; new problems become issues for the
 # issue monitor; edits to instruction documents go out as a draft pull request for review.
 # 05:10 UTC is 00:10 New York in winter and 01:10 in summer: always after the day closed.
 # Notes of a day that arrive later (a pull request merged after midnight) are appended to

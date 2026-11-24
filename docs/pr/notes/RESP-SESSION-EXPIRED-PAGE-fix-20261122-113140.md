@@ -7,7 +7,7 @@ Fix pass for the earlier run that the integrator flagged as "did not finish clea
 the first worker was already committed on this branch
 (`fa2a434f RESP-SESSION-EXPIRED-PAGE: responsive acceptance test for SessionExpiredPage`,
 plus two `origin/main` merges) and its notes are in
-`.agent/pr-notes/RESP-SESSION-EXPIRED-PAGE-20261122-110700.md`. I did **not** restart or
+`docs/pr/notes/RESP-SESSION-EXPIRED-PAGE-20261122-110700.md`. I did **not** restart or
 rewrite the story: I re-verified the committed change end to end with the actual
 commands, confirmed the only reported failure is the documented OPS-CW-003-01
 worker-environment false positive, ran an independent simulated specialist review,

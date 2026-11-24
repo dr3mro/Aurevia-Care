@@ -13,5 +13,5 @@
     2. Add `useWindowClass()` using React Native `useWindowDimensions`: `compact` below 600, `regular` 600 to 839, `large` 840 and above, plus `isLandscape`, `fontScale` and safe-area insets (use the existing safe-area library if the app already has one; otherwise take insets as an optional argument, add no dependency). Export a pure `windowClassFor(width)`.
     3. Tests: boundary widths 599, 600, 839 and 840; landscape flag; the hook reacts to dimension changes.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

@@ -64,7 +64,7 @@ This proof-only change added one test file and this document. No production code
 contract, migration, route or dependency changed, so no OpenAPI or generated-client
 update was required. Verified locally with `bash apps/staff-web/check.sh` (includes
 `tsc --noEmit`, lint, build, bundle budget and 100% per-file coverage) and
-`python3 -I scripts/check-docs.py`; see `.agent/pr-notes/SPEC-WEB-09-C03-20261123-222751.md`
+`python3 -I scripts/check-docs.py`; see `docs/pr/notes/SPEC-WEB-09-C03-20261123-222751.md`
 for the exact final lines.
 
 Scope note: the wrong-role, other-tenant, duplicate-event and mismatched-patient

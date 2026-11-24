@@ -90,7 +90,7 @@ All commands were executed by the primary agent (tool evidence), run **strictly 
 from under each other (see Finding 1).
 
 Sync at the start: `git merge --no-edit origin/main` → `Already up to date.`; scoped
-`git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/patient-mobile/src/features/reports .agent/pr-notes/`
+`git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/patient-mobile/src/features/reports docs/pr/notes/`
 → no output; working tree clean before and after.
 
 Dependencies installed sequentially (each exit 0): patient-mobile `npm ci` via `check.sh`

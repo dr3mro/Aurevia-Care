@@ -12,5 +12,5 @@
     2. Write `manifest.webmanifest`: name, short name, `display: standalone`, `start_url: "/"`, `scope: "/"`, `theme_color`, `background_color`, `dir: "auto"`, `lang: "en"`, no icons that do not exist in the repository. No service worker, no caching of clinical data and no offline mode: the portal must stay online-only.
     3. Test: valid JSON, required members, no `serviceWorker`, `start_url` is relative and holds no patient data.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

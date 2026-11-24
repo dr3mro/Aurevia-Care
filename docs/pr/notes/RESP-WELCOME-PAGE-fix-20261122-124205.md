@@ -226,7 +226,7 @@ association, prescribing, critical results or cross-organization sharing.
   markers sit inside Javadoc block comments; Java compiles and tests pass, but
   they are not resolved here because those files are outside this task's scope.
 - Earlier fix passes are recorded in
-  `.agent/pr-notes/RESP-WELCOME-PAGE-fix-20261122-090120.md`,
+  `docs/pr/notes/RESP-WELCOME-PAGE-fix-20261122-090120.md`,
   `RESP-WELCOME-PAGE-fix-20261122-091056.md` and
   `RESP-WELCOME-PAGE-fix-20261122-110659.md`. The first worker's
   `RESP-WELCOME-PAGE-20261122-084248.md` carried a `## Why this is not finished`

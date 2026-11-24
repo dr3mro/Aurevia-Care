@@ -15,4 +15,4 @@
     3. `OpenApiRouteParityTest.everyControllerRouteIsDocumentedOrBaselined`: document every instant route from its controller so none is missing from the contract. Do not add instant routes to `contracts/openapi/missing-routes.txt`.
     4. Regenerate staff web types with `npm --prefix apps/staff-web run gen:api` and confirm `npm --prefix apps/staff-web run gen:api:check` passes.
     Acceptance: `OpenApiContractRulesTest`, `OpenApiPaginationRulesTest` and `OpenApiRouteParityTest` pass, and the existing instant-messaging tests still pass (retried send makes one message, per-person unread counts).
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.

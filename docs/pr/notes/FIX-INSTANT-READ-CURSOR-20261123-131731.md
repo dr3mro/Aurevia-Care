@@ -12,7 +12,7 @@
 - Branch `swarm/FIX-INSTANT-READ-CURSOR-1176`, HEAD `deea5ca0` equals `origin/main` merge base at start. Task already claimed (`[-]`, agent swarm-3) in `TODO.md`; worker does not edit trackers.
 - Environment (tool): PostgreSQL 17.12 on 127.0.0.1:5432 (admin `postgres` reachable), Java 21.0.13 LTS, Maven 3.10.0.
 - OPS-CW-003-01 (recorded once): `git ls-files -v opencode.json` = `S` (skip-worktree CI profile); `git show HEAD:opencode.json` is the committed local profile. Not regenerated or committed.
-- Latest daily note lessons read: `.agent/pr-notes/2026-11-21.md` (integration profile trap, bare spotbugs vacuous-green, do not run full `mvn verify`, mock deterministic sides).
+- Latest daily note lessons read: `docs/pr/reports/2026-11-21.md` (integration profile trap, bare spotbugs vacuous-green, do not run full `mvn verify`, mock deterministic sides).
 
 ## Plan (pre-code, reordered for test-first per plan-reviewer)
 
@@ -104,7 +104,7 @@ SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.prepare:138
 - Fix (test fixture only): removed the redundant `seedApprovedChannelPolicy` helper and its two calls in `prepare()` from `apps/api/src/test/java/com/aurevia/messaging/clauses/SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.java`. This restores the file to its pre-duplicate blob `8b10ee69`, keeping the single inline seed from `seedOwningTenant` that the positive publish/snapshot path relies on. No production code, migration, contract or threshold changed.
 - Green re-run (tool): the exact isolated command above → `EXIT=0`; surefire `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0`; request log shows publish `201`, approve `200`, snapshot `200`, then `403`/`404`/`404` and no `UNAPPROVED_CHANNEL`.
 - Re-confirmed task coverage (tool): `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest,InstantMessagingServiceTest,InstantMessagingControllerTest,JdbcInstantConversationStoreTest -DfailIfNoTests=false test jacoco:report` → `MVN_EXIT=0`; totals `17 + 29 + 10 + 3` tests, all green. JaCoCo `jacoco.xml`: `JdbcInstantConversationStore` LINE 0/95, BRANCH 0/4, METHOD 0/36, CLASS 0/1; `InstantMessagingService` LINE 0/158, BRANCH 0/50; `InstantMessagingController` LINE 0/12. V96 applied (`now at version v96`).
-- Gates (tool): `python3 -I -m unittest discover -s scripts/tests -p test_java_conventions.py` → `Ran 2`, `OK`; `python3 -I scripts/check-constraints.py --base origin/main --require-base` → exit 0; `python3 -I scripts/check-verdicts.py .agent/pr-notes/FIX-INSTANT-READ-CURSOR-20261123-131731.md --base origin/main` → exit 0; `git diff --check` → exit 0.
+- Gates (tool): `python3 -I -m unittest discover -s scripts/tests -p test_java_conventions.py` → `Ran 2`, `OK`; `python3 -I scripts/check-constraints.py --base origin/main --require-base` → exit 0; `python3 -I scripts/check-verdicts.py docs/pr/notes/FIX-INSTANT-READ-CURSOR-20261123-131731.md --base origin/main` → exit 0; `git diff --check` → exit 0.
 
 ### Branch-to-test list (unchanged — repair added no production branch)
 

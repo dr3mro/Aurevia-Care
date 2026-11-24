@@ -4,7 +4,7 @@
 
 Second-pass fix of the documentation-only decision pack `docs/launch/partner-interfaces.md`
 (the pack itself was created by the first pass; see
-`.agent/pr-notes/GATE-DECISION-PARTNER-INTERFACES-20261121-152809.md`). No option was
+`docs/pr/notes/GATE-DECISION-PARTNER-INTERFACES-20261121-152809.md`). No option was
 chosen, no jurisdiction/region/partner/person/date was invented, no approval cell was
 filled, and the status line remains `Not approved`. This pass applied three minimal
 accuracy corrections found by a fresh bounded specialist review; no other file changed,

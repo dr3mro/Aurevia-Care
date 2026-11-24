@@ -2419,14 +2419,14 @@ def note_worker_outcome(task, result, directory, pr):
 
 
 # ---------------------------------------------------------------------------
-# Daily notes reconciliation. Every worker writes .agent/pr-notes/<task>-<stamp>.md.
+# Daily notes reconciliation. Every worker writes docs/pr/notes/<task>-<stamp>.md.
 # Once a day (after midnight New York) the notes of each finished day are merged by a
 # read-only worker into one dated file; the originals go into one zip per day under
-# docs/archive/pr-notes/. The worker also lists problems for new issues and may edit
+# docs/pr/notes/archive/. The worker also lists problems for new issues and may edit
 # instruction documents, which go out as a draft pull request for a person to review.
 # ---------------------------------------------------------------------------
-NOTES_DIR = ".agent/pr-notes"
-NOTES_ARCHIVE = "docs/archive/pr-notes"
+NOTES_DIR = "docs/pr/notes"
+NOTES_ARCHIVE = "docs/pr/notes/archive"
 DAILY_NOTE = re.compile(r"\d{4}-\d{2}-\d{2}\.md")
 NOTE_STAMP = re.compile(r"-(\d{8})-(\d{6})\.md$")
 RULES_ALLOWED = (re.compile(r"\.opencode/setup/AGENTS\.md"), re.compile(r"\.opencode/.+\.md"), re.compile(r"docs/[^/]+\.md"))
@@ -3034,7 +3034,7 @@ def repair_task(run_id):
     body = (f"Repair the failed '{run['name']}' run on main ({run['url']}, commit {run['headSha'][:12]}).\n"
             "Reproduce it with the failing commands. When it is a real defect, write a failing test "
             "first, then make the smallest fix. When it is a transient or runner problem, say so in "
-            "your notes file (the path in your prompt, never .agent/pr-notes.md) and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
+            "your notes file (the path in your prompt, never docs/pr/notes.md) and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
     return {"kind": "story", "id": f"FIX-{run_id}", "number": 0, "branch": "",
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
 
@@ -3657,7 +3657,7 @@ def guard(pr, repair=False):
     trackers = [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in TRACKERS)]
     if trackers:
         fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(trackers[:10])
-             + " and put the evidence in your notes file (the path in your prompt, never .agent/pr-notes.md)", simple=True)
+             + " and put the evidence in your notes file (the path in your prompt, never docs/pr/notes.md)", simple=True)
         return trackers
     touched = [f for f in files if f in GATE_CONFIG] if repair else protected_files(files)
     if touched and protected_override():

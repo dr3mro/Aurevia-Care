@@ -86,4 +86,4 @@ The PostgreSQL-backed `*IntegrationTest` / `*IsolationTest` classes are run by t
 - `PROJECT_V1_SPEC.md` §6, §6.1 and §9 (G3 row) and requirements PAT-01, PAT-02, PAT-03, MSG-01–07, XCH-06, IAM-05.
 - `docs/gates/g0-isolation-surfaces.md`, `docs/gates/g1-clinic.md` and `docs/gates/g2-labs-and-exchange.md` — the same evidence-not-acceptance pattern for earlier gates.
 - tasks/ entries BUILD-63 (PR #344), BUILD-71 (PR #345), SPEC-G3-01 … SPEC-G3-05, GATE-PACK-G3, S-G5-12 and GATE-PACK-G5; `BUGS.md` entries QA-SOURCE-01, QA-SOURCE-02 and DELIVERY-1491.
-- `.agent/pr-notes/S-G3-13-20261122-133038.md` — exact commands, results, findings and lessons for this worker run.
+- `docs/pr/notes/S-G3-13-20261122-133038.md` — exact commands, results, findings and lessons for this worker run.

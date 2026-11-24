@@ -11,7 +11,7 @@ format and naming checks, and confirmed the acceptance mapping and 100% coverage
 pass.** This file is the hand-off at the path named in the execution request and
 is the only file added by this pass. The earlier PR description captured by the
 integrator at 09:00 was truncated mid-sentence ("measurement.ta"); the committed
-notes file `.agent/pr-notes/RESP-DESIGN-PREVIEW-20261122-083943.md` is complete on
+notes file `docs/pr/notes/RESP-DESIGN-PREVIEW-20261122-083943.md` is complete on
 disk, which is the most likely reason the run was judged "not finished cleanly".
 
 ## Affected requirements

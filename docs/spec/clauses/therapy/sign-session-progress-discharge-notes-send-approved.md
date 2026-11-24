@@ -83,7 +83,7 @@ exercise the domain branches; this class adds per-command protection of the
 acknowledgment boundary, backed by durable state and a fresh database.
 
 Verified locally with the focused integration run and SpotBugs recorded in
-`.agent/pr-notes/SPEC-PT-01-C03-20261122-175531.md`.
+`docs/pr/notes/SPEC-PT-01-C03-20261122-175531.md`.
 
 ## Gap
 

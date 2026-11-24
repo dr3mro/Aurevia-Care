@@ -12,7 +12,7 @@
     1. Read every `docs/spec/clauses/<domain>/index.md`.
     2. Write `docs/spec/clauses/index.md`: one row per domain with the number of clauses and the count of Proven / Built and verified, Partly, and Not built, then the totals and the percentage proven, and links to the domain indexes. Add a list of the ten domains with the most Not built clauses.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
 
 ## Start now: independent tasks (new files only, no dependencies)

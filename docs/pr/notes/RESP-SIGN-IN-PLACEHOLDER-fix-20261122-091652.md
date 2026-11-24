@@ -77,7 +77,7 @@ Evidence source: executed tool commands in this worker. Specialist review is sim
 
 1. Resync: `git merge --no-edit origin/main` → `Already up to date.` (branch
    `swarm/RESP-SIGN-IN-PLACEHOLDER-861`). `git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/staff-web
-   .agent/pr-notes` → no conflict markers.
+   docs/pr/notes` → no conflict markers.
 
 2. Dependency setup from clean state (`node_modules` was MISSING): `cd apps/staff-web && npm ci`
    → install completed (`6 moderate severity vulnerabilities` from the existing lockfile; no

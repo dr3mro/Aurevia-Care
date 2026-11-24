@@ -8,7 +8,7 @@ Fix pass on branch `swarm/RESP-APP-DECISION-447`.
 ## Summary
 
 This is a continuation of the earlier run recorded in
-`.agent/pr-notes/RESP-APP-DECISION-20261121-152813.md`. The earlier worker had
+`docs/pr/notes/RESP-APP-DECISION-20261121-152813.md`. The earlier worker had
 already written the decision record `docs/decisions/0005-patient-app-tablets.md`
 (Status **proposed**, Owner **Product**) and committed it on this branch. That
 record already satisfies every element of the story's acceptance criteria, so no

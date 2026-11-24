@@ -84,7 +84,7 @@ The first command drops and recreates the disposable database `aurevia_isolation
 applies all Flyway migrations, runs the seven tests and drops the database again. The existing
 surfaces are exercised through their real HTTP entry points; the worker surface additionally
 reads the JDBC store with a bound tenant context. Results are recorded in
-`.agent/pr-notes/GATE-ISOLATION-SURFACES-20261121-152812.md`.
+`docs/pr/notes/GATE-ISOLATION-SURFACES-20261121-152812.md`.
 
 In this cloud worker `scripts/quick-check.sh` stops at `check-pack.py: opencode.json is stale`:
 `git ls-files -v opencode.json` shows flag `S`, the worktree file equals `.github/opencode.ci.json`,

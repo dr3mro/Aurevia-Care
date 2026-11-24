@@ -10,7 +10,7 @@ Swarm worker 3. Local checks: failed. Agent result: ok.
 
 <!-- Merge resolution: this shared notes file previously held a single story note.
 Both sides replaced the merge-base note; both sections are preserved below.
-Canonical per-story copies: .agent/pr-notes/READY-49-20261120-091850.md and .agent/pr-notes/READY-15-20261120-090755.md. -->
+Canonical per-story copies: docs/pr/notes/READY-49-20261120-091850.md and docs/pr/notes/READY-15-20261120-090755.md. -->
 
 # READY-49 — HTTP tests for the remaining controllers named in no test
 

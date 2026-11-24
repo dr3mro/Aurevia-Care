@@ -72,7 +72,7 @@ dev server so the dev-only `/design-preview` route was available.
   `tsconfig.json`); no `error TS…`.
 - `npx eslint e2e/rightToLeftResponsive.spec.ts --max-warnings 0` → exit 0.
 - `python3 -I scripts/check-constraints.py --base origin/main --require-base` → exit 0.
-- `python3 -I scripts/check-verdicts.py .agent/pr-notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-004449.md` → exit 0 after the three GO verdicts below were recorded.
+- `python3 -I scripts/check-verdicts.py docs/pr/notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-004449.md` → exit 0 after the three GO verdicts below were recorded.
 - `git merge --no-edit origin/main` → `Already up to date.`
 
 **Repair pass (gate red on the WEB-10 GAP tripwire).** The delivery gate failed at
@@ -94,7 +94,7 @@ tripwire still fails on any future added or removed spec or visual-check spec.
   coverage stage, so they passed too. (jsdom `Not implemented: navigation` lines are pre-existing
   console noise from `UnsupportedBrowserPage.tsx`, not failures.)
 - `python3 -I scripts/check-constraints.py --base origin/main --require-base` → exit 0.
-- `python3 -I scripts/check-verdicts.py .agent/pr-notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-004449.md`
+- `python3 -I scripts/check-verdicts.py docs/pr/notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-004449.md`
   → exit 0.
 
 Entry point to test trace: Playwright project → `page.goto(route)` → `AppShell` + `I18nProvider`

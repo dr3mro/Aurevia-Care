@@ -77,7 +77,7 @@ explicit coverage runs so the tracked `.coverage` artifact stayed clean.
   `Ran 1313 tests in 43.937s` / `FAILED (failures=6)` — the same six pre-existing
   environment failures. The changed-line coverage gate itself was run separately and passes.
 - `python3 -I scripts/check-constraints.py` → exit 0 (no output).
-  `bash scripts/quality-gate.sh HEAD .agent/pr-notes/COVPY-SWARM-SCHEDULE-20261123-131736.md`
+  `bash scripts/quality-gate.sh HEAD docs/pr/notes/COVPY-SWARM-SCHEDULE-20261123-131736.md`
   → exit 0 (constraints clean, all four review verdicts recorded).
 - Security reviewer's administrative confirmations: `git status --porcelain` shows only the
   scope test file modified and this notes file untracked; `git show

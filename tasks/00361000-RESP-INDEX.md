@@ -13,7 +13,7 @@
     2. Add one line for each page that exists and is not linked, with a one-line description, in the section where it fits. Do not link a page that does not exist.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
 ## Pending human work, prepared for the swarm (decision packs, evidence packs and one isolation test)
 

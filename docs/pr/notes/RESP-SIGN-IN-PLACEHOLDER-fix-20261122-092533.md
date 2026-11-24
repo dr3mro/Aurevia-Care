@@ -76,7 +76,7 @@ None. Static client-only presentation; no rollout or data step.
 ## Test evidence
 
 1. Resync: `git merge --no-edit origin/main` → `Already up to date.` at the start.
-   `git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/staff-web .agent/pr-notes` → no conflict markers.
+   `git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/staff-web docs/pr/notes` → no conflict markers.
    Working tree clean before edits; branch `swarm/RESP-SIGN-IN-PLACEHOLDER-861`.
 
 2. Dependency setup from clean state (`node_modules` was MISSING):

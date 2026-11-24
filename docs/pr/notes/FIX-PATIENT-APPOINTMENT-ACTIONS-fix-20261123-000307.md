@@ -4,7 +4,7 @@
 
 Repairs the red integration gate left on this branch by the original implementation. The compiler at the repository root (`tsconfig.json`, `exactOptionalPropertyTypes: true`) reported exactly two `error TS…` failures, both in newly added test files. No production code, contract, migration, configuration, coverage threshold or exclusion was changed; no assertion or test behavior was weakened. The two edits make the optional/absent intent explicit in the type system so the root typecheck, the module gate and the integrator gate all pass without a suppression.
 
-The full implementation context (acceptance, entry-point-to-test trace, branch map, deferred follow-ups) remains in the original worker's note `.agent/pr-notes/FIX-PATIENT-APPOINTMENT-ACTIONS-20261122-223421.md`, which this fix pass does not supersede.
+The full implementation context (acceptance, entry-point-to-test trace, branch map, deferred follow-ups) remains in the original worker's note `docs/pr/notes/FIX-PATIENT-APPOINTMENT-ACTIONS-20261122-223421.md`, which this fix pass does not supersede.
 
 ## Affected requirements
 

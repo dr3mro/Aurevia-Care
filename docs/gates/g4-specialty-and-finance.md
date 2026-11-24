@@ -40,7 +40,7 @@ Status reflects merged evidence present on `main`. The unrelated test-compile de
 
 ## Reproduction
 
-The evidence itself is the merged history of `main` as of `origin/main` `f2588a4b629f9e76d6cac063e152b2e3317e1dd2`; each cited class and method was read directly and its merge commit (named in the matrix) confirmed with `git log`. On 2026-11-23 the five `acceptance/specialty` classes were re-executed by this documentation worker with the targeted `mvn -Dtest=...` command at the tested head `33b299aa32d236011878df4811bfb315660690d7` (exit 0); each of the five Surefire XML reports records `tests="2"` with zero failures, errors and skipped, giving 5 classes and 10 tests. Their HTTP backing classes remain PostgreSQL-backed or service-level tests run by the integrator/Delivery full gate (`bash apps/api/check.sh`, `bash db/check.sh`), not by this worker. No full `mvn verify` was run here. The BUILD-64 merge note (`.agent/pr-notes/BUILD-64-20261121-191759.md`) records the five acceptance classes green at merge: 5 classes, 10 tests, 0 failures, 0 errors, 0 skipped.
+The evidence itself is the merged history of `main` as of `origin/main` `f2588a4b629f9e76d6cac063e152b2e3317e1dd2`; each cited class and method was read directly and its merge commit (named in the matrix) confirmed with `git log`. On 2026-11-23 the five `acceptance/specialty` classes were re-executed by this documentation worker with the targeted `mvn -Dtest=...` command at the tested head `33b299aa32d236011878df4811bfb315660690d7` (exit 0); each of the five Surefire XML reports records `tests="2"` with zero failures, errors and skipped, giving 5 classes and 10 tests. Their HTTP backing classes remain PostgreSQL-backed or service-level tests run by the integrator/Delivery full gate (`bash apps/api/check.sh`, `bash db/check.sh`), not by this worker. No full `mvn verify` was run here. The BUILD-64 merge note (`docs/pr/notes/BUILD-64-20261121-191759.md`) records the five acceptance classes green at merge: 5 classes, 10 tests, 0 failures, 0 errors, 0 skipped.
 
 ```
 git merge --no-edit origin/main
@@ -77,8 +77,8 @@ python3 -I scripts/check-secrets.py # exit 0
 - `PROJECT_V1_SPEC.md` §9 (G4 row) and requirements RAD-01, PT-01, RX-02, FIN-01.
 - `docs/gates/g0-isolation-surfaces.md`, `docs/gates/g1-clinic.md`, `docs/gates/g2-labs-and-exchange.md` and `docs/gates/g3-patient-and-operations.md` — the same evidence-not-acceptance pattern for earlier gates.
 - tasks/ entries BUILD-64 (PR #494), BUILD-11 (RAD-01; PR #302), RADFLOW-02 (PR #506), BUILD-31 (PR #342), DLV-03 (PR #198), SPEC-G4-01 … SPEC-G4-05 and GATE-PACK-G4; `BUGS.md` entry WEB-05-MERGE-GAP.
-- `.agent/pr-notes/BUILD-64-20261121-191759.md` — the merge evidence for the five G4 acceptance classes.
-- `.agent/pr-notes/S-G4-07-20261122-134809.md` — exact commands, results, findings and lessons for the original evidence-note run.
-- `.agent/pr-notes/S-G4-07-fix-20261122-161824.md` — fix-pass commands, results, reviewer verdicts, findings and lessons.
-- `.agent/pr-notes/S-G4-07-20261123-131732.md` — attempt-3 verification at HEAD `deea5ca0`: re-check of every cited path, method and merge commit, a fresh bounded five-class run, the documentation and security gates, and the final reviewer verdicts.
-- `.agent/pr-notes/S-G4-07-fix-20261123-144323.md` — fix-pass verification at the tested head `33b299aa`: full stale-phrase sweep, bounded re-execution with Surefire counts, named policy and quality gates, reviewer verdicts, findings and lessons.
+- `docs/pr/notes/BUILD-64-20261121-191759.md` — the merge evidence for the five G4 acceptance classes.
+- `docs/pr/notes/S-G4-07-20261122-134809.md` — exact commands, results, findings and lessons for the original evidence-note run.
+- `docs/pr/notes/S-G4-07-fix-20261122-161824.md` — fix-pass commands, results, reviewer verdicts, findings and lessons.
+- `docs/pr/notes/S-G4-07-20261123-131732.md` — attempt-3 verification at HEAD `deea5ca0`: re-check of every cited path, method and merge commit, a fresh bounded five-class run, the documentation and security gates, and the final reviewer verdicts.
+- `docs/pr/notes/S-G4-07-fix-20261123-144323.md` — fix-pass verification at the tested head `33b299aa`: full stale-phrase sweep, bounded re-execution with Surefire counts, named policy and quality gates, reviewer verdicts, findings and lessons.

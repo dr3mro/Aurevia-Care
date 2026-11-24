@@ -12,5 +12,5 @@
     2. Write `docs/decisions/0005-patient-app-tablets.md`: the patient app runs on iPhone, iPad, Android phones and Android tablets in portrait and landscape; layout classes compact, regular and large by window width (600 and 840 dp) rather than by device type; two-pane inbox and thread on large widths; text scales with system font size up to 200 percent; split-screen and slide-over on iPad keep working; screen-reader flows (UX-01) are tested on phone and tablet. Status Proposed, owner Product.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

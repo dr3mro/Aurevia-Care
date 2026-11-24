@@ -25,7 +25,7 @@ simulated user or human participant evidence in this run.
 
 Deliberately unchanged: class names (`AureviaApiApplication`), Maven artifact `aurevia-api`,
 service name, generated contract extension keys (`x-aurevia-*`), historical evidence logs
-(`.agent/pr-notes/`, `tasks/`, `docs/swarm/`, `docs/archive/`, `build/logs/`) and protected
+(`docs/pr/notes/`, `tasks/`, `docs/swarm/`, `docs/archive/`, `build/logs/`) and protected
 agent/script files that mention the old path only as an example (`scripts/agent-run.sh`,
 `scripts/check-names.py` LEGACY allowlist, two Python test fixtures).
 

@@ -4,7 +4,7 @@
 
 Continuation fix pass on branch `swarm/RESP-APP-RELEASED-REPORTS-SCREEN-505`.
 I rehydrated from the findings in issue #656 / PR #655 and the newest hand-off
-note (`.agent/pr-notes/RESP-APP-RELEASED-REPORTS-SCREEN-fix-20261122-042734.md`),
+note (`docs/pr/notes/RESP-APP-RELEASED-REPORTS-SCREEN-fix-20261122-042734.md`),
 merged `origin/main`, installed the three locked dependency sets, and
 independently re-ran every gate for the touched area.
 

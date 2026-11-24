@@ -8,8 +8,8 @@ Fix pass on branch `swarm/RESP-APP-DECISION-447`, HEAD `63204179`.
 ## Summary
 
 Continuation of the runs recorded in
-`.agent/pr-notes/RESP-APP-DECISION-20261121-152813.md` and
-`.agent/pr-notes/RESP-APP-DECISION-fix-20261121-170237.md`. The decision record
+`docs/pr/notes/RESP-APP-DECISION-20261121-152813.md` and
+`docs/pr/notes/RESP-APP-DECISION-fix-20261121-170237.md`. The decision record
 `docs/decisions/0005-patient-app-tablets.md` was already written and committed on
 this branch by the first run; this pass did not need to change it. I re-read the
 record against the TODO.md acceptance criteria and `docs/decisions/template.md`,

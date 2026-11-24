@@ -2,8 +2,8 @@
 
 Fix attempt 2 of 3, continuing from the branch
 `swarm/RESP-ADMIN-TABLE-REGION-861`. Earlier records are
-`.agent/pr-notes/RESP-ADMIN-TABLE-REGION-20261122-084243.md` (implementation,
-commit `fb99340a`) and `.agent/pr-notes/RESP-ADMIN-TABLE-REGION-fix-20261122-090836.md`
+`docs/pr/notes/RESP-ADMIN-TABLE-REGION-20261122-084243.md` (implementation,
+commit `fb99340a`) and `docs/pr/notes/RESP-ADMIN-TABLE-REGION-fix-20261122-090836.md`
 (fix attempt 1, commit `628aa8ff`, verification only). This pass made **no new
 production or test change**: the earlier implementation is already complete,
 inside the declared scope, and green under the mandatory frontend gate. I

@@ -67,7 +67,7 @@ Senior React and Vite (implementation and frontend gate) with the UX reviewer
 (responsive/RTL/a11y structure). Both are **simulated specialists** — no human,
 clinical or patient-participant acceptance is claimed. The earlier worker's
 Senior React and UX reviews are recorded in
-`.agent/pr-notes/RESP-PATIENT-OVERVIEW-PAGE-20261122-103700.md`; this fix pass
+`docs/pr/notes/RESP-PATIENT-OVERVIEW-PAGE-20261122-103700.md`; this fix pass
 ran one fresh bounded Senior React review (session `ses_dfd0dfd4dffeXKVDlXzryn3ExI`)
 which returned **sound-as-is** with two non-blocking comment findings, both
 corrected here.

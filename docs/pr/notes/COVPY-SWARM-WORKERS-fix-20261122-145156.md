@@ -76,10 +76,10 @@ All commands were run from the repository root.
   -> `python coverage: every changed script line is covered` (exit 0).
 - `python3 -I scripts/check-constraints.py --base origin/main --require-base` -> exit 0
   (no suppression, exclusion, skip or weakened threshold added).
-- `python3 -I scripts/check-verdicts.py .agent/pr-notes/COVPY-SWARM-WORKERS-fix-20261122-145156.md --base origin/main`
+- `python3 -I scripts/check-verdicts.py docs/pr/notes/COVPY-SWARM-WORKERS-fix-20261122-145156.md --base origin/main`
   -> exit 0 (all three required verdicts present below).
 - `python3 -I scripts/check-docs.py` -> exit 0 (Markdown/notes formatting).
-- `bash scripts/quality-gate.sh origin/main .agent/pr-notes/COVPY-SWARM-WORKERS-fix-20261122-145156.md`
+- `bash scripts/quality-gate.sh origin/main docs/pr/notes/COVPY-SWARM-WORKERS-fix-20261122-145156.md`
   -> exit 0 (constraints and verdicts together). This was the gate the first run
   failed; running it locally closes that root cause before the commit.
 - Full suite `python3 -I -m unittest discover -s scripts/tests`
@@ -158,7 +158,7 @@ information, tenant boundary or downtime behavior is touched.
   all are covered. No unreachable production line was found in this range, so
   nothing needed removal.
 - Root cause of the earlier failed finish: the first run's notes file was named
-  `.agent/pr-notes/COVPY-SWARM-WORKERS-20261122-143326.md` (wrong: no `-fix-`
+  `docs/pr/notes/COVPY-SWARM-WORKERS-20261122-143326.md` (wrong: no `-fix-`
   segment) and lacked the `## Review verdicts` section required by
   `scripts/check-verdicts.py` for a change that includes a `.py` test file.
   This fix pass writes the correctly named notes file with the verdicts. The

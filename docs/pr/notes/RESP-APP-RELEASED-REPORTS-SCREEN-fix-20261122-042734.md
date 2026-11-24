@@ -5,7 +5,7 @@
 Continuation fix pass for the responsive `ReleasedReportsScreen` work on branch
 `swarm/RESP-APP-RELEASED-REPORTS-SCREEN-505`. I rehydrated from the findings in
 issue #656 / PR #655 and the newest hand-off note
-(`.agent/pr-notes/RESP-APP-RELEASED-REPORTS-SCREEN-fix-20261122-041651.md`),
+(`docs/pr/notes/RESP-APP-RELEASED-REPORTS-SCREEN-fix-20261122-041651.md`),
 merged `origin/main`, installed the three locked dependency sets, and
 independently re-ran every gate for the touched area.
 

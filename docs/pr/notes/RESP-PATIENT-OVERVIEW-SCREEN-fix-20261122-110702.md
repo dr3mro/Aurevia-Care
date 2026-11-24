@@ -16,7 +16,7 @@ was written and committed so the hand-off is complete.
 Changed files (net diff against `origin/main`, exactly the declared scope):
 - `apps/staff-web/src/features/patients/PatientOverviewScreen.tsx`
 - `apps/staff-web/tests/responsive/features-patients/PatientOverviewScreen.responsive.test.tsx`
-- this notes file (`.agent/pr-notes/RESP-PATIENT-OVERVIEW-SCREEN-fix-20261122-110702.md`)
+- this notes file (`docs/pr/notes/RESP-PATIENT-OVERVIEW-SCREEN-fix-20261122-110702.md`)
 
 ## Affected requirements
 
@@ -175,7 +175,7 @@ Playwright work under the RESP-E2E stories and are not claimed here.
   `origin/main` has no version of the responsive test, the net diff is exactly
   the two scoped files, and all applicable gates are green. The earlier worker's
   notes file exists under a non-fix name
-  (`.agent/pr-notes/RESP-PATIENT-OVERVIEW-SCREEN-20261122-104009.md`); this pass
+  (`docs/pr/notes/RESP-PATIENT-OVERVIEW-SCREEN-20261122-104009.md`); this pass
   writes the required `-fix-` notes file so the hand-off and commit are complete.
 - Pre-existing defect outside scope, still present on `HEAD` (verified with
   `git grep -nE '^(<<<<<<<|>>>>>>>) '`): unresolved merge-conflict markers in

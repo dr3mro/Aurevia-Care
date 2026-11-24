@@ -21,7 +21,7 @@ SPEC = importlib.util.spec_from_file_location("worker_gate_under_test", SCRIPTS 
 worker_gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(worker_gate)
 
-NOTES = ".agent/pr-notes/WORKER-COVERAGE-20261122-001724.md"
+NOTES = "docs/pr/notes/WORKER-COVERAGE-20261122-001724.md"
 SCOPE_TEXT = ("Scope (stay inside these paths): scripts/worker_gate.py, "
               "scripts/tests/test_worker_gate_coverage.py")
 CHANGED = ["scripts/worker_gate.py", "scripts/tests/test_worker_gate_coverage.py", NOTES]
@@ -192,13 +192,13 @@ class GitPlumbingTest(unittest.TestCase):
             (folder / "W-20260101-000000.md").write_text("old")
             (folder / "W-20261231-235959.md").write_text("new")
             self.assertEqual(worker_gate.find_notes_file("W", tmp),
-                             str(Path(".agent/pr-notes/W-20261231-235959.md")))
+                             str(Path("docs/pr/notes/W-20261231-235959.md")))
 
     def test_read_notes_returns_none_for_empty_path(self):
         self.assertIsNone(worker_gate.read_notes("", "."))
 
     def test_read_notes_returns_none_for_missing_file(self):
-        self.assertIsNone(worker_gate.read_notes(".agent/pr-notes/missing.md", "."))
+        self.assertIsNone(worker_gate.read_notes("docs/pr/notes/missing.md", "."))
 
     def test_read_notes_returns_file_contents(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -272,7 +272,7 @@ class ScopeAndNotesParsingTest(unittest.TestCase):
         self.assertFalse(worker_gate.is_notes_file(None))
 
     def test_is_notes_file_rejects_other_paths(self):
-        for path in (".agent/pr-notes.md", "scripts/worker_gate.py", "notes.md"):
+        for path in ("docs/pr/notes.md", "scripts/worker_gate.py", "notes.md"):
             with self.subTest(path=path):
                 self.assertFalse(worker_gate.is_notes_file(path))
 
@@ -470,7 +470,7 @@ class CandidateFromEnvTest(unittest.TestCase):
     def test_finds_notes_file_by_story_id_when_env_missing(self):
         env = self.env()
         env.pop("NOTES_FILE")
-        self.notes.rename(self.root / ".agent/pr-notes/WORKER-COVERAGE-20991231-235959.md")
+        self.notes.rename(self.root / "docs/pr/notes/WORKER-COVERAGE-20991231-235959.md")
         self.assertEqual(self.run_with_head(env), [])
 
     def test_no_notes_file_reports_missing_headings(self):

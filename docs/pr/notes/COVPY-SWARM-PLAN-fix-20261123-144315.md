@@ -12,7 +12,7 @@ failing on six `test_check_pack` cases — the documented OPS-CW-003-01 cloud-wo
 positive (the worktree `opencode.json` is the CI profile installed under `skip-worktree`),
 not a defect in the change. **No source, test, script, workflow, tracker or configuration
 file was changed in this pass**; the only new file is these notes. The first worker's notes
-(`.agent/pr-notes/COVPY-SWARM-PLAN-20261123-131739.md`) are retained as history and remain
+(`docs/pr/notes/COVPY-SWARM-PLAN-20261123-131739.md`) are retained as history and remain
 the authoritative description of the committed change.
 
 ## Affected requirements
@@ -82,7 +82,7 @@ Exact commands and final lines (source: executed tool commands in this worker):
 - `python3 -I scripts/python_coverage.py /tmp/opencode/cov-plan.json --base origin/main`
   → `python coverage: every changed script line is covered` (exit 0).
 - `python3 -I scripts/check-constraints.py --require-base` → exit 0, no output.
-- `bash scripts/quality-gate.sh origin/main .agent/pr-notes/COVPY-SWARM-PLAN-fix-20261123-144315.md`
+- `bash scripts/quality-gate.sh origin/main docs/pr/notes/COVPY-SWARM-PLAN-fix-20261123-144315.md`
   → exit 0, no output (after the verdicts below were recorded).
 - `python3 -I scripts/check-docs.py` → exit 0, no output.
 - `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1308 tests in 27.943s` /
@@ -170,7 +170,7 @@ edit warranted in this pass.
   branch; `git status` is clean apart from this notes file and I did not edit `TODO.md`.
 - The PR-description snapshot in the hand-off text was truncated mid-sentence
   ("Production dead code (no"); the complete notes file is on disk at
-  `.agent/pr-notes/COVPY-SWARM-PLAN-20261123-131739.md`. A truncated snapshot is not evidence
+  `docs/pr/notes/COVPY-SWARM-PLAN-20261123-131739.md`. A truncated snapshot is not evidence
   of unfinished production work.
 - Evidence-attribution correction from the coverage auditor: the earlier notes attributed
   the default `else` coverage to `GhRetryTests`/`GreenRunIssueTests`/`HandoffIssueTests`/

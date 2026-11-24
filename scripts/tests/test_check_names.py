@@ -57,7 +57,7 @@ class CheckNamesTest(unittest.TestCase):
         self.assertIn("x_07", out[0])
 
     def test_history_folders_are_ignored(self):
-        self.assertEqual(self.found([".agent/pr-notes/S-G5-09.md", "docs/swarm/S-G3-02.md",
+        self.assertEqual(self.found(["docs/pr/notes/S-G5-09.md", "docs/swarm/S-G3-02.md",
                                      "docs/archive/s_g1_01/a.md"]), [])
 
     def test_the_repository_itself_is_clean(self):

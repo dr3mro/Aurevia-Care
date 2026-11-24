@@ -173,7 +173,7 @@ class StructureTests(unittest.TestCase):
     def test_generated_files_exclude_records_and_notes(self):
         root = self.repo("IAM-01 clean\n", extra={
             "docs/swarm/REC.md": "# Record\n",
-            ".agent/pr-notes/N.md": "# Note\n",
+            "docs/pr/notes/N.md": "# Note\n",
             "docs/archive/OLD.md": "# Old\n",
             "docs/GOOD.md": "# Good\n",
         })

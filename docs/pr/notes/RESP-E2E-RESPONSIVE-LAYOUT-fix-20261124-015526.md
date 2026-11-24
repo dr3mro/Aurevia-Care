@@ -66,7 +66,7 @@ and the enumeration command was used instead.
   `worker_gate.validate_candidate` on the pre-revert committed diff returned
   `[{"file": "apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts", "rule": "scope"}]`.
   After the revert it returns `[]`; `changed_paths()` =
-  `['.agent/pr-notes/RESP-E2E-RESPONSIVE-LAYOUT-20261124-004500.md', 'apps/staff-web/e2e/responsiveLayout.spec.ts']`.
+  `['docs/pr/notes/RESP-E2E-RESPONSIVE-LAYOUT-20261124-004500.md', 'apps/staff-web/e2e/responsiveLayout.spec.ts']`.
 - `npx eslint e2e/responsiveLayout.spec.ts --max-warnings=0` (in
   `apps/staff-web`) -> exit 0, no output.
 - `npx playwright test --config e2e/playwright.config.ts e2e/responsiveLayout.spec.ts --list`
@@ -291,7 +291,7 @@ acceptance.
   were run; a live red/green run and any genuine layout-defect detection remain
   for CI.
 - **Superseded prior notes (Required, resolved here):** the earlier notes file
-  `.agent/pr-notes/RESP-E2E-RESPONSIVE-LAYOUT-20261124-004500.md` records the
+  `docs/pr/notes/RESP-E2E-RESPONSIVE-LAYOUT-20261124-004500.md` records the
   now-reverted tripwire pin refresh and claims a green gate (`3045/3045`,
   "RESOLVED", "the full gate is now green", "the first task request below is
   now satisfied and can be closed"), sourced from intermediate commits
@@ -314,7 +314,7 @@ acceptance.
   `scrollWidth <= innerWidth` is exactly the one the task specifies; a stricter
   `clientWidth` comparison would diverge from the acceptance criterion. None of
   these is a gate blocker or a weakened assertion.
-- **Brief inaccuracy:** the brief stated that no `.agent/pr-notes/*.md` files
+- **Brief inaccuracy:** the brief stated that no `docs/pr/notes/*.md` files
   existed; the directory contains reconciled daily notes and many task notes.
   Its step-3 heading assertion named only `header h1`; the plan reviewer
   required a page heading inside `main` as well, which was added without
@@ -398,7 +398,7 @@ responsive spec. This task stays `[-]` and is not releasable here.
 [
   {
     "title": "Refresh the staff-web e2e spec tripwire list",
-    "details": "The GAP tripwire in apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts pins 9 e2e spec names but the tree has 15; bash apps/staff-web/check.sh is red on main because of it. Pin the current 15 paths (including e2e/responsiveLayout.spec.ts) so the gate is green, keeping the tripwire active. This is the same request recorded in .agent/pr-notes/RESP-E2E-RESPONSIVE-LAYOUT-20261124-004500.md; create one task only.",
+    "details": "The GAP tripwire in apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts pins 9 e2e spec names but the tree has 15; bash apps/staff-web/check.sh is red on main because of it. Pin the current 15 paths (including e2e/responsiveLayout.spec.ts) so the gate is green, keeping the tripwire active. This is the same request recorded in docs/pr/notes/RESP-E2E-RESPONSIVE-LAYOUT-20261124-004500.md; create one task only.",
     "scope": ["apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts"],
     "depends": ["RESP-E2E-RESPONSIVE-LAYOUT"]
   }

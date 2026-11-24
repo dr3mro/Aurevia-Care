@@ -3,7 +3,7 @@
 Task: `GATE-DECISION-POLICY-PACK` (`tasks/00299000-GATE-DECISION-POLICY-PACK.md`),
 swarm worker `swarm-6`. Human decision it prepares: `S-G5-01` (still open).
 Branch: `swarm/GATE-DECISION-POLICY-PACK-447`; prior attempt commit `10d947b8`
-(notes `.agent/pr-notes/GATE-DECISION-POLICY-PACK-20261121-152819.md`).
+(notes `docs/pr/notes/GATE-DECISION-POLICY-PACK-20261121-152819.md`).
 Deliverable status: **Not approved** — this pack decides nothing.
 
 ## Summary

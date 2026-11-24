@@ -8,7 +8,7 @@ Fix pass on branch `swarm/RESP-DECISION-447`.
 ## Summary
 
 This is a continuation of the earlier run recorded in
-`.agent/pr-notes/RESP-DECISION-20261121-152816.md` (commit `05196ed6`). That run had already
+`docs/pr/notes/RESP-DECISION-20261121-152816.md` (commit `05196ed6`). That run had already
 written the decision record `docs/decisions/0004-responsive-staff-web.md` (Status **Proposed**,
 Owner **Product**) and committed it on this branch. Re-reading the record against the story's
 acceptance criteria and the authoritative sources confirmed that it already satisfies every

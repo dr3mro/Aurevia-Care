@@ -10,7 +10,7 @@ coverage/
 
 /build/
 /.agent/*
-!/.agent/pr-notes/
+!/docs/pr/notes/
 
 # Tooling and editors
 __pycache__/

@@ -68,4 +68,4 @@ python3 -I scripts/check-secrets.py
 - `PROJECT_V1_SPEC.md` §9 (G2 row) and requirements LAB-01, LAB-02, XCH-01, XCH-04, XCH-05.
 - `docs/gates/g0-isolation-surfaces.md` and `docs/gates/g1-clinic.md` — the same evidence-not-acceptance pattern for G0 and G1.
 - tasks/ entries BUILD-62 (PR #582), BUILD-38, LABFLOW-02, LABFLOW-05, SPEC-G2-01 … SPEC-G2-04 and GATE-PACK-G2.
-- `.agent/pr-notes/S-G2-11-20261122-102224.md` — exact commands, results, findings and lessons for this worker run.
+- `docs/pr/notes/S-G2-11-20261122-102224.md` — exact commands, results, findings and lessons for this worker run.

@@ -3,7 +3,7 @@
 Fix attempt 1 of 3, continuing from the earlier worker's committed work on branch
 `swarm/RESP-ADMIN-TABLE-REGION-861` (implementation commit `fb99340a`, two
 `origin/main` merges). The earlier notes are in
-`.agent/pr-notes/RESP-ADMIN-TABLE-REGION-20261122-084243.md`. This pass made **no
+`docs/pr/notes/RESP-ADMIN-TABLE-REGION-20261122-084243.md`. This pass made **no
 new production code changes**: it re-verified the scoped change, reconciled the
 branch, ran the mandatory frontend gate and recorded clean evidence. The scoped
 story was already implemented test-first by the earlier worker (red stage:

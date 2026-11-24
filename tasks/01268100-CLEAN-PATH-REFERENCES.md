@@ -11,7 +11,7 @@
     `.github/swarm/model-pricing.json`). The real files are under `.opencode/`.
     Fix every active reference, repair the broken relative Markdown links, and
     reconcile the stale tracker claims. Historical records under docs/archive/,
-    docs/swarm/, tasks/ and .agent/pr-notes/ are deliberately left untouched.
+    docs/swarm/, tasks/ and docs/pr/notes/ are deliberately left untouched.
     Regenerate the OpenCode config after editing instruction files and commit
     any resulting diff. Run `python3 -I scripts/check-docs.py` and the pack
     check as evidence.
@@ -49,7 +49,7 @@
     reports zero broken links outside generated output; (f) `bash scripts/quick-check.sh`.
   - evidence:
     Owner choice 2026-11-24: remove all old naming in active files; historical
-    records under tasks/, docs/archive/, docs/swarm/ and .agent/pr-notes/ stay.
+    records under tasks/, docs/archive/, docs/swarm/ and docs/pr/notes/ stay.
     Tool: path map verified on disk before edits — `.opencode/config/slots.json`,
     `.opencode/model-pricing.json`, `.opencode/opencode.ci.json`,
     `.opencode/opencode.json`, `infra/{capacity,recovery,ops-queues,tenant-lifecycle,onboarding/fixtures}`

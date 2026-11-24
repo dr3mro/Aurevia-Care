@@ -99,7 +99,7 @@ class RuleTests(unittest.TestCase):
                 self.assertEqual(flagged(path, text), [])
 
     def test_prose_trackers_notes_tests_and_the_guard_itself_are_exempt(self):
-        for path in ("docs/x.ts", "README.md", ".agent/pr-notes/a.md", "scripts/tests/test_x.py",
+        for path in ("docs/x.ts", "README.md", "docs/pr/notes/a.md", "scripts/tests/test_x.py",
                      "scripts/check-constraints.py", "apps/staff-web/package-lock.json",
                      "apps/staff-web/src/generated/openapi.ts", "tasks/0001-A.md"):
             with self.subTest(path=path):

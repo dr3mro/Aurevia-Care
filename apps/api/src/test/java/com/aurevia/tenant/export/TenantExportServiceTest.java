@@ -28,6 +28,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import com.aurevia.api.ApiException;
 import com.aurevia.audit.AuditAppender;
 import com.aurevia.documents.storage.FileSystemObjectStore;
@@ -42,6 +46,20 @@ import com.aurevia.tenant.export.ExportModel.Provenance;
 
 /** OPS-07 acceptance: checksums, tenant scope, audit and expiry through the service. */
 class TenantExportServiceTest {
+
+    /**
+     * A transaction template that runs callbacks directly for unit tests.
+     *
+     * <p>The real template binds tenant GUCs through the guarded manager; here
+     * the domain behaviour is exercised without a database.</p>
+     *
+     * @return a template that executes each callback immediately
+     */
+    private static TransactionTemplate directTransactions() {
+        PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
+        when(manager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
+        return new TransactionTemplate(manager);
+    }
 
     private static final String ORG = "org-a";
     private static final Instant NOW = Instant.parse("2026-11-21T10:00:00Z");
@@ -68,7 +86,8 @@ class TenantExportServiceTest {
         authorization = mock(ExportPermissionGuard.class);
         audit = mock(AuditAppender.class);
         clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        service = new TenantExportService(store, objects, digests, authorization, audit, clock);
+        service = new TenantExportService(store, objects, digests, authorization, audit, clock,
+                directTransactions());
         TenantContext.set(new TenantContext(ORG, "admin", "EXPORT", "corr-1"));
         when(authorization.mayExport(any())).thenReturn(true);
         when(store.save(any())).thenReturn(true);
@@ -152,7 +171,7 @@ class TenantExportServiceTest {
         ExportJob job = startAndCaptureJob();
         when(store.find(job.id())).thenReturn(Optional.of(job));
         TenantExportService later = new TenantExportService(store, objects, digests, authorization,
-                audit, Clock.fixed(NOW.plusSeconds(25 * 3600), ZoneOffset.UTC));
+                audit, Clock.fixed(NOW.plusSeconds(25 * 3600), ZoneOffset.UTC), directTransactions());
         ApiException failure = assertThrows(ApiException.class, () -> later.download(job.id()));
         assertEquals(410, failure.status());
         assertEquals("EXPORT_EXPIRED", failure.code());
@@ -238,7 +257,7 @@ class TenantExportServiceTest {
                 new ExportSource("rec-1", "doc-1", 1, "d".repeat(64),
                         "release_policy", new Provenance("documents", "doc-1", 1))));
         TenantExportService serviceWithMock = new TenantExportService(store, permissive, digests,
-                authorization, audit, clock);
+                authorization, audit, clock, directTransactions());
         ApiException failure = assertThrows(ApiException.class, () -> serviceWithMock.start());
         assertEquals(409, failure.status());
         assertEquals("EXPORT_CHECKSUM_MISMATCH", failure.code());

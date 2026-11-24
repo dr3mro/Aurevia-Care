@@ -227,5 +227,5 @@ a G5 gate. No persistent clinical cache is introduced (PAT-02).
   conditional `wideStyle`) instead of assigning `style.width = ...` after
   creation. Keep `flexDirection` a direct property so existing tests that read
   `props.style.flexDirection` keep working.
-- In a cloud worker, reconcile with `origin/main` before editing; `.agent/pr-notes`
+- In a cloud worker, reconcile with `origin/main` before editing; `docs/pr/notes`
   files are per-task and must never collide with the shared day note.

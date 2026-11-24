@@ -14,5 +14,5 @@
     3. Tests: boundary widths 767, 768, 1279 and 1280; the hook updates when a mocked media query fires; listeners are removed on unmount; the fallback without `matchMedia`.
     4. Do not edit `ThemeProvider.tsx` or `tokens.ts`.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

@@ -463,9 +463,9 @@ class NotesTests(unittest.TestCase):
         self.assertEqual(days, ["2026-11-19"])
 
     def test_references_come_from_tracked_markdown_outside_notes_and_records(self):
-        files = {"TODO.md": "Read first: `.agent/pr-notes/REFACTOR-PACKAGES.md`.",
-                 "docs/swarm/X.md": "notes in .agent/pr-notes/OLD-20261119-010101.md",
-                 ".agent/pr-notes/2026-11-19.md": "see .agent/pr-notes/SELF.md"}
+        files = {"TODO.md": "Read first: `docs/pr/notes/REFACTOR-PACKAGES.md`.",
+                 "docs/swarm/X.md": "notes in docs/pr/notes/OLD-20261119-010101.md",
+                 "docs/pr/reports/2026-11-19.md": "see docs/pr/notes/SELF.md"}
         tmp = Path(tempfile.mkdtemp())
         for name, text in files.items():
             (tmp / name).parent.mkdir(parents=True, exist_ok=True)
@@ -570,7 +570,7 @@ class NotesTests(unittest.TestCase):
             return "".join(f"diff --git a/{p} b/{p}\n--- a/{p}\n+++ b/{p}\n" for p in paths)
         self.assertTrue(swarm.rules_patch_ok(patch(".opencode/setup/AGENTS.md", ".opencode/agents/x.md", "docs/NOTES.md")))
         for bad in (patch("scripts/swarm.py"), patch(".opencode/setup/AGENTS.md", ".github/workflows/x.yml"),
-                    patch("docs/archive/pr-notes/x.md"), patch("docs/sub/x.md"), patch("check.sh"), "",
+                    patch("docs/pr/notes/archive/x.md"), patch("docs/sub/x.md"), patch("check.sh"), "",
                     patch(".opencode/setup/AGENTS.md") + "new file mode 120000\n",
                     patch(".opencode/setup/AGENTS.md") + "GIT binary patch\n",
                     patch(".opencode/setup/AGENTS.md") + "rename from AGENTS.md\n"):
@@ -683,7 +683,7 @@ class DocsCheckTests(unittest.TestCase):
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         tmp = Path(tempfile.mkdtemp())
-        for rel in (".agent/pr-notes/2026-11-19.md", "docs/archive/pr-notes/2026-11-18.md", "docs/guide.md"):
+        for rel in ("docs/pr/reports/2026-11-19.md", "docs/pr/notes/archive/2026-11-18.md", "docs/guide.md"):
             (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
             (tmp / rel).write_text("[x](missing.md)")
         self.assertEqual([p.relative_to(tmp).as_posix() for p in mod.markdown_files(tmp)], ["docs/guide.md"])

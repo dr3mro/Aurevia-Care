@@ -21,7 +21,7 @@ I rehydrated the governing context (AGENTS.md, CODING_STYLE.md, README-SETUP.md,
 docs/WORKFLOW.md, WORKSPACE.md, TODO.md and its "Instructions for every agent",
 MEMORY.md, PROJECT.md, the story task file, decision `0005-patient-app-tablets.md`,
 both scoped files, `types.ts` and the layout hook), read the newest reconciled
-daily note's lessons (`.agent/pr-notes/2026-11-20.md`) and loaded the matching
+daily note's lessons (`docs/pr/reports/2026-11-20.md`) and loaded the matching
 skills: `aurevia-delivery`, `aurevia-senior-mobile`. I then re-ran every
 scoped gate myself with fresh tool commands; all pass. **This pass changes only
 this notes file** — no production, test, config, threshold, exclusion, tracker,

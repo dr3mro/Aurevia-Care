@@ -81,9 +81,9 @@ participant produced evidence in this task.
 1. Resync and clean-tree checks:
    - `git merge --no-edit origin/main` → `Already up to date.` (branch
      `swarm/RESP-SIGN-IN-PLACEHOLDER-861`, HEAD `6525f846`).
-   - `git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/staff-web .agent/pr-notes` → no output (no markers).
+   - `git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/staff-web docs/pr/notes` → no output (no markers).
    - `git diff --name-only origin/main...HEAD` → only the two scoped staff-web files plus
-     `.agent/pr-notes/*` additions; no `scripts/`, workflow, tracker or config change.
+     `docs/pr/notes/*` additions; no `scripts/`, workflow, tracker or config change.
    - `apps/api/target/surefire-reports` → **absent** (clean state, no stale Surefire XML).
 
 2. Dependency setup from clean state: `cd apps/staff-web && npm ci` → `NPM_CI_EXIT=0`

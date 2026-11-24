@@ -31,7 +31,7 @@
     `python3 -I scripts/check-wiring.py` exit 0, no output.
     Tool: active references updated in `docs/reference/data-dictionary.md` and
     `docs/spec/clauses/**`; `git grep ... build_(01|...|16)` over active dirs
-    returns nothing. Historical records (tasks/, docs/swarm/, .agent/pr-notes/)
+    returns nothing. Historical records (tasks/, docs/swarm/, docs/pr/notes/)
     left untouched by owner choice.
     Documented: `flyway repair` operator step in `db/migrations/README.md`; owner
     decision and date in `.opencode/config/MEMORY.md`.
