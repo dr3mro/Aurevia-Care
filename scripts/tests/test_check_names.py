@@ -60,6 +60,33 @@ class CheckNamesTest(unittest.TestCase):
         self.assertEqual(self.found(["docs/pr/notes/S-G5-09.md", "docs/swarm/S-G3-02.md",
                                      "docs/archive/s_g1_01/a.md"]), [])
 
+    def test_canonical_package_and_application_identifiers_are_enforced(self):
+        """Package names and mobile identifiers must use the canonical aurevia prefix."""
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "apps/patient-mobile/package.json")
+            app = Path(tmp, "apps/patient-mobile/app.json")
+            package.parent.mkdir(parents=True)
+            package.write_text('{"name": "patient-mobile"}\n')
+            app.write_text('{"expo": {"ios": {"bundleIdentifier": "com.example.aureviacare"},'
+                           ' "android": {"package": "com.example.aureviacare"}}}\n')
+            files = [str(package.relative_to(tmp)), str(app.relative_to(tmp))]
+            out = check_names.canonical_violations(tmp, files)
+        self.assertEqual(len(out), 3)
+        self.assertTrue(any("package.json" in item for item in out))
+        self.assertTrue(any("bundleIdentifier" in item for item in out))
+        self.assertTrue(any("android.package" in item for item in out))
+
+    def test_canonical_identifiers_accept_compliant_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "apps/patient-mobile/package.json")
+            app = Path(tmp, "apps/patient-mobile/app.json")
+            package.parent.mkdir(parents=True)
+            package.write_text('{"name": "aurevia-patient-mobile"}\n')
+            app.write_text('{"expo": {"ios": {"bundleIdentifier": "com.aurevia.patient"},'
+                           ' "android": {"package": "com.aurevia.patient"}}}\n')
+            files = [str(package.relative_to(tmp)), str(app.relative_to(tmp))]
+            self.assertEqual(check_names.canonical_violations(tmp, files), [])
+
     def test_the_repository_itself_is_clean(self):
         self.assertEqual(check_names.violations(str(Path(__file__).parents[2])), [])
 

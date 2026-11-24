@@ -7,6 +7,7 @@ allow-list was removed once the last story-ID folders were renamed. The
 ``legacy`` argument is only a fixture seam for the comparison, not a way to
 tolerate a path in this repository.
 """
+import json
 import os
 import re
 import subprocess
@@ -34,6 +35,38 @@ def tracked_files(root):
         return found
 
 
+def canonical_violations(root, files=None):
+    """Fail when a npm package name or mobile application identifier drops the canonical prefix.
+
+    ``aurevia`` is the technical identifier for the product. Package names must
+    start with ``aurevia-`` and the patient app's platform identifiers must live
+    under the ``com.aurevia.`` reverse-domain namespace. Synthetic placeholder
+    domains such as ``com.example.*`` are not valid release identifiers.
+    """
+    bad = []
+    for path in files if files is not None else tracked_files(root):
+        name = path.replace("\\", "/")
+        if not (name.endswith("package.json") or
+                (name.endswith("app.json") and "/patient-mobile/" in name)):
+            continue
+        try:
+            data = json.loads(Path(root, path).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if name.endswith("package.json"):
+            pkg = data.get("name")
+            if isinstance(pkg, str) and not pkg.startswith("aurevia-"):
+                bad.append(f"{path}: package name '{pkg}' must start with 'aurevia-'")
+            continue
+        expo = data.get("expo", {})
+        for key, holder, label in (("bundleIdentifier", expo.get("ios", {}), "ios.bundleIdentifier"),
+                                   ("package", expo.get("android", {}), "android.package")):
+            value = holder.get(key)
+            if isinstance(value, str) and not value.startswith("com.aurevia."):
+                bad.append(f"{path}: {label} '{value}' must start with 'com.aurevia.'")
+    return sorted(bad)
+
+
 def violations(root, files=None, legacy=()):
     bad = set()
     for path in files if files is not None else tracked_files(root):
@@ -55,6 +88,7 @@ def violations(root, files=None, legacy=()):
                     if ID_NAME.match(segment) and not any(
                             seg_path.endswith("/" + segment) for seg_path in legacy):
                         bad.add(f"{path}: package segment '{segment}'")
+    bad.update(canonical_violations(root, files))
     return sorted(bad)
 
 
