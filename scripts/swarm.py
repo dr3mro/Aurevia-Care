@@ -4097,8 +4097,6 @@ def report_validation(result, report_evidence=True):
             guard(pr, is_repair(pr))
         elif kind == "evidence" and report_evidence:
             delivery_gate(pr, item.get("head_sha"))
-        elif kind == "already":
-            close_integrated_pr(pr, item.get("task_id", ""))
         else:
             reason = item.get("reason", "validation rejected this branch")
             simple = item.get("simple", False)
@@ -4109,6 +4107,10 @@ def report_validation(result, report_evidence=True):
                 fail(pr, reason, log, simple=simple)
             else:
                 fail(pr, reason, simple=simple)
+    # Already-integrated PRs are recorded separately from rejections; close them
+    # here so the worker's task is marked done and the pull request is not left open.
+    for item in result.get("already", []):
+        close_integrated_pr(item["pr"], item.get("task_id", ""))
     for detail in result.get("conflict_details", []):
         pr, reason, tries = detail["pr"], detail["reason"], detail["tries"]
         if tries < MAX_RESOLVE:
