@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -23,6 +24,7 @@ import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
@@ -185,6 +187,33 @@ class JdbcStaffAttachmentStoreTest {
                 () -> store.putAttachment(attachment(ScanState.PENDING, false))).code());
     }
 
+    private void stubBoundMessage(String messageId) {
+        when(jdbc.query(anyString(), any(SqlParameterSource.class), any(RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    RowMapper<?> mapper = (RowMapper<?>) invocation.getArgument(2);
+                    ResultSet resultSet = mock(ResultSet.class);
+                    when(resultSet.getString("message_id")).thenReturn(messageId);
+                    return List.of(mapper.mapRow(resultSet, 0));
+                });
+    }
+
+    @Test
+    void bindToMessageReportsOnlyTheWinningConditionalWrite() {
+        StaffAttachment binding = attachment(ScanState.CLEAN, true);
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(1);
+        when(documents.artifact(ORG, "22222222-2222-2222-2222-222222222222")).thenReturn(Optional.empty());
+        assertTrue(store.bindToMessage(binding));
+        verify(documents).putArtifact(any(Artifact.class));
+
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(0);
+        stubBoundMessage("message-1");
+        assertFalse(store.bindToMessage(binding));
+
+        stubBoundMessage("other-message");
+        assertEquals("ALREADY_SENT", assertThrows(ApiException.class,
+                () -> store.bindToMessage(binding)).code());
+    }
+
     @Test
     void countAndRecipientChecksReturnDatabaseResults() {
         when(jdbc.queryForObject(anyString(), any(SqlParameterSource.class),
@@ -197,6 +226,27 @@ class JdbcStaffAttachmentStoreTest {
         assertTrue(store.isRecipient(ORG, "message-1", "clinician-b"));
         assertFalse(store.isRecipient(ORG, "message-1", "stranger"));
         assertFalse(store.isRecipient(ORG, "message-1", "unknown"));
+    }
+
+    @Test
+    void recipientQueryDerivesTheAudiencePerMessageAndRejectsFormerParticipants() {
+        when(jdbc.queryForObject(anyString(), any(SqlParameterSource.class), eq(Boolean.class)))
+                .thenReturn(true);
+        assertTrue(store.isRecipient(ORG, "message-1", "clinician-b"));
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForObject(sql.capture(), any(SqlParameterSource.class), eq(Boolean.class));
+        assertTrue(sql.getValue().contains("resolved_recipients @> ARRAY[CAST(:subject AS text)]"));
+        assertTrue(sql.getValue().contains("left_at IS NULL"));
+        assertTrue(sql.getValue().contains("mail.message_id = msg.id"));
+        assertTrue(sql.getValue().contains(" OR EXISTS ("));
+        assertTrue(sql.getValue().contains("part.conversation_id = msg.conversation_id"));
+        assertTrue(sql.getValue().contains("part.staff_subject = CAST(:subject AS text)"));
+    }
+
+    @Test
+    void grantRecipientsPerformsNoDurableWrite() {
+        store.grantRecipients(ORG, "message-1", Set.of("clinician-b"));
+        org.mockito.Mockito.verifyNoInteractions(jdbc);
     }
 
     @Test

@@ -6,11 +6,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentPublication;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.AddParticipantRequest;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.ConversationView;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.CreateGroupRequest;
@@ -45,17 +47,32 @@ public class InstantMessagingService {
 
     private final InstantConversationStore store;
     private final Clock clock;
+    private final StaffAttachmentPublication attachments;
 
     /**
-     * Create the service with its tenant-scoped store and application clock.
+     * Create the service with its tenant-scoped store, clock and publication seam.
+     *
+     * @param store       instant conversation store
+     * @param clock       application clock used for server timestamps
+     * @param attachments publication seam for files bound to the conversation
+     */
+    @Autowired
+    public InstantMessagingService(InstantConversationStore store, Clock clock,
+                                   StaffAttachmentPublication attachments) {
+        this.store = store;
+        this.clock = clock;
+        this.attachments = attachments;
+    }
+
+    /**
+     * Create the service without attachment publication, for callers that do not
+     * own a message send (unit fixtures and security checks).
      *
      * @param store instant conversation store
      * @param clock application clock used for server timestamps
      */
-    @Autowired
     public InstantMessagingService(InstantConversationStore store, Clock clock) {
-        this.store = store;
-        this.clock = clock;
+        this(store, clock, StaffAttachmentPublication.none());
     }
 
     /**
@@ -174,22 +191,51 @@ public class InstantMessagingService {
     }
 
     /**
-     * Publish one message, or return the first message for a retried key.
+     * Publish one message to the conversation named in the route, or return the
+     * first message for a retried key.
      *
-     * @param request        facility, conversation and body
+     * <p>The route conversation is the sole authorization and durable-write
+     * target. The body field is accepted for client compatibility but must name
+     * the same conversation; a mismatch is refused before the store is touched,
+     * so neither conversation can receive the message.</p>
+     *
+     * @param conversationId owning conversation from the request path
+     * @param request        facility, body conversation (must match the path) and body
      * @param idempotencyKey durable client message id from the HTTP header
      * @return the published (or original) message view
-     * @throws ApiException on denial or invalid input
+     * @throws ApiException on a body/path mismatch, denial or invalid input
      */
-    public MessageView send(SendRequest request, String idempotencyKey) {
+    public MessageView send(String conversationId, SendRequest request, String idempotencyKey) {
         TenantContext context = context();
         String key = requireKey(idempotencyKey);
         String body = requireBody(request.body());
-        Access access = requireAccess(request.facilityId(), request.conversationId(), true);
+        String routeId = requireSubject(conversationId, "conversationId");
+        String bodyId = requireSubject(request.conversationId(), "conversationId");
+        // The route selects the thread: authorizing or writing from the body would
+        // let a client send into a different conversation it can also access.
+        if (!routeId.equals(bodyId)) {
+            throw invalid("body conversationId must match the conversation in the URL");
+        }
+        Access access = requireAccess(request.facilityId(), routeId, true);
         Optional<StaffMessage> previous = store.messageByClientId(
                 context.organizationId(), access.conversation().id(), key);
-        StaffMessage message = previous.orElseGet(() -> store.sendMessage(context.organizationId(),
-                access.conversation().id(), access.participant().role().wire(), body, key, clock.instant()));
+        StaffMessage message;
+        if (previous.isPresent()) {
+            message = previous.get();
+        } else {
+            // Preflight before the ledger write so a quarantined file cannot leave
+            // a published message with no attachment grant.
+            List<String> prepared = attachments.requirePublishable(context.organizationId(), context.subject(),
+                    access.conversation().id());
+            message = store.sendMessage(context.organizationId(), access.conversation().id(),
+                    access.participant().role().wire(), body, key, clock.instant());
+            Set<String> recipients = access.participants().stream()
+                    .filter(participant -> participant.isActiveAt(clock.instant()))
+                    .map(StaffParticipant::subject)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            attachments.publish(context.organizationId(), context.subject(), access.conversation().id(),
+                    message.id(), recipients, prepared);
+        }
         return messageView(message);
     }
 

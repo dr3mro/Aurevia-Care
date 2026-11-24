@@ -15,6 +15,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.authz.access.AccessRepository;
 import com.aurevia.smartclinic.staff.StaffRepository;
+import com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentPublication;
 import com.aurevia.smartclinic.staffmsg.directory.DirectoryPolicy;
 import com.aurevia.smartclinic.staffmsg.directory.StaffDirectoryService;
 import com.aurevia.smartclinic.staffmsg.mail.MailCommands.CreateDraftCommand;
@@ -55,6 +56,7 @@ public final class MailService {
     private final Clock clock;
     private final RecipientDirectory directory;
     private final MailStore store;
+    private final StaffAttachmentPublication attachments;
 
     /**
      * Create the service with the production directory and durable store.
@@ -66,25 +68,60 @@ public final class MailService {
      * @param access       authoritative facility-scope fold for candidate role holders
      * @param policy       same-organization authorization rule
      * @param store        durable mail persistence port
+     * @param attachments  publication seam for files bound to the draft
      */
     @Autowired
     public MailService(Clock clock, StaffRepository staff, TransactionTemplate transactions,
                        StaffDirectoryService directory, AccessRepository access, DirectoryPolicy policy,
-                       MailStore store) {
-        this(clock, new StaffRecipientDirectory(staff, transactions, directory, access, policy), store);
+                       MailStore store, StaffAttachmentPublication attachments) {
+        this(clock, new StaffRecipientDirectory(staff, transactions, directory, access, policy), store,
+                attachments);
     }
 
     /**
      * Create the service with an explicit recipient directory and store.
+     *
+     * @param clock       application clock for server timestamps
+     * @param directory   role-holder resolver used when a message is sent
+     * @param store       mail persistence port
+     * @param attachments publication seam for files bound to the draft
+     */
+    public MailService(Clock clock, RecipientDirectory directory, MailStore store,
+                       StaffAttachmentPublication attachments) {
+        this.clock = clock;
+        this.directory = directory;
+        this.store = store;
+        this.attachments = attachments;
+    }
+
+    /**
+     * Create the production wiring without attachment publication, for fixtures
+     * that exercise mail behavior in isolation.
+     *
+     * @param clock        application clock for server timestamps
+     * @param staff        authoritative staff membership and role source
+     * @param transactions tenant-guarded transaction template for role lookups
+     * @param directory    tenant-scoped facility resolver
+     * @param access       authoritative facility-scope fold
+     * @param policy       same-organization authorization rule
+     * @param store        durable mail persistence port
+     */
+    public MailService(Clock clock, StaffRepository staff, TransactionTemplate transactions,
+                       StaffDirectoryService directory, AccessRepository access, DirectoryPolicy policy,
+                       MailStore store) {
+        this(clock, staff, transactions, directory, access, policy, store, StaffAttachmentPublication.none());
+    }
+
+    /**
+     * Create the service without attachment publication, for callers that do not
+     * own a message send (unit fixtures and clause-level checks).
      *
      * @param clock     application clock for server timestamps
      * @param directory role-holder resolver used when a message is sent
      * @param store     mail persistence port
      */
     public MailService(Clock clock, RecipientDirectory directory, MailStore store) {
-        this.clock = clock;
-        this.directory = directory;
-        this.store = store;
+        this(clock, directory, store, StaffAttachmentPublication.none());
     }
 
     /**
@@ -177,12 +214,16 @@ public final class MailService {
             throw new ApiException(409, "RECIPIENT_CONFIRMATION_MISMATCH",
                     "the confirmed recipient list does not match the current recipients");
         }
+        // Validate the files before the message row is committed: a quarantined
+        // file must prevent the whole publication, not leave an orphaned message.
+        List<String> prepared = attachments.requirePublishable(organizationId, actor, draft.id());
         String id = MailInputs.newId();
         String threadId = draft.threadId() == null ? id : draft.threadId();
         SentMail message = new SentMail(organizationId, id, draft.facilityId(), threadId, draft.subject(),
                 draft.body(), actor, SENDER_ROLE, clock.instant(), draft.to(), draft.cc(), expanded,
                 draft.attachmentDocumentIds(), List.of());
         String published = store.publish(organizationId, actor, clientMessageId, draft.id(), message, expanded);
+        attachments.publish(organizationId, actor, draft.id(), published, Set.copyOf(expanded), prepared);
         return new MailView(storedMessage(organizationId, published), MailFolder.SENT);
     }
 

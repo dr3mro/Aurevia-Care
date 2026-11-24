@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Pharmacy workflow browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only harness for the bilingual pharmacy journey (WEB-10, RX-02).
+         Vite dev serves this at /e2e/pharmacyflow/pharmacy-bilingual-harness.html.
+         The real inbox item screen is mounted under its production providers;
+         the pre-login shell hard-codes a reception role and denies /pharmacy.
+         Every subject, identifier and medicine here is synthetic. -->
+    <main>
+      <div
+        id="pharmacy-bilingual-harness"
+        data-testid="pharmacy-bilingual-harness"
+      ></div>
+    </main>
+    <script type="module" src="./pharmacy-bilingual-harness.tsx"></script>
+  </body>
+</html>

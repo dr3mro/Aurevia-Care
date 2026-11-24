@@ -356,5 +356,104 @@ class MainTest(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 0)
 
 
+class RouteParityDecisionTest(unittest.TestCase):
+    """A new undocumented route must fail even when its test class name does not match.
+
+    All evidence is synthetic: fabricated routes and mocked pinned-base readers.
+    No Surefire XML, Git object or contract file is touched by these cases.
+    """
+
+    PARITY = {"base_ref": "base123", "baseline": "contracts/openapi/missing-routes.txt",
+              "reports": "/synthetic/reports"}
+
+    def decide(self, failing, changed, base=None, candidate=None, reported=None,
+               story_id="WPARITY", task_text=""):
+        """Run decide against a synthetic pinned base and candidate route sets."""
+        with mock.patch.object(worker_gate, "pinned_base_routes", return_value=set(base or ())), \
+             mock.patch.object(worker_gate, "candidate_baseline", return_value=set(candidate or ())), \
+             mock.patch.object(worker_gate, "reported_parity_routes",
+                               return_value=set(reported or ())):
+            return worker_gate.decide(failing, changed, story_id, task_text, self.PARITY)
+
+    def test_controller_only_change_with_a_new_route_fails(self):
+        # The current bug: a `MailController.java` diff never matches the name
+        # `OpenApiRouteParityTest`, so the failing suite is waved through.
+        ok, message = self.decide({"OpenApiRouteParityTest"},
+                                  ["apps/api/src/main/java/.../MailController.java"],
+                                  reported={"POST /api/v1/mail/outbox"})
+        self.assertFalse(ok)
+        self.assertIn("route parity", message)
+        self.assertIn("POST /api/v1/mail/outbox", message)
+
+    def test_baseline_growth_fails_without_any_failing_test(self):
+        # Adding the new route to missing-routes.txt makes the Java parity suite
+        # green, so the gate must still compare the candidate baseline to the base.
+        ok, message = self.decide(set(), ["contracts/openapi/missing-routes.txt"],
+                                  candidate={"POST /api/v1/mail/outbox"})
+        self.assertFalse(ok)
+        self.assertIn("baseline growth", message)
+
+    def test_documented_candidate_passes(self):
+        ok, message = self.decide(
+            set(),
+            ["contracts/openapi.yaml", "apps/staff-web/src/api/generated/openapi.d.ts"],
+            base={"POST /api/v1/legacy"}, candidate={"POST /api/v1/legacy"})
+        self.assertTrue(ok)
+        self.assertNotIn("route parity", message)
+
+    def test_baseline_shrink_after_a_documented_repair_passes(self):
+        ok, message = self.decide(
+            set(),
+            ["contracts/openapi.yaml", "contracts/openapi/missing-routes.txt"],
+            base={"POST /api/v1/legacy", "GET /api/v1/old"},
+            candidate={"POST /api/v1/legacy"})
+        self.assertTrue(ok)
+
+    def test_absent_base_ref_fails_closed(self):
+        with mock.patch.object(worker_gate, "pinned_base_routes", return_value=None):
+            ok, message = worker_gate.decide(set(), [], "WPARITY", "", self.PARITY)
+        self.assertFalse(ok)
+        self.assertIn("unusable", message)
+
+    def test_unparseable_base_evidence_fails_closed(self):
+        with mock.patch.object(worker_gate, "pinned_base_routes", return_value=None), \
+             mock.patch.object(worker_gate, "candidate_baseline", return_value=set()):
+            ok, _ = worker_gate.decide({"OpenApiRouteParityTest"}, [], "WPARITY", "", self.PARITY)
+        self.assertFalse(ok)
+
+    def test_unrelated_failure_with_a_controller_diff_still_passes(self):
+        ok, message = self.decide({"RxTransmissionFlowTest"},
+                                  ["apps/api/src/main/java/.../MailController.java"])
+        self.assertTrue(ok)
+        self.assertIn("WARNING", message)
+
+    def test_clean_parity_does_not_change_repair_task_behaviour(self):
+        ok, message = self.decide({"OtherTest"}, [], story_id="FIX-01",
+                                  task_text="see `DifferentTest`")
+        self.assertTrue(ok)
+        self.assertIn("repair task", message)
+
+    def test_parity_block_precedes_the_related_failure_verdict(self):
+        # The parity verdict wins even when a changed file would otherwise mark
+        # the failing class as related to this change.
+        with mock.patch.object(worker_gate, "pinned_base_routes", return_value=set()), \
+             mock.patch.object(worker_gate, "candidate_baseline", return_value=set()), \
+             mock.patch.object(worker_gate, "reported_parity_routes",
+                               return_value={"GET /new"}):
+            ok, message = worker_gate.decide(
+                {"OpenApiRouteParityTest"}, ["OpenApiRouteParityTest.java"],
+                "WPARITY", "", self.PARITY)
+        self.assertFalse(ok)
+        self.assertIn("new undocumented routes", message)
+        self.assertNotIn("related to this change", message)
+
+    def test_worker_check_script_passes_the_pinned_base_to_the_gate(self):
+        script = (SCRIPTS / "worker-check.sh").read_text()
+
+        self.assertIn("worker_gate.py \"$mvn_status\" \"$reports_dir\" \"$base_ref\"", script)
+        self.assertIn("contracts/openapi/missing-routes.txt", script)
+        self.assertIn(".agent/base-sha", script)
+
+
 if __name__ == "__main__":
     unittest.main()

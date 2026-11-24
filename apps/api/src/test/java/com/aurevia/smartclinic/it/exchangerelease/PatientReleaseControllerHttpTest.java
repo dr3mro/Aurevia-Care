@@ -1,6 +1,7 @@
 package com.aurevia.smartclinic.it.exchangerelease;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
@@ -52,6 +53,7 @@ class PatientReleaseControllerHttpTest {
     private static final String CLINICIAN = "clinician-1111";
     private static final String ADMIN_SUBJECT = "admin-1111";
     private static final String ID = "bbbbbbbb-0000-0000-0000-000000000001";
+    private static final String CORRELATION = "11111111-2222-3333-4444-555555555555";
 
     private record Endpoint(String name, HttpMethod method, String path, String body, String ifMatch) {
     }
@@ -148,6 +150,11 @@ class PatientReleaseControllerHttpTest {
     }
 
     private ResponseEntity<String> send(Endpoint endpoint, String subject, String organization) {
+        return send(endpoint, subject, organization, null);
+    }
+
+    private ResponseEntity<String> send(Endpoint endpoint, String subject, String organization,
+            String correlation) {
         HttpHeaders headers = new HttpHeaders();
         if (subject != null) {
             headers.set("X-Synthetic-Subject", subject);
@@ -157,6 +164,11 @@ class PatientReleaseControllerHttpTest {
         }
         if (endpoint.ifMatch() != null) {
             headers.set("If-Match", endpoint.ifMatch());
+        }
+        if (correlation != null) {
+            // A canonical UUID is reused by both the correlation filter and the
+            // tenant interceptor, so body and response header cannot diverge.
+            headers.set("X-Correlation-Id", correlation);
         }
         headers.setContentType(MediaType.APPLICATION_JSON);
         RestClient.RequestBodySpec spec = rest.method(endpoint.method()).uri(endpoint.path())
@@ -188,6 +200,39 @@ class PatientReleaseControllerHttpTest {
     @MethodSource("endpoints")
     void malformedOrganizationReturnsUnprocessable(Endpoint endpoint) {
         assertEquals(422, send(endpoint, CLINICIAN, "not-a-uuid").getStatusCode().value(), endpoint.name());
+    }
+
+    @Test
+    void emptyBodyReturnsUniformErrorBody() {
+        ResponseEntity<String> response = send(new Endpoint("emptyAuthorize", HttpMethod.POST,
+                "/api/v1/releases", "", null), CLINICIAN, ORG, CORRELATION);
+        assertMalformedBody(response);
+    }
+
+    @Test
+    void malformedJsonReturnsUniformErrorBody() {
+        ResponseEntity<String> response = send(new Endpoint("malformedAuthorize", HttpMethod.POST,
+                "/api/v1/releases", "{", null), CLINICIAN, ORG, CORRELATION);
+        assertMalformedBody(response);
+        // The parser's detail ("Unexpected end-of-input ...") must not leak.
+        assertFalse(response.getBody().contains("Unexpected end-of-input"), response.getBody());
+    }
+
+    @Test
+    void emptyJsonObjectReturnsUniformErrorBody() {
+        // An empty JSON object is unreadable by the record creator on this
+        // stack, so it takes the binding path rather than the domain path.
+        ResponseEntity<String> response = send(new Endpoint("emptyJsonAuthorize", HttpMethod.POST,
+                "/api/v1/releases", "{}", null), CLINICIAN, ORG, CORRELATION);
+        assertMalformedBody(response);
+    }
+
+    private static void assertMalformedBody(ResponseEntity<String> response) {
+        assertEquals(400, response.getStatusCode().value(), response.getBody());
+        assertEquals("MALFORMED_REQUEST_BODY", field(response.getBody(), "code"), response.getBody());
+        assertEquals("request body could not be read", field(response.getBody(), "message"), response.getBody());
+        assertEquals(CORRELATION, field(response.getBody(), "correlationId"), response.getBody());
+        assertEquals(CORRELATION, response.getHeaders().getFirst("X-Correlation-Id"));
     }
 
     @Test

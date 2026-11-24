@@ -2,6 +2,7 @@ package com.aurevia.smartclinic.api;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -26,6 +27,23 @@ public class ApiErrorHandler {
     public ResponseEntity<ErrorBody> handleApi(ApiException exception) {
         return ResponseEntity.status(exception.status())
                 .body(new ErrorBody(exception.code(), exception.getMessage(), correlation()));
+    }
+
+    /**
+     * Map an unreadable request body to a uniform client error.
+     *
+     * <p>Jackson's failure detail can quote fragments of the submitted payload,
+     * which may carry protected health information. Only a fixed detail is
+     * returned; the stable machine code lets a client distinguish a binding
+     * failure from a domain validation failure without parsing free text.</p>
+     *
+     * @param exception the body-reading failure raised during argument binding
+     * @return HTTP 400 response with the uniform error body and correlation id
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorBody> handleUnreadableBody(HttpMessageNotReadableException exception) {
+        return ResponseEntity.status(400)
+                .body(new ErrorBody("MALFORMED_REQUEST_BODY", "request body could not be read", correlation()));
     }
 
     /**
