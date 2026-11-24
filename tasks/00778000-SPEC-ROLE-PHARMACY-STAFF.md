@@ -1,5 +1,4 @@
-- [-] SPEC-ROLE-PHARMACY-STAFF · Spec section 2 role matrix (API test): Pharmacy staff
-  - agent: swarm-10
+- [ ] SPEC-ROLE-PHARMACY-STAFF · Spec section 2 role matrix (API test): Pharmacy staff
   - attempts: 2
   - requirements: IAM-01, RX-02
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RolePharmacyStaffTest.java, docs/spec/clauses/authz/role-pharmacy-staff.md
