@@ -4,7 +4,7 @@
 
 The API-backed scheduling page now uses the shared responsive page utility instead of a local inline grid. Its root renders with `className="page"`, `data-scheduling-page`, `data-breakpoint` from `useBreakpoint()` and one logical inline override (`maxInlineSize: 'none'`) so the worklist table keeps the full inline width. No data, text, API call, command behaviour or exported name changed; no dependency, stylesheet, tracker or workflow file was touched. The new jsdom contract test covers compact/medium/expanded, the seven requested widths, both directions, roles/labels/DOM keyboard order and the rejected-command banner.
 
-Evidence provenance: **tool** (commands I executed) for all test/coverage results; **simulated reviewer** (bounded `smartclinic-senior-react` plan and `smartclinic-ux-reviewer` review) for design feedback. No human, clinical or patient-participant evidence. All fixtures are synthetic (`apt-001`, `patient-001`, a long synthetic English name and a long synthetic Arabic name); no patient datum or credential appears in code, tests or notes.
+Evidence provenance: **tool** (commands I executed) for all test/coverage results; **simulated reviewer** (bounded `orevia-senior-react` plan and `orevia-ux-reviewer` review) for design feedback. No human, clinical or patient-participant evidence. All fixtures are synthetic (`apt-001`, `patient-001`, a long synthetic English name and a long synthetic Arabic name); no patient datum or credential appears in code, tests or notes.
 
 ## Affected requirements
 
@@ -49,7 +49,7 @@ Commands run (final lines quoted):
 - Typecheck, first pass → `tests/responsive/features-scheduling/SchedulingPage.responsive.test.tsx(118,18): error TS6133: 'patientId' is declared but its value is never read.` Fixed by removing the unused parameter (no production change).
 - Typecheck, final — `cd apps/staff-web && npm run typecheck` final lines:
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   No diagnostics; `TYPECHECK_EXIT=0`.
@@ -87,7 +87,7 @@ Not required: no signed record, cross-organization sharing, patient association,
 - **Non-blocking, shared — nested `.page` padding (UX review F1).** `StateView`/`LoadingState`/`EmptyState` panels carry their own `.page` class (`src/components/StateViews.tsx:30-35`), so a state panel inside this page root receives two safe-area paddings. `ApiPage.tsx` already has the same nesting, so this is a shared-pattern issue; fixing it needs a page-variant class in `responsive.css` or a change to `StateViews.tsx`, both outside this story's scope. No local fix was applied to avoid duplicating the whole page utility inline.
 - **Sibling-owned, not fixed here (N1/N2).** `AppointmentWorklist.tsx:49` still renders a bare `<table style={{ width: '100%' }}>` with no `.table-region`, `role="region"` or `tabindex="0"`, and its assign `<select>` (`:93-106`) has neither `.touch` nor 16 px text. These belong to `RESP-APPOINTMENT-WORKLIST` (and the form to `RESP-BOOKING-FORM`), which are `[-]` on this branch and not yet merged. Consequently "no horizontal page scroll at 320 px" and the 44 px/16 px rules cannot be fully proven for the whole scheduling screen until those stories land; the page-level assertions are honest about testing classes/attributes/structure only.
 - **Pixel evidence.** jsdom cannot evaluate media queries, paint a focus ring or measure bounding boxes. The seven-width test feeds numbers into the two `min-width` queries and asserts the hook's resolution (not a painted layout); 44 px boxes, 200 %/400 % zoom and Arabic-clinician review remain Playwright/G5 tasks per `docs/design/responsive-layout.md` §13.
-- **Pre-existing repository defect (tool evidence, untouched).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` found committed conflict markers in three unrelated files: `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java`. `git show HEAD:...Hl7Parser.java` confirms they are in `HEAD`, not introduced by this change and not from the clean `git merge`. They are outside this story's scope and were left untouched for the integrator.
+- **Pre-existing repository defect (tool evidence, untouched).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` found committed conflict markers in three unrelated files: `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java`. `git show HEAD:...Hl7Parser.java` confirms they are in `HEAD`, not introduced by this change and not from the clean `git merge`. They are outside this story's scope and were left untouched for the integrator.
 - No new dependency, no tracker edit, no push/tag/`gh` call.
 
 ## Lessons for workers

@@ -10,12 +10,12 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.HandleCorrectedWithdrawnReleasesUpdatingCurrentAccessTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/HandleCorrectedWithdrawnReleasesUpdatingCurrentAccessTest.java`).
+Test class: `com.aurevia.exchange.clauses.HandleCorrectedWithdrawnReleasesUpdatingCurrentAccessTest`
+(path: `apps/api/src/test/java/com/aurevia/exchange/clauses/HandleCorrectedWithdrawnReleasesUpdatingCurrentAccessTest.java`).
 All seven tests are active (none are disabled) and use synthetic data on a dedicated PostgreSQL
 database migrated from `db/migrations` with forced row-level security. They drive the real HTTP
 entry points with the synthetic-auth profile, the same DB-bootstrap and `RestClient` pattern as
-`com.aurevia.smartclinic.patient.clauses.UnlinkingImmediatelyEndsFutureAccountAccessAffectedTest`.
+`com.aurevia.patient.clauses.UnlinkingImmediatelyEndsFutureAccountAccessAffectedTest`.
 
 - `withdrawalUpdatesAccessRetainsHistoryAndNotifiesPriorRecipients` — positive proof. An
   immediate release is authorized, then withdrawn through `POST /api/v1/releases/{id}/withdraw`
@@ -49,19 +49,19 @@ entry points with the synthetic-auth profile, the same DB-bootstrap and `RestCli
 
 Production classes and database objects exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.exchange.release.PatientReleaseController` — thin adapter for
+- `com.aurevia.exchange.release.PatientReleaseController` — thin adapter for
   `POST /api/v1/releases/{id}/withdraw`, `POST /api/v1/releases/{id}/correct` and
   `GET /api/v1/releases/{id}[/history]`; parses `If-Match` and delegates.
-- `com.aurevia.smartclinic.exchange.release.PatientReleasedRevisionsController` —
+- `com.aurevia.exchange.release.PatientReleasedRevisionsController` —
   `GET /api/v1/patients/{patientId}/released-revisions`, the current-access query.
-- `com.aurevia.smartclinic.exchange.release.ReleaseService` — `withdraw`, `correct`, `transition`
+- `com.aurevia.exchange.release.ReleaseService` — `withdraw`, `correct`, `transition`
   and `visibleRevisions` run authorization, version precondition, state transition and outbox
   append inside one tenant-guarded transaction.
-- `com.aurevia.smartclinic.exchange.release.ReleaseActionPolicy` and `ReleaseState` — decider roles
+- `com.aurevia.exchange.release.ReleaseActionPolicy` and `ReleaseState` — decider roles
   for withdraw/correct and the terminal-state transition rules.
-- `com.aurevia.smartclinic.exchange.release.ReleaseRepository` — compare-and-set updates,
+- `com.aurevia.exchange.release.ReleaseRepository` — compare-and-set updates,
   append-only event and notification inserts, and forced-RLS reads.
-- `com.aurevia.smartclinic.api.IfMatch` and `com.aurevia.smartclinic.api.ApiErrorHandler` — version
+- `com.aurevia.api.IfMatch` and `com.aurevia.api.ApiErrorHandler` — version
   precondition parsing and the uniform error body.
 - `db/migrations/V24__patient_release.sql` — the append-only `release_event` and
   `release_notification` ledgers, forced RLS and the database state-machine trigger.

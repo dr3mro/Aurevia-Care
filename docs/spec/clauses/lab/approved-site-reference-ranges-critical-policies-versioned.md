@@ -13,8 +13,8 @@ Partly proven
 Active domain-level proof (synthetic fixtures only; the report kernel is reached
 through its `CaptureCommand`/`VerifyCommand` entry points):
 
-- Test class: `com.aurevia.smartclinic.lab.clauses.ApprovedSiteReferenceRangesCriticalPoliciesVersionedTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/ApprovedSiteReferenceRangesCriticalPoliciesVersionedTest.java`).
+- Test class: `com.aurevia.lab.clauses.ApprovedSiteReferenceRangesCriticalPoliciesVersionedTest`
+  (path: `apps/api/src/test/java/com/aurevia/lab/clauses/ApprovedSiteReferenceRangesCriticalPoliciesVersionedTest.java`).
 - `highestApprovedEffectiveVersionIsSelectedAndStampedOnTheIssuedRevision` — positive proof. Two
   approved, effective versions of a reference range and of a critical policy are supplied. On
   verification the issued revision selects version 2 for both, applies version 2's bounds (a value
@@ -32,22 +32,22 @@ through its `CaptureCommand`/`VerifyCommand` entry points):
 
 Production classes exercised by these tests:
 
-- `com.aurevia.smartclinic.lab.result.LabPolicyCatalog` — version resolution; `effectiveRange` and
+- `com.aurevia.lab.result.LabPolicyCatalog` — version resolution; `effectiveRange` and
   `effectiveCritical` choose the highest version among entries that are approved and inside their
   effective window; an empty or unapproved catalog yields no policy.
-- `com.aurevia.smartclinic.lab.result.LabPolicyCatalog.ReferenceRange` and
-  `com.aurevia.smartclinic.lab.result.LabPolicyCatalog.CriticalPolicy` — the versioned, approved,
+- `com.aurevia.lab.result.LabPolicyCatalog.ReferenceRange` and
+  `com.aurevia.lab.result.LabPolicyCatalog.CriticalPolicy` — the versioned, approved,
   effective-dated values and their `effectiveAt` / `flag` / `isCritical` rules.
-- `com.aurevia.smartclinic.lab.result.LabResultService` — `capture` and `verify` commands; `evaluate`
+- `com.aurevia.lab.result.LabResultService` — `capture` and `verify` commands; `evaluate`
   applies the newest effective range and critical policy and stamps their versions on the issued
   revision; it also emits the XCH-04/05 trigger facts.
-- `com.aurevia.smartclinic.lab.result.ReportRevision` — the immutable revision that owns
+- `com.aurevia.lab.result.ReportRevision` — the immutable revision that owns
   `rangeVersion` and `criticalPolicyVersion`.
-- `com.aurevia.smartclinic.lab.result.LabObservation`, `LabCommands`, `LabTypes`, `LabRules` and
+- `com.aurevia.lab.result.LabObservation`, `LabCommands`, `LabTypes`, `LabRules` and
   `LabConversionCatalog` — the reused observation, command, vocabulary and role types.
 
 The in-module style precedent for this domain-level proof is
-`apps/api/src/test/java/com/aurevia/smartclinic/lab/result/DocumentedUnitConversionTest.java`,
+`apps/api/src/test/java/com/aurevia/lab/result/DocumentedUnitConversionTest.java`,
 which exercises the LAB-02 result kernel directly rather than through HTTP.
 
 The versioning mechanism is therefore real and proven in the domain kernel. It is not, however,
@@ -61,10 +61,10 @@ policy and have an issued HTTP report record those versions.
 the domain kernel directly with a synthetic catalog. The wired result-entry path does not use a
 populated catalog:
 
-- `com.aurevia.smartclinic.labflow.results.ResultConfiguration` builds
+- `com.aurevia.labflow.results.ResultConfiguration` builds
   `new LabPolicyCatalog(List.of(), List.of())`, so through HTTP the issued report's `rangeVersion`
   and `criticalPolicyVersion` are always null.
-- `com.aurevia.smartclinic.labflow.results.ResultEntryService.flag` derives each flag from the
+- `com.aurevia.labflow.results.ResultEntryService.flag` derives each flag from the
   caller-supplied `referenceLow`, `referenceHigh`, `criticalLow` and `criticalHigh` on the
   observation and hard-codes `DEFAULT_POLICY_VERSION = 1`; it never consults an approved,
   versioned site catalog.

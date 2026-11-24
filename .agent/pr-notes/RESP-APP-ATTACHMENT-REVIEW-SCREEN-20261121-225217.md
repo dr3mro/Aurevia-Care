@@ -63,7 +63,7 @@ patient data or credentials and adds no clinical decision logic.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`), simulated file-read
+Senior React Native and Expo (`orevia-senior-mobile`), simulated file-read
 review with story ID, paths, acceptance criteria and evidence only. It returned
 one Medium blocking finding and three Low findings; all four were applied before
 the final gate (see `## Findings`). The reviewer explicitly confirmed hooks,
@@ -227,7 +227,7 @@ pass remains a separate G5 gate.
   (skip-worktree) and the worktree holds the CI profile, not HEAD's file. No
   regeneration or commit of that generated file was attempted (out of scope).
 - Pre-existing committed conflict markers in
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` are present in
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/` are present in
   `origin/main` and outside this scope; they were left untouched.
 - The existing `attachments.test.tsx` was NOT modified — all its tests still
   pass. No threshold, exclusion or skip was introduced.

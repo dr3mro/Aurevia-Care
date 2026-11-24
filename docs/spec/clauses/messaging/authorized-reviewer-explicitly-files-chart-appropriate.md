@@ -11,16 +11,16 @@ Partly proven
 ## Evidence
 
 Test class
-`com.aurevia.smartclinic.messaging.clauses.AuthorizedReviewerExplicitlyFilesChartAppropriateTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/AuthorizedReviewerExplicitlyFilesChartAppropriateTest.java`),
+`com.aurevia.messaging.clauses.AuthorizedReviewerExplicitlyFilesChartAppropriateTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/AuthorizedReviewerExplicitlyFilesChartAppropriateTest.java`),
 a pure domain-service test using `AttachmentService`, `InMemoryAttachmentStore`
 and a fixed clock. It is deliberately **not** an HTTP-level test: the
 `AttachmentController` exposes only upload, scan and download, and no production
 caller invokes `fileIntoChart`.
 
 Entry point and production classes exercised:
-`com.aurevia.smartclinic.messaging.attachments.AttachmentService.fileIntoChart`
-(`apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentService.java:243-257`),
+`com.aurevia.messaging.attachments.AttachmentService.fileIntoChart`
+(`apps/api/src/main/java/com/aurevia/messaging/attachments/AttachmentService.java:243-257`),
 `AttachmentActions.FILE` (permitted only for the `CLINICIAN` role,
 `AttachmentActions.java:53`), `AttachmentContract.FileRequest`,
 `AttachmentContract.EventType.FILED_TO_CHART`,

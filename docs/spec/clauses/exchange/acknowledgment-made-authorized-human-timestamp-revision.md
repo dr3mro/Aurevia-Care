@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.AcknowledgmentMadeAuthorizedHumanTimestampRevisionTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/AcknowledgmentMadeAuthorizedHumanTimestampRevisionTest.java`).
+Test class `com.aurevia.exchange.clauses.AcknowledgmentMadeAuthorizedHumanTimestampRevisionTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/AcknowledgmentMadeAuthorizedHumanTimestampRevisionTest.java`).
 It is a synthetic, database-free clause test in the `clauses` style of
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: mocked
 `ExchangeTaskRepository` and `AuditAppender`, the real `ExchangeActionPolicy`, a
@@ -45,7 +45,7 @@ command invoked by the exchange controller.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.exchange.task.ExchangeTaskService.execute` — owns the
+- `com.aurevia.exchange.task.ExchangeTaskService.execute` — owns the
   rule: it authorizes before loading, injects `clock.instant()` as review time, binds
   `reviewedRevision` to the caller's version precondition, enforces the compare-and-set,
   and commits the state, one event and one audit row atomically.
@@ -70,8 +70,8 @@ The human-identity part of the clause is **not** claimed by this database-free t
 the service snapshot intentionally carries `reviewedBy = null` and the V20 trigger
 derives the real actor. That binding is already proven end to end by the existing,
 out-of-scope integration test
-`com.aurevia.smartclinic.it.exchangetask.ExchangeTaskIsolationTest#humanAcknowledgmentBindsContextActorClockAndRevision`
-(`apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask/ExchangeTaskIsolationTest.java:334-358`),
+`com.aurevia.it.exchangetask.ExchangeTaskIsolationTest#humanAcknowledgmentBindsContextActorClockAndRevision`
+(`apps/api/src/test/java/com/aurevia/it/exchangetask/ExchangeTaskIsolationTest.java:334-358`),
 which asserts `reviewedBy` equals the context actor, `reviewedAt` equals the fixed
 clock and `reviewedRevision == 1` after an HTTP POST persisted through PostgreSQL.
 Service-level proof of the same acknowledgment also exists in

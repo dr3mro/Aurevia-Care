@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.ClinicalConsentTaskCompletionCriticalResultAcknowledgmentTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ClinicalConsentTaskCompletionCriticalResultAcknowledgmentTest.java`).
+Test class `com.aurevia.messaging.clauses.ClinicalConsentTaskCompletionCriticalResultAcknowledgmentTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/ClinicalConsentTaskCompletionCriticalResultAcknowledgmentTest.java`).
 It drives the real controller, service and tenant-scoped facts through the Spring
 MVC pipeline (tenant interceptor and API error handler) with the same synthetic
 fixtures as `messaging/acknowledgment/InstructionFactControllerHttpTest`. All
@@ -46,26 +46,26 @@ Enabled tests that prove the separation of the built workflows:
 
 Production classes exercised by the live request path:
 
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactController`
+- `com.aurevia.messaging.acknowledgment.InstructionFactController`
   (`POST /api/v1/instructions/publish`, `POST /api/v1/instructions/acknowledge`,
   `GET /api/v1/instructions/{id}/facts`);
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactService`
+- `com.aurevia.messaging.acknowledgment.InstructionFactService`
   (`acknowledge`, `facts`), which hard-codes `AcknowledgmentScope.RECEIPT` and
   binds the fact to the exact revision;
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts`
+- `com.aurevia.messaging.acknowledgment.InstructionFacts`
   (`AcknowledgmentScope.from`, `Acknowledgment`, `AcknowledgeCommand`,
   `PublishCommand`) and `InstructionFactActions.allows`, which grants
   `ACKNOWLEDGE` only to the patient role;
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` and
-  `com.aurevia.smartclinic.api.ApiErrorHandler` for tenant binding and error
+- `com.aurevia.web.TenantContextInterceptor` and
+  `com.aurevia.api.ApiErrorHandler` for tenant binding and error
   mapping, with the synthetic `InMemoryInstructionFactStore` behind the service.
 
 Built workflows surveyed and asserted at their own domain boundary (not driven
 over HTTP here, because their controllers and routes belong to other clauses):
-`com.aurevia.smartclinic.scheduling.followup.FollowUpService.completeTask` and
-`com.aurevia.smartclinic.scheduling.followup.CareTeamTask` (task completion), and
-`com.aurevia.smartclinic.exchange.critical.CriticalResultService.acknowledge`,
-`com.aurevia.smartclinic.exchange.critical.CriticalContract` and
+`com.aurevia.scheduling.followup.FollowUpService.completeTask` and
+`com.aurevia.scheduling.followup.CareTeamTask` (task completion), and
+`com.aurevia.exchange.critical.CriticalResultService.acknowledge`,
+`com.aurevia.exchange.critical.CriticalContract` and
 `db/migrations/V23__critical_results.sql` (critical-result acknowledgment, with
 its own `AWAITING_ACK` → `ACKNOWLEDGED` state machine and a separate
 `EventType.ACKNOWLEDGED` fact bound to the exact revision). Neither references
@@ -86,7 +86,7 @@ subject, purpose, version, actor, instant and revocation), enforce it in a
 tenant-guarded transaction with forced row level security, expose it through a
 thin controller, and publish the route in the OpenAPI contract with a regenerated
 client. Files that task would change (none changed here): a new
-`apps/api/src/main/java/com/aurevia/smartclinic/patient/consent/` package and its
+`apps/api/src/main/java/com/aurevia/patient/consent/` package and its
 tests under `apps/api/src/test`, a new Flyway migration under `db/migrations`,
 `contracts/openapi.yaml` and the generated client. Closing this gap needs
 **one** bounded task; the would-prove cases (wrong role → 403, foreign tenant →

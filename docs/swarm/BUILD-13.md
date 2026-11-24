@@ -8,7 +8,7 @@ Swarm worker 4. Local checks: passed. Agent result: ok.
 
 ## Summary
 
-BUILD-13 (FIN-01). The FIN-01 finance domain — immutable invoice lines and payment/refund/credit ledger, fixed-precision integer minor units, state machine, replay dedup, approvals and reconciliation — was already implemented on `main` by S-G4-05 (`V45__finance.sql`, `FinanceService`, `FinanceRepository`, `FinanceController`, `FinanceContract`, `FinanceInputs`, `FinanceActions`) and is already proven end-to-end over HTTP/PostgreSQL by the out-of-scope `it/finance` suite. This story adds the missing **in-scope, database-free acceptance tests** for the four requested bullets (rounding, partial payments in any order, void after payment refused, plus the two stated rejections) in `apps/api/src/test/java/com/aurevia/smartclinic/finance/FinanceLedgerTest.java` (10 tests). An independent Senior Java/Spring Boot review found four assertion gaps; all four were fixed and the suite re-run green. No production code, migration, dependency or contract was changed.
+BUILD-13 (FIN-01). The FIN-01 finance domain — immutable invoice lines and payment/refund/credit ledger, fixed-precision integer minor units, state machine, replay dedup, approvals and reconciliation — was already implemented on `main` by S-G4-05 (`V45__finance.sql`, `FinanceService`, `FinanceRepository`, `FinanceController`, `FinanceContract`, `FinanceInputs`, `FinanceActions`) and is already proven end-to-end over HTTP/PostgreSQL by the out-of-scope `it/finance` suite. This story adds the missing **in-scope, database-free acceptance tests** for the four requested bullets (rounding, partial payments in any order, void after payment refused, plus the two stated rejections) in `apps/api/src/test/java/com/aurevia/finance/FinanceLedgerTest.java` (10 tests). An independent Senior Java/Spring Boot review found four assertion gaps; all four were fixed and the suite re-run green. No production code, migration, dependency or contract was changed.
 
 ## Affected requirements
 
@@ -20,7 +20,7 @@ Routine — test-only addition inside the finance domain. No production line cha
 
 ## Review owner
 
-`smartclinic-senior-backend` and `smartclinic-test-engineer` skills loaded; one bounded, read-only specialist review of the new test file was completed. It confirmed criteria 1–4 were genuinely asserted and raised four gaps (F1 one-currency, F2 reason-for-reversal, F3 immutability, F4 add-overflow); all four were fixed in this commit and re-verified green. The reviewer made no edits and ran no checks, so its findings are simulated-review evidence, not tool evidence. No human clinician or finance owner involved.
+`orevia-senior-backend` and `orevia-test-engineer` skills loaded; one bounded, read-only specialist review of the new test file was completed. It confirmed criteria 1–4 were genuinely asserted and raised four gaps (F1 one-currency, F2 reason-for-reversal, F3 immutability, F4 add-overflow); all four were fixed in this commit and re-verified green. The reviewer made no edits and ran no checks, so its findings are simulated-review evidence, not tool evidence. No human clinician or finance owner involved.
 
 ## Data changes
 
@@ -42,7 +42,7 @@ All commands run from the repository root on branch `swarm/BUILD-13-417` (HEAD `
    `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='FinanceLedgerTest' test`
    Final line: `EXIT:0`; Surefire XML: `tests="10" errors="0" skipped="0" failures="0"`.
 2. Full finance set, unit + PostgreSQL integration (all green):
-   `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='FinanceLedgerTest,InvoiceListServiceTest,InvoiceListControllerTest,FinanceContractTest,FinanceServiceTest,FinanceFlowTest,FinanceHttpSecurityTest,InvoiceListIntegrationTest' test`
+   `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='FinanceLedgerTest,InvoiceListServiceTest,InvoiceListControllerTest,FinanceContractTest,FinanceServiceTest,FinanceFlowTest,FinanceHttpSecurityTest,InvoiceListIntegrationTest' test`
    Final line: `EXIT:0`.
 3. Final gate (policy + Python tooling + compile + all unit tests): `bash scripts/quick-check.sh`
    Final lines: `quick check: policy, compile and unit tests passed` / `EXIT:0`.
@@ -68,7 +68,7 @@ Coverage command (targeted, avoids the >10-minute full verify):
 `mvn -q -B -f apps/api/pom.xml -Pno-security jacoco:report`
 Source: `apps/api/target/site/jacoco/jacoco.csv`, produced by the full finance test run in evidence item 2.
 
-Result: **all 21 `com.aurevia.smartclinic.finance` production classes show 0 missed instructions, 0 missed branches, 0 missed lines, 0 missed methods and 0 missed classes** — package totals: 2588/2588 instructions, 202/202 branches, 464/464 lines, 120/120 methods (e.g. `FinanceService` 1150/1150 instructions, 105/105 branches, 226/226 lines, 39/39 methods; `FinanceRepository` 571/571 instructions, 8/8 branches, 106/106 lines, 27/27 methods; `FinanceInputs` 282/282 instructions, 40/40 branches, 53/53 lines, 18/18 methods; `InvoicePage`, `FinanceActions`, `FinanceController` and every contract record likewise zero-missed). An `awk` filter over the CSV found no finance row with a positive missed counter. No `exclude`, threshold change, `@Disabled` or skip was introduced.
+Result: **all 21 `com.aurevia.finance` production classes show 0 missed instructions, 0 missed branches, 0 missed lines, 0 missed methods and 0 missed classes** — package totals: 2588/2588 instructions, 202/202 branches, 464/464 lines, 120/120 methods (e.g. `FinanceService` 1150/1150 instructions, 105/105 branches, 226/226 lines, 39/39 methods; `FinanceRepository` 571/571 instructions, 8/8 branches, 106/106 lines, 27/27 methods; `FinanceInputs` 282/282 instructions, 40/40 branches, 53/53 lines, 18/18 methods; `InvoicePage`, `FinanceActions`, `FinanceController` and every contract record likewise zero-missed). An `awk` filter over the CSV found no finance row with a positive missed counter. No `exclude`, threshold change, `@Disabled` or skip was introduced.
 
 New production branches added: **none** — the change is test-only. Pre-existing production branches now asserted in the fast gate by the new file:
 - PAYMENT reduces balance / `INSUFFICIENT_BALANCE` on amount > balance → `partialPaymentsInAnyOrderConvergeToPaid` / `overpaymentIsRejectedWithoutPostingAnEntry`.

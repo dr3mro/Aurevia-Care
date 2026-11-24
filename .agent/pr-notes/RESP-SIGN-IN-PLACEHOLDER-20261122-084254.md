@@ -40,10 +40,10 @@ Routine — contained presentational change to one presentational component plus
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) — bounded read-only plan review completed;
+Senior React and Vite (`orevia-senior-react`) — bounded read-only plan review completed;
 recommendations (drop redundant inline `gap`, avoid `useTheme` without a provider, static class,
-zero new branches) were applied. Senior TypeScript (`smartclinic-senior-typescript`) and UX
-(`smartclinic-ux-reviewer`) skills loaded. UX review is **simulated**, not a human/synthetic-user
+zero new branches) were applied. Senior TypeScript (`orevia-senior-typescript`) and UX
+(`orevia-ux-reviewer`) skills loaded. UX review is **simulated**, not a human/synthetic-user
 walkthrough.
 
 ## Data changes
@@ -82,7 +82,7 @@ simulated-user participation in this task.
 
    Typecheck final lines (from `npm run typecheck`, exit 0 — no `error TS…`):
    ```
-   > smartclinic-staff-web@0.1.0 typecheck
+   > orevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    The build step re-ran `tsc --noEmit -p tsconfig.json && vite build` and succeeded.
@@ -156,7 +156,7 @@ PHI or credential appears in code, fixtures, logs or notes.
   at `check-pack.py` with `opencode.json is stale`. My two files cannot affect generated agent
   config; editing it is forbidden by this task. See "Why this is not finished".
 - **Pre-existing, unrelated:** three HL7 Java files committed at HEAD
-  (`apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  (`apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java`, `Hl7Segment.java`) contain literal `<<<<<<< HEAD` / `>>>>>>> origin/swarm/BUILD-37-469`
   markers inside Javadoc. Not touched; flagged so the integrator is not surprised by a repo-wide
   marker grep.

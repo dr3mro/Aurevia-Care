@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.WarnLikelyDuplicatesTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/WarnLikelyDuplicatesTest.java`).
+Test class: `com.aurevia.patient.clauses.WarnLikelyDuplicatesTest`
+(path: `apps/api/src/test/java/com/aurevia/patient/clauses/WarnLikelyDuplicatesTest.java`).
 All five tests are active (none disabled) and pass against a real PostgreSQL database with
 synthetic fixtures only. The suite recreates its own database from the authoritative Flyway
 migrations, seeds two tenants with bounded roles, and drives the warning through the normal
@@ -37,21 +37,21 @@ HTTP entry point `GET /api/v1/patients/{id}` using the `synthetic-auth` profile.
 
 Production classes exercised through the entry point and its transaction:
 
-- `com.aurevia.smartclinic.web.PatientController` — thin adapter binding `GET /api/v1/patients/{id}`
+- `com.aurevia.web.PatientController` — thin adapter binding `GET /api/v1/patients/{id}`
   to the service and returning the view.
-- `com.aurevia.smartclinic.patient.PatientService` — `get` authorizes the read, loads the patient
+- `com.aurevia.patient.PatientService` — `get` authorizes the read, loads the patient
   and computes candidates from normalized name and civil date of birth; it never merges or links
   records, and it audits both success and denial.
-- `com.aurevia.smartclinic.patient.PatientView` — immutable view carrying the patient and its
+- `com.aurevia.patient.PatientView` — immutable view carrying the patient and its
   frozen duplicate list.
-- `com.aurevia.smartclinic.patient.PatientRepository` — `likelyDuplicates` reads effective patients
+- `com.aurevia.patient.PatientRepository` — `likelyDuplicates` reads effective patients
   through `public.current_patients()` under enforced tenant isolation; the underlying table and
   effective-version fold are defined in `db/migrations/V7__patient_registration.sql`.
-- `com.aurevia.smartclinic.authz.ActionPolicy` — bounds `PATIENT_READ` and `PATIENT_REGISTER` to
+- `com.aurevia.authz.ActionPolicy` — bounds `PATIENT_READ` and `PATIENT_REGISTER` to
   reception, which is why the auditor role is denied.
 
-The existing unit suite `com.aurevia.smartclinic.patient.PatientServiceTest` and HTTP acceptance
-suite `com.aurevia.smartclinic.it.PatientRegistrationTest` cover the same behaviour; this task
+The existing unit suite `com.aurevia.patient.PatientServiceTest` and HTTP acceptance
+suite `com.aurevia.it.PatientRegistrationTest` cover the same behaviour; this task
 adds a focused, clause-only proof and changes neither.
 
 ## Gap

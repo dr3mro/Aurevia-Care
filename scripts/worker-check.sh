@@ -14,7 +14,7 @@ bash scripts/frontend-check.sh
 # it catches findings such as a constructor that throws before Delivery does.
 mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check
 
-export SMARTCLINIC_PG_ADMIN="${SMARTCLINIC_PG_ADMIN:-postgres}"
+export OREVIA_PG_ADMIN="${OREVIA_PG_ADMIN:-postgres}"
 if ! pg_isready -q -h 127.0.0.1 -p 5432; then
   if command -v start-postgres >/dev/null; then
     start-postgres

@@ -16,7 +16,7 @@ artifact is judged, and — deliberately — what this repository cannot prove.
 |---|---|---|
 | OPS-03 | 99.9% monthly core availability; server-side p95 ≤ 500 ms for routine reads and ≤ 900 ms for routine commands, excluding document transfer/rendering and external calls; pilot profile 20 organizations, 100,000 charts, 200 concurrent staff, 50 mixed requests per second for 30 minutes; run before pilot and revise assumptions after observation | [Capacity targets](capacity-targets.md), [Pilot load profile](pilot-load-profile.md), [Performance evidence](performance-evidence.md) |
 
-The approved clause itself is in the [product specification](../../../SMARTCLINIC_V1_SPEC.md).
+The approved clause itself is in the [product specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 No new threshold or requirement ID is introduced by this handoff.
 
 ## Three evidence tiers

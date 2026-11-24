@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.prescription.clauses.DistinguishDispensingEvidenceAcceptanceTest`
-([DistinguishDispensingEvidenceAcceptanceTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/DistinguishDispensingEvidenceAcceptanceTest.java)).
+Test class `com.aurevia.prescription.clauses.DistinguishDispensingEvidenceAcceptanceTest`
+([DistinguishDispensingEvidenceAcceptanceTest.java](../../../../apps/api/src/test/java/com/aurevia/prescription/clauses/DistinguishDispensingEvidenceAcceptanceTest.java)).
 It is a synthetic, database-free clause test in the same `clauses` style as
 `TransferHandoffRequiresActiveAssigneeTest`: mocked `RxRepository` and
 `AuditAppender`, an inline `TransactionTemplate` that runs the real guarded
@@ -43,7 +43,7 @@ the dispensing controller route.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- [RxService.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxService.java)
+- [RxService.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxService.java)
   `recordDispensing` owns the rule: it validates the command, re-derives the
   actor's authorization and role, locks the row, checks the version and the
   `ACCEPTED` state, requires the matching stable submission id, then commits the
@@ -51,15 +51,15 @@ Production classes and files surveyed and exercised by the entry point:
   one tenant-guarded transaction. Its private `authorize`, `locked`,
   `requireVersion`, `requireState`, `requireSubmission` and `append` helpers are
   each taken by a named test above.
-- [RxContract.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxContract.java)
+- [RxContract.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxContract.java)
   models `State.ACCEPTED` and `State.DISPENSED` as distinct states (only
   `ACCEPTED -> DISPENSED` is a legal forward move) and `EventType.PHARMACY_ACCEPTED`
   and `EventType.DISPENSING_EVIDENCE` as distinct append-only facts;
   `DispensingRequest` is the dispensing command. Its Javadoc states that
   acceptance is never dispensing.
-- [RxActions.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxActions.java)
+- [RxActions.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxActions.java)
   restricts `RX_DISPENSE` to the `pharmacy_staff` role.
-- [RxController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxController.java)
+- [RxController.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxController.java)
   `POST /api/v1/prescriptions/{id}/dispensing` is the HTTP entry point; it
   injects the service and parses the `If-Match` version.
 - [V44__rx02_prescription_transmission.sql](../../../../db/migrations/V44__rx02_prescription_transmission.sql)
@@ -69,7 +69,7 @@ Production classes and files surveyed and exercised by the entry point:
   append-only under ENABLE and FORCE ROW LEVEL SECURITY.
 - Entry-point-to-test trace: the HTTP and real PostgreSQL proof that the rule
   holds end to end lives in
-  [RxTransmissionFlowTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/prescription/RxTransmissionFlowTest.java).
+  [RxTransmissionFlowTest.java](../../../../apps/api/src/test/java/com/aurevia/it/prescription/RxTransmissionFlowTest.java).
   `electronicWorkflowTracksEveryFactSeparately` asserts "acceptance must not
   create dispensing evidence" after a pharmacy acceptance, then posts the
   dispensing route and asserts the ordered trail holds `pharmacy_accepted` and
@@ -80,7 +80,7 @@ Production classes and files surveyed and exercised by the entry point:
   `SUBMISSION_MISMATCH`. `tenantIsolationConcealsIdenticalLocalIdentifiers`
   covers the wrong-tenant boundary for the workflow. The route-level security
   matrix in
-  [RxHttpSecurityTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/prescription/RxHttpSecurityTest.java)
+  [RxHttpSecurityTest.java](../../../../apps/api/src/test/java/com/aurevia/it/prescription/RxHttpSecurityTest.java)
   parametrizes the dispensing endpoint through `missingSubjectReturnsUnauthorized`,
   `malformedOrganizationReturnsUnprocessable` and
   `unauthorizedRoleReturnsForbidden`, and

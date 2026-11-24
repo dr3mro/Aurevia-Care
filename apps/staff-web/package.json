@@ -1,9 +1,9 @@
 {
-  "name": "smartclinic-staff-web",
+  "name": "orevia-staff-web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "SmartClinic staff web visual foundation (synthetic data only).",
+  "description": "Orevia staff web visual foundation (synthetic data only).",
   "engines": {
     "node": ">=22.12.0"
   },

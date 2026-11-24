@@ -33,8 +33,8 @@ logic. No data, migration or OpenAPI contract change.
 
 ## Review owner
 
-`smartclinic-senior-backend` (bounded, review-only) plus the `smartclinic-senior-spring-security`,
-`smartclinic-test-engineer` and `smartclinic-senior-java-build` skills. Evidence sources:
+`orevia-senior-backend` (bounded, review-only) plus the `orevia-senior-spring-security`,
+`orevia-test-engineer` and `orevia-senior-java-build` skills. Evidence sources:
 executed tool commands (tool evidence) and a bounded simulated specialist review (static
 read of the four scoped files plus `CorrelationIdFilter`, `RequestLogFormatter` and
 `ApiErrorHandler`). No reviewer ran commands; no simulated user, clinician or human
@@ -72,7 +72,7 @@ Red (before the production change):
 ```text
 $ mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest='LogRedactionTest,TenantContextInterceptorTest' test
 [ERROR] Tests run: 12, Failures: 1, Errors: 0, Skipped: 0
-[ERROR] com.aurevia.smartclinic.web.TenantContextInterceptorTest.publishesAndClearsCorrelationIdInMdc -- expected: <corr-mdc> but was: <null>
+[ERROR] com.aurevia.web.TenantContextInterceptorTest.publishesAndClearsCorrelationIdInMdc -- expected: <corr-mdc> but was: <null>
 EXIT=1
 ```
 
@@ -80,7 +80,7 @@ Green after implementation (targeted):
 
 ```text
 $ mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest='LogRedactionTest,TenantContextInterceptorTest,RateLimitInterceptorTest' test
-... INFO com.aurevia.smartclinic.observability.CorrelationIdFilter -- {"correlationId":"222e2222-2222-2222-2222-222222222222","method":"POST","route":"/api/v1/probe","status":422,"latencyMs":0}
+... INFO com.aurevia.observability.CorrelationIdFilter -- {"correlationId":"222e2222-2222-2222-2222-222222222222","method":"POST","route":"/api/v1/probe","status":422,"latencyMs":0}
 EXIT=0
 ```
 
@@ -118,7 +118,7 @@ Step 3 logging survey (precise grep of production sources):
 
 ```text
 $ grep -rnE '\b(LOG|log|logger|LOGGER)\.(info|debug|warn|error|trace)\b' apps/api/src/main --include='*.java'
-apps/api/src/main/java/com/aurevia/smartclinic/observability/CorrelationIdFilter.java:75:
+apps/api/src/main/java/com/aurevia/observability/CorrelationIdFilter.java:75:
   LOG.info(RequestLogFormatter.toJson(correlationId, request.getMethod(), route, status, latencyMs));
 ```
 

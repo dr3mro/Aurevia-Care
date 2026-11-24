@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.StaffAssignTransferWithinUnitResolveReasonTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/StaffAssignTransferWithinUnitResolveReasonTest.java`).
+Test class `com.aurevia.messaging.clauses.StaffAssignTransferWithinUnitResolveReasonTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/StaffAssignTransferWithinUnitResolveReasonTest.java`).
 It is a synthetic, database-free clause test in the same `clauses` style as
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: a real
 `ConversationActions` matrix, mocked `ConversationRepository`, `AuditAppender`
@@ -48,7 +48,7 @@ projection and the append-only work-item event ledger untouched.
 
 Production classes and files surveyed and exercised by the entry points:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService.assign`,
+- `com.aurevia.messaging.conversations.ConversationService.assign`,
   `transfer`, private `reassign` and `resolve`, private `transitionWithReason` —
   own the rule: they validate inputs, re-derive the caller's authorization in a
   tenant-guarded transaction, lock the row, require the read version, require a
@@ -56,22 +56,22 @@ Production classes and files surveyed and exercised by the entry points:
   commit the projection change, the reasoned append-only event and the audit
   row together. `authorize` writes a `DENIED` audit row for a caller without an
   active membership or a role permitted for the action.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationActions` — the
+- `com.aurevia.messaging.conversations.ConversationActions` — the
   action and role matrix: `WORK_ASSIGN`, `WORK_TRANSFER` and `WORK_RESOLVE` are
   staff-only actions, and `allowsUnit` confines each staff role to its unit so a
   cross-unit assignment or transfer fails closed.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationInputs.reason` —
+- `com.aurevia.messaging.conversations.ConversationInputs.reason` —
   trims and bounds the required reason before any SQL runs.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationContract` —
+- `com.aurevia.messaging.conversations.ConversationContract` —
   `State`, `UnitKey`, `WorkEventType`, `Conversation`, `WorkItemEvent` and the
   `AssignRequest`, `TransferRequest` and `ResolveRequest` commands.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationRepository` —
+- `com.aurevia.messaging.conversations.ConversationRepository` —
   `assign`, `updateState`, `appendEvent`, `loadForUpdate`, `find`,
   `hasActiveMembership` and `activeRoles` are the SQL boundary the assertions
   observe.
-- `com.aurevia.smartclinic.audit.AuditAppender` — appends the `SUCCESS` or
+- `com.aurevia.audit.AuditAppender` — appends the `SUCCESS` or
   `DENIED` audit row inside the same transaction.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController` —
+- `com.aurevia.messaging.conversations.ConversationController` —
   `POST /api/v1/conversations/{id}/assign`, `/transfer` and `/resolve` are the
   HTTP entry points; the controller injects `ConversationService` and parses the
   `If-Match` version, while authorization and lifecycle invariants stay in the

@@ -10,13 +10,13 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.web.clauses.UseVersionedRoutesUnderApiV1CursorTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/UseVersionedRoutesUnderApiV1CursorTest.java`).
+Test class: `com.aurevia.web.clauses.UseVersionedRoutesUnderApiV1CursorTest`
+(`apps/api/src/test/java/com/aurevia/web/clauses/UseVersionedRoutesUnderApiV1CursorTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, using the
 `synthetic-auth` profile and two synthetic organizations (`ORG_A`, `ORG_B`) with
 the fixtures and database setup of the neighbouring
 `it.staff.StaffListIntegrationTest`. A dedicated database
-`smartclinic_arc03_clause1_it` is migrated from `db/migrations` and dropped after
+`orevia_arc03_clause1_it` is migrated from `db/migrations` and dropped after
 the suite. Every method sends synthetic headers (`X-Synthetic-Subject`,
 `X-Active-Organization`, and a fixed UUID `X-Correlation-Id`) through a real
 `RestClient` and asserts an HTTP status, a response header or a JSON body field.
@@ -46,22 +46,22 @@ Test methods:
 
 Production artifacts exercised (all pre-existing and unchanged):
 
-- Routing: `com.aurevia.smartclinic.web.StaffController` (`GET /api/v1/staff`,
+- Routing: `com.aurevia.web.StaffController` (`GET /api/v1/staff`,
   `@RequestMapping("/api/v1/staff")`), registered under `/api/v1/**` by
-  `com.aurevia.smartclinic.web.TenantContextInterceptor.addInterceptors`.
-- Paging: `com.aurevia.smartclinic.staff.StaffService` (`parseCursor`,
-  `parseLimit`, `parseStatus`), `com.aurevia.smartclinic.staff.StaffRepository`
+  `com.aurevia.web.TenantContextInterceptor.addInterceptors`.
+- Paging: `com.aurevia.staff.StaffService` (`parseCursor`,
+  `parseLimit`, `parseStatus`), `com.aurevia.staff.StaffRepository`
   (keyset predicate with `ORDER BY subject, id` under forced row-level security)
-  and `com.aurevia.smartclinic.staff.StaffPage` (`items`, `nextCursor`).
-- Correlation: `com.aurevia.smartclinic.observability.CorrelationIdFilter`
+  and `com.aurevia.staff.StaffPage` (`items`, `nextCursor`).
+- Correlation: `com.aurevia.observability.CorrelationIdFilter`
   (`CORRELATION_HEADER`, valid-UUID reuse and response echo) and
-  `com.aurevia.smartclinic.web.TenantContextInterceptor` (allowlist validation,
+  `com.aurevia.web.TenantContextInterceptor` (allowlist validation,
   echo and `TenantContext` binding).
-- Errors: `com.aurevia.smartclinic.api.ApiErrorHandler` (`ErrorBody` with
-  `code`, `message`, `correlationId`), `com.aurevia.smartclinic.api.ApiException`,
-  and `com.aurevia.smartclinic.api.contract.ApiErrorCode` (`INVALID_CURSOR`,
+- Errors: `com.aurevia.api.ApiErrorHandler` (`ErrorBody` with
+  `code`, `message`, `correlationId`), `com.aurevia.api.ApiException`,
+  and `com.aurevia.api.contract.ApiErrorCode` (`INVALID_CURSOR`,
   `FORBIDDEN` is raised by the staff domain service).
-- Version contract only: `com.aurevia.smartclinic.api.contract.ApiVersion`
+- Version contract only: `com.aurevia.api.contract.ApiVersion`
   (`from`) and `UNSUPPORTED_API_VERSION` exist but are not reached over HTTP.
 
 ## Gap
@@ -79,7 +79,7 @@ forbids a skipped test and `scripts/check-constraints.py` fails any added
 
 One separate cross-boundary task is needed: wire a filter or interceptor that
 calls `ApiVersion.from(X-Api-Version)` before the handler (likely under
-`apps/api/src/main/java/com/aurevia/smartclinic/web/`, with the existing
+`apps/api/src/main/java/com/aurevia/web/`, with the existing
 `TenantContextInterceptor` as the natural owner), add the HTTP negative test for
 `X-Api-Version: v2`, and verify the regenerated client against
 `contracts/openapi.yaml`, which already declares the `X-Api-Version` parameter.

@@ -19,11 +19,11 @@ Acceptance mapping:
 
 ## Risk class
 
-Routine (contained new files, no clinical data, no permissions, no schema). Reviewed by a simulated `smartclinic-senior-react` specialist; no blocking findings.
+Routine (contained new files, no clinical data, no permissions, no schema). Reviewed by a simulated `orevia-senior-react` specialist; no blocking findings.
 
 ## Review owner
 
-`smartclinic-senior-react` (read-only simulated review; files tool-inspected, checks not re-run by the reviewer). Skills loaded: `smartclinic-delivery`, `smartclinic-senior-react`, `smartclinic-senior-typescript`, `smartclinic-test-engineer`.
+`orevia-senior-react` (read-only simulated review; files tool-inspected, checks not re-run by the reviewer). Skills loaded: `orevia-delivery`, `orevia-senior-react`, `orevia-senior-typescript`, `orevia-test-engineer`.
 
 ## Data changes
 
@@ -51,7 +51,7 @@ Exact commands and final lines (all run from `apps/staff-web` unless noted):
 - Green after implementation: `npx vitest run --exclude 'e2e/**' tests/theme/breakpoints.test.ts` → `Test Files  1 passed (1)` / `Tests  7 passed (7)`.
 - Typecheck (mandatory final lines): `npm run typecheck`:
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   exit 0, no `error TS…` diagnostics.
@@ -101,7 +101,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 - **Pre-existing generated-client drift blocks the wrapper check** (tool evidence): `bash check.sh` stops at `npm run gen:api:check` with `Generated types are not up-to-date!`. Generating to `/tmp/opencode/generated-check.d.ts` and diffing against `src/api/generated/openapi.d.ts` shows `contracts/openapi.yaml` carries `/api/v1/order-entry/drafts`, `/api/v1/order-entry/drafts/{id}` and `/api/v1/order-entry/drafts/{id}/place` that the checked-in client lacks. Neither file is in this story's scope and neither was modified (`git status` shows only the three new files). Next step: regenerate and commit the client under a separate owner/module task, then re-run `bash apps/staff-web/check.sh`.
 - The new utilities have no production consumer yet. This is expected for this building-block slice; ADR-0004 assigns shell/navigation/table wiring to later stories.
-- ADR-0004 is still `Proposed` and `SMARTCLINIC_V1_SPEC.md` WEB-07 still states the old 1280/768 floors; the owner amendment is pending. Code follows the decision as the story instructed.
+- ADR-0004 is still `Proposed` and `PROJECT_V1_SPEC.md` WEB-07 still states the old 1280/768 floors; the owner amendment is pending. Code follows the decision as the story instructed.
 - The `useTheme must be used inside ThemeProvider` stack traces in the coverage output come from the pre-existing negative-path test `tests/theme/ThemeProvider.test.tsx`; they are logged errors from a passing test, not a regression.
 - Simulated senior-react review (low, applied): media query strings now derive from `BREAKPOINT_WIDTHS` so the 768/1280 values have one source of truth; re-ran test, typecheck, lint and coverage after the edit — all green.
 

@@ -10,12 +10,12 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.audit.clauses.RecordBusinessPurposeRoleFacilityUserSensitiveTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/audit/clauses/RecordBusinessPurposeRoleFacilityUserSensitiveTest.java`).
+Test class: `com.aurevia.audit.clauses.RecordBusinessPurposeRoleFacilityUserSensitiveTest`
+(path: `apps/api/src/test/java/com/aurevia/audit/clauses/RecordBusinessPurposeRoleFacilityUserSensitiveTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic tenants, following the fixtures and database setup of the
-neighbouring clause tests (`com.aurevia.smartclinic.it.authz.AccessIntegrationTest`,
-`com.aurevia.smartclinic.authz.clauses.RecordGrantedRoleEffectiveDatesTest`).
+neighbouring clause tests (`com.aurevia.it.authz.AccessIntegrationTest`,
+`com.aurevia.authz.clauses.RecordGrantedRoleEffectiveDatesTest`).
 All three tests are active (none disabled) and use synthetic data only.
 
 Observed result: `Tests run: 3, Failures: 0, Errors: 0, Skipped: 0`.
@@ -42,16 +42,16 @@ Test methods (one positive rule proof, two negative refusals):
 
 Production classes and objects exercised through the normal HTTP entry point:
 
-- Controller: `com.aurevia.smartclinic.authz.access.AccessController`
+- Controller: `com.aurevia.authz.access.AccessController`
   (`POST /api/v1/access/emergency`).
-- Domain and boundary: `com.aurevia.smartclinic.authz.access.EmergencyAccessService`,
-  `com.aurevia.smartclinic.authz.access.AccessRepository`,
-  `com.aurevia.smartclinic.authz.access.AccessContracts`,
-  `com.aurevia.smartclinic.authz.access.AccessRules`,
-  `com.aurevia.smartclinic.tenant.TenantContext` and
-  `com.aurevia.smartclinic.web.TenantContextInterceptor`.
-- Audit recording: `com.aurevia.smartclinic.audit.AuditAppender` and
-  `com.aurevia.smartclinic.audit.AuditRepository` (shared append-only audit helpers);
+- Domain and boundary: `com.aurevia.authz.access.EmergencyAccessService`,
+  `com.aurevia.authz.access.AccessRepository`,
+  `com.aurevia.authz.access.AccessContracts`,
+  `com.aurevia.authz.access.AccessRules`,
+  `com.aurevia.tenant.TenantContext` and
+  `com.aurevia.web.TenantContextInterceptor`.
+- Audit recording: `com.aurevia.audit.AuditAppender` and
+  `com.aurevia.audit.AuditRepository` (shared append-only audit helpers);
   the sensitive-action path writes through `AccessRepository.appendAudit`, which uses the
   same `audit_event` schema.
 
@@ -66,13 +66,13 @@ Where the clause is implemented today (source survey result):
   `actor_id` from the transaction-local `app.actor` binding so a caller cannot attribute
   an action to another user. `db/migrations/V93__membership_facility_scope.sql` adds the
   facility-scope fold.
-- Code: the `com.aurevia.smartclinic.authz.access` package holds the controller, service,
+- Code: the `com.aurevia.authz.access` package holds the controller, service,
   repository and contracts; `EmergencyAccessService.grant`/`active`/`revoke`/`review`
   append `purpose`, a bounded `role:facility` scope, correlation id and outcome to the
   audit chain inside the guarded transaction, including on denial. The `audit` package
   holds the shared append-only audit helpers.
 - Contract: the `POST /api/v1/access/emergency` route is implemented in
-  `com.aurevia.smartclinic.authz.access.AccessController` but is **not** declared in
+  `com.aurevia.authz.access.AccessController` but is **not** declared in
   `contracts/openapi.yaml`; it is recorded as route-parity debt in
   `contracts/openapi.yaml` alongside the other `/api/v1/access/*` routes.
   That is a pre-existing contract gap outside this task's scope and does not affect

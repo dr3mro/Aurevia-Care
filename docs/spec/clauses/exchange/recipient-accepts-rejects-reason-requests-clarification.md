@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.RecipientAcceptsRejectsReasonRequestsClarificationTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/RecipientAcceptsRejectsReasonRequestsClarificationTest.java`),
+Test class `com.aurevia.exchange.clauses.RecipientAcceptsRejectsReasonRequestsClarificationTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/RecipientAcceptsRejectsReasonRequestsClarificationTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants
 sharing the same local order codes. Each test owns a distinct order because the
 response ledgers are append-only; the seeded `received` event is the baseline,
@@ -49,25 +49,25 @@ so a successful command yields exactly two history events.
 Production classes exercised through the controllers
 `POST /api/v1/xch03/orders/{id}/{accept,reject,clarify}` and `GET /api/v1/xch03/orders/{id}`:
 
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseController` — thin
+- `com.aurevia.exchange.response.ExchangeResponseController` — thin
   HTTP adapter; parses `If-Match` and the accept/reason/clarify payloads.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseService` — `accept`,
+- `com.aurevia.exchange.response.ExchangeResponseService` — `accept`,
   `reject`, `clarify`, `run` and `authorize`: re-derives roles and membership,
   locks the order, checks the version, validates the transition, and commits the
   state change, retained copy, event and audit together.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy` —
+- `com.aurevia.exchange.response.ExchangeResponseActionPolicy` —
   `RECIPIENT_ROLES` / `RECIPIENT_ACTIONS`, failing closed for read-only roles.
-- `com.aurevia.smartclinic.exchange.response.ExchangeState` — the workflow
+- `com.aurevia.exchange.response.ExchangeState` — the workflow
   states and terminal branches.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseInputs` and
+- `com.aurevia.exchange.response.ExchangeResponseInputs` and
   `ExchangeResponseCommands` — trust-boundary validation and immutable commands.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseRepository` — the
+- `com.aurevia.exchange.response.ExchangeResponseRepository` — the
   tenant-scoped, append-only persistence behind the HTTP reads.
 - `db/migrations/V21__xch03_order_response.sql` — the order/revision/event/
   retained-copy tables, forced tenant RLS, immutable-ledger triggers and the
   actor-from-context trigger.
 
-Verified locally with `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=RecipientAcceptsRejectsReasonRequestsClarificationTest test`
+Verified locally with `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=RecipientAcceptsRejectsReasonRequestsClarificationTest test`
 — `Tests run: 9, Failures: 0, Errors: 0, Skipped: 0`; the Surefire XML for the
 class confirms 9 tests and 0 skipped. Static analysis with
 `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check`

@@ -44,7 +44,7 @@ test file), with a simulated UX review because RTL/WCAG is in scope
 
 ## Review owner
 
-`smartclinic-senior-react` and `smartclinic-ux-reviewer` — earlier advisory
+`orevia-senior-react` and `orevia-ux-reviewer` — earlier advisory
 subagent reviews, simulated/synthetic evidence only; no human or clinical
 participant. Senior React verdict: no blocking defects. UX verdict: no blocking
 defect after the mixed-script measurement fix. No new reviewer was needed in this
@@ -87,7 +87,7 @@ Vitest 5.1.1, Python 3.11.2; `node_modules` were already present.
    are the expected output of the negative provider tests; the run is green.
 3. Typecheck final lines (explicit re-run, frontend definition of done):
    `cd apps/staff-web && npm run typecheck` →
-   `> smartclinic-staff-web@0.1.0 typecheck` /
+   `> orevia-staff-web@0.1.0 typecheck` /
    `> tsc --noEmit -p tsconfig.json`, exit 0, **no `error TS…`**.
 4. Coverage gate: `bash scripts/coverage-check.sh origin/main` → exit 0,
    `coverage check: passed`.
@@ -182,7 +182,7 @@ simulated subagent only — synthetic review, not clinical or human acceptance.
    committed.
 5. **Pre-existing and out of scope (tool evidence):** committed conflict markers
    remain inside Javadoc blocks in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
    `Hl7Parser.java` and `Hl7Segment.java`; none in `apps/staff-web/`. They do not
    break compilation and were left untouched.
 6. jsdom cannot paint pixels, so 44×44 / 16 px / safe-area / 200 %-zoom claims

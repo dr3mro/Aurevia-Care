@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.java`).
+Test class: `com.aurevia.messaging.clauses.SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.java`).
 All four tests are active (none disabled), use synthetic data only, and drive
 `GET /api/v1/care-units/{unitId}/supervisor-snapshot` over HTTP against a real
 PostgreSQL scratch database created and migrated with the production Flyway
@@ -50,20 +50,20 @@ the work facts and the effective 30-minute service profile.
 Production classes exercised through the normal HTTP entry point
 (`GET /api/v1/care-units/{unitId}/supervisor-snapshot`):
 
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileController` — thin
+- `com.aurevia.messaging.service.ServiceProfileController` — thin
   adapter; `supervisor(...)` delegates to the injected service.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileService` —
+- `com.aurevia.messaging.service.ServiceProfileService` —
   `supervisorSnapshot(...)` derives the actor and roles from `TenantContext`,
   checks `SUPERVISOR_VIEW`, applies the unit-access guard, resolves the effective
   response target and computes and audits the snapshot.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileActions` — bounded
+- `com.aurevia.messaging.service.ServiceProfileActions` — bounded
   action matrix granting `SUPERVISOR_VIEW` only to `unit_supervisor` and
   `tenant_admin` (negative: patient 403).
-- `com.aurevia.smartclinic.messaging.service.SupervisorSnapshotCalculator` —
+- `com.aurevia.messaging.service.SupervisorSnapshotCalculator` —
   derives the four counters from one immutable snapshot with a single `now`.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileContract` — the
+- `com.aurevia.messaging.service.ServiceProfileContract` — the
   `WorkItemFact`, `WorkState` and `SupervisorSnapshot` records carried over HTTP.
-- `com.aurevia.smartclinic.messaging.service.JdbcServiceProfileStore` —
+- `com.aurevia.messaging.service.JdbcServiceProfileStore` —
   `workItems(...)` and `addWorkItem(...)` against the tenant-guarded work-item
   table.
 - `db/migrations/V92__service_profiles.sql` — creates `service_profile_work_item`
@@ -72,7 +72,7 @@ Production classes exercised through the normal HTTP entry point
 
 The exact inclusive-deadline equality boundary is a calculator-level concern and
 is also proved directly by
-`com.aurevia.smartclinic.messaging.service.SupervisorSnapshotCalculatorTest.overdueUsesAnInclusiveDeadlineAndIgnoresAlreadyRespondedWork`;
+`com.aurevia.messaging.service.SupervisorSnapshotCalculatorTest.overdueUsesAnInclusiveDeadlineAndIgnoresAlreadyRespondedWork`;
 this clause test proves the same rule reaches an authorized supervisor over HTTP.
 
 ## Gap

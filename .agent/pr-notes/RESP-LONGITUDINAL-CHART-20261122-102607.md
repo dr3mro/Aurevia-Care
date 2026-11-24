@@ -25,7 +25,7 @@ stylesheet, dependency, migration or tracker was edited.
   native table semantics retained, long English and Arabic values wrap, no
   fixed block size on clinical values, labels preserved in the compact card view.
 
-Specification: `SMARTCLINIC_V1_SPEC.md` WEB-07 and UX-01. Design authority:
+Specification: `PROJECT_V1_SPEC.md` WEB-07 and UX-01. Design authority:
 `docs/decisions/0004-responsive-staff-web.md`; `docs/design/responsive-layout.md`
 sections 2, 5, 11–13; `docs/design/accessibility-patterns.md`;
 `docs/design/rtl-and-localization.md`.
@@ -48,7 +48,7 @@ sections 2, 5, 11–13; `docs/design/accessibility-patterns.md`;
 ## Risk class
 
 Routine (contained staff-web presentation change with an accessibility
-boundary). One targeted read-only review by the simulated `smartclinic-senior-react`
+boundary). One targeted read-only review by the simulated `orevia-senior-react`
 specialist; its two findings were fixed in this change. No clinical or human
 review was performed or claimed.
 
@@ -98,13 +98,13 @@ Final logs: `/tmp/opencode/staff-web-check-RESP-LONGITUDINAL-CHART-final.log`.
   - `gen:api:check` → `gen:api: generated client matches the contract`
   - `npm run typecheck` → final lines:
     ```
-    > smartclinic-staff-web@0.1.0 typecheck
+    > orevia-staff-web@0.1.0 typecheck
     > tsc --noEmit -p tsconfig.json
     ```
     No `error TS…` output.
   - `npm run lint` → final lines:
     ```
-    > smartclinic-staff-web@0.1.0 lint
+    > orevia-staff-web@0.1.0 lint
     > eslint . --max-warnings 0
     ```
   - `npm run build` → `✓ built in 137ms`

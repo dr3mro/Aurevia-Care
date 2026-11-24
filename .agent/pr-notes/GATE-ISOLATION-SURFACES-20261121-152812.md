@@ -10,7 +10,7 @@ acceptance test is present but `@Disabled("GAP: ...")`. No production code, migr
 threshold or tracker file was changed.
 
 Files:
-- `apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/IsolationAcrossSurfacesTest.java`
+- `apps/api/src/test/java/com/aurevia/tenancy/clauses/IsolationAcrossSurfacesTest.java`
 - `docs/gates/g0-isolation-surfaces.md`
 - this note
 
@@ -19,7 +19,7 @@ Files:
 ARC-02 (isolation: tenant derivation, forced RLS, fail-closed context, jobs/search/exports/files),
 IAM-01 (active membership, explicit organization selection, next-request authorization).
 OPS-07 is referenced only as the missing tenant-export requirement; ARC-01, ARC-05, CLN-07 and
-IAM-03 appear as supporting context in the gap note. G0 row of SMARTCLINIC_V1_SPEC.md section 9;
+IAM-03 appear as supporting context in the gap note. G0 row of PROJECT_V1_SPEC.md section 9;
 `S-G0-04` in TODO.md is the blocked parent story.
 
 ## Risk class
@@ -35,7 +35,7 @@ clinical or patient evidence was available or claimed.
 
 ## Data changes
 
-None. The test creates and drops the disposable database `smartclinic_isolation_surfaces_it` with
+None. The test creates and drops the disposable database `orevia_isolation_surfaces_it` with
 synthetic organizations, subjects and records. No migration was reserved or written.
 
 ## Authorization boundaries and audit events
@@ -57,9 +57,9 @@ All commands were run by the primary agent from the repository root on 2026-11-2
 source: **tool** (executed commands) unless marked reviewer.
 
 1. Targeted integration test (real PostgreSQL, synthetic fixtures):
-   `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test`
+   `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test`
    Exit 0. Surefire report final line:
-   `Tests run: 7, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 6.834 s -- in com.aurevia.smartclinic.tenancy.clauses.IsolationAcrossSurfacesTest`
+   `Tests run: 7, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 6.834 s -- in com.aurevia.tenancy.clauses.IsolationAcrossSurfacesTest`
    The single skip is the story-mandated OPS-07 gap test, not a weakened gate.
 
 2. Java unit suite (no integration tests):
@@ -84,7 +84,7 @@ source: **tool** (executed commands) unless marked reviewer.
    `git show HEAD:opencode.json` equals the generator's local render. `opencode.json` was not
    edited and no regeneration was attempted because it is outside this task's scope.
 
-7. `git status --short` → only `?? apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/`
+7. `git status --short` → only `?? apps/api/src/test/java/com/aurevia/tenancy/clauses/`
    and `?? docs/gates/` before this note was added. No tracked file was modified.
 
 Entry-point-to-test trace: HTTP `GET/POST /api/v1/facilities` →

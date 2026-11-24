@@ -48,7 +48,7 @@ story directs — no painted-layout claim is made here.
 
 ## Review owner
 
-`smartclinic-senior-react` and `smartclinic-ux-reviewer` — earlier advisory
+`orevia-senior-react` and `orevia-ux-reviewer` — earlier advisory
 subagent reviews, simulated/synthetic evidence only; no human or clinical
 participant. Senior React verdict: no blocking defects. UX verdict: no blocking
 defect after the measurement-isolation fix. This fix pass re-verified by executed
@@ -91,7 +91,7 @@ npm 10.9.9, Vitest 5.1.1 (installed from the pinned lockfile via `npm ci`).
    `tests/i18n/I18nProvider.test.tsx` and `tests/theme/ThemeProvider.test.tsx`; the run is green.
 4. Typecheck final lines (explicit re-run, required by the frontend definition of done):
    `cd apps/staff-web && npm run typecheck` →
-   `> smartclinic-staff-web@0.1.0 typecheck` /
+   `> orevia-staff-web@0.1.0 typecheck` /
    `> tsc --noEmit -p tsconfig.json`, exit 0, **no `error TS…`**.
 5. Lint: `cd apps/staff-web && npx eslint . --max-warnings=0` → exit 0, no output.
 6. Formatting: `cd apps/staff-web && npx prettier --check src/app/DesignPreview.tsx tests/responsive/app/DesignPreview.responsive.test.tsx`
@@ -159,7 +159,7 @@ subagent only — synthetic review, not clinical or human acceptance.
    `.github/opencode.ci.json` and `git show HEAD:opencode.json`. Do not regenerate or
    commit that protected file; HEAD truth is correct.
 3. **Pre-existing and out of scope (tool evidence):** committed conflict markers remain
-   at HEAD in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+   at HEAD in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
    `Hl7Parser.java` and `Hl7Segment.java`. Confirmed present at HEAD via
    `git grep ... HEAD -- apps/api/.../hl7/`; none in `apps/staff-web/`. Unrelated to this
    story and left untouched.

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.AllowPatientConnectThroughVerifiedCareRelationshipTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/AllowPatientConnectThroughVerifiedCareRelationshipTest.java`).
+Test class: `com.aurevia.messaging.clauses.AllowPatientConnectThroughVerifiedCareRelationshipTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/AllowPatientConnectThroughVerifiedCareRelationshipTest.java`).
 All 16 invocations are active (none disabled) and use synthetic data only. The class drives the
 real `POST /api/v1/patient-unit-connections` route over HTTP with
 `@SpringBootTest(RANDOM_PORT)` and the `synthetic-auth` profile against a dedicated
@@ -49,18 +49,18 @@ functions are part of the proof.
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.messaging.units.CareUnitController` — the thin adapter that owns
+- `com.aurevia.messaging.units.CareUnitController` — the thin adapter that owns
   `POST /api/v1/patient-unit-connections` and maps the created connection to `Location`.
-- `com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService` — `connect`, `authorize`,
+- `com.aurevia.messaging.units.CareUnitDirectoryService` — `connect`, `authorize`,
   `verifiedCharts`, `isUsable` and `deny`: server-derived identities, the five-context rule,
   single-use invitation consumption, idempotent replay, conflict and concealment decisions.
-- `com.aurevia.smartclinic.messaging.units.MessagingActions` and `MessagingInputs` — the action
+- `com.aurevia.messaging.units.MessagingActions` and `MessagingInputs` — the action
   matrix (patient only for `CONNECTION_CREATE`) and the trust-boundary field validation.
-- `com.aurevia.smartclinic.messaging.units.MessagingContract` — `ConnectionContext`,
+- `com.aurevia.messaging.units.MessagingContract` — `ConnectionContext`,
   `ConnectRequest`, `EligibleRelationship` and `PatientUnitConnection`.
-- `com.aurevia.smartclinic.messaging.units.JdbcMessagingStore` — the tenant-guarded PostgreSQL
+- `com.aurevia.messaging.units.JdbcMessagingStore` — the tenant-guarded PostgreSQL
   adapter for units, relationships, connections and audit facts.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` — derives tenant and subject from the
+- `com.aurevia.web.TenantContextInterceptor` — derives tenant and subject from the
   synthetic headers, so every read and write carries the caller's organization.
 - `db/migrations/V60__care_units.sql` — the tenant-owned `care_unit`, `eligible_relationship`,
   `patient_unit_connection` and `messaging_audit` tables with row-level security and forced

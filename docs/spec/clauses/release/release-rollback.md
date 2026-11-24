@@ -10,7 +10,7 @@ Not built
 
 The clause needs a cloud account, a signed decision and human evidence that the
 repository does not hold, so none of it can be claimed as delivered. WEB-11 (section
-8 of [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md)) requires one
+8 of [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md)) requires one
 signed artifact promoted with an SBOM, a progressive rollout with automatic
 rollback on error-rate or latency breach, a rehearsed rollback and a release
 checklist with named approvers. The
@@ -77,7 +77,7 @@ rollback happened.
 
 What the specification requires (authoritative text):
 
-- WEB-11 in [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) (section
+- WEB-11 in [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) (section
   8) names "Release and rollback." and requires one signed artifact promoted
   with an SBOM, progressive rollout with automatic rollback on error-rate or
   latency breach, expand/contract migrations with default-off feature flags, a

@@ -69,9 +69,9 @@ and `ends the session when confirmation is rejected as unauthenticated`.
 [patientConfirmGuard.test.tsx](../../../../apps/patient-mobile/src/app/patientConfirmGuard.test.tsx)
 adds `drops a second confirm that arrives before the first command settles`.
 
-The server side is [PatientAppointmentController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentController.java)
+The server side is [PatientAppointmentController.java](../../../../apps/api/src/main/java/com/aurevia/messaging/appointments/PatientAppointmentController.java)
 (`POST /api/v1/patient/appointments/{appointmentId}/confirm`, line 77) and its
-HTTP-level test [PatientAppointmentControllerHttpTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentControllerHttpTest.java)
+HTTP-level test [PatientAppointmentControllerHttpTest.java](../../../../apps/api/src/test/java/com/aurevia/messaging/appointments/PatientAppointmentControllerHttpTest.java)
 (`drivesTheWholePatientAppointmentWorkflowOverHttp` asserts the listed
 `facilityTimeZone`, the advanced version and the recorded `confirmedAt`;
 `staleAndConcealedCommandsAreRejected` asserts refusal of a non-confirmable,

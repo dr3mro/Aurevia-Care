@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
-"""One file per task: the storage behind TODO.md.
+"""One file per task: the swarm's only tracker.
 
-TODO.md grew to over a thousand tasks, and every claim, merge and audit edited the same
-file, so parallel writers conflicted. In task-file mode each task lives in its own file,
-`tasks/<sequence>-<ID>.md`, so two writers only conflict when they edit the same task.
-The sequence number keeps the order of the old file; new tasks get a number between their
-neighbours, so inserting never renames anything else.
-
-Everything else in the swarm still sees one text: `read()` joins the files and `save()`
-splits an edited text back, rewriting only the files that changed. `TODO.md` is a local copy
-of that text for people and scripts. It is not in git (it is ignored): it is rebuilt whenever
-the tasks are read or written, or by `taskstore.py view`, and an edit made to it is lost.
+Each task lives in `tasks/<sequence>-<ID>.md`, so two writers only conflict when
+they edit the same task. The sequence number keeps the order of the old single
+file; new tasks get a number between their neighbours, so inserting never renames
+anything else. `read()` joins the files into the text the swarm tools consume and
+`save()` splits an edited text back, rewriting only the files that changed.
 
 Run from the repository root, like the rest of the swarm scripts.
 """
@@ -19,7 +14,6 @@ import sys
 from pathlib import Path
 
 ROOT = "tasks"
-VIEW = "TODO.md"
 DONE = "done"
 HEAD = "_head.md"
 MARK = ".sharded"           # present once the tasks are in files; its content never changes
@@ -52,7 +46,7 @@ def safe(task_id):
 
 
 def active(root=ROOT):
-    """True once the tasks have moved into files."""
+    """True when the task-file tracker is in use."""
     return (Path(root) / MARK).exists()
 
 
@@ -67,7 +61,7 @@ def files(root=ROOT):
 
 
 def joined(root=ROOT):
-    """The tasks as one text."""
+    """The tasks as one text, read from the task files only."""
     head = Path(root) / HEAD
     parts = [head.read_text(encoding="utf-8") if head.exists() else ""]
     parts += [path.read_text(encoding="utf-8") for _, path in files(root)]
@@ -141,39 +135,15 @@ def write(text, root=ROOT):
     (base / HEAD).write_text(head, encoding="utf-8")
 
 
-def sync_view(root=ROOT, view=VIEW):
-    """Write the local TODO.md from the task files."""
-    text = joined(root)
-    Path(view).write_text(text, encoding="utf-8")
-    return text
+def read(root=ROOT):
+    """The tasks as one text, read from the task files."""
+    return joined(root)
 
 
-def read(root=ROOT, view=VIEW):
-    """The tasks as one text. The local TODO.md is rebuilt when it is missing or out of date."""
-    text = joined(root)
-    path = Path(view)
-    if not path.exists() or path.read_text(encoding="utf-8") != text:
-        path.write_text(text, encoding="utf-8")
-    return text
-
-
-def save(text, root=ROOT, view=VIEW):
-    """Store an edited text and refresh the local TODO.md."""
+def save(text, root=ROOT):
+    """Store an edited text in the task files and return it."""
     write(text, root)
-    return sync_view(root, view)
-
-
-def migrate(root=ROOT, view=VIEW):
-    """Move TODO.md into task files. Returns how many tasks it moved; 0 when already done."""
-    if active(root) or not Path(view).exists():
-        return 0
-    text = Path(view).read_text(encoding="utf-8")
-    write(text, root)
-    if joined(root) != text:
-        raise SystemExit("task files do not rebuild TODO.md exactly; nothing was kept")
-    (Path(root) / MARK).write_text("one file per task\n", encoding="utf-8")
-    sync_view(root, view)
-    return len(split(text)[1])
+    return text
 
 
 def archive(blocks, root=ROOT):
@@ -194,17 +164,13 @@ def archived(root=ROOT):
 
 
 def main(argv=None):
+    """CLI: `view` prints the joined tracker; no other command is supported."""
     argv = sys.argv[1:] if argv is None else argv
     if argv == ["view"]:
-        if active():
-            sync_view()
+        print(read(), end="")
         return 0
-    if argv != ["migrate"]:
-        print("usage: taskstore.py migrate | view", file=sys.stderr)
-        return 2
-    moved = migrate()
-    print(f"moved {moved} task(s) into {ROOT}/" if moved else "nothing to migrate")
-    return 0
+    print("usage: taskstore.py view", file=sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":

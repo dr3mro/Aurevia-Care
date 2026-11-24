@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.TrackAttemptsRecipientReadBackRequiredAcknowledgmentTest`
-([TrackAttemptsRecipientReadBackRequiredAcknowledgmentTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/TrackAttemptsRecipientReadBackRequiredAcknowledgmentTest.java)).
+Test class `com.aurevia.exchange.clauses.TrackAttemptsRecipientReadBackRequiredAcknowledgmentTest`
+([TrackAttemptsRecipientReadBackRequiredAcknowledgmentTest.java](../../../../apps/api/src/test/java/com/aurevia/exchange/clauses/TrackAttemptsRecipientReadBackRequiredAcknowledgmentTest.java)).
 It is a synthetic, database-free clause test in the `clauses` style of
 [TransferHandoffRequiresActiveAssigneeTest.java](../scheduling/transfer-handoff-requires-active-assignee.md):
 mocked repository and audit appender, a transaction template that runs the real
@@ -53,18 +53,18 @@ or misdirected event cannot satisfy the clause.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- [CriticalResultService.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalResultService.java)
+- [CriticalResultService.java](../../../../apps/api/src/main/java/com/aurevia/exchange/critical/CriticalResultService.java)
   — `escalate`, `readBack`, `acknowledge`, `followUp` and `release` each append one
   dedicated immutable event inside the tenant-guarded transaction; delivery and
   patient release never advance the acknowledgment state.
-- [CriticalContract.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalContract.java)
+- [CriticalContract.java](../../../../apps/api/src/main/java/com/aurevia/exchange/critical/CriticalContract.java)
   — `EventType` defines `ESCALATION_ATTEMPT`, `READ_BACK`, `ACKNOWLEDGED`,
   `FOLLOW_UP` and `PATIENT_RELEASED` as distinct facts; `Result` carries the
   recipient and channel fields and the `readBackRequired` policy.
-- [CriticalActions.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalActions.java)
+- [CriticalActions.java](../../../../apps/api/src/main/java/com/aurevia/exchange/critical/CriticalActions.java)
   — the bounded action matrix that reserves acknowledgment and read-back for an
   active clinician and release for a tenant administrator.
-- [CriticalResultController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalResultController.java)
+- [CriticalResultController.java](../../../../apps/api/src/main/java/com/aurevia/exchange/critical/CriticalResultController.java)
   — `POST /api/v1/critical-results/{id}/{escalate,read-back,acknowledge,follow-up,release}`
   are the HTTP entry points; the controller injects the service.
 - [V23__critical_results.sql](../../../../db/migrations/V23__critical_results.sql)
@@ -73,11 +73,11 @@ Production classes and files surveyed and exercised by the entry point:
   block update, delete and truncate, so the separate facts survive a restart.
 
 Broader coverage already present (not repeated here): the HTTP-plus-PostgreSQL
-path in [CriticalResultFlowTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/CriticalResultFlowTest.java)
+path in [CriticalResultFlowTest.java](../../../../apps/api/src/test/java/com/aurevia/it/exchangeresult/CriticalResultFlowTest.java)
 `fullWorkflowKeepsEveryCriticalFactSeparate` asserts the seven ordered events and
 their actor and revision binding; `deliveryAndPatientReleaseNeverAcknowledge`
 covers the same separation at the transport boundary.
-[CriticalResultControllerHttpTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/CriticalResultControllerHttpTest.java)
+[CriticalResultControllerHttpTest.java](../../../../apps/api/src/test/java/com/aurevia/it/exchangeresult/CriticalResultControllerHttpTest.java)
 reaches each route over HTTP.
 
 Verified locally: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=TrackAttemptsRecipientReadBackRequiredAcknowledgmentTest test`

@@ -1,4 +1,4 @@
-<!-- SMARTCLINIC_V1_SPEC.md section 11: every implementation pull request records the items below. Use synthetic data only. -->
+<!-- PROJECT_V1_SPEC.md section 11: every implementation pull request records the items below. Use synthetic data only. -->
 
 ## Summary
 

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.events.clauses.ConsumersDeduplicateExternalEventsInsideSenderTypeTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/events/clauses/ConsumersDeduplicateExternalEventsInsideSenderTypeTest.java`).
+Test class: `com.aurevia.events.clauses.ConsumersDeduplicateExternalEventsInsideSenderTypeTest`
+(path: `apps/api/src/test/java/com/aurevia/events/clauses/ConsumersDeduplicateExternalEventsInsideSenderTypeTest.java`).
 All five tests are active (none disabled) and pass against real PostgreSQL with synthetic fixtures only. Every command
 travels through the HTTP entry point `POST /api/v1/delivery/consumer-events`; the tenant interceptor binds
 `app.current_org` and `app.actor`, and receipts and audit rows are read back with the same tenant context.
@@ -39,14 +39,14 @@ travels through the HTTP entry point `POST /api/v1/delivery/consumer-events`; th
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.events.DeliveryController` — thin adapter that binds the request body and returns the
+- `com.aurevia.events.DeliveryController` — thin adapter that binds the request body and returns the
   `ConsumerReceipt`; the service is injected, never constructed in the controller.
-- `com.aurevia.smartclinic.events.DurableEventService` — `consume` validates inputs, derives the tenant, authorizes
+- `com.aurevia.events.DurableEventService` — `consume` validates inputs, derives the tenant, authorizes
   `CONSUME`, checks the sender/type receipt before the version watermark, confirms optional order and patient ids,
   and returns the recorded outcome; `recordReceipt` persists the receipt and then appends its audit fact.
-- `com.aurevia.smartclinic.events.DeliveryActions` — `allows(CONSUME)` grants only `worker` and
+- `com.aurevia.events.DeliveryActions` — `allows(CONSUME)` grants only `worker` and
   `integration_admin`, so `operator` is refused.
-- `com.aurevia.smartclinic.events.JdbcDeliveryStore` — tenant-guarded reads and writes for `delivery_receipt` and
+- `com.aurevia.events.JdbcDeliveryStore` — tenant-guarded reads and writes for `delivery_receipt` and
   `delivery_audit`, including the dedup key, `maxVersion`, `orderExists` and `patientExists`.
 - `db/migrations/V55__durable_event_outbox.sql` — `delivery_receipt` and `delivery_audit` with row level security
   enabled and forced.

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.AuthorizePatientAccessThroughConnectionStaffAccessTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/AuthorizePatientAccessThroughConnectionStaffAccessTest.java`).
+Test class: `com.aurevia.messaging.clauses.AuthorizePatientAccessThroughConnectionStaffAccessTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/AuthorizePatientAccessThroughConnectionStaffAccessTest.java`).
 All fifteen tests are active (none are disabled) and pass with synthetic tenants,
 subjects, charts, units and connections only.
 
@@ -60,26 +60,26 @@ Staff access through membership, unit and role:
 Production classes exercised through the normal domain-service entry points
 (`ConversationService.open`, `assign` and `get`):
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService` — re-derives membership and
+- `com.aurevia.messaging.conversations.ConversationService` — re-derives membership and
   roles inside the protected transaction, checks the action permission, derives patient identities
   from the connection verifier for a patient, checks the recipient unit for staff, applies the
   object-level access check on existing threads and audits success and gate denials.
-- `com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService` — the real
+- `com.aurevia.messaging.units.CareUnitDirectoryService` — the real
   `PatientConnectionVerifier` implementation: tenant-scoped resolution of the exact connection,
   chart-ownership and active-state checks, verified-chart and active-connection checks, directory
   unit-category resolution and fail-closed connection audits.
-- `com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier` and
-  `com.aurevia.smartclinic.messaging.conversations.ConversationUnitResolver` — the verifier port and
+- `com.aurevia.messaging.conversations.PatientConnectionVerifier` and
+  `com.aurevia.messaging.conversations.ConversationUnitResolver` — the verifier port and
   the bounded conversion from a directory unit category to a conversation unit key.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationActions` and
-  `com.aurevia.smartclinic.messaging.units.MessagingActions` — the bounded action matrix and the
+- `com.aurevia.messaging.conversations.ConversationActions` and
+  `com.aurevia.messaging.units.MessagingActions` — the bounded action matrix and the
   role-to-unit capability matrix that express unit assignment for staff.
 
 For staff, unit assignment is expressed by the role-to-unit capability matrix in
 `ConversationActions.allowsUnit` together with the recipient unit stored on the conversation;
 there is no separate per-subject unit-assignment row. The tests assert both halves: an eligible
 role in its unit succeeds, while the same action in another unit is refused. The
-`com.aurevia.smartclinic.messaging.conversations.ConversationController` HTTP adapter delegates
+`com.aurevia.messaging.conversations.ConversationController` HTTP adapter delegates
 `POST /api/v1/conversations` to the owning service; this task did not change production code, an
 existing test, the contract or a migration.
 

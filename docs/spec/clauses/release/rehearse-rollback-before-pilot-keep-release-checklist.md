@@ -14,7 +14,7 @@ The clause asks for two human artifacts: a rollback actually rehearsed before pi
 
 Authoritative text and ownership:
 
-- [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) line 159 defines WEB-11, whose last sentence is this clause. Line 163 requires evidence for WEB-01, WEB-04, WEB-11 and WEB-12 to be produced with the **infrastructure owner**; the remaining evidence comes from CI and the end-to-end suite. The section 9 G5 row requires each site to approve its workflow and release policy, and the section 10 decision "Implementation priorities and release approval" assigns the signed acceptance matrix and roll-forward/rollback criteria to the Product, clinical, engineering and privacy owners.
+- [SMARTCLINIC_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) line 159 defines WEB-11, whose last sentence is this clause. Line 163 requires evidence for WEB-01, WEB-04, WEB-11 and WEB-12 to be produced with the **infrastructure owner**; the remaining evidence comes from CI and the end-to-end suite. The section 9 G5 row requires each site to approve its workflow and release policy, and the section 10 decision "Implementation priorities and release approval" assigns the signed acceptance matrix and roll-forward/rollback criteria to the Product, clinical, engineering and privacy owners.
 
 Executable material — real, but it proves only the evaluator and its synthetic input:
 

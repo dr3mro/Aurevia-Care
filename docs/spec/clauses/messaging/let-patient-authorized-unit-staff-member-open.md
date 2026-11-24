@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.LetPatientAuthorizedUnitStaffMemberOpenTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/LetPatientAuthorizedUnitStaffMemberOpenTest.java`).
+Test class `com.aurevia.messaging.clauses.LetPatientAuthorizedUnitStaffMemberOpenTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/LetPatientAuthorizedUnitStaffMemberOpenTest.java`).
 It is a synthetic, database-free clause test in the `clauses` style used by
 `docs/spec/clauses/scheduling/transfer-handoff-requires-active-assignee.md`: a
 MockMvc `standaloneSetup` over the real controller and service, mocked
@@ -57,10 +57,10 @@ invented here.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController.open`
+- `com.aurevia.messaging.conversations.ConversationController.open`
   — `POST /api/v1/conversations` is the HTTP entry point; the controller
   injects the service and only binds the JSON command.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService.open`
+- `com.aurevia.messaging.conversations.ConversationService.open`
   (lines 92-134) — owns the rule: it validates every field, checks domain
   authorization before any existence lookup, derives the persisted patient,
   unit and connection from the verified connection for a patient caller,
@@ -69,15 +69,15 @@ Production classes and files surveyed and exercised by the entry point:
   event in one transaction. Its `authorize` (lines 373-388) reads
   `repository.activeRoles`, not the tenant context's purpose field, and writes
   the `DENIED` audit outcome before returning a failure.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationActions` — the
+- `com.aurevia.messaging.conversations.ConversationActions` — the
   bounded action/unit matrix that gives exactly the asserted denials for
   `tenant_admin` and `lab_collector`.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationInputs`,
+- `com.aurevia.messaging.conversations.ConversationInputs`,
   `ConversationContract.OpenRequest`, `Conversation`, `State` and `UnitKey`,
   `PatientConnectionVerifier.VerifiedConnection` and `ConversationRepository`
   — the input guards, command, projection, lifecycle states, verified
   identities and single SQL boundary exercised by the entry point.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` and `ApiException` — render the
+- `com.aurevia.api.ApiErrorHandler` and `ApiException` — render the
   201, 403, 404 and 422 outcomes as the uniform error body asserted in the
   negative cases.
 - `db/migrations/V33__conversation_lifecycle.sql` (lines 143-146, 198-210) —
@@ -94,7 +94,7 @@ Production classes and files surveyed and exercised by the entry point:
 
 Broader coverage already present (not repeated here): the HTTP-plus-PostgreSQL
 path, the verified-link and forced-RLS folds, and the database guards are
-proven in `apps/api/src/test/java/com/aurevia/smartclinic/it/messagingconversations/ConversationFlowTest.java`
+proven in `apps/api/src/test/java/com/aurevia/it/messagingconversations/ConversationFlowTest.java`
 (`patientOpenStaffReplyUnreadMarkReadReopenAndClose`,
 `preconditionsValidationAndTenantIsolation`,
 `revokedLinkAndRevokedMembershipFailOnNextRequest`,

@@ -17,7 +17,7 @@ Routine (docs/WORKFLOW.md): one contained staff-web presentation change with an 
 
 ## Review owner
 
-`smartclinic-senior-react` (staff React/Vite), `smartclinic-senior-typescript` (strict TS), `smartclinic-ux-reviewer` (RTL/keyboard). Definition of done from the senior-react skill applied: full `apps/staff-web/check.sh`, typecheck final lines recorded below, every `error TS…` fixed.
+`orevia-senior-react` (staff React/Vite), `orevia-senior-typescript` (strict TS), `orevia-ux-reviewer` (RTL/keyboard). Definition of done from the senior-react skill applied: full `apps/staff-web/check.sh`, typecheck final lines recorded below, every `error TS…` fixed.
 
 ## Data changes
 
@@ -62,14 +62,14 @@ Evidence source: executed tool commands (Vitest, tsc, ESLint, Vite build, bundle
   (The `useI18n/useTheme must be used inside …Provider` stack traces printed during the run come from the existing intentional fail-closed tests in `tests/i18n/I18nProvider.test.tsx` and `tests/theme/ThemeProvider.test.tsx`; the suite and coverage gate passed.)
 - TYPECHECK — `npm run typecheck` in `apps/staff-web`. Final lines (no `error TS…`):
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   EXIT:0
   ```
   (An earlier check.sh run caught `TS6133: 'screen'/'ReactElement' is declared but its value is never read` in the new test; both unused imports were removed and the gate re-run green.)
 - Markdown check — `python3 -I scripts/check-docs.py` → `check-docs exit: 0`, no output (run after editing this notes file).
-- Independent bounded UX review — `smartclinic-ux-reviewer` (source: **reviewer, simulated**): no blocking findings; structural requirements, no-hidden-text/no-physical-sides/no-behaviour-change and test coverage all judged satisfied. Its advisory "record the missing-class Lesson" is already covered under Lessons for workers below.
+- Independent bounded UX review — `orevia-ux-reviewer` (source: **reviewer, simulated**): no blocking findings; structural requirements, no-hidden-text/no-physical-sides/no-behaviour-change and test coverage all judged satisfied. Its advisory "record the missing-class Lesson" is already covered under Lessons for workers below.
 - Commit (local branch only, not pushed): `327693f3 Make AccessStateNotice responsive with breakpoint-aware layout`.
 - Entry-point-to-test trace: `AdminScreen.tsx` renders `<AccessStateNotice state label />` in the access-review section → the new test renders the same component under the real `ThemeProvider` + `I18nProvider` with a deterministic `matchMedia` stub → asserts `data-breakpoint`, `data-access-state`, role, glyph, both `<bdi>` runs, logical style string and RTL behaviour.
 
@@ -96,7 +96,7 @@ Not required: display-only change to a synthetic access-state notice. No signed 
 - **Non-applicable acceptance items:** `AccessStateNotice` contains no input and no interactive control, so the 16 px input-text rule and the 44×44 coarse-pointer target rule do not apply to this component (they are owned by the responsive Form/FormField/Button stories). The component introduces no tab stop.
 - **Pixel checks deferred:** per the story, jsdom asserts classes, attributes and structure only; pixel-level no-scroll/no-overlap/zoom checks remain with the Playwright responsive tasks.
 - **Raw `1px` border (advisory, reviewer, simulated):** the pre-existing `border: 1px solid ${tokens.border}` uses a literal pixel rather than `var(--sc-border-width-thin, 1px)` that `docs/design/responsive-layout.md` §1 prefers for non-breakpoint values. It is functionally harmless and was intentionally left unchanged because the story forbids changing behaviour/styling beyond responsiveness; a future dedicated change could adopt the token variable.
-- **Out-of-scope pre-existing defect (observed, not touched):** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds committed conflict markers in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java`. Verified present in both `HEAD` and `origin/main` via `git show`, so they predate this task; my clean `git merge --no-edit origin/main` introduced nothing and my scoped files contain no markers. These Java files are outside this task's scope and were left untouched; the integrator/owner should route a repair (likely to break the Java build).
+- **Out-of-scope pre-existing defect (observed, not touched):** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds committed conflict markers in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java`. Verified present in both `HEAD` and `origin/main` via `git show`, so they predate this task; my clean `git merge --no-edit origin/main` introduced nothing and my scoped files contain no markers. These Java files are outside this task's scope and were left untouched; the integrator/owner should route a repair (likely to break the Java build).
 
 ## Lessons for workers
 

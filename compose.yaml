@@ -1,5 +1,5 @@
 services:
   app:
-    image: ${SMARTCLINIC_IMAGE:-smartclinic:test}
+    image: ${OREVIA_IMAGE:-orevia:test}
     ports:
       - "127.0.0.1:8080:8080"

@@ -60,13 +60,13 @@ Observed with executed tools in `apps/staff-web` (Node 26, Vitest 5.1.1):
   `Tests  1912 passed (1912)`, then the coverage summary below.
 - `npm run typecheck` → final lines:
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   (no `error TS…`, exit 0).
 - `npm run lint` → final lines:
   ```
-  > smartclinic-staff-web@0.1.0 lint
+  > orevia-staff-web@0.1.0 lint
   > eslint . --max-warnings=0
   ```
   (no warnings, exit 0).
@@ -109,7 +109,7 @@ and Arabic-clinician acceptance remain separate launch gates and are not claimed
 ## Findings
 
 - Pre-existing, unrelated defect observed at HEAD while reconciling `origin/main`: committed
-  conflict markers exist in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  conflict markers exist in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java` and `Hl7Segment.java` (`git grep -nE '^(<<<<<<<|>>>>>>>) '`). These files are
   outside this task's scope and were not touched; reported for the owning worker/integrator.
 - No missing responsive class: every class needed (`page`, `stack`, `grid-2`, `table-region`,

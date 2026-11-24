@@ -144,7 +144,7 @@ copies. `git apply --check` against the current repository passes.
 +          --health-cmd "pg_isready -U postgres"
 +          --health-interval 10s --health-timeout 5s --health-retries 5
 +    env:
-+      SMARTCLINIC_PG_ADMIN: postgres
++      OREVIA_PG_ADMIN: postgres
 +    steps:
 +      # Trusted scripts from main; the candidate source comes only from the bundle.
 +      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -297,7 +297,7 @@ copies. `git apply --check` against the current repository passes.
 +      # the documented fallback when the key is absent.
 +      GH_TOKEN: ${{ github.token }}
        GH_ISSUES_TOKEN: ${{ github.token }}
-       SMARTCLINIC_PG_ADMIN: postgres
+       OREVIA_PG_ADMIN: postgres
 -      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
      steps:
        - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

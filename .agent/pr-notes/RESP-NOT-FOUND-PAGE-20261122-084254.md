@@ -26,8 +26,8 @@ was touched (docs/WORKFLOW.md).
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) and UX reviewer
-(`smartclinic-ux-reviewer`), both simulated bounded reviews. Their findings are
+Senior React and Vite (`orevia-senior-react`) and UX reviewer
+(`orevia-ux-reviewer`), both simulated bounded reviews. Their findings are
 addressed under Findings below. No human or real-clinical evidence is claimed.
 
 ## Data changes
@@ -150,7 +150,7 @@ change is presentation only and touched no domain contract or state machine.
 - **Pre-existing, out of scope — committed conflict markers.** After a clean
   `git merge --no-edit origin/main` (`Already up to date`), `git grep -nE
   '^(<<<<<<<|>>>>>>>) '` reported markers already committed in `HEAD` on
-  `origin/main` inside `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `origin/main` inside `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java` and `Hl7Segment.java` (a BUILD-37 merge artifact). They are
   not from this change and are outside the declared scope; no file was edited.
 - **Pre-existing/environmental — `check-pack.py`.** `python3 -I scripts/check-pack.py`

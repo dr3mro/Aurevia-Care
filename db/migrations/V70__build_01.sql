@@ -188,13 +188,13 @@ REVOKE ALL ON FUNCTION public.require_staff_invitation_admin() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.require_distinct_invitation_roles() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.revoke_staff_invitation(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.accept_staff_invitation(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.revoke_staff_invitation(uuid) TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.accept_staff_invitation(text) TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.revoke_staff_invitation(uuid) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.accept_staff_invitation(text) TO orevia_app;
 
 -- The runtime role may only advance the two lifecycle timestamps; it cannot
 -- rewrite the token, roles, subject, expiry or provenance of an invitation.
-REVOKE ALL ON public.staff_invitation FROM smartclinic_app;
-GRANT SELECT, INSERT ON public.staff_invitation TO smartclinic_app;
+REVOKE ALL ON public.staff_invitation FROM orevia_app;
+GRANT SELECT, INSERT ON public.staff_invitation TO orevia_app;
 -- Column-scoped UPDATE must be granted after the table-level REVOKE: a later
 -- REVOKE UPDATE would also withdraw column privileges in PostgreSQL.
-GRANT UPDATE (used_at, revoked_at) ON public.staff_invitation TO smartclinic_app;
+GRANT UPDATE (used_at, revoked_at) ON public.staff_invitation TO orevia_app;

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.authz.clauses.UsersExplicitlySwitchActiveOrganizationTest`
-(under `apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/`).
+Test class: `com.aurevia.authz.clauses.UsersExplicitlySwitchActiveOrganizationTest`
+(under `apps/api/src/test/java/com/aurevia/authz/clauses/`).
 
 - `sameUserExplicitlySwitchesActiveOrganizationBetweenRequests` — the rule being met. One synthetic
   subject entitled to two organizations sends a different `X-Active-Organization` header on two
@@ -26,12 +26,12 @@ Test class: `com.aurevia.smartclinic.authz.clauses.UsersExplicitlySwitchActiveOr
 
 Production classes exercised (read-only — none were changed by this task):
 
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` — binds the selected tenant on every
+- `com.aurevia.web.TenantContextInterceptor` — binds the selected tenant on every
   `/api/v1/**` request and clears it at completion.
-- `com.aurevia.smartclinic.web.ClaimsTenantResolver` — validates the explicit selection against the
+- `com.aurevia.web.ClaimsTenantResolver` — validates the explicit selection against the
   verified token's `orgs` claim.
-- `com.aurevia.smartclinic.web.AuthenticatedPrincipal` — freezes the set of selectable organizations.
-- `com.aurevia.smartclinic.tenant.TenantContext` — the bound request tenant observed by the probe.
+- `com.aurevia.web.AuthenticatedPrincipal` — freezes the set of selectable organizations.
+- `com.aurevia.tenant.TenantContext` — the bound request tenant observed by the probe.
 
 The clause is realized as a stateless, per-request explicit selection rather than a persistent
 "switch" action: the caller names the active organization on each protected request and the tenant

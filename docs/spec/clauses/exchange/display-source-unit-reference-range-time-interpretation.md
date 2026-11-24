@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.DisplaySourceUnitReferenceRangeTimeInterpretationTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/DisplaySourceUnitReferenceRangeTimeInterpretationTest.java`),
+Test class `com.aurevia.exchange.clauses.DisplaySourceUnitReferenceRangeTimeInterpretationTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/DisplaySourceUnitReferenceRangeTimeInterpretationTest.java`),
 an HTTP-level integration test on a dedicated real PostgreSQL database with
 forced row-level security and synthetic tenants `4111…` / `4222…`. Every method
 drives `GET /api/v1/trends/{patientId}?testCode=HBA1C`:

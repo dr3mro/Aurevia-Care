@@ -31,7 +31,7 @@ errors. This is an ordering artifact of my first run, not a defect in the branch
 
 Evidence provenance: **tool** evidence for every command below (I executed and
 observed each run). **Reviewer** evidence is a bounded advisory
-`smartclinic-senior-mobile` review of the scoped diff this pass (report appended
+`orevia-senior-mobile` review of the scoped diff this pass (report appended
 under Findings when received); no named clinician, patient or human-participant
 evidence was collected and none is claimed. No patient data, credential or raw
 log appears in this note.
@@ -67,7 +67,7 @@ patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) definition of done is
+Senior React Native and Expo (`orevia-senior-mobile`) definition of done is
 met: `bash apps/patient-mobile/check.sh` passes with typecheck, lint and 100%
 coverage. A bounded independent advisory review of the scoped diff was requested
 this pass (tool/subagent evidence); its verdict was "correct and complete, no
@@ -225,7 +225,7 @@ device remains a separate launch gate and is not claimed here.
    `needs-human` and cannot merge.
 6. **Pre-existing conflict markers in three Java HL7 files (out of scope,
    flagged, not fixed).** Markers exist inside comments in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
    and on `origin/main` too; compile/tests are unaffected and they are unrelated
    to this story.
 7. No requirement-ID-named folder, new migration, new dependency or scope

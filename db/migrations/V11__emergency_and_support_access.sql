@@ -75,6 +75,6 @@ CREATE INDEX support_incident_subject_idx
 
 -- Lifecycle transitions are bounded UPDATEs; there is no delete or truncate path.
 GRANT SELECT, INSERT, UPDATE ON public.emergency_access_grant,
-                                public.support_access_incident TO smartclinic_app;
+                                public.support_access_incident TO orevia_app;
 REVOKE DELETE, TRUNCATE ON public.emergency_access_grant,
-                          public.support_access_incident FROM smartclinic_app;
+                          public.support_access_incident FROM orevia_app;

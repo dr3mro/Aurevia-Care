@@ -12,8 +12,8 @@ Proven by tests
 
 Active proof (synthetic fixtures only, no database and no real patient data):
 
-- Test class: `com.aurevia.smartclinic.documents.clauses.LinkOriginalPdfsImagesChartOrderResultTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/LinkOriginalPdfsImagesChartOrderResultTest.java`).
+- Test class: `com.aurevia.documents.clauses.LinkOriginalPdfsImagesChartOrderResultTest`
+  (path: `apps/api/src/test/java/com/aurevia/documents/clauses/LinkOriginalPdfsImagesChartOrderResultTest.java`).
   It mirrors the neighbouring `DocumentServiceSubjectLinkTest` fixture: a Mockito
   `DocumentRepository`, a directly invoked `TransactionTemplate` callback and
   `TenantContext.set`/`clear` around each test.
@@ -41,17 +41,17 @@ Active proof (synthetic fixtures only, no database and no real patient data):
 
 Production classes exercised by the proof:
 
-- `com.aurevia.smartclinic.documents.DocumentService` — `link()` (input validation,
+- `com.aurevia.documents.DocumentService` — `link()` (input validation,
   chart gate, insert, history event, audit) and `authorize()` (active-membership and
   role gates, both with `DENIED` audits).
-- `com.aurevia.smartclinic.documents.DocumentPolicy` — `DOCUMENT_LINK` action matrix;
+- `com.aurevia.documents.DocumentPolicy` — `DOCUMENT_LINK` action matrix;
   `clinician` and `reception` are allowed, other roles are not.
-- `com.aurevia.smartclinic.documents.DocumentInputs` — bounded subject types
+- `com.aurevia.documents.DocumentInputs` — bounded subject types
   (`chart`, `order`, `result`), media types (PDF/JPEG/PNG), size and rotation validation.
-- `com.aurevia.smartclinic.documents.DocumentRepository` — `hasActiveMembership`,
+- `com.aurevia.documents.DocumentRepository` — `hasActiveMembership`,
   `activeRoles`, `chartExists` and `insert` (the RLS-bounded SQL boundary). `subjectExists`
   is invoked inside the store's real `insert`, which is mocked here, not by `link()` itself.
-- `com.aurevia.smartclinic.documents.DocumentController` — thin `POST
+- `com.aurevia.documents.DocumentController` — thin `POST
   /api/v1/documents/associations` adapter that receives the service by injection.
 - `db/migrations/V17__document_associations.sql` — association and event tables with
   `ENABLE`/`FORCE ROW LEVEL SECURITY`, tenant policies, a SHA-256 trigger over the retained
@@ -59,7 +59,7 @@ Production classes exercised by the proof:
   verified-content function used by download.
 
 The thin HTTP adapter `DocumentController.link()` is unit-covered by
-`apps/api/src/test/java/com/aurevia/smartclinic/it/documents/DocumentControllerTest.java`
+`apps/api/src/test/java/com/aurevia/it/documents/DocumentControllerTest.java`
 (`linkReturns201WithALocation`, with a mocked service). The link POST route is also driven
 over real HTTP by `@Tag("integration")` `@SpringBootTest(RANDOM_PORT)` helpers in
 `DocumentDownloadHttpIntegrationTest.link(...)` (asserts 201),
@@ -72,8 +72,8 @@ authorization decision lives. `DocumentArtifactControllerHttpIntegrationTest` is
 real HTTP test for the X-03 `/api/v1/documents/artifacts/...` commands, not this route.
 Two remaining `link()` branches — insert returning zero rows (404 subject not found) and a
 `DuplicateKeyException` (409 conflict) — are covered by
-`apps/api/src/test/java/com/aurevia/smartclinic/documents/DocumentServiceSubjectLinkTest.java`
-and `apps/api/src/test/java/com/aurevia/smartclinic/it/documents/DocumentServiceTest.java`.
+`apps/api/src/test/java/com/aurevia/documents/DocumentServiceSubjectLinkTest.java`
+and `apps/api/src/test/java/com/aurevia/it/documents/DocumentServiceTest.java`.
 No production code, existing test, migration or contract was changed by this evidence task.
 
 ## Gap

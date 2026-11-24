@@ -64,4 +64,4 @@ CREATE INDEX chart_entry_patient_idx ON public.chart_entry
     (organization_id, patient_id, type, effective_from DESC);
 
 REVOKE ALL ON public.chart_entry FROM PUBLIC;
-GRANT SELECT, INSERT, UPDATE ON public.chart_entry TO smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.chart_entry TO orevia_app;

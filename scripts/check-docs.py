@@ -3,7 +3,7 @@
 * Relative links must point at files that exist. Links into the generated
   developer reference (docs/reference/<module>/...) are exempt.
 * Every requirement ID mentioned outside the specification must be defined in
-  SMARTCLINIC_V1_SPEC.md. Ranges such as MSG-01-07 and IAM-01/02 are expanded.
+  .opencode/config/PROJECT_V1_SPEC.md. Ranges such as MSG-01-07 and IAM-01/02 are expanded.
 * Generated Markdown is also checked for structural faults that make a committed
   document unreadable: unbalanced code fences, heading jumps, ragged tables, raw
   control characters, unmasked tokens and unclosed HTML comments or markers.
@@ -14,11 +14,17 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = "SMARTCLINIC_V1_SPEC.md"
+SPEC = ".opencode/config/PROJECT_V1_SPEC.md"
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
 GENERATED = ("staff-web/", "patient-mobile/")
 # "plan" is a pre-existing scratch copy of this pack and is not checked.
 SKIP = {".git", "build", "node_modules", ".opencode", "plan"}
+# Instruction and tracker files moved under .opencode; legacy links to their
+# former root paths are not broken links to a file the repo still uses.
+MOVED_DOCS = {"TODO.md", "AGENTS.md", "CODING_STYLE.md", "CONSTRAINTS.md",
+              "README-SETUP.md", "STARTER_PROMPT.md", "MEMORY.md", "WORKSPACE.md",
+              "BUGS.md", "PROJECT.md", "OREVIA_V1_SPEC.md",
+              "PROJECT_V1_SPEC.md"}
 
 # Structural rules for generated Markdown. The token pattern carries a
 # word-boundary guard so ordinary words such as "risk-transitions" are not
@@ -66,9 +72,13 @@ SKIP_PREFIXES = (".agent/", "docs/archive/")
 
 
 def markdown_files(root):
+    # The specification moved under .opencode/config; it must still be
+    # enumerated so its links, IDs and structure are checked, even though the
+    # rest of .opencode is skipped (instruction and tracker files).
     return [p for p in root.rglob("*.md")
-            if not SKIP & set(p.relative_to(root).parts)
-            and not p.relative_to(root).as_posix().startswith(SKIP_PREFIXES)]
+            if (p.relative_to(root).as_posix() == SPEC
+                or (not SKIP & set(p.relative_to(root).parts)
+                    and not p.relative_to(root).as_posix().startswith(SKIP_PREFIXES)))]
 
 
 def generated_markdown_files(root):
@@ -174,8 +184,10 @@ def check(root=ROOT):
             file_part = target.split("#")[0]
             if rel.parts[:2] == ("docs", "reference") and file_part.startswith(GENERATED):
                 continue
-            if Path(file_part).name == "TODO.md" or "tasks" in Path(file_part).parts:
-                continue  # TODO.md is a local view; a task file moves to tasks/done when it is finished
+            if "tasks" in Path(file_part).parts or Path(file_part).name in MOVED_DOCS:
+                # Trackers and instruction files now live under .opencode/config and
+                # .opencode/setup; legacy links to their old root paths are ignored.
+                continue
             if file_part and not (path.parent / file_part).exists():
                 errors.append(f"{rel}: broken link {target}")
         if rel.name == SPEC:

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.scheduling.clauses.EligibleRolesRecordVitalsOpenEncounterTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/scheduling/clauses/EligibleRolesRecordVitalsOpenEncounterTest.java`).
+Test class: `com.aurevia.scheduling.clauses.EligibleRolesRecordVitalsOpenEncounterTest`
+(path: `apps/api/src/test/java/com/aurevia/scheduling/clauses/EligibleRolesRecordVitalsOpenEncounterTest.java`).
 All six tests are active (none disabled) and pass with synthetic data only. Fixtures mirror the
 neighbouring `authz.clauses` service tests: mocked `WorklistRepository`, `AppointmentService`,
 `SchedulingRepository` and `AuditAppender`, an inline `TransactionTemplate`, a fixed `Clock` and a
@@ -37,22 +37,22 @@ neighbouring `authz.clauses` service tests: mocked `WorklistRepository`, `Appoin
 
 Production classes exercised through their normal entry points:
 
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistPolicy` — the authoritative CLN-02 role
+- `com.aurevia.scheduling.checkin.WorklistPolicy` — the authoritative CLN-02 role
   matrix. `allows(VITALS_RECORD, role)` admits only `clinical_assistant` and `clinician`;
   `allows(ENCOUNTER_OPEN, role)` admits only `clinician`. Clerical roles, tenant administration,
   privacy audit, unknown and null roles fail closed.
-- `com.aurevia.smartclinic.scheduling.checkin.CheckInService` — `openEncounter` re-derives active
+- `com.aurevia.scheduling.checkin.CheckInService` — `openEncounter` re-derives active
   membership and roles from `SchedulingRepository` inside a tenant-guarded transaction and
   denies `ENCOUNTER_OPEN` before any transition; `authorize` writes a `DENIED` audit row on refusal
   and the happy path writes `SUCCESS`.
-- `com.aurevia.smartclinic.scheduling.AppointmentService` and `AppointmentState` — the shared
+- `com.aurevia.scheduling.AppointmentService` and `AppointmentState` — the shared
   state machine reached only on an allowed encounter open (`CHECKED_IN` → `IN_PROGRESS`).
 
 Neighbouring implementations observed in the source survey (not changed by this task):
-`com.aurevia.smartclinic.chart.record.ChartService` records an actual `VITAL` chart entry under
+`com.aurevia.chart.record.ChartService` records an actual `VITAL` chart entry under
 `ChartActionPolicy.CHART_ENTRY_CREATE` (CLN-03, clinical roles only); `CommandCatalog` binds the
 clerical CLN-02 actions to the `WorklistPolicy` owner; `ClinicController` in
-`com.aurevia.smartclinic.scheduling.checkin` is the HTTP entry point that delegates to
+`com.aurevia.scheduling.checkin` is the HTTP entry point that delegates to
 `CheckInService`; the CLN-02 tables and role-grant folds live in the Flyway migrations under
 `db/migrations` and the protected-command contract is generated in `contracts/openapi`.
 

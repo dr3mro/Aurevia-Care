@@ -44,9 +44,9 @@ Acceptance mapping:
 ## Risk class
 
 Cross-boundary (persistence port, migration, HTTP entry point) with tenant
-isolation. Reviewed by the assigned domain specialists: `smartclinic-senior-backend`,
-`smartclinic-senior-database`, `smartclinic-senior-spring-security`,
-`smartclinic-software-architect`, `smartclinic-test-engineer` (simulated reviewer
+isolation. Reviewed by the assigned domain specialists: `orevia-senior-backend`,
+`orevia-senior-database`, `orevia-senior-spring-security`,
+`orevia-software-architect`, `orevia-test-engineer` (simulated reviewer
 routing per AGENTS.md; no human participant).
 
 ## Review owner

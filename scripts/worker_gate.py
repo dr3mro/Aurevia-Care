@@ -31,7 +31,8 @@ STRICT_PREFIXES = ("FIX-", "DLV-")
 
 # Files the orchestrator and the integrator own. A swarm worker must never change
 # them, so they are checked by name wherever they appear in the diff.
-TRACKER_FILES = ("TODO.md", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md")
+TRACKER_FILES = (".opencode/config/MEMORY.md", ".opencode/config/WORKSPACE.md",
+                 ".opencode/config/BUGS.md", ".opencode/config/PROJECT.md")
 REQUIRED_SECTIONS = ("Test evidence", "Coverage")
 UNFINISHED_SECTION = "Why this is not finished"
 SCOPE_LINE = re.compile(r"^Scope \(stay inside these paths\):\s*(.*)$", re.M)
@@ -369,7 +370,7 @@ def validate_candidate(changed, scope, notes, notes_path, finished,
     if candidate_sha is not None and (not candidate_sha or not head_sha or candidate_sha != head_sha):
         violations.append({"file": "", "rule": "candidate-changed"})
     for path in changed:
-        if Path(path).name in TRACKER_FILES:
+        if path in TRACKER_FILES:
             violations.append({"file": path, "rule": "tracker"})
             continue
         if is_notes_file(path) or under_scope(path, scope):

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.authz.clauses.TenantOrganizationTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/TenantOrganizationTest.java`),
+Test class: `com.aurevia.authz.clauses.TenantOrganizationTest`
+(`apps/api/src/test/java/com/aurevia/authz/clauses/TenantOrganizationTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the
 HTTP entry point `GET /api/v1/facilities/{code}` against two synthetic organizations
 with the same tenant-local facility code `MAIN`.
@@ -29,14 +29,14 @@ with the same tenant-local facility code `MAIN`.
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` and
-  `com.aurevia.smartclinic.web.ClaimsTenantResolver` — bind the selected organization
+- `com.aurevia.web.TenantContextInterceptor` and
+  `com.aurevia.web.ClaimsTenantResolver` — bind the selected organization
   as the request tenant context; missing or invalid selection fails closed.
-- `com.aurevia.smartclinic.tenant.TenantContext` — the request-scoped context whose
+- `com.aurevia.tenant.TenantContext` — the request-scoped context whose
   `organizationId` is the active organization (never inferred from a resource).
-- `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager` — binds the selected
+- `com.aurevia.tenant.TenantGuardTransactionManager` — binds the selected
   organization to `app.current_org` inside each transaction.
-- `com.aurevia.smartclinic.tenancy.FacilityController`, `FacilityService` and
+- `com.aurevia.tenancy.FacilityController`, `FacilityService` and
   `FacilityRepository` — re-check membership in the active organization on every
   protected request and read only that organization's rows.
 - `db/migrations/V1__tenant_schema.sql` — the `organization` table and composite

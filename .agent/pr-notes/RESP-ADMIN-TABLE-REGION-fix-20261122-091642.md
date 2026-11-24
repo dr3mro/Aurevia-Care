@@ -45,11 +45,11 @@ No API, data, authorization, contract or deployment boundary changed
 
 ## Review owner
 
-`smartclinic-senior-react` — one bounded read-only review of the current scoped
+`orevia-senior-react` — one bounded read-only review of the current scoped
 change (simulated subagent, this pass) returned **"No blocking finding exists"**;
 its verdict was based on file reads of the two scoped files plus
 `src/theme/breakpoints.ts`, `responsive.css`, `vite.config.ts`, `tests/setup.ts`,
-`admin-screen.test.tsx` and a usage grep. `smartclinic-ux-reviewer` and a senior-
+`admin-screen.test.tsx` and a usage grep. `orevia-ux-reviewer` and a senior-
 React review were also recorded by the implementation worker. No reviewer
 edited code or ran builds/tests. No human, clinician or participant review was
 available or claimed.
@@ -102,18 +102,18 @@ run; `grep -c 'error TS'` returned 0; the typecheck and build `tsc --noEmit`
 steps produced empty output):
 
 ```
-> smartclinic-staff-web@0.1.0 gen:api:check
+> orevia-staff-web@0.1.0 gen:api:check
 > bash scripts/gen-api-types.sh --check
 ✨ openapi-typescript 7.4.2
 gen:api: generated client matches the contract
 
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 
-> smartclinic-staff-web@0.1.0 lint
+> orevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 
-> smartclinic-staff-web@0.1.0 build
+> orevia-staff-web@0.1.0 build
 > tsc --noEmit -p tsconfig.json && vite build
 ✓ built in 134ms
 ```
@@ -206,7 +206,7 @@ regression and no blocking correctness defect.
   `.table-region`'s `overflow: auto`, but it is pre-existing behaviour required
   by the frozen assertion, so it was preserved. It has no RTL mirroring effect.
 - **Pre-existing, out of scope:** conflict-marker lines in three
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/*` Javadoc
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/*` Javadoc
   comments are committed on `origin/main` (verified with `git show`), predate
   this work, and are inside comments so they do not break compilation. They are
   not merge conflicts from this pass and were not touched.

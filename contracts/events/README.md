@@ -1,7 +1,7 @@
 # X-02 — Durable delivery contract (ARC-05)
 
 Synthetic contract for the durable outbox, consumer deduplication, bounded retry,
-replay and dead-letter review in `apps/api/src/main/java/com/aurevia/smartclinic/events`.
+replay and dead-letter review in `apps/api/src/main/java/com/aurevia/events`.
 All identifiers and digests below are synthetic; no patient data or credential
 appears in a fixture or an audit fact.
 

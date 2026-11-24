@@ -1,1 +1,1 @@
-smartclinic bootstrap ready
+orevia bootstrap ready

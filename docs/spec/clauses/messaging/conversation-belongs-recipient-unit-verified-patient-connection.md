@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.ConversationBelongsRecipientUnitVerifiedPatientConnectionTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ConversationBelongsRecipientUnitVerifiedPatientConnectionTest.java`),
+Test class: `com.aurevia.messaging.clauses.ConversationBelongsRecipientUnitVerifiedPatientConnectionTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/ConversationBelongsRecipientUnitVerifiedPatientConnectionTest.java`),
 a real-PostgreSQL HTTP integration test under the `synthetic-auth` profile. It
 uses the production JDBC messaging store, so care units, verified relationships
 and patient-unit connections are resolved from tenant-owned tables under forced
@@ -42,24 +42,24 @@ row-level security. All fixtures are synthetic.
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController` —
+- `com.aurevia.messaging.conversations.ConversationController` —
   `POST /api/v1/conversations` and `POST /api/v1/conversations/{id}/reply`; a thin
   adapter that injects the domain service and parses the version precondition.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService` —
+- `com.aurevia.messaging.conversations.ConversationService` —
   `open` derives the stored patient, recipient unit and connection from the
   verified connection for a patient caller, and `reply` re-resolves the stored
   connection on every patient message so revocation stops new messaging.
-- `com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier` —
+- `com.aurevia.messaging.conversations.PatientConnectionVerifier` —
   the conversation-owned boundary whose `requireActive` returns the server-derived
   patient, connection and unit identities.
-- `com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService` —
+- `com.aurevia.messaging.units.CareUnitDirectoryService` —
   implements that verifier, resolves the exact connection in the active tenant,
   requires an active verified chart and connection, and compares the directory's
   unit category with the requested one.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationRepository` and
-  `com.aurevia.smartclinic.messaging.units.JdbcMessagingStore` — the tenant-guarded
+- `com.aurevia.messaging.conversations.ConversationRepository` and
+  `com.aurevia.messaging.units.JdbcMessagingStore` — the tenant-guarded
   SQL boundaries over the conversation and care-unit tables.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationUnitResolver` —
+- `com.aurevia.messaging.conversations.ConversationUnitResolver` —
   parses the directory's bounded unit category into the conversation vocabulary.
 - `db/migrations/V33__conversation_lifecycle.sql` — the conversation and
   append-only trails with FORCE RLS, the verified-link insert guard and immutable

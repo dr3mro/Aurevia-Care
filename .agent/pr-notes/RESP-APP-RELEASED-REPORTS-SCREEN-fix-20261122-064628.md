@@ -31,7 +31,7 @@ re-proved it with fresh tool runs this pass:
 
 Evidence provenance: **tool** evidence (commands I executed and observed this
 run) for every gate below; **reviewer** evidence is the earlier advisory
-`smartclinic-senior-mobile` review carried forward. No simulated-user or
+`orevia-senior-mobile` review carried forward. No simulated-user or
 human-participant evidence was collected this pass and no clinical or patient
 acceptance is claimed. No patient data, credential or raw log appears in this
 note.
@@ -67,7 +67,7 @@ patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) definition of done met.
+Senior React Native and Expo (`orevia-senior-mobile`) definition of done met.
 The advisory senior-mobile review recorded in earlier hand-off notes found no
 material gap; its two non-blocking observations (no `rowGap` on wrapped panes;
 RTL test uses `toContain` while exact order is asserted by the matrix) were
@@ -226,7 +226,7 @@ device remains a separate launch gate and is not claimed here.
    `needs-human` and cannot merge.
 5. **Pre-existing conflict markers in three Java HL7 files (out of scope,
    flagged, not fixed).** Markers exist inside comments in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
    and on `origin/main` too; compile/tests are unaffected and they are unrelated
    to this story.
 6. **Non-failing React `act()` warning** from `src/app/PatientResource.tsx:54`

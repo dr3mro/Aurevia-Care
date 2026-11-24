@@ -13,8 +13,8 @@ Partly proven
 Active HTTP-level proof (`synthetic-auth` profile, a fresh PostgreSQL database migrated from
 `db/migrations`, synthetic fixtures only):
 
-- Test class: `com.aurevia.smartclinic.chart.clauses.CaptureChiefConcernHistoryExamAssessmentDiagnosesTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/CaptureChiefConcernHistoryExamAssessmentDiagnosesTest.java`).
+- Test class: `com.aurevia.chart.clauses.CaptureChiefConcernHistoryExamAssessmentDiagnosesTest`
+  (path: `apps/api/src/test/java/com/aurevia/chart/clauses/CaptureChiefConcernHistoryExamAssessmentDiagnosesTest.java`).
 - `capturesProblemsAllergiesMedicationsAndVitalsWithUnitsAndProvenance` — positive proof. Through
   `POST /api/v1/chart/records/entries`: a PROBLEM retains its submitted code/text and snapshots a
   versioned diagnosis-catalog mapping (`mappedCode`, `mappedText`, `catalogVersion`), captures
@@ -40,22 +40,22 @@ Complete-but-disabled proof for the missing SOAP narrative part:
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.chart.record.ChartController` — thin adapter publishing
+- `com.aurevia.chart.record.ChartController` — thin adapter publishing
   `GET/POST /api/v1/chart/records/...`.
-- `com.aurevia.smartclinic.chart.record.ChartService` — capture validation, role authorization,
+- `com.aurevia.chart.record.ChartService` — capture validation, role authorization,
   provenance derivation, optional diagnosis mapping and the clinical-author/data-entry-actor split.
-- `com.aurevia.smartclinic.chart.record.RecordEntryCommand`, `ChartEntry`, `ChartView` and the
+- `com.aurevia.chart.record.RecordEntryCommand`, `ChartEntry`, `ChartView` and the
   `EntryType` / `EntrySource` / `PresenceState` / `VerificationState` enums — the capture contract.
-- `com.aurevia.smartclinic.chart.record.ChartRepository` — tenant-guarded SQL boundary; inserts and
+- `com.aurevia.chart.record.ChartRepository` — tenant-guarded SQL boundary; inserts and
   reads `chart_entry` from `db/migrations/V13__longitudinal_chart.sql`.
-- `com.aurevia.smartclinic.chart.record.ChartActionPolicy` — the clinical-role matrix that refuses
+- `com.aurevia.chart.record.ChartActionPolicy` — the clinical-role matrix that refuses
   non-clinical capture.
 
 Adjacent production found in the survey but not part of this clause's proof: the SOAP narrative
 fields (chief concern, history, exam, assessment, plan) are defined as free-text fields of the
-CLN-04 template family in `apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/BaselineTemplates.java`
+CLN-04 template family in `apps/api/src/main/java/com/aurevia/clinical/templates/BaselineTemplates.java`
 (`TemplateKind.SOAP`) and saved as note revisions by `clinical.templates.TemplateService` /
-`clinical.notes.ClinicalNoteService`. No controller under `apps/api/src/main/java/com/aurevia/smartclinic/web`
+`clinical.notes.ClinicalNoteService`. No controller under `apps/api/src/main/java/com/aurevia/web`
 captures those sections for the CLN-03 chart. The chart routes are not currently published in
 `contracts/openapi.yaml`. No new class, controller or workflow was found that captures the SOAP
 narrative sections as CLN-03 chart content.

@@ -14,11 +14,11 @@ Active HTTP-level proof (`synthetic-auth` profile, a dedicated PostgreSQL databa
 migrated from `db/migrations`, synthetic fixtures only). No production code, existing
 test, migration or contract was changed by this evidence task.
 
-- Test class: `com.aurevia.smartclinic.chart.clauses.SuggestFollowUpDateUsingConfiguredVisitTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/SuggestFollowUpDateUsingConfiguredVisitTest.java`).
+- Test class: `com.aurevia.chart.clauses.SuggestFollowUpDateUsingConfiguredVisitTest`
+  (path: `apps/api/src/test/java/com/aurevia/chart/clauses/SuggestFollowUpDateUsingConfiguredVisitTest.java`).
   It follows the database setup and fixture style of the neighbouring
   `chart.clauses` tests: roles created if absent, a fresh database owned by
-  `smartclinic_migrate`, Flyway migration from `filesystem:../../db/migrations`, a
+  `orevia_migrate`, Flyway migration from `filesystem:../../db/migrations`, a
   synthetic tenant with a `MAIN` facility in `America/New_York`, `NEW` / `FOLLOW` /
   `NOCONF` visit types, approved interval configuration and two synthetic patients.
 - `suggestsFollowUpDateFromConfiguredVisitTypeInterval` — positive proof. `POST
@@ -46,16 +46,16 @@ test, migration or contract was changed by this evidence task.
   a role without the scheduling read action.
 
 Entry-point-to-test trace: `POST /api/v1/follow-ups/suggest` →
-`com.aurevia.smartclinic.scheduling.followup.FollowUpController.suggest` →
-`com.aurevia.smartclinic.scheduling.followup.FollowUpCommandService` (transaction
-boundary) → `com.aurevia.smartclinic.scheduling.followup.FollowUpService.suggest`
+`com.aurevia.scheduling.followup.FollowUpController.suggest` →
+`com.aurevia.scheduling.followup.FollowUpCommandService` (transaction
+boundary) → `com.aurevia.scheduling.followup.FollowUpService.suggest`
 (validates input, re-checks membership and `APPOINTMENT_READ`, derives tenant from
 `TenantContext`, audits outcome) →
-`com.aurevia.smartclinic.scheduling.followup.FollowUpConfiguration` (approved
+`com.aurevia.scheduling.followup.FollowUpConfiguration` (approved
 setting fold, facility IANA zone and applicable prior follow-up from tenant-scoped
-SQL) → `com.aurevia.smartclinic.scheduling.followup.FollowUpRule` (bounded interval
-parsing) → `com.aurevia.smartclinic.scheduling.followup.FollowUpSuggestion` →
-`com.aurevia.smartclinic.scheduling.followup.JdbcFollowUpStore` (tenant-owned
+SQL) → `com.aurevia.scheduling.followup.FollowUpRule` (bounded interval
+parsing) → `com.aurevia.scheduling.followup.FollowUpSuggestion` →
+`com.aurevia.scheduling.followup.JdbcFollowUpStore` (tenant-owned
 `follow_up_suggestion` table). The test drives every one of these through the HTTP
 request; the existing `scheduling.followup.it.FollowUpHttpIntegrationTest` covers
 the same domain with a broader fixture.
@@ -63,7 +63,7 @@ the same domain with a broader fixture.
 Production classes exercised: `FollowUpController`, `FollowUpCommandService`,
 `FollowUpService`, `FollowUpAuthorizationGuard`, `FollowUpConfiguration`,
 `FollowUpRule`, `PriorFollowUp`, `FollowUpSuggestion`, `JdbcFollowUpStore` and
-`com.aurevia.smartclinic.authz.ActionPolicy`. The interval is read from the
+`com.aurevia.authz.ActionPolicy`. The interval is read from the
 approved configuration fold seeded into `config_entry` / `config_approval`; the
 prior follow-up is read from `public.appointment`; both are enforced by forced
 row level security in `db/migrations`.
@@ -75,5 +75,5 @@ None
 The other clauses of CLN-06 (authorized override with provenance, explicit
 confirmation creating exactly one booking, and care-team action tasks) are outside
 this clause's single sentence and are proven separately in
-`apps/api/src/test/java/com/aurevia/smartclinic/scheduling/followup/it/FollowUpHttpIntegrationTest.java`.
+`apps/api/src/test/java/com/aurevia/scheduling/followup/it/FollowUpHttpIntegrationTest.java`.
 No file would change to complete clause 1; it needs no further task.

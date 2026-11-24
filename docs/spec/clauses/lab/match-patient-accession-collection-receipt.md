@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.lab.clauses.MatchPatientAccessionCollectionReceiptTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/MatchPatientAccessionCollectionReceiptTest.java`).
+Test class: `com.aurevia.lab.clauses.MatchPatientAccessionCollectionReceiptTest`
+(path: `apps/api/src/test/java/com/aurevia/lab/clauses/MatchPatientAccessionCollectionReceiptTest.java`).
 All eight tests are active (none are disabled) and use synthetic data only. Each command is
 driven through its normal entry point on the domain service with a mocked repository, transaction
 template and audit appender, matching the fixture style of the neighbouring laboratory tests.
@@ -47,26 +47,26 @@ template and audit appender, matching the fixture style of the neighbouring labo
 Production classes exercised through the normal command entry points
 (`LabAccessionService.collect` and `LabAccessionService.receive`):
 
-- `com.aurevia.smartclinic.lab.accession.LabAccessionService` — owns the `match` rule and calls it
+- `com.aurevia.lab.accession.LabAccessionService` — owns the `match` rule and calls it
   inside the tenant-guarded `transition` at both collection and receipt, then commits the state
   change, immutable event and audit row together.
-- `com.aurevia.smartclinic.lab.accession.LabActionPolicy` — grants `lab_collector` the collect duty
+- `com.aurevia.lab.accession.LabActionPolicy` — grants `lab_collector` the collect duty
   and `lab_verifier` the receive duty, enforcing separation of duties.
-- `com.aurevia.smartclinic.lab.accession.LabInputs` — bounds every client field at the trust
+- `com.aurevia.lab.accession.LabInputs` — bounds every client field at the trust
   boundary before the transaction opens.
-- `com.aurevia.smartclinic.lab.accession.LabAccessionRepository` — the tenant-guarded store whose
+- `com.aurevia.lab.accession.LabAccessionRepository` — the tenant-guarded store whose
   `update` and `appendEvent` calls carry the matched identity into state and history.
-- `com.aurevia.smartclinic.lab.accession.AccessionState` — the guarded `ACCESSIONED -> COLLECTED ->
+- `com.aurevia.lab.accession.AccessionState` — the guarded `ACCESSIONED -> COLLECTED ->
   RECEIVED` lifecycle.
-- `com.aurevia.smartclinic.lab.accession.LabAccessionController` — the thin HTTP adapter exposing
+- `com.aurevia.lab.accession.LabAccessionController` — the thin HTTP adapter exposing
   `POST /api/v1/lab/accessions/{id}/collect` and `POST /api/v1/lab/accessions/{id}/receive`. This
   clause test drives the injected service directly; the controller's HTTP path is proven by the
   integration test cited below.
 
 Corroborating evidence already in the repository (not changed by this task): the real-PostgreSQL
-HTTP proof `com.aurevia.smartclinic.it.lab.SpecimenAccessionIsolationTest.collectionAndReceiptVerifyPatientAndAccession`,
+HTTP proof `com.aurevia.it.lab.SpecimenAccessionIsolationTest.collectionAndReceiptVerifyPatientAndAccession`,
 which posts to both routes through the real controller and store, and the service-level branch
-proof `com.aurevia.smartclinic.it.lab.LabAccessionServiceTest` (tests at lines 190-284). The clause
+proof `com.aurevia.it.lab.LabAccessionServiceTest` (tests at lines 190-284). The clause
 is built and proven by active tests; no route, contract or migration entry was added.
 
 ## Gap

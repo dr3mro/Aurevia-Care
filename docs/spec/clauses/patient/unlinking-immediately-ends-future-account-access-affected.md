@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.UnlinkingImmediatelyEndsFutureAccountAccessAffectedTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/UnlinkingImmediatelyEndsFutureAccountAccessAffectedTest.java`).
+Test class: `com.aurevia.patient.clauses.UnlinkingImmediatelyEndsFutureAccountAccessAffectedTest`
+(path: `apps/api/src/test/java/com/aurevia/patient/clauses/UnlinkingImmediatelyEndsFutureAccountAccessAffectedTest.java`).
 All four tests are active (none are disabled) and use a dedicated PostgreSQL
 database created from the production Flyway migrations, synthetic tenants,
 synthetic subjects and synthetic charts.
@@ -37,19 +37,19 @@ synthetic subjects and synthetic charts.
 Production classes exercised through the real HTTP entry point
 (`IdentityProofingController`):
 
-- `com.aurevia.smartclinic.patient.identity.IdentityProofingController` — thin
+- `com.aurevia.patient.identity.IdentityProofingController` — thin
   adapter for `/links/unlink`, `/accounts/{subject}/access` and `/accounts/{subject}/links`.
-- `com.aurevia.smartclinic.patient.identity.IdentityProofingService` — appends an
+- `com.aurevia.patient.identity.IdentityProofingService` — appends an
   `unlinked` link event on unlink, retires unspent invitations, enforces the
   self-or-privileged-staff rule, and answers access from the current link fold.
-- `com.aurevia.smartclinic.patient.identity.IdentityProofingRepository` — the
+- `com.aurevia.patient.identity.IdentityProofingRepository` — the
   single SQL boundary; `hasAccess` calls `public.has_chart_access`, and
   `currentLink` joins `public.current_chart_links()` on the database-owned
   sequence of the append-only event.
-- `com.aurevia.smartclinic.patient.identity.IdentityActionPolicy` — grants the
+- `com.aurevia.patient.identity.IdentityActionPolicy` — grants the
   privileged `PATIENT_LINK_UNLINK` action to `tenant_admin` and
   `privacy_auditor`, but not to `reception` (negative test).
-- `com.aurevia.smartclinic.patient.identity.ChartLink` — the append-only event
+- `com.aurevia.patient.identity.ChartLink` — the append-only event
   projection whose `event` is asserted as `unlinked` after the command.
 
 Database evidence: `db/migrations/V10__patient_identity_proofing.sql` creates

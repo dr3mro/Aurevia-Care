@@ -32,7 +32,7 @@ New V84 migration (`db/migrations/V84__report_release_store.sql`, `Change: expan
 - `report_release_revision` — immutable revision identity and rendered artifact, current status and latest policy version; `guard_report_revision_update()` rejects identity changes and any `WITHDRAWN → RELEASED` transition.
 - `report_release_history` — append-only release decisions (policy version, effective time, hold reason/expiry, status, recorded at); UPDATE/DELETE/TRUNCATE triggers cover every role including the migration owner.
 
-Each table has ENABLE + FORCE RLS, a `tenant_isolation` policy using `public.app_org()` with `WITH CHECK`, and explicit grants/revokes for `smartclinic_app`. `report_release_revision` also has BEFORE DELETE and BEFORE TRUNCATE triggers; TRUNCATE is additionally blocked by the history foreign key. No backfill; lock/volume impact is DDL only on small new tables. Rollback is a forward-fix contract migration; no destructive DDL is needed. No dependency added.
+Each table has ENABLE + FORCE RLS, a `tenant_isolation` policy using `public.app_org()` with `WITH CHECK`, and explicit grants/revokes for `orevia_app`. `report_release_revision` also has BEFORE DELETE and BEFORE TRUNCATE triggers; TRUNCATE is additionally blocked by the history foreign key. No backfill; lock/volume impact is DDL only on small new tables. Rollback is a forward-fix contract migration; no destructive DDL is needed. No dependency added.
 
 ## Authorization boundaries and audit events
 

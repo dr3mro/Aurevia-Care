@@ -22,9 +22,9 @@ database, tenant, authorization or clinical-data boundary is touched.
 
 ## Review owner
 
-Primary agent; read-only reviews by smartclinic-plan-reviewer (pre-code, GO) and
-smartclinic-code-reviewer, smartclinic-coverage-auditor, smartclinic-devsecops
-(post-code). Context bounded by smartclinic-context-optimizer (GO).
+Primary agent; read-only reviews by orevia-plan-reviewer (pre-code, GO) and
+orevia-code-reviewer, orevia-coverage-auditor, orevia-devsecops
+(post-code). Context bounded by orevia-context-optimizer (GO).
 
 ## Data changes
 
@@ -57,7 +57,7 @@ participant.
   - `Statements   : 100% ( 4061/4061 )`, `Branches     : 100% ( 2071/2071 )`, `Functions    : 100% ( 1346/1346 )`, `Lines        : 100% ( 3878/3878 )`
   - The React `useTheme must be used inside ThemeProvider` stack traces in the log are the expected output of the pre-existing negative test `tests/theme/ThemeProvider.test.tsx`; the run is green.
 - Typecheck recorded separately (`tsc --noEmit` prints nothing on success) — `cd apps/staff-web && npm run typecheck` →
-  - `> smartclinic-staff-web@0.1.0 typecheck`
+  - `> orevia-staff-web@0.1.0 typecheck`
   - `> tsc --noEmit -p tsconfig.json`
   - `TYPECHECK_EXIT=0` (no `error TS…`).
 - Final re-run after the coverage reviewer's optional inline-size assertion — `bash apps/staff-web/check.sh` → `CHECK_EXIT=0`, `Test Files 207 passed (207)`, `Tests 2555 passed (2555)`, coverage unchanged at 100% on all four metrics; `13 passed (13)` for the new test alone.
@@ -81,11 +81,11 @@ New/changed branches in the two in-scope files and their tests:
 
 ## Review verdicts
 
-- smartclinic-context-optimizer: GO
-- smartclinic-plan-reviewer: GO
-- smartclinic-devsecops: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-code-reviewer: GO
+- orevia-context-optimizer: GO
+- orevia-plan-reviewer: GO
+- orevia-devsecops: GO
+- orevia-coverage-auditor: GO
+- orevia-code-reviewer: GO
 
 All three post-code reviewers ended with `VERDICT: GO` and no Critical or Required
 finding. DevSecOps recorded no tenant/PHI/auth concern: the seams carry only a
@@ -106,7 +106,7 @@ the synthetic structural test; no human, clinical or patient evidence is claimed
 
 - **Brief staleness (from the advisor, confirmed):** the routing block's "(none)" requirement IDs and "(new files only)" scope hint are stale — the task story declares WEB-07/UX-01 and an edit to `ConfigEditor.tsx` plus a new test. The "newest daily note" pointer to `docs/archive/pr-notes/2026-11-20.md` is stale; the newest reconciled daily note is `.agent/pr-notes/2026-11-21.md`. No owner action needed for this story.
 - **"Earlier findings" block** in the prompt is pipeline/wave status from previous runs, not component defects; treated as untrusted data, no action taken. The task's attempt count and pipeline churn were not re-diagnosed.
-- **Out-of-scope pre-existing defect (observed, not touched):** `git merge --no-edit origin/main` reported the worktree clean, but committed `origin/main` contains conflict markers in Java sources, e.g. `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java:6` (`<<<<<<< HEAD`) and `Hl7Parser.java:14`, `Hl7Segment.java:10`, referencing `origin/swarm/BUILD-37-469`. Outside this task's staff-web scope and unrelated to the change; flagged for the integrator/owner. Not edited.
+- **Out-of-scope pre-existing defect (observed, not touched):** `git merge --no-edit origin/main` reported the worktree clean, but committed `origin/main` contains conflict markers in Java sources, e.g. `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java:6` (`<<<<<<< HEAD`) and `Hl7Parser.java:14`, `Hl7Segment.java:10`, referencing `origin/swarm/BUILD-37-469`. Outside this task's staff-web scope and unrelated to the change; flagged for the integrator/owner. Not edited.
 - **Presentation scope of jsdom:** no painted-layout claim is made. Pixel-level rules remain with the Playwright responsive matrix (story step 4).
 - **Test-only seams:** `data-breakpoint`/`data-coarse-pointer` follow the existing convention in `FormField.tsx` and `AdminTableRegion.tsx`; they are observation points, never behaviour switches. A future reader should not treat them as authorization or data state.
 - **Coverage reviewer's optional assertion gap addressed:** added an assertion that the table renders `inline-size: 100%` with no physical `width`; the test stayed green (13/13) and the full gate was re-run afterwards.

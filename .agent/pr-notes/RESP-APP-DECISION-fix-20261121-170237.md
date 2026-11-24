@@ -36,7 +36,7 @@ Verified acceptance mapping (each item present in the record):
 
 ## Affected requirements
 
-- Primary (task): PAT-01, PAT-02, UX-01 — all defined in `SMARTCLINIC_V1_SPEC.md`
+- Primary (task): PAT-01, PAT-02, UX-01 — all defined in `PROJECT_V1_SPEC.md`
   (lines 85, 86 and 90 respectively).
 - Referenced in the record and validated by `check-docs.py`: WEB-07 (line 155),
   MSG-02 (line 99), plus the section 7 "Web and mobile" row and the accessibility
@@ -50,7 +50,7 @@ schema, dependency or delivery change.
 ## Review owner
 
 Product (record owner per the story). The earlier run recorded a simulated
-`smartclinic-senior-mobile` and `smartclinic-ux-reviewer` review of the record that
+`orevia-senior-mobile` and `orevia-ux-reviewer` review of the record that
 found no missing decision; this fix pass re-checked the record directly against
 the TODO.md acceptance criteria (tool/file-read evidence, not a new independent
 reviewer). No human, clinical or patient reviewer evidence.
@@ -105,7 +105,7 @@ Entry-point-to-test trace: not applicable to the changed file — the change add
 only a Markdown decision record with no executable entry point. The authoritative
 verification for the record's content is read-back against
 `docs/decisions/template.md`, `apps/patient-mobile/app.json`, the section 7 mobile
-row and the requirement IDs of `SMARTCLINIC_V1_SPEC.md`, plus the passing
+row and the requirement IDs of `PROJECT_V1_SPEC.md`, plus the passing
 `check-docs.py` link/ID gate. The patient-mobile gate was run as an additional
 whole-repository health check at the task prompt's request; no patient-mobile file
 was changed by this story.
@@ -167,7 +167,7 @@ approval remains a G5 gate.
   against the TODO.md acceptance items and record the evidence rather than
   rewriting the file; one notes file per run keeps parallel workers from colliding.
 - `check-docs.py` validates every requirement ID mentioned in Markdown outside the
-  spec against the IDs in `SMARTCLINIC_V1_SPEC.md`; only use defined IDs and verify
+  spec against the IDs in `PROJECT_V1_SPEC.md`; only use defined IDs and verify
   every relative link target exists before claiming the gate passes.
 - The decision-record house style (see records 0002 and 0003) uses frontmatter
   Status / Date / Requirement IDs / Owner and the template headings Context /

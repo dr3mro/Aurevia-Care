@@ -18,10 +18,10 @@ def make_root(names, dirs=(), skills=()):
     root = Path(tempfile.mkdtemp())
     (root / ".opencode/agents").mkdir(parents=True)
     for name in names:
-        (root / ".opencode/agents" / f"smartclinic-{name}.md").write_text("x")
+        (root / ".opencode/agents" / f"orevia-{name}.md").write_text("x")
     for name in skills:
-        (root / ".opencode/skills" / f"smartclinic-{name}").mkdir(parents=True)
-        (root / ".opencode/skills" / f"smartclinic-{name}" / "SKILL.md").write_text("x")
+        (root / ".opencode/skills" / f"orevia-{name}").mkdir(parents=True)
+        (root / ".opencode/skills" / f"orevia-{name}" / "SKILL.md").write_text("x")
     for d in dirs:
         (root / d).mkdir(parents=True)
     return root

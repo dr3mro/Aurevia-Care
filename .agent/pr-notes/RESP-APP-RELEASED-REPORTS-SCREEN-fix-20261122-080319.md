@@ -26,8 +26,8 @@ const { result: _discardedResult, ...withoutResult } = report;
 
 No earlier fix needed to be undone. I rehydrated the governing context (AGENTS.md,
 CODING_STYLE.md, README-SETUP.md, docs/WORKFLOW.md, WORKSPACE.md, MEMORY.md,
-PROJECT.md, the story task file, the smartclinic-delivery / smartclinic-senior-mobile
-/ smartclinic-senior-typescript skills, decision `0005-patient-app-tablets.md`,
+PROJECT.md, the story task file, the orevia-delivery / orevia-senior-mobile
+/ orevia-senior-typescript skills, decision `0005-patient-app-tablets.md`,
 both scoped files plus `reports/types.ts` and `useWindowClass.ts`) and then re-ran
 every scoped gate myself, **sequentially** (never in parallel — see Findings 1).
 All four pass. Evidence source for the commands below: **tool** (the primary agent
@@ -65,10 +65,10 @@ data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) is the domain owner; its
+Senior React Native and Expo (`orevia-senior-mobile`) is the domain owner; its
 mandatory definition of done was executed and met this pass (module `check.sh`
 green, typecheck final lines and coverage summary recorded below, zero
-`error TS…`). Senior TypeScript (`smartclinic-senior-typescript`) owns the strict
+`error TS…`). Senior TypeScript (`orevia-senior-typescript`) owns the strict
 `exactOptionalPropertyTypes` rule that produced TS2375; the root strict typecheck is
 green. A prior bounded advisory review by the mobile specialist confirmed the fix
 is correct and complete with no actionable correctness, coverage, acceptance or

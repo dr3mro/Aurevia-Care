@@ -67,7 +67,7 @@ clinical decision or migration boundary changed.
 ## Review owner
 
 Senior React and Vite specialist (bounded plan/risks requested and received from
-`smartclinic-senior-react`); primary agent owned the edits and all commands.
+`orevia-senior-react`); primary agent owned the edits and all commands.
 The specialist's two material recommendations were adopted: keep hooks above the
 empty-state early return, and style the existing `<li>` instead of inserting new
 `<span>` nodes (zero DOM change, no risk to existing Testing Library queries).
@@ -98,7 +98,7 @@ Red seen first: the new test file against the unchanged component gave
   tests (including `components.test.tsx` `RevisionHistory`, `DocumentList`,
   `EnteredInErrorBanner`, `NoteEditor`) still pass unchanged.
 - `npm run typecheck` (from `apps/staff-web`) final lines:
-  `> smartclinic-staff-web@0.1.0 typecheck` /
+  `> orevia-staff-web@0.1.0 typecheck` /
   `> tsc --noEmit -p tsconfig.json` — exit 0, no `error TS…`.
 - `npm run lint` → `> eslint . --max-warnings 0` — exit 0.
 - `bash apps/staff-web/check.sh` → `exit=0`; generated-client check, typecheck

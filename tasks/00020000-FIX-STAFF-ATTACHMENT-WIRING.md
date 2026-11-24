@@ -2,7 +2,7 @@
   - pr: #1448
   - attempts: 1
   - requirements: MSG-03, CLN-07
-  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts
+  - scope: apps/api/src/main/java/com/aurevia/staffmsg, apps/api/src/test/java/com/aurevia/staffmsg, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts
   - depends: SMSG-05, SMSG-07, FIX-STAFF-MAIL-PERSISTENCE
   - details:
     Agent brief. Trace the existing standalone attachment routes through `StaffAttachmentController` and `StaffAttachmentService.send`, then compare them with `MailService.send` and `InstantMessagingService.send`. Use `JdbcStaffAttachmentStore` to check how publication grants and attachment links persist. Read the `staffmsg/security/FlaggedAttachmentTest` and `StaffAttachmentControllerHttpTest` cases before adding coverage.

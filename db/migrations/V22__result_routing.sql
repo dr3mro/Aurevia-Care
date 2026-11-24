@@ -239,14 +239,14 @@ CREATE TRIGGER xch04_review_no_truncate
 
 GRANT SELECT, INSERT ON public.xch04_expected_order, public.xch04_report_revision,
                          public.xch04_reconciliation, public.xch04_notification
-    TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.xch04_review TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.xch04_review FROM smartclinic_app;
+    TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.xch04_review TO orevia_app;
+REVOKE DELETE, TRUNCATE ON public.xch04_review FROM orevia_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON public.xch04_expected_order,
                                   public.xch04_report_revision,
                                   public.xch04_reconciliation,
                                   public.xch04_notification
-    FROM smartclinic_app;
+    FROM orevia_app;
 REVOKE ALL ON FUNCTION public.set_xch04_created_by_from_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.guard_xch04_review_update() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.set_xch04_created_by_from_actor() TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.set_xch04_created_by_from_actor() TO orevia_app;

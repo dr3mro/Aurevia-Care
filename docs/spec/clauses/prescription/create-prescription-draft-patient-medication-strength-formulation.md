@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.prescription.clauses.CreatePrescriptionDraftPatientMedicationStrengthFormulationTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/CreatePrescriptionDraftPatientMedicationStrengthFormulationTest.java`),
+Test class: `com.aurevia.prescription.clauses.CreatePrescriptionDraftPatientMedicationStrengthFormulationTest`
+(`apps/api/src/test/java/com/aurevia/prescription/clauses/CreatePrescriptionDraftPatientMedicationStrengthFormulationTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the HTTP entry
 points `POST /api/v1/prescription-drafts`, `POST /api/v1/prescription-drafts/{id}/select-medication`,
 `GET /api/v1/prescription-drafts/{id}` and `GET /api/v1/drug-catalog/search`. Two synthetic
@@ -43,20 +43,20 @@ seeded in a class-private database. All inputs are synthetic.
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` — binds the synthetic subject and active
+- `com.aurevia.web.TenantContextInterceptor` — binds the synthetic subject and active
   organization from validated headers to the transaction-local tenant context.
-- `com.aurevia.smartclinic.prescription.PrescriptionController` — thin HTTP adapter binding the
+- `com.aurevia.prescription.PrescriptionController` — thin HTTP adapter binding the
   create and select commands and the `If-Match` precondition.
-- `com.aurevia.smartclinic.prescription.PrescriptionService` — `createDraft` validates the patient and
+- `com.aurevia.prescription.PrescriptionService` — `createDraft` validates the patient and
   writes the draft; `selectMedication` checks the version, resolves the approved catalog entry and
   records the order details; `searchCatalog` exposes the catalog values.
-- `com.aurevia.smartclinic.prescription.PrescriptionActions` — reserves `CREATE_DRAFT` and
+- `com.aurevia.prescription.PrescriptionActions` — reserves `CREATE_DRAFT` and
   `SELECT_MEDICATION` to the clinician role.
-- `com.aurevia.smartclinic.prescription.PrescriptionInputs` and `com.aurevia.smartclinic.api.IfMatch`
+- `com.aurevia.prescription.PrescriptionInputs` and `com.aurevia.api.IfMatch`
   — reject malformed identifiers, order fields and version preconditions with 422.
-- `com.aurevia.smartclinic.prescription.PrescriptionRepository` — the single SQL boundary; maps the
+- `com.aurevia.prescription.PrescriptionRepository` — the single SQL boundary; maps the
   `Draft` projection and the `DrugEntry` catalog projection.
-- `com.aurevia.smartclinic.prescription.PrescriptionContract` — `CreateDraftRequest`,
+- `com.aurevia.prescription.PrescriptionContract` — `CreateDraftRequest`,
   `SelectMedicationRequest`, `Draft` and `DrugEntry`; the last two show that strength and
   formulation are catalog fields, not draft fields.
 - `db/migrations/V43__prescription_drafts.sql` — `prescription_draft` and `drug_catalog_entry` with

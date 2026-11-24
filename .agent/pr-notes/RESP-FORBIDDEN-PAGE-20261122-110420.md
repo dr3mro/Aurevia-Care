@@ -19,7 +19,7 @@ Routine (docs/WORKFLOW.md): a contained staff-web presentation change to one pag
 
 ## Review owner
 
-Senior React and Vite specialist (skills `smartclinic-senior-react`, `smartclinic-senior-typescript` and `smartclinic-ux-reviewer` were loaded; a bounded review-only pass was requested from the senior-react specialist). The primary worker owns the edits and history.
+Senior React and Vite specialist (skills `orevia-senior-react`, `orevia-senior-typescript` and `orevia-ux-reviewer` were loaded; a bounded review-only pass was requested from the senior-react specialist). The primary worker owns the edits and history.
 
 ## Data changes
 
@@ -46,7 +46,7 @@ Evidence source: **tool** (commands executed locally). Simulated specialist revi
 - `scripts/check.sh` was deliberately **not** run: it invokes `apps/api/check.sh` (full `mvn verify`, OWASP and SpotBugs) and `db/check.sh`, which the task instruction forbids running in a worker (over ten minutes; the integrator and Delivery run it). Its frontend portion was covered by `scripts/frontend-check.sh` above and the doc/secret/name checks.
 - Typecheck final lines (required by the frontend definition of done), command `npm run typecheck` in `apps/staff-web`:
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   typecheck exit: 0
@@ -78,13 +78,13 @@ No threshold, exclusion, ignore comment or skipped test was added or changed.
 
 ## Clinical and architecture review
 
-Not required: no signed data, cross-organization sharing, patient association, prescribing or critical result is involved. Simulated UX review (skill `smartclinic-ux-reviewer`, applied to the change) confirmed the page keeps a single named action, preserves DOM focus order under RTL, wraps long English and Arabic strings and hides no text; a real Arabic-speaking clinician pass remains a separate launch gate and is not claimed here. A bounded, review-only `smartclinic-senior-react` specialist pass (evidence source: **simulated reviewer**, no gates run by the reviewer) returned "no blocking findings" for wrapping, logical properties, behaviour/text/export parity, ternary coverage, lint/types and accessibility; its two low-severity notes were applied (see Findings).
+Not required: no signed data, cross-organization sharing, patient association, prescribing or critical result is involved. Simulated UX review (skill `orevia-ux-reviewer`, applied to the change) confirmed the page keeps a single named action, preserves DOM focus order under RTL, wraps long English and Arabic strings and hides no text; a real Arabic-speaking clinician pass remains a separate launch gate and is not claimed here. A bounded, review-only `orevia-senior-react` specialist pass (evidence source: **simulated reviewer**, no gates run by the reviewer) returned "no blocking findings" for wrapping, logical properties, behaviour/text/export parity, ternary coverage, lint/types and accessibility; its two low-severity notes were applied (see Findings).
 
 ## Findings
 
 - No defect found in the change. Both gates are green and coverage on the touched file is 100%.
 - Simulated senior-react review notes, both fixed in this change: (L1) the action `.page` inherited the 1200 px reading cap instead of the state panel's 44rem, so the single button could stretch far wider than the alert text — added `maxInlineSize: '44rem'` and removed the forced `inlineSize: '100%'` from the `.touch` wrapper to match `StateAction` in `StateViews`; (L2) the logical-style test did not inspect the new page wrapper — added `row.parentElement` to the assertion list. No behaviour or text changed.
-- Pre-existing, out-of-scope observation: `git grep -nE '^(<<<<<<<|>>>>>>>) '` reports committed conflict markers in three Java files under `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). `git merge --no-edit origin/main` reported "Already up to date" and `git show HEAD:...` confirms the markers are already committed on the base branch, not introduced by this story. They were left untouched (outside scope); the integrator/owner should decide whether they need repair before a Java build.
+- Pre-existing, out-of-scope observation: `git grep -nE '^(<<<<<<<|>>>>>>>) '` reports committed conflict markers in three Java files under `apps/api/src/main/java/com/aurevia/exchange/hl7/` (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). `git merge --no-edit origin/main` reported "Already up to date" and `git show HEAD:...` confirms the markers are already committed on the base branch, not introduced by this story. They were left untouched (outside scope); the integrator/owner should decide whether they need repair before a Java build.
 - The pre-existing jsdom "Not implemented: navigation" console stack from `UnsupportedBrowserPage` is test noise, present before this change and non-failing.
 
 ## Lessons for workers

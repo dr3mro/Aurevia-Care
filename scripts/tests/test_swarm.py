@@ -16,7 +16,7 @@ from unittest import mock
 from helpers import ROOT, load
 
 swarm = load("swarm")
-SLOTS = [{"slot": n, "model": f"m{n}"} for n in range(1, 4)]
+SLOTS = [{"slot": n} for n in range(1, 4)]
 
 
 def labels(*names):
@@ -152,7 +152,7 @@ class ConcurrentWaveTests(unittest.TestCase):
                 self.assertEqual(swarm.wave_has_room(), room)
 
     def test_all_twenty_workers_can_use_ten_accounts_with_unique_tasks(self):
-        accounts = [{"slot": i, "model": "m"} for i in range(1, 11)]
+        accounts = [{"slot": i} for i in range(1, 11)]
         tasks = "\n".join(f"- [ ] SYN-{i} · Task {i}\n  - scope: app/{i:02d}/module" for i in range(20))
         plan = swarm.plan_workers(20, swarm.worker_slots(accounts, 0), tasks, [])
         self.assertEqual(len({worker["id"] for worker in plan}), 20)
@@ -246,7 +246,7 @@ class WorkerPostgresTests(unittest.TestCase):
         self.assertIn("postgresql-17", dockerfile)
         self.assertIn("apt.postgresql.org", dockerfile)
         self.assertIn("COPY start-postgres.sh /usr/local/bin/start-postgres", dockerfile)
-        self.assertIn("SMARTCLINIC_PG_ADMIN=postgres", dockerfile)
+        self.assertIn("OREVIA_PG_ADMIN=postgres", dockerfile)
         starter = (ROOT / ".github/agent-image/start-postgres.sh").read_text()
         self.assertIn("127.0.0.1", starter)
         self.assertIn("-A trust", starter)
@@ -255,7 +255,7 @@ class WorkerPostgresTests(unittest.TestCase):
     def test_worker_starts_postgresql_and_runs_the_worker_check(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         self.assertIn("CHECK_SCRIPT: scripts/worker-check.sh", text)
-        self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
+        self.assertIn("OREVIA_PG_ADMIN: postgres", text)
         self.assertLess(text.index("if command -v start-postgres"), text.index("id: s1"))
 
     def test_worker_check_runs_integration_tests_and_database_policy(self):
@@ -368,7 +368,7 @@ class RepairTaskTests(unittest.TestCase):
             todo = Path(tmp) / "TODO.md"
             todo.write_text(text)
 
-            def fake_update(edit, message, path="TODO.md", attempts=8):
+            def fake_update(edit, message, path="", attempts=8):
                 new = edit(Path(path).read_text())
                 Path(path).write_text(new)
                 return new != text
@@ -453,7 +453,7 @@ class RepairTaskTests(unittest.TestCase):
             todo = Path(tmp) / "TODO.md"
             todo.write_text(text)
 
-            def fake_add(run_id, path="TODO.md"):
+            def fake_add(run_id, path=""):
                 calls.append(run_id)
                 return True
             with mock.patch.object(swarm, "failing_runs_on_main", lambda: failing), \
@@ -480,12 +480,12 @@ class RepairTaskTests(unittest.TestCase):
         text = ("- [ ] A-1 · feature\n  - scope: apps/api\n  - details:\n    do it\n"
                 "- [ ] FIX-9 · Repair main\n  - scope: *\n  - details:\n    fix it\n"
                 "- [ ] B-1 · other\n  - scope: docs\n  - details:\n    do it\n")
-        plan = swarm.plan_workers(10, [{"slot": n, "model": "m"} for n in range(1, 4)], text, [])
+        plan = swarm.plan_workers(10, [{"slot": n} for n in range(1, 4)], text, [])
         self.assertEqual([t["id"] for t in plan], ["FIX-9"])
 
 
 class LaunchTaskTests(unittest.TestCase):
-    SLOT = [{"slot": n, "model": "m"} for n in range(1, 4)]
+    SLOT = [{"slot": n} for n in range(1, 4)]
     TEXT = ("- [ ] A-1 · first\n  - scope: apps/api\n  - details:\n    do it\n"
             "- [ ] B-1 · second\n  - scope: docs\n  - attempts: 5\n  - details:\n    do it\n"
             "- [ ] C-1 · third\n  - scope: apps/web\n  - depends: A-1\n  - details:\n    do it\n")
@@ -502,6 +502,11 @@ class LaunchTaskTests(unittest.TestCase):
         self.assertEqual([t["id"] for t in self.plan()], ["A-1"])
         self.assertEqual(self.plan(focus="B-1")[0]["id"], "B-1")
 
+    def test_planned_worker_has_no_pinned_model(self):
+        task = self.plan()[0]
+        self.assertEqual(task["slot"], 1)
+        self.assertNotIn("model", task)
+
     def test_launched_task_still_waits_for_its_dependencies(self):
         self.assertNotIn("C-1", [t["id"] for t in self.plan(focus="C-1")])
 
@@ -513,7 +518,7 @@ class LaunchTaskTests(unittest.TestCase):
 
 
 class PriorityTests(unittest.TestCase):
-    SLOT = [{"slot": n, "model": "m"} for n in range(1, 6)]
+    SLOT = [{"slot": n} for n in range(1, 6)]
 
     def setUp(self):
         patch = mock.patch.object(swarm, "archived_done_ids", return_value=set())
@@ -908,7 +913,7 @@ class PlanTests(unittest.TestCase):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
         self.assertIn("GATE: scripts/integrator-gate.sh", text)
         self.assertIn("postgres:", text)
-        self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
+        self.assertIn("OREVIA_PG_ADMIN: postgres", text)
         self.assertNotIn("GATE: scripts/quick-check.sh", text)
 
     def test_task_id_of_handles_multi_hyphen_story_ids(self):
@@ -1102,12 +1107,12 @@ class PlanTests(unittest.TestCase):
         self.assertTrue(fake.said("labels[]=needs-human"))
 
     def test_committed_files_are_valid(self):
-        slots = swarm.load_slots(ROOT / ".github/swarm/slots.json")
+        slots = swarm.load_slots(ROOT / ".opencode/config/slots.json")
         self.assertEqual([s["slot"] for s in slots], list(range(1, 11)))
-        self.assertTrue(all(s["model"] == "opencode-go/hy4-flash-free" for s in slots))
+        self.assertTrue(all("model" not in s for s in slots))
         config = swarm.slot_config(slots, 2)
-        self.assertEqual((config["model"], config["autoupdate"], config["share"]),
-                         (slots[1]["model"], False, "disabled"))
+        self.assertNotIn("model", config)
+        self.assertEqual((config["autoupdate"], config["share"]), (False, "disabled"))
         self.assertNotIn("key", json.dumps(config).lower())
         tasks = swarm.parse_tasks(repo_tasks())
         ids = [t["id"] for t in tasks]
@@ -1644,10 +1649,10 @@ class IntegrationTests(unittest.TestCase):
             self.assertTrue(fake.said("labels[]=needs-human"))
 
     def test_kill_switch_does_not_lift_the_tracker_rule(self):
-        fake = FakeGh(diff="TODO.md\nscripts/swarm.py\n")
+        fake = FakeGh(diff=".opencode/config/MEMORY.md\nscripts/swarm.py\n")
         with mock.patch.dict(os.environ, {"SWARM_ALLOW_PROTECTED": "1"}), \
                 mock.patch.object(swarm, "gh", fake):
-            self.assertEqual(swarm.guard(9), ["TODO.md"])
+            self.assertEqual(swarm.guard(9), [".opencode/config/MEMORY.md"])
 
     def test_repair_pr_bypasses_protected_path_guard(self):
         fake = FakeGh(diff="apps/api/src/A.java\n.github/workflows/x.yml\nscripts/swarm.py\n")
@@ -1671,9 +1676,9 @@ class IntegrationTests(unittest.TestCase):
             self.assertFalse(swarm.is_repair(9))
 
     def test_guard_sends_tracker_edits_back_to_the_worker(self):
-        fake = FakeGh(diff="apps/api/A.java\nTODO.md\n", pr_view={"labels": []})
+        fake = FakeGh(diff="apps/api/A.java\n.opencode/config/MEMORY.md\n", pr_view={"labels": []})
         with mock.patch.object(swarm, "gh", fake):
-            self.assertEqual(swarm.guard(9), ["TODO.md"])
+            self.assertEqual(swarm.guard(9), [".opencode/config/MEMORY.md"])
         self.assertTrue(fake.said("labels[]=fix-1"))
         self.assertFalse(fake.said("labels[]=needs-human"))
 
@@ -1937,7 +1942,7 @@ class DailyReviewTests(unittest.TestCase):
 
     def test_suggestions_go_to_one_issue_and_are_never_applied(self):
         data = {"summary": "s", "tasks": [],
-                "agents": [{"agent": "smartclinic-test-engineer", "problem": "skips failure paths", "change": "add a rule"}],
+                "agents": [{"agent": "orevia-test-engineer", "problem": "skips failure paths", "change": "add a rule"}],
                 "workflow": [{"title": "Slow gate", "evidence": "40 minutes", "change": "split it"}]}
         with tempfile.TemporaryDirectory() as tmp:
             todo = Path(tmp, "TODO.md")
@@ -1949,7 +1954,7 @@ class DailyReviewTests(unittest.TestCase):
             kind, _, title, body = record.call_args.args[:4]
             self.assertEqual(kind, "daily-devsecops")
             self.assertIn("DevSecOps", title)
-            self.assertIn("smartclinic-test-engineer", body)
+            self.assertIn("orevia-test-engineer", body)
             self.assertIn("Nothing here was applied", body)
 
     def test_nothing_to_suggest_opens_no_issue_and_bad_json_changes_nothing(self):
@@ -1993,8 +1998,8 @@ class DailyReviewTests(unittest.TestCase):
         script = (ROOT / "scripts/agent-run.sh").read_text()
         self.assertIn("This is READ-ONLY", script.split("daily_prompt() {")[1])
         self.assertIn("Today's focus: $(daily_focus", script)
-        self.assertIn("smartclinic-qa-reviewer", script)
-        self.assertIn("smartclinic-devsecops", script)
+        self.assertIn("orevia-qa-reviewer", script)
+        self.assertIn("orevia-devsecops", script)
         self.assertIn("a person decides on them", script)
         self.assertIn("daily-qa) cmd_daily qa", script)
         self.assertIn("daily-devsecops) cmd_daily devsecops", script)
@@ -2518,7 +2523,8 @@ class RepairTests(unittest.TestCase):
                 "    Classes: `IdentityProofingIsolationTest` and `ConsolidationIsolationTest`.\n")
         cwd = os.getcwd()
         with tempfile.TemporaryDirectory() as tmp:
-            Path(tmp, "TODO.md").write_text(todo)
+            (Path(tmp) / "tasks").mkdir(exist_ok=True)
+            (Path(tmp) / "tasks" / "_head.md").write_text(todo)
             os.chdir(tmp)
             try:
                 for info, expected in (
@@ -2600,7 +2606,9 @@ class GitTests(unittest.TestCase):
         self.run_git("init", "-q", "--bare", "-b", "main", str(self.origin), cwd=self.tmp)
         self.run_git("clone", "-q", str(self.origin), str(self.repo), cwd=self.tmp)
         (self.repo / "a.txt").write_text("base\n")
-        (self.repo / "TODO.md").write_text(TASKS)
+        (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
+        (self.repo / "tasks").mkdir(parents=True, exist_ok=True)
+        (self.repo / "tasks" / "_head.md").write_text(TASKS)
         for args in (["add", "-A"], ["commit", "-qm", "init"], ["push", "-q", "origin", "main"]):
             self.run_git(*args)
         os.chdir(self.repo)
@@ -2888,7 +2896,7 @@ class GitTests(unittest.TestCase):
         fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: CW-001\n\nEvidence"})
         with mock.patch.object(swarm, "gh", fake):
             swarm.finalize(9, "CW-001", "abc")
-        tasks = {t["id"]: t for t in swarm.parse_tasks((self.repo / "TODO.md").read_text())}
+        tasks = {t["id"]: t for t in swarm.parse_tasks(swarm.todo_read())}
         self.assertEqual((tasks["CW-001"]["status"], tasks["CW-001"]["pr"]), ("done", "#9"))
         self.assertIn("integrator ran", tasks["CW-001"]["evidence"])
         self.assertIn("Evidence", (self.repo / "docs/swarm/CW-001.md").read_text())
@@ -2897,7 +2905,18 @@ class GitTests(unittest.TestCase):
         self.assertFalse(fake.said("workflow", "run", "heavy-check.yml"))
 
     def origin_todo(self):
-        return self.run_git("--git-dir", str(self.origin), "show", "main:TODO.md")
+        # Read the tracker the same way the swarm does: a fresh checkout of main
+        # whose taskstore joins the head file and the task files.
+        view = self.tmp / "origin-view"
+        if view.exists():
+            shutil.rmtree(view)
+        self.run_git("clone", "-q", str(self.origin), str(view), cwd=self.tmp)
+        cwd = os.getcwd()
+        os.chdir(view)
+        try:
+            return swarm.store().read()
+        finally:
+            os.chdir(cwd)
 
     def test_update_todo_commits_and_pushes_the_marks(self):
         pushed = swarm.update_todo(lambda text: swarm.set_task_status(text, "CW-001", "taken", agent="swarm-1"),
@@ -2910,8 +2929,9 @@ class GitTests(unittest.TestCase):
     def test_update_todo_reapplies_its_edit_when_main_moved(self):
         other = self.tmp / "other"
         self.run_git("clone", "-q", str(self.origin), str(other), cwd=self.tmp)
-        done = swarm.set_task_status((other / "TODO.md").read_text(), "CW-002", "done", pr="#5")
-        (other / "TODO.md").write_text(done)
+        from_other = swarm.store().read()
+        done = swarm.set_task_status(from_other, "CW-002", "done", pr="#5")
+        swarm.store().write(done, root=str(other / "tasks"))
         for args in (["add", "-A"], ["commit", "-qm", "someone else"], ["push", "-q", "origin", "main"]):
             self.run_git(*args, cwd=other)
         swarm.update_todo(lambda text: swarm.set_task_status(text, "CW-001", "taken", agent="swarm-2"),
@@ -2939,7 +2959,7 @@ class GitTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake):
             swarm.finalize(11, "FIX-5", "abc")
         self.assertIn("FIX-5", (self.repo / "docs/swarm/FIX-5.md").read_text())
-        self.assertEqual((self.repo / "TODO.md").read_text().count("[x]"), 1)
+        self.assertEqual(swarm.store().read().count("[x]"), 1)
 
 
 class BudgetTests(unittest.TestCase):
@@ -3023,13 +3043,6 @@ class ProtectedBranchTests(unittest.TestCase):
 
 
 class TwoTierTests(unittest.TestCase):
-    def setUp(self):
-        # These tests build a throwaway repository with a TODO.md; moving it into task files
-        # is covered by TaskFileTests.
-        patcher = mock.patch.object(swarm, "migrate_tasks", return_value=0)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
     def test_run_gate_uses_a_token_free_environment(self):
         with mock.patch.dict(os.environ, {"GH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}), \
              mock.patch.object(swarm.subprocess, "run") as run:
@@ -3123,7 +3136,8 @@ class TwoTierTests(unittest.TestCase):
 
     def test_integrate_batch_pushes_once(self):
         self.repo = Path(tempfile.mkdtemp())
-        (self.repo / "TODO.md").write_text("# TODO\n")
+        (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
+        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3164,7 +3178,8 @@ class TwoTierTests(unittest.TestCase):
 
     def test_integrate_batch_leaves_a_moved_branch_open(self):
         self.repo = Path(tempfile.mkdtemp())
-        (self.repo / "TODO.md").write_text("# TODO\n")
+        (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
+        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3191,7 +3206,8 @@ class TwoTierTests(unittest.TestCase):
 
     def test_integrate_batch_retries_when_main_advanced(self):
         self.repo = Path(tempfile.mkdtemp())
-        (self.repo / "TODO.md").write_text("# TODO\n")
+        (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
+        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3234,7 +3250,8 @@ class TwoTierTests(unittest.TestCase):
     def retry_after_main_moved(self, changed):
         """Run integrate_batch whose first push loses a race; `changed` is what main gained meanwhile."""
         self.repo = Path(tempfile.mkdtemp())
-        (self.repo / "TODO.md").write_text("# TODO\n")
+        (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
+        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3288,7 +3305,8 @@ class TwoTierTests(unittest.TestCase):
 
     def test_integrate_batch_sends_prs_back_when_the_regate_fails(self):
         self.repo = Path(tempfile.mkdtemp())
-        (self.repo / "TODO.md").write_text("# TODO\n")
+        (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
+        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3327,7 +3345,8 @@ class TwoTierTests(unittest.TestCase):
 
     def test_integrate_batch_restores_trackers_on_retry(self):
         self.repo = Path(tempfile.mkdtemp())
-        (self.repo / "TODO.md").write_text("# TODO\n")
+        (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
+        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3590,17 +3609,37 @@ class TrustedCopyTests(unittest.TestCase):
 
 
 class ModelOverrideTests(unittest.TestCase):
-    def test_every_opencode_workflow_honours_the_swarm_model_variable(self):
+    def test_workflows_pass_precedence_to_the_central_router(self):
+        # The old `vars.SWARM_MODEL || ...` expressions made SWARM_MODEL the
+        # primary override. Selection now lives in scripts/model-router.py, so
+        # workflows pass only the two control variables, never a model.
+        routed = 0
         for path in (ROOT / ".github/workflows").glob("*.yml"):
             text = path.read_text()
-            if "MODEL:" not in text:
+            if "SWARM_MODEL:" not in text:
                 continue
-            self.assertIn("vars.SWARM_MODEL", text, path.name)
-            self.assertNotIn("MODEL: opencode-go/", text, path.name)
+            routed += 1
+            self.assertNotIn("vars.SWARM_MODEL ||", text, path.name)
+            self.assertIn("SWARM_MODEL: ${{ vars.SWARM_MODEL }}", text, path.name)
+            self.assertIn("SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}", text, path.name)
+        self.assertGreaterEqual(routed, 9)
 
-    def test_the_worker_falls_back_to_the_slot_model(self):
-        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
-        self.assertIn("MODEL: ${{ vars.SWARM_MODEL || fromJSON(inputs.task).model }}", text)
+    def test_no_workflow_or_slot_selects_a_model(self):
+        for path in (ROOT / ".github/workflows").glob("*.yml"):
+            for line in path.read_text().splitlines():
+                # Match the exact env key: SWARM_MODEL is the router control,
+                # while a bare MODEL key would be a second model selector.
+                self.assertFalse(line.strip().startswith("MODEL:"),
+                                 f"{path.name}: {line.strip()}")
+        slots = swarm.load_slots(ROOT / ".opencode/config/slots.json")
+        self.assertTrue(all("model" not in slot for slot in slots))
+
+    def test_the_router_enforces_strict_boolean_config(self):
+        router = load("model-router")
+        self.assertEqual(router.parse_force_model(""), 0)
+        self.assertEqual(router.parse_force_model("1"), 1)
+        with self.assertRaises(router.ConfigurationError):
+            router.parse_force_model("yes")
 
 
 class FailureReportTests(unittest.TestCase):

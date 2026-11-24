@@ -14,7 +14,7 @@ FAIL unreferenced-service: apps/api/src/main/java/com/x/NewService.java
 FAIL unreferenced-service: apps/api/src/main/java/com/x/OrphanService.java
 FAIL unreferenced-service: apps/api/src/main/java/com/synthetic/OrphanService.java
 npm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > eslint . --max-warnings 0
 npm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
 > patient-mobile@0.1.0 typecheck

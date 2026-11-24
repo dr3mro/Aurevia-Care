@@ -230,11 +230,11 @@ REVOKE ALL ON FUNCTION public.next_clinical_note_version_stamp() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.stamp_clinical_note_revision_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.guard_clinical_note_revision_succession() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.current_clinical_note_revision() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.next_clinical_note_version(uuid, uuid) TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.next_clinical_note_version_stamp() TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.stamp_clinical_note_revision_actor() TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.guard_clinical_note_revision_succession() TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.current_clinical_note_revision() TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.next_clinical_note_version(uuid, uuid) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.next_clinical_note_version_stamp() TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.stamp_clinical_note_revision_actor() TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.guard_clinical_note_revision_succession() TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.current_clinical_note_revision() TO orevia_app;
 
-GRANT SELECT, INSERT ON public.clinical_note_revision TO smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.clinical_note_revision FROM smartclinic_app;
+GRANT SELECT, INSERT ON public.clinical_note_revision TO orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.clinical_note_revision FROM orevia_app;

@@ -53,9 +53,9 @@ paths (`docs/WORKFLOW.md`). No data, contract, migration, authorization or clini
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) owns the staff-web surface; its definition of
+Senior React and Vite (`orevia-senior-react`) owns the staff-web surface; its definition of
 done (`check.sh` + typecheck final lines) is satisfied below. Senior TypeScript
-(`smartclinic-senior-typescript`) and UX (`smartclinic-ux-reviewer`) skills were loaded and applied
+(`orevia-senior-typescript`) and UX (`orevia-ux-reviewer`) skills were loaded and applied
 in earlier passes. All review is **simulated**; no human or simulated-user participation.
 
 ## Data changes
@@ -98,7 +98,7 @@ None. Static client-only presentation; no rollout or data step.
    `tsc --noEmit -p tsconfig.json && vite build`, bundle budget and `test:coverage`.
    Typecheck final lines (exit 0 — **no `error TS…`**):
    ```
-   > smartclinic-staff-web@0.1.0 typecheck
+   > orevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    Test/coverage final lines from that run:

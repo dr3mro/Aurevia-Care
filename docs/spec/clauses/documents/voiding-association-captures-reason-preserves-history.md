@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.documents.clauses.VoidingAssociationCapturesReasonPreservesHistoryTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/VoidingAssociationCapturesReasonPreservesHistoryTest.java`),
+Test class `com.aurevia.documents.clauses.VoidingAssociationCapturesReasonPreservesHistoryTest`
+(`apps/api/src/test/java/com/aurevia/documents/clauses/VoidingAssociationCapturesReasonPreservesHistoryTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants
 sharing the same local codes. Each fixture registers a fresh synthetic chart and
 links a synthetic PDF before the void, so tests are independent:
@@ -44,21 +44,21 @@ Production classes exercised through the real HTTP entry points
 `POST /api/v1/documents/associations`, `POST /api/v1/documents/associations/{id}/void`
 and `GET /api/v1/documents/associations/{id}[/content]`:
 
-- `com.aurevia.smartclinic.documents.DocumentController` — thin adapter for the
+- `com.aurevia.documents.DocumentController` — thin adapter for the
   link, history, verified-content and void routes; parses `If-Match` and the
   `VoidRequest` reason.
-- `com.aurevia.smartclinic.documents.DocumentService` — requires and forwards the
+- `com.aurevia.documents.DocumentService` — requires and forwards the
   reason, re-derives `DOCUMENT_VOID` authorization, conceals other tenants,
   rejects an already-voided or stale association, performs the guarded void and
   appends the `void` event.
-- `com.aurevia.smartclinic.documents.DocumentInputs` and
-  `com.aurevia.smartclinic.api.IfMatch` — bound and trim the reason and parse the
+- `com.aurevia.documents.DocumentInputs` and
+  `com.aurevia.api.IfMatch` — bound and trim the reason and parse the
   version precondition at the boundary.
-- `com.aurevia.smartclinic.documents.DocumentPolicy` — grants `DOCUMENT_VOID` to
+- `com.aurevia.documents.DocumentPolicy` — grants `DOCUMENT_VOID` to
   the clinician role only.
-- `com.aurevia.smartclinic.documents.DocumentRepository` — tenant-bounded JDBC
+- `com.aurevia.documents.DocumentRepository` — tenant-bounded JDBC
   void, event append and ordered history read, with verified original content.
-- `com.aurevia.smartclinic.documents.DocumentModel` — `DocumentAssoc`,
+- `com.aurevia.documents.DocumentModel` — `DocumentAssoc`,
   `DocumentAssocView` and `AssociationEvent` projections returned as JSON.
 - `db/migrations/V17__document_associations.sql` — `document_association` and its
   append-only `document_association_event` table with RLS + FORCE RLS, the

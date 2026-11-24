@@ -10,12 +10,12 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.chart.clauses.EnteredErrorPreservesPriorRevisionRecordsActorTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/EnteredErrorPreservesPriorRevisionRecordsActorTest.java`).
+Test class: `com.aurevia.chart.clauses.EnteredErrorPreservesPriorRevisionRecordsActorTest`
+(path: `apps/api/src/test/java/com/aurevia/chart/clauses/EnteredErrorPreservesPriorRevisionRecordsActorTest.java`).
 All seven tests are active (none disabled), use only synthetic fixtures and drive the real HTTP
 entry point against a freshly migrated database. The test class is tagged `integration` and
-uses its own database `smartclinic_chart_clause05_it`, following the neighbouring
-`com.aurevia.smartclinic.it.clinical.ClinicalNoteRevisionIntegrationTest` fixtures and setup.
+uses its own database `orevia_chart_clause05_it`, following the neighbouring
+`com.aurevia.it.clinical.ClinicalNoteRevisionIntegrationTest` fixtures and setup.
 
 - `enteredInErrorAppendsASupersedingRevisionAndRecordsActorReasonAndRecipients` — positive proof.
   After a synthetic note is created and signed by `clinician-a` at version 2, a *different*
@@ -47,19 +47,19 @@ uses its own database `smartclinic_chart_clause05_it`, following the neighbourin
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.clinical.notes.ClinicalNoteController` — thin adapter; its
+- `com.aurevia.clinical.notes.ClinicalNoteController` — thin adapter; its
   `enteredInError` method binds the `ErrorRequest` and `If-Match` precondition to
   `ClinicalNoteService.markEnteredInError` on `POST /api/v1/clinical-notes/{id}/entered-in-error`.
-- `com.aurevia.smartclinic.clinical.notes.ClinicalNoteService` — domain owner of the
+- `com.aurevia.clinical.notes.ClinicalNoteService` — domain owner of the
   `ENTERED_IN_ERROR` command; re-derives membership and role authorization, loads and locks
   the note head, checks the version precondition and that the source is signature-bearing,
   then appends a new revision that links to the prior version and carries the reason and
   recipients. It never mutates or deletes an earlier revision.
-- `com.aurevia.smartclinic.clinical.notes.NoteInputs` — trust-boundary validation of the
+- `com.aurevia.clinical.notes.NoteInputs` — trust-boundary validation of the
   reason and the affected-recipient JSON array.
-- `com.aurevia.smartclinic.clinical.notes.NoteRepository` — the single SQL boundary; `insert`
+- `com.aurevia.clinical.notes.NoteRepository` — the single SQL boundary; `insert`
   writes a new immutable row and does not supply the actor, which is owned by the database.
-- `com.aurevia.smartclinic.clinical.notes.ClinicalNoteRevision`, `RevisionInput` and
+- `com.aurevia.clinical.notes.ClinicalNoteRevision`, `RevisionInput` and
   `NoteState` — the revision value types carrying `supersedesVersion`, `enteredErrorReason`,
   `enteredErrorActor`, `affectedRecipients` and the `entered_in_error` wire state.
 - `db/migrations/V15__clinical_note_signing.sql` — append-only, forced-RLS revision ledger;
@@ -67,12 +67,12 @@ Production classes exercised through the normal HTTP entry point:
   `entered_error_actor` from the transaction-local `app.actor` identity, never from the
   request body.
 
-Source survey: the package `apps/api/src/main/java/com/aurevia/smartclinic/chart/record`
+Source survey: the package `apps/api/src/main/java/com/aurevia/chart/record`
 contains only CLN-03 entry recording and verification (`ChartController`, `ChartService`,
 `ChartRepository`, `ChartEntry`, `RecordEntryCommand` and the verification state types).
 No draft/sign/entered-in-error implementation exists there. The chart's signed-note ledger
 for CLN-05 is the neighbouring `clinical.notes` package listed above; controllers under
-`com.aurevia.smartclinic.web` only delegate authorization. This task changed no production
+`com.aurevia.web` only delegate authorization. This task changed no production
 code, contract or migration.
 
 ## Gap

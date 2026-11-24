@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.prescription.clauses.AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest.java`),
+Test class `com.aurevia.prescription.clauses.AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest`
+(`apps/api/src/test/java/com/aurevia/prescription/clauses/AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from
 the production Flyway migrations, with synthetic organizations, subjects and one
 synthetic patient:
@@ -49,29 +49,29 @@ change occurred.
 Production classes exercised through
 `POST /api/v1/prescriptions/{id}/verify-partner-status` and
 `POST /api/v1/prescriptions/{id}/retry`:
-`com.aurevia.smartclinic.prescription.rx.RxController` (thin HTTP adapter),
-`com.aurevia.smartclinic.prescription.rx.RxService` (three-valued reconciliation
+`com.aurevia.prescription.rx.RxController` (thin HTTP adapter),
+`com.aurevia.prescription.rx.RxService` (three-valued reconciliation
 sets `retry_allowed` only for `absent`; the retry gate is exercised here, while
 the attempt-limit and retry-side submission-id branches are pre-existing and
 covered by the corroborating suites named below),
-`com.aurevia.smartclinic.prescription.rx.RxActions`
-(clinician-only verify and retry), `com.aurevia.smartclinic.prescription.rx.RxInputs`
+`com.aurevia.prescription.rx.RxActions`
+(clinician-only verify and retry), `com.aurevia.prescription.rx.RxInputs`
 (partner-status and outcome validation),
-`com.aurevia.smartclinic.prescription.rx.RxContract` (`AMBIGUOUS` state,
+`com.aurevia.prescription.rx.RxContract` (`AMBIGUOUS` state,
 `VerifyRequest`, `RetryRequest`, `PARTNER_STATUS_VERIFIED` event),
-`com.aurevia.smartclinic.prescription.rx.RxRepository` (`reconcile`,
+`com.aurevia.prescription.rx.RxRepository` (`reconcile`,
 `retrySubmission`, `submissionAttempts`) and the tenant RLS/FORCE RLS plus the
 guarded state machine in `db/migrations/V44__rx02_prescription_transmission.sql`
 and `db/migrations/V59__rx02_ambiguous_transition.sql`.
 
 Corroborating suites already on `main` (not re-tested here):
-`com.aurevia.smartclinic.it.prescription.RxTransmissionFlowTest`
+`com.aurevia.it.prescription.RxTransmissionFlowTest`
 (`ambiguousRetryIsBlockedUntilPartnerStatusIsVerifiedAbsent`) and
-`com.aurevia.smartclinic.acceptance.specialty.PharmacyAmbiguousTransmissionAcceptanceTest`
+`com.aurevia.acceptance.specialty.PharmacyAmbiguousTransmissionAcceptanceTest`
 (`ambiguousTransmissionIsReconciledWithoutASecondSubmission`,
 `aPresentPartnerStatusReturnsToSubmittedWithoutARetry`).
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
 -Pno-security -Dtest=AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest test`
 — `tests="9" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 

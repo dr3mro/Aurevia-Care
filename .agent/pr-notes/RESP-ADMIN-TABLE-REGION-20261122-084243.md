@@ -17,7 +17,7 @@ Routine — contained UI presentation change in one staff-web component plus a n
 
 ## Review owner
 
-`smartclinic-senior-react` (bounded review, simulated) and `smartclinic-ux-reviewer` (bounded review, simulated). Both were advisory subagent reviews; no code was edited by them. No human or clinical-participant review was available or claimed.
+`orevia-senior-react` (bounded review, simulated) and `orevia-ux-reviewer` (bounded review, simulated). Both were advisory subagent reviews; no code was edited by them. No human or clinical-participant review was available or claimed.
 
 ## Data changes
 
@@ -43,18 +43,18 @@ Green stage, targeted regression:
 Final mandatory frontend definition of done (exit 0), `bash apps/staff-web/check.sh` — exact final lines:
 
 ```
-> smartclinic-staff-web@0.1.0 gen:api:check
+> orevia-staff-web@0.1.0 gen:api:check
 > bash scripts/gen-api-types.sh --check
 ✨ openapi-typescript 7.4.2
 gen:api: generated client matches the contract
 
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 
-> smartclinic-staff-web@0.1.0 lint
+> orevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 
-> smartclinic-staff-web@0.1.0 build
+> orevia-staff-web@0.1.0 build
 > tsc --noEmit -p tsconfig.json && vite build
 ✓ built in 167ms
 
@@ -91,7 +91,7 @@ Not required for this presentation-only change: no signed data, cross-organizati
 - **Decision (from simulated senior-React review F1):** the labelled region is kept at **all** bands. `DataTable` renders its region only on compact, but strict parity is impossible inside this scope: the frozen `src/features/admin/admin-screen.test.tsx:63-76` (outside declared scope) renders without a `matchMedia` stub, so `useBreakpoint` falls back to `expanded`, and it asserts a `tabindex=0` region with `style.overflowX === 'auto'`. Removing the wrapper would break an existing test and change behaviour, which the story forbids. The wrapper adopts DataTable's `.table-region` class and structure; at medium/expanded `overflow: auto` does not scroll when content fits, so the region is inert there. If strict structural parity is wanted, a separate story must update `admin-screen.test.tsx`. Recorded here as a decision for the integrator; no tracker file was edited (worker restriction).
 - The inline `style={{ overflowX: 'auto' }}` is a physical property and redundant with `.table-region`'s `overflow: auto`, but it is pre-existing behaviour required by the frozen assertion, so it was preserved rather than removed. It has no RTL mirroring effect.
 - The wrapper does not own cell-level wrapping, 16 px inputs, safe-area padding or 44 px controls; those belong to the child table/`.field`/`.touch`/`.page` classes and are covered by their own stories. jsdom cannot paint pixels, so pixel/zoom assertions stay with the Playwright responsive tasks (design guide §13).
-- Pre-existing, out of scope and unrelated to this change: committed conflict markers in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java` (present in `HEAD` before this work); the `opencode.json` skip-worktree profile artifact; two Python tooling tests that need `apps/api/target/surefire-reports`. None was modified.
+- Pre-existing, out of scope and unrelated to this change: committed conflict markers in `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java` (present in `HEAD` before this work); the `opencode.json` skip-worktree profile artifact; two Python tooling tests that need `apps/api/target/surefire-reports`. None was modified.
 
 ## Lessons for workers
 

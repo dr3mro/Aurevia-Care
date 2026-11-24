@@ -12,7 +12,7 @@
 
 This directory is the handoff for safe use of secure staff messaging. It is
 written against the approved product specification
-([SMARTCLINIC_V1_SPEC.md](../../../SMARTCLINIC_V1_SPEC.md)) and the implemented
+([PROJECT_V1_SPEC.md](../../../.opencode/config/PROJECT_V1_SPEC.md)) and the implemented
 messaging contracts. All examples use synthetic identifiers; no real person,
 facility or clinical payload appears here.
 
@@ -28,7 +28,7 @@ facility or clinical payload appears here.
 | Preserve sender and recipient retention duties | [Retention, holds and exports](#retention-holds-and-exports) |
 | Requests for copies follow the site's record access procedure | [Copies and record access](#copies-and-record-access) |
 
-Clause wording is taken from the [product specification](../../../SMARTCLINIC_V1_SPEC.md).
+Clause wording is taken from the [product specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 No new requirement, threshold or approval is introduced by this guide. The
 [UAT scenario](uat.md) exercises the rules below with synthetic data.
 

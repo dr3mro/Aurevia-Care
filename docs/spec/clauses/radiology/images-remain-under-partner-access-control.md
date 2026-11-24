@@ -14,14 +14,14 @@ Active HTTP-level proof over the in-memory imaging kernel (`synthetic-auth` prof
 standalone MockMvc, synthetic identifiers only; no database, no live PACS and no
 external network call). All seven tests are active — none is disabled — and pass.
 
-- Test class: `com.aurevia.smartclinic.radiology.clauses.ImagesRemainUnderPartnerAccessControlTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/radiology/clauses/ImagesRemainUnderPartnerAccessControlTest.java`).
+- Test class: `com.aurevia.radiology.clauses.ImagesRemainUnderPartnerAccessControlTest`
+  (path: `apps/api/src/test/java/com/aurevia/radiology/clauses/ImagesRemainUnderPartnerAccessControlTest.java`).
   It reuses the fixture style of
-  `com.aurevia.smartclinic.radiology.ImagingControllerHttpTest` (standalone MockMvc,
+  `com.aurevia.radiology.ImagingControllerHttpTest` (standalone MockMvc,
   `TenantContextInterceptor`, `MockEnvironment("synthetic-auth")`, mocked
   `StaffRepository` and `TransactionTemplate`, `tools.jackson.databind.ObjectMapper`,
   `@AfterEach TenantContext.clear()`) and the `accessioned()` intake → schedule →
-  accession sequence of `com.aurevia.smartclinic.radiology.StudyLinkReviewTest`.
+  accession sequence of `com.aurevia.radiology.StudyLinkReviewTest`.
 
 - `studyLinkRecordsOnlyTheUidAndPartnerWorkstationReference` — positive proof. An
   accessioned order is linked through `POST /api/v1/imaging/orders/{orderId}/studies`
@@ -72,20 +72,20 @@ Entry-point-to-test trace: the fixture drives `ImagingService.intake` → `sched
 
 Production classes exercised through those entry points:
 
-- `com.aurevia.smartclinic.radiology.ImagingService` — `associateStudy` records only
+- `com.aurevia.radiology.ImagingService` — `associateStudy` records only
   the external study UID and workstation reference (lines 204–233); `read`,
   `load`/`loadRevisions` (510–521), `requireVersion` (549–553), `matches` and
   `queueStudyLinkReview` (561–580) enforce tenant, version and label invariants.
   Its Javadoc (40–43, 190–198) states that image pixels are never retrieved.
-- `com.aurevia.smartclinic.radiology.ImagingOrder` — the 22-component immutable
+- `com.aurevia.radiology.ImagingOrder` — the 22-component immutable
   revision carrying `studyInstanceUid` and `workstationRef` and no pixel field.
-- `com.aurevia.smartclinic.radiology.ImagingController` — the thin HTTP adapter with
+- `com.aurevia.radiology.ImagingController` — the thin HTTP adapter with
   five JSON routes and no image-serving mapping.
-- `com.aurevia.smartclinic.radiology.RadRules` — `RADIOLOGY_STAFF` / `RECEPTION`
+- `com.aurevia.radiology.RadRules` — `RADIOLOGY_STAFF` / `RECEPTION`
   boundary that gates study association.
-- `com.aurevia.smartclinic.radiology.RadPolicyCatalog`, `RadTypes`, `StudyLinkReview`,
-  `com.aurevia.smartclinic.api.ApiErrorHandler` and
-  `com.aurevia.smartclinic.web.TenantContextInterceptor` — approved modality policy,
+- `com.aurevia.radiology.RadPolicyCatalog`, `RadTypes`, `StudyLinkReview`,
+  `com.aurevia.api.ApiErrorHandler` and
+  `com.aurevia.web.TenantContextInterceptor` — approved modality policy,
   state/review enums, the review record, uniform error rendering and tenant binding.
 
 Survey result for the surrounding code: no imaging table or Flyway migration exists

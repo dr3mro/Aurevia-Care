@@ -21,12 +21,12 @@ SKIP = {".git", "node_modules", ".agent", "target", "__pycache__"}
 SKIP_PREFIXES = ("docs/archive/", "docs/swarm/")
 LEGACY = {
     "contracts/x_01", "contracts/x_02", "contracts/x_03",
-    "apps/api/src/main/java/com/aurevia/smartclinic/api/x_01",
-    "apps/api/src/main/java/com/aurevia/smartclinic/api/x_02",
-    "apps/api/src/main/java/com/aurevia/smartclinic/api/x_03",
-    "apps/api/src/test/java/com/aurevia/smartclinic/api/x_01",
-    "apps/api/src/test/java/com/aurevia/smartclinic/api/x_02",
-    "apps/api/src/test/java/com/aurevia/smartclinic/api/x_03",
+    "apps/api/src/main/java/com/aurevia/api/x_01",
+    "apps/api/src/main/java/com/aurevia/api/x_02",
+    "apps/api/src/main/java/com/aurevia/api/x_03",
+    "apps/api/src/test/java/com/aurevia/api/x_01",
+    "apps/api/src/test/java/com/aurevia/api/x_02",
+    "apps/api/src/test/java/com/aurevia/api/x_03",
 }
 
 

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.scheduling.clauses.LinkUnscheduledEncountersIntakeTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/scheduling/clauses/LinkUnscheduledEncountersIntakeTest.java`),
+Test class `com.aurevia.scheduling.clauses.LinkUnscheduledEncountersIntakeTest`
+(`apps/api/src/test/java/com/aurevia/scheduling/clauses/LinkUnscheduledEncountersIntakeTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants that
 share the same facility and patient-local codes. It proves only this clause:
 
@@ -32,22 +32,22 @@ share the same facility and patient-local codes. It proves only this clause:
 Entry point: `POST /api/v1/clinic/worklist/intake` and `GET /api/v1/clinic/worklist`.
 Production classes exercised through that entry point:
 
-- `com.aurevia.smartclinic.scheduling.checkin.ClinicController` — thin controller
+- `com.aurevia.scheduling.checkin.ClinicController` — thin controller
   receiving the service by injection and returning 201 with the new entry.
-- `com.aurevia.smartclinic.scheduling.checkin.CheckInService.linkIntake` — validates
+- `com.aurevia.scheduling.checkin.CheckInService.linkIntake` — validates
   the command, re-checks active membership, the `INTAKE_LINK` permission and
   facility scope inside the tenant-guarded transaction, checks the patient exists,
   resolves the facility and inserts the worklist row with a null appointment.
-- `com.aurevia.smartclinic.scheduling.checkin.CheckInCommands.Intake` — the typed
+- `com.aurevia.scheduling.checkin.CheckInCommands.Intake` — the typed
   request body at the web boundary.
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistPolicy` — grants `INTAKE_LINK`
+- `com.aurevia.scheduling.checkin.WorklistPolicy` — grants `INTAKE_LINK`
   to `tenant_admin`, `reception` and `clinical_assistant`, but not to `clinician`
   or `privacy_auditor`.
-- `com.aurevia.smartclinic.scheduling.checkin.WorkflowInputs` — guards the facility
+- `com.aurevia.scheduling.checkin.WorkflowInputs` — guards the facility
   code, patient UUID and required reason before any SQL runs.
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistRepository` — the RLS-bounded
+- `com.aurevia.scheduling.checkin.WorklistRepository` — the RLS-bounded
   store that inserts the unscheduled row and reads the worklist.
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistItem` — the returned projection,
+- `com.aurevia.scheduling.checkin.WorklistItem` — the returned projection,
   distinguishing a walk-in (intake reason, no appointment) from a booking.
 - Row level security and FORCE RLS for `worklist_entry` and the audit ledger come
   from the Flyway migrations under `db/migrations`.

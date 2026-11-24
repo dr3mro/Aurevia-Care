@@ -48,21 +48,21 @@ it.
 2. **Check the probes.** `GET /health/live` is process-local; `GET /health/ready`
    does one database round trip and answers HTTP 503 on failure with a
    status-only body
-   ([HealthController](../../../apps/api/src/main/java/com/aurevia/smartclinic/web/HealthController.java)).
+   ([HealthController](../../../apps/api/src/main/java/com/aurevia/web/HealthController.java)).
    Note which one fails. The bootstrap image smoke test uses `GET /health.txt`
    and is a different, one-off probe, not a monitoring signal.
 3. **Read structured logs, not bodies.** Each request line carries
    `correlationId`, `method`, `route`, `status` and `latencyMs`, and the route is
    the matched handler pattern
-   ([RequestLogFormatter](../../../apps/api/src/main/java/com/aurevia/smartclinic/observability/RequestLogFormatter.java)).
+   ([RequestLogFormatter](../../../apps/api/src/main/java/com/aurevia/observability/RequestLogFormatter.java)).
    Compare the affected route class with the OPS-03 targets in
    [capacity targets](../capacity/capacity-targets.md).
 4. **Check the gate that should have caught it.** Delivery runs policy, script,
    frontend, Java/DB, docs and per-architecture smoke jobs and requires them on
    the exact SHA (`Delivery gate`). A failed or skipped gate means the artifact
    was not verified for that commit.
-5. **Check configuration drift.** Blank `SMARTCLINIC_OIDC_ISSUER_URI` fails
-   startup outside the synthetic profile; a wrong `SMARTCLINIC_DB_PASSWORD`
+5. **Check configuration drift.** Blank `OREVIA_OIDC_ISSUER_URI` fails
+   startup outside the synthetic profile; a wrong `OREVIA_DB_PASSWORD`
    makes readiness fail. These are runtime inputs, not code changes.
 
 `NOT YET IN PLACE:` a metrics exporter, dashboard, alert or external uptime

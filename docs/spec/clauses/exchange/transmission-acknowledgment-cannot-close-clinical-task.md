@@ -10,14 +10,14 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.TransmissionAcknowledgmentCannotCloseClinicalTaskTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/TransmissionAcknowledgmentCannotCloseClinicalTaskTest.java`).
+Test class: `com.aurevia.exchange.clauses.TransmissionAcknowledgmentCannotCloseClinicalTaskTest`
+(path: `apps/api/src/test/java/com/aurevia/exchange/clauses/TransmissionAcknowledgmentCannotCloseClinicalTaskTest.java`).
 All six tests are active (none disabled) and pass against real PostgreSQL with synthetic fixtures only.
-Each mutating test seeds its own task id in the dedicated `smartclinic_xch02_ack_it` database.
+Each mutating test seeds its own task id in the dedicated `orevia_xch02_ack_it` database.
 
 - `aDeliveryReceiptLeavesClinicalReviewUnreviewedAndUnbound` — positive proof. A lab collector posts
   `send` and `deliver` through `POST /api/v1/exchange-tasks/{id}/{command}`; the response and a direct
-  `smartclinic_app` read show transmission `delivered`, workflow `requested`, clinical review
+  `orevia_app` read show transmission `delivered`, workflow `requested`, clinical review
   `unreviewed`, all three clinical evidence columns null, and no `clinical_review` event in the ledger.
 - `resolvingAfterOnlyADeliveryReceiptIsRefusedAndWritesNothing` — negative proof. After a delivery
   receipt, `resolve` by a clinician at the correct version returns 409 `INVALID_TRANSITION` and at a
@@ -39,18 +39,18 @@ Each mutating test seeds its own task id in the dedicated `smartclinic_xch02_ack
   pending and unreviewed.
 
 Production classes and objects exercised through the normal HTTP entry point
-`POST /api/v1/exchange-tasks/{id}/{command}` (`com.aurevia.smartclinic.exchange.task.ExchangeTaskController`):
+`POST /api/v1/exchange-tasks/{id}/{command}` (`com.aurevia.exchange.task.ExchangeTaskController`):
 
-- `com.aurevia.smartclinic.exchange.task.ExchangeStateMachine` — the `TRANSMISSION` branch of `next`
+- `com.aurevia.exchange.task.ExchangeStateMachine` — the `TRANSMISSION` branch of `next`
   copies clinical review state and evidence unchanged while advancing only transmission; the
   `CLINICAL_REVIEW` branch raises 409 `INVALID_TRANSITION` for `unreviewed -> resolved`.
-- `com.aurevia.smartclinic.exchange.task.ExchangeCommand` and `ExchangeDimension` — each command maps
+- `com.aurevia.exchange.task.ExchangeCommand` and `ExchangeDimension` — each command maps
   to exactly one state channel, so no command can deliver and resolve in one write.
-- `com.aurevia.smartclinic.exchange.task.ExchangeActionPolicy` — `allows` is clinician-only for the
+- `com.aurevia.exchange.task.ExchangeActionPolicy` — `allows` is clinician-only for the
   clinical review action, so a lab collector can record a delivery receipt but cannot close the task.
-- `com.aurevia.smartclinic.exchange.task.ExchangeTaskService` — `execute` authorizes, loads under the
+- `com.aurevia.exchange.task.ExchangeTaskService` — `execute` authorizes, loads under the
   tenant guard, checks `If-Match` (412 `STALE_VERSION` when stale) and appends one channel event only.
-- `com.aurevia.smartclinic.api.IfMatch` — parses the version precondition used by every transition.
+- `com.aurevia.api.IfMatch` — parses the version precondition used by every transition.
 - `db/migrations/V20__exchange_task_states.sql` — the review-evidence CHECK, the RLS and FORCE RLS
   policies, `xch02_guard_task_update` (`v_changed <> 1` and the clinical transition branch), and the
   trigger-derived actor are the database authority behind the HTTP behaviour.

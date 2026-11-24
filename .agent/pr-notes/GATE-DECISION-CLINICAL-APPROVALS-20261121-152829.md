@@ -21,7 +21,7 @@ Documentation-only change; no production code, migration or threshold touched.
 - Referenced but not decided: RAD-01 (imaging privileges), XCH-05
   (critical-result escalation and human acknowledgment).
 
-Source: section 9 (G5 row) and section 10 of `SMARTCLINIC_V1_SPEC.md`, plus the
+Source: section 9 (G5 row) and section 10 of `PROJECT_V1_SPEC.md`, plus the
 ADM-01 and CLN-04 requirement text. Requirements ADM-01/CLN-04 come from story
 `GATE-DECISION-CLINICAL-APPROVALS` in `TODO.md`.
 
@@ -36,7 +36,7 @@ satisfied by this document.
 
 Clinical safety lead and site medical director (section 10 accountable roles),
 recorded in the document's empty approval record. A bounded simulated clinical
-review was requested from the `smartclinic-physician-reviewer` specialist and
+review was requested from the `orevia-physician-reviewer` specialist and
 returned no actionable findings (see `## Clinical and architecture review`).
 No human clinical or participant evidence was available or claimed.
 
@@ -90,7 +90,7 @@ run because no frontend or Java file changed.
 
 ## Clinical and architecture review
 
-Simulated clinical review requested from `smartclinic-physician-reviewer`
+Simulated clinical review requested from `orevia-physician-reviewer`
 (specialist evidence, not human clinical sign-off): **no actionable findings**.
 It independently verified all five approval categories, the eight exact
 headings, the four-column options table, that every link resolves to an existing
@@ -127,14 +127,14 @@ assert that a delivered escalation equals clinical receipt.
   clause notes under that path relating to this decision. They are produced by
   separate `SPEC-*` evidence-note tasks (for example `SPEC-DECISIONS`) and are
   not present. This was not a blocker: the authoritative clause text is in
-  sections 9 and 10 of `SMARTCLINIC_V1_SPEC.md`, which were read in full, and
+  sections 9 and 10 of `PROJECT_V1_SPEC.md`, which were read in full, and
   the pack depends on no clause note. Recorded under `## What is missing`.
 - The template/dictionary store and the versioned diagnosis/procedure catalogue
   are in memory in this checkout (`docs/decisions/0003-persistence-of-in-memory-stores.md`);
   an approved configuration in those stores would not survive a restart. The
   pack records this honestly under `## What is missing` instead of claiming
   durable support.
-- Simulated physician review (`smartclinic-physician-reviewer`) returned no
+- Simulated physician review (`orevia-physician-reviewer`) returned no
   actionable findings; no change was made as a result.
 - No defect was found in the repository; no BUGS.md entry is warranted.
 

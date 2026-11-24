@@ -17,8 +17,8 @@ rather than through `chart.record`. Baseline run on the unmodified tree:
 `mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=ExplicitConfirmationCreatesBookingTest test`
 -> `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0` (full final line in the worker notes).
 
-- Test class: `com.aurevia.smartclinic.chart.clauses.ExplicitConfirmationCreatesBookingTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/ExplicitConfirmationCreatesBookingTest.java`).
+- Test class: `com.aurevia.chart.clauses.ExplicitConfirmationCreatesBookingTest`
+  (path: `apps/api/src/test/java/com/aurevia/chart/clauses/ExplicitConfirmationCreatesBookingTest.java`).
 - `explicitConfirmationCreatesExactlyOneBookingWithProvenance` — positive proof. `POST
   /api/v1/follow-ups/suggest` returns an unconfirmed suggestion with no `bookingId` and
   leaves the appointment count unchanged. The explicit `POST /api/v1/follow-ups/{id}/confirm`
@@ -57,20 +57,20 @@ resulting rows with tenant-scoped JDBC queries.
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpController` — thin adapter publishing
+- `com.aurevia.scheduling.followup.FollowUpController` — thin adapter publishing
   `POST /api/v1/follow-ups/suggest`, `/{id}/override`, `/{id}/confirm`, `/{id}/tasks` and
   `/tasks/{taskId}/complete`.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpCommandService` — transactional command
+- `com.aurevia.scheduling.followup.FollowUpCommandService` — transactional command
   boundary; makes the confirmation, its booking and its audit facts atomic.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpService` — the invariant owner:
+- `com.aurevia.scheduling.followup.FollowUpService` — the invariant owner:
   `confirm` is the only command that calls the booking port, after version, re-confirmation
   and authorization checks; the other commands never call it.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpBookingService` and `FollowUpBooking` —
+- `com.aurevia.scheduling.followup.FollowUpBookingService` and `FollowUpBooking` —
   the explicit-confirmation booking boundary, delegating to the shared scheduling service with
   the `follow-up confirmation` reason.
-- `com.aurevia.smartclinic.api.IfMatch` and `com.aurevia.smartclinic.authz.ActionPolicy` — the
+- `com.aurevia.api.IfMatch` and `com.aurevia.authz.ActionPolicy` — the
   version precondition (428/412) and the role matrix that refuses a clinician confirmation.
-- `com.aurevia.smartclinic.scheduling.AppointmentService` and `JdbcFollowUpStore` — the shared
+- `com.aurevia.scheduling.AppointmentService` and `JdbcFollowUpStore` — the shared
   appointment insert and the tenant-scoped persistence of the confirmed suggestion and its
   `booking_id`.
 

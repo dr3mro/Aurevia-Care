@@ -14,8 +14,8 @@ Service-level integration proof against a fresh PostgreSQL database applied from
 production Flyway migrations (`synthetic-auth` profile, two synthetic tenants with
 identical local identifiers, synthetic clinician/coordinator/referrer and patient
 fixtures only). The test class is
-`com.aurevia.smartclinic.therapy.clauses.SignSessionProgressDischargeNotesSendApprovedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/therapy/clauses/SignSessionProgressDischargeNotesSendApprovedTest.java`).
+`com.aurevia.therapy.clauses.SignSessionProgressDischargeNotesSendApprovedTest`
+(`apps/api/src/test/java/com/aurevia/therapy/clauses/SignSessionProgressDischargeNotesSendApprovedTest.java`).
 It drives the durable domain entry point through a bound tenant context because the
 three closure commands have no HTTP controller route today (see `## Gap`). Each
 state is read back through `JdbcTherapyStore.find` and `TherapyService.get` under
@@ -29,7 +29,7 @@ Active tests:
   closes the episode; the approved summary goes to the verified referrer from the
   episode; the referrer's acknowledgment binds the exact summary revision; the
   final notes, summary, acknowledgment and `DISCHARGED` state survive a fresh
-  read. A direct `UPDATE` of a signed note as `smartclinic_app` is refused with
+  read. A direct `UPDATE` of a signed note as `orevia_app` is refused with
   SQLSTATE `42501`, proving immutability at the database boundary.
 - `coordinatorCannotSignANote` — a `pt_coordinator` may send and acknowledge but
   is refused signing with 403 `FORBIDDEN`; the note stays unsigned.
@@ -58,15 +58,15 @@ Active tests:
 
 Production classes exercised:
 
-- `com.aurevia.smartclinic.therapy.TherapyService` — `signNote`, `sendSummary`,
+- `com.aurevia.therapy.TherapyService` — `signNote`, `sendSummary`,
   `acknowledgeReturn`, `get`, `auditTrail` and the guarded `authorize`, `load`,
   `requireVersion`, `requireState` helpers together with the declarative
   `ACTION_ROLES` policy (`NOTE_SIGN` is clinician-only; summary send and return
   acknowledgment allow clinician and coordinator).
-- `com.aurevia.smartclinic.therapy.TherapyContract` — `NoteKind`, `ClinicalNote`,
+- `com.aurevia.therapy.TherapyContract` — `NoteKind`, `ClinicalNote`,
   `Summary`, `ReturnAcknowledgment`, `TherapyAggregate` and the `NoteRequest`,
   `SummaryRequest`, `AckRequest` commands.
-- `com.aurevia.smartclinic.therapy.JdbcTherapyStore` — tenant-guarded persistence
+- `com.aurevia.therapy.JdbcTherapyStore` — tenant-guarded persistence
   of notes, the summary, the acknowledgment and the append-only audit trail.
 - `db/migrations/V77__build_12.sql` — `therapy_clinical_note`, `therapy_summary`
   and `therapy_return_acknowledgment` with RLS, FORCE RLS, referrer keys and the
@@ -92,7 +92,7 @@ be claimed as fully proven because no HTTP entry point, published contract or
 regenerated client exists for the three closure commands:
 
 1. **Missing controller routes and published contract.** `TherapyController`
-   (`apps/api/src/main/java/com/aurevia/smartclinic/therapy/TherapyController.java`)
+   (`apps/api/src/main/java/com/aurevia/therapy/TherapyController.java`)
    exposes only referral accept and episode read. It needs routes to sign a note
    (`POST /api/v1/therapy/episodes/{id}/notes/{kind}/sign`), send the approved
    summary (`POST /api/v1/therapy/episodes/{id}/summary`) and record the return

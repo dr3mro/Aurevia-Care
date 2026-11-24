@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.documents.clauses.RetainOriginalBytesChecksumTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/RetainOriginalBytesChecksumTest.java`),
+Test class `com.aurevia.documents.clauses.RetainOriginalBytesChecksumTest`
+(`apps/api/src/test/java/com/aurevia/documents/clauses/RetainOriginalBytesChecksumTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from
 the production Flyway migrations, with synthetic organizations, memberships and
 one synthetic chart subject per test:
@@ -39,17 +39,17 @@ one synthetic chart subject per test:
   rather than a missing fixture.
 
 Production classes exercised through the document controller routes above:
-`com.aurevia.smartclinic.documents.DocumentController` (injected service, thin
-HTTP adapter), `com.aurevia.smartclinic.documents.DocumentService`
+`com.aurevia.documents.DocumentController` (injected service, thin
+HTTP adapter), `com.aurevia.documents.DocumentService`
 (`link` and `associationContent` and their tenant-guarded transactions;
 `voidAssociation` preserves the original but is exercised by the pre-existing
 `DocumentDigestIntegrationTest`, not by this class),
-`com.aurevia.smartclinic.documents.DocumentRepository`
+`com.aurevia.documents.DocumentRepository`
 (`insert` omits any digest and `verifiedAssociationContent` reads the
-recomputed flag), `com.aurevia.smartclinic.documents.DocumentModel.VerifiedContent`
-(defensive copy of the retained bytes), `com.aurevia.smartclinic.documents.DocumentPolicy`
+recomputed flag), `com.aurevia.documents.DocumentModel.VerifiedContent`
+(defensive copy of the retained bytes), `com.aurevia.documents.DocumentPolicy`
 (clinician and reception may read; tenant administration may not) and
-`com.aurevia.smartclinic.documents.DocumentInputs` (documents that the database,
+`com.aurevia.documents.DocumentInputs` (documents that the database,
 not the caller, owns the digest). The database invariants come from
 `db/migrations/V17__document_associations.sql` (`content bytea`, the BEFORE
 INSERT trigger deriving `sha256` from those bytes, the update guard pinning
@@ -59,16 +59,16 @@ and `db/migrations/V75__build_06.sql`
 an `intact` flag instead of raising a SQL error so the tamper can be audited).
 
 Corroborating suites already on `main` (not re-tested here):
-`com.aurevia.smartclinic.documents.DocumentDownloadHttpIntegrationTest`
+`com.aurevia.documents.DocumentDownloadHttpIntegrationTest`
 (`verifiesDownloadThenDetectsTamperingAndConcealsOtherTenants`),
-`com.aurevia.smartclinic.documents.DocumentDigestIntegrationTest`
+`com.aurevia.documents.DocumentDigestIntegrationTest`
 (`retainedBytesVerifyThenTamperingIsFlagged`,
 `voidKeepsTheOriginalAndAnotherTenantCannotReadIt`) and
-`com.aurevia.smartclinic.documents.DocumentContentRepositoryTest` (unit proof of
+`com.aurevia.documents.DocumentContentRepositoryTest` (unit proof of
 `verifiedAssociationContent`).
 
 Verified locally:
-`SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RetainOriginalBytesChecksumTest test`
+`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RetainOriginalBytesChecksumTest test`
 —— `tests="4" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim
 that the document routes are published in the committed OpenAPI contract.

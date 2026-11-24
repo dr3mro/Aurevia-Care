@@ -93,7 +93,7 @@ specialist. Red was observed before the production change.
    `tests/theme/ThemeProvider.test.tsx`, which deliberately renders a consumer
    without a provider to assert that error; they are not test failures.
 4. Typecheck final lines (required by the story):
-   `> smartclinic-staff-web@0.1.0 typecheck`
+   `> orevia-staff-web@0.1.0 typecheck`
    `> tsc --noEmit -p tsconfig.json`
    No `error TS…` output; `TYPECHECK_EXIT=0`.
 5. Per-file coverage for the touched production file, read from
@@ -201,7 +201,7 @@ acceptance is claimed. Real-patient approval remains a G5 gate.
   are left to the Playwright projects in `docs/design/responsive-layout.md` §13.
 - **Pre-existing, out-of-scope committed conflict markers.** `git grep -nE
   '^(<<<<<<<|>>>>>>>) '` found markers in
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java` and `Hl7Segment.java`; `git show HEAD:…/Hl7Parser.java`
   confirms they are already committed at HEAD, not introduced here. They are
   outside the declared scope and were left untouched for the integrator/owner.

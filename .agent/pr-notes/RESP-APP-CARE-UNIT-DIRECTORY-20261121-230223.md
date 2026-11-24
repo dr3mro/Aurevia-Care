@@ -35,7 +35,7 @@ decision encoded.
 
 ## Review owner
 
-Simulated `smartclinic-senior-mobile` review (bounded, read-only). No human,
+Simulated `orevia-senior-mobile` review (bounded, read-only). No human,
 clinical or real-patient evidence is claimed; that remains a G5 gate.
 
 ## Data changes
@@ -181,7 +181,7 @@ review was requested; its findings (if any) are recorded under Findings.
 
 - **Pre-existing committed conflict markers, out of scope.** `git grep -nE
   '^(<<<<<<<|>>>>>>>) '` finds markers committed at HEAD in
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`
   and siblings (e.g. `origin/swarm/BUILD-37-469`). They exist in HEAD
   (`git grep … HEAD` confirms), are unrelated to this story and are outside its
   scope, so they were left untouched. They are not merge conflicts in progress.

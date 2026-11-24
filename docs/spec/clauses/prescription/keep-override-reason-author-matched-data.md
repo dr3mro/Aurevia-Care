@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.prescription.clauses.KeepOverrideReasonAuthorMatchedDataTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/KeepOverrideReasonAuthorMatchedDataTest.java`),
+Test class `com.aurevia.prescription.clauses.KeepOverrideReasonAuthorMatchedDataTest`
+(`apps/api/src/test/java/com/aurevia/prescription/clauses/KeepOverrideReasonAuthorMatchedDataTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from the
 production Flyway migrations (`filesystem:../../db/migrations`) and dropped in
 `@AfterAll`, with two synthetic tenants sharing local identifiers and one synthetic
@@ -49,24 +49,24 @@ patient per tenant:
 Production classes exercised through `POST /api/v1/prescription-drafts/{id}/allergy-check`,
 `POST /api/v1/prescription-drafts/{id}/select-medication` and
 `GET /api/v1/prescription-drafts/{id}`:
-`com.aurevia.smartclinic.prescription.PrescriptionController` (thin HTTP adapter,
-`If-Match` boundary), `com.aurevia.smartclinic.prescription.PrescriptionService`
+`com.aurevia.prescription.PrescriptionController` (thin HTTP adapter,
+`If-Match` boundary), `com.aurevia.prescription.PrescriptionService`
 (`selectMedication`, the private `snapshot` and the stale-version guard),
-`com.aurevia.smartclinic.prescription.PrescriptionInputs` (`optionalText`),
-`com.aurevia.smartclinic.prescription.AllergyChecker` (retained, structured
-findings), `com.aurevia.smartclinic.prescription.PrescriptionRepository`
+`com.aurevia.prescription.PrescriptionInputs` (`optionalText`),
+`com.aurevia.prescription.AllergyChecker` (retained, structured
+findings), `com.aurevia.prescription.PrescriptionRepository`
 (`insertOverride`, `findOverride`) and
-`com.aurevia.smartclinic.prescription.PrescriptionContract` (`OverrideRecord`,
+`com.aurevia.prescription.PrescriptionContract` (`OverrideRecord`,
 `DraftView`, `SelectMedicationRequest`). The RLS/FORCE RLS policy, the author trigger
 and the append-only triggers come from `db/migrations/V43__prescription_drafts.sql`.
 
 Corroborating suites already on `main` (not re-tested here):
-`com.aurevia.smartclinic.it.prescription.PrescriptionFlowTest`
+`com.aurevia.it.prescription.PrescriptionFlowTest`
 (`fullWorkflowKeepsValidationOverrideAndAuditSeparate` asserts the same reason, author
 and snapshot through the same entry points; `immutableLedgerAndDatabaseVersionGuardHold`
 asserts the same append-only behavior).
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security
 -Dtest=KeepOverrideReasonAuthorMatchedDataTest test` — `tests="6" errors="0" skipped="0"
 failures="0"` in the Surefire XML report. "Proven by tests" is limited to the clause
 behavior above; it does not claim that these routes are published in the committed

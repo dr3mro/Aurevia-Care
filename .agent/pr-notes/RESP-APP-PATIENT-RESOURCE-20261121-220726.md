@@ -46,7 +46,7 @@ feedback is claimed.
 
 ## Review owner
 
-Senior React Native and Expo (simulated `smartclinic-senior-mobile` subagent,
+Senior React Native and Expo (simulated `orevia-senior-mobile` subagent,
 session `ses_dffd17877ffeTUEyWk9it2YsJa`); outcome recorded in Findings.
 
 ## Data changes
@@ -163,7 +163,7 @@ gate and is not claimed here.
   lightweight policy checks that apply to the notes and names
   (`python3 -I scripts/check-docs.py`, `check-secrets.py`, `check-names.py`) also
   pass with exit 0. The integrator/Delivery owns the full repository gate.
-- Simulated senior-mobile review (`smartclinic-senior-mobile`,
+- Simulated senior-mobile review (`orevia-senior-mobile`,
   `ses_dffd17877ffeTUEyWk9it2YsJa`, static review only — no commands executed in
   that session): layout logic, RTL mapping, hook-order stability, branch
   coverage and the named/default inset resolution were judged sound. It raised

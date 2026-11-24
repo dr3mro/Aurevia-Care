@@ -13,7 +13,7 @@ Routine. Presentation-only styles and one new container per pane; no clinical lo
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) — bounded, read-only simulated subagent review of the two in-scope files; UX reviewer skill (`smartclinic-ux-reviewer`) and Test Engineer skill (`smartclinic-test-engineer`) loaded. Three low-severity findings were applied (minWidth, honest 200% evidence wording, removal of a brittle listener assertion). No human, clinician or patient-participant evidence is claimed.
+Senior React Native and Expo (`orevia-senior-mobile`) — bounded, read-only simulated subagent review of the two in-scope files; UX reviewer skill (`orevia-ux-reviewer`) and Test Engineer skill (`orevia-test-engineer`) loaded. Three low-severity findings were applied (minWidth, honest 200% evidence wording, removal of a brittle listener assertion). No human, clinician or patient-participant evidence is claimed.
 
 ## Data changes
 
@@ -65,7 +65,7 @@ Not required: no signed data, cross-organization sharing, patient linkage change
 - **200% evidence limit (reviewer finding, accepted).** `fontScale` is driven through the mocked `Dimensions.get('window')`, but no style is derived from it: the assertion is that the text style tree has no fixed height, line cap, fit-to-width or reduced font-scale multiplier. Painted clipping at 200% is a G5 device pass, not a claim of this headless test.
 - **`prettier --check` is not a pinned module gate here.** `apps/patient-mobile/package.json` has no prettier dependency or config; `npx prettier` fetched 3.10.1 and flagged the surrounding hand-formatted sources too. Formatting follows the neighbouring files; the canonical gate is `bash apps/patient-mobile/check.sh` (green).
 - `bash scripts/check.sh` stops on the pre-existing skip-worktree `opencode.json` CI-profile artifact described above; HEAD truth was used for policy evidence and no generated file was changed.
-- Out-of-scope defect observed during the final `git merge --no-edit origin/main` (already up to date, no conflict stopped the merge): `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds committed conflict markers in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java`. `git show HEAD:<path>` confirms the markers are already committed at `HEAD`, and `git diff -- apps/api/.../hl7/` is empty. Not touched here (outside this story's scope); owner: the integrator or the BUILD-37 worker.
+- Out-of-scope defect observed during the final `git merge --no-edit origin/main` (already up to date, no conflict stopped the merge): `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds committed conflict markers in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java`. `git show HEAD:<path>` confirms the markers are already committed at `HEAD`, and `git diff -- apps/api/.../hl7/` is empty. Not touched here (outside this story's scope); owner: the integrator or the BUILD-37 worker.
 
 ## Lessons for workers
 

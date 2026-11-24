@@ -10,7 +10,7 @@ Proven by tests
 
 ## Evidence
 
-- Test class: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/DevelopmentCapturesMilestoneDomainObservationDateTest.java`
+- Test class: `apps/api/src/test/java/com/aurevia/chart/clauses/DevelopmentCapturesMilestoneDomainObservationDateTest.java`
 - `developmentTemplateDefinesExactlyMilestoneDomainObservationAndDate` — the approved `PEDIATRIC_DEVELOPMENT` version defines exactly `milestoneDomain` (CODE, `milestone_domain`), `observation` (FREE_TEXT, `en`) and `date` (DATE).
 - `completeDevelopmentNoteValidatesAndSavesAllThreeFields` — a note carrying all three values validates with no violations, saves and reloads with all three field meanings and the approved dictionary snapshot.
 - `developmentNoteMissingDateIsRefused` — omitting the required `date` reports `missing:date` and save fails with 422 and persists nothing.
@@ -19,7 +19,7 @@ Proven by tests
 - `developmentNoteWithMalformedDateIsRefused` — a non-ISO date reports `format:date`.
 - `developmentNoteCannotBeSavedByNonClinician` — a `tenant_admin` cannot save a note (403) and nothing is persisted.
 
-Production classes exercised through their public entry points: `TemplateService` (`effective`, `validate`, `saveNote`, `savedNote`), `BaselineTemplates`, `TemplateKind`, `FieldDefinition`, `FieldType`, `FieldValue`, `TemplateNoteRevision`, `TemplateVersion`, `SavedNoteRevision`, `ValidationReport`, `TemplateActor` and the `InMemoryTemplateStore` test fake in `com.aurevia.smartclinic.clinical.templates`. The durable JDBC implementation is `JdbcTemplateStore` with tables created by `db/migrations/V80__template_store.sql` and `db/migrations/V87__baseline_templates.sql`.
+Production classes exercised through their public entry points: `TemplateService` (`effective`, `validate`, `saveNote`, `savedNote`), `BaselineTemplates`, `TemplateKind`, `FieldDefinition`, `FieldType`, `FieldValue`, `TemplateNoteRevision`, `TemplateVersion`, `SavedNoteRevision`, `ValidationReport`, `TemplateActor` and the `InMemoryTemplateStore` test fake in `com.aurevia.clinical.templates`. The durable JDBC implementation is `JdbcTemplateStore` with tables created by `db/migrations/V80__template_store.sql` and `db/migrations/V87__baseline_templates.sql`.
 
 The suite was run with `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=DevelopmentCapturesMilestoneDomainObservationDateTest test`: 7 tests run, 0 failures, 0 errors, 0 skipped.
 

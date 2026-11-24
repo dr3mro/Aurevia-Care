@@ -22,7 +22,7 @@ fonts, forced full-screen, two-panes-everywhere) are rejected with reasons.
 ## Affected requirements
 
 - Primary (task): PAT-01, PAT-02, UX-01.
-- Referenced in the record (all defined in `SMARTCLINIC_V1_SPEC.md`): WEB-07
+- Referenced in the record (all defined in `PROJECT_V1_SPEC.md`): WEB-07
   (supported client versions), MSG-02 (patient inbox and thread), plus the
   section 7 "Web and mobile" row and the accessibility contract.
 
@@ -34,7 +34,7 @@ change (docs/WORKFLOW.md).
 ## Review owner
 
 Product (record owner per the story). Simulated review using the
-`smartclinic-senior-mobile` and `smartclinic-ux-reviewer` perspectives found no
+`orevia-senior-mobile` and `orevia-ux-reviewer` perspectives found no
 missing decision. No human, clinical or patient reviewer evidence.
 
 ## Data changes
@@ -70,7 +70,7 @@ Entry-point-to-test trace: not applicable — this change adds only a Markdown
 decision record with no executable entry point. The authoritative verification
 for the record's content is read-back against
 `docs/decisions/template.md`, `apps/patient-mobile/app.json`, the section 7
-mobile row and UX-01 of `SMARTCLINIC_V1_SPEC.md`, plus the passing
+mobile row and UX-01 of `PROJECT_V1_SPEC.md`, plus the passing
 `check-docs.py` link/ID gate.
 
 Deliberate non-execution (recorded, not a failure): `scripts/check.sh` was not
@@ -116,7 +116,7 @@ acceptance is implied. Real-patient approval remains a G5 gate.
   integration gate) and the frontend checks — that is strictly an
   integrator/Delivery action for a worker.
 - `scripts/check-docs.py` validates every requirement ID mentioned in Markdown
-  outside the spec against the IDs defined in `SMARTCLINIC_V1_SPEC.md`. Use only
+  outside the spec against the IDs defined in `PROJECT_V1_SPEC.md`. Use only
   defined IDs (PAT-01, PAT-02, UX-01, WEB-07, MSG-02 are all defined) and verify
   every relative link target exists before claiming the gate passes.
 - The decision-record house style (see records 0002 and 0003) uses a frontmatter

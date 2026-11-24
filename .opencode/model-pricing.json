@@ -1,0 +1,47 @@
+{
+  "_comment": "Verified zero-cost model registry for the swarm router. Pricing was read from the official models.dev catalog (https://models.dev/api.json) on 2026-11-23: each identifier below has input, output and cache_read prices of 0. Only these models may execute. Workers cannot edit this file; changes require authorized maintenance review. Unknown or unverified models are rejected.",
+  "_verification_source": "https://models.dev/api.json",
+  "_verified_on": "2026-11-23",
+  "models": {
+    "opencode-go/hy4-flash-free": {
+      "input": 0, "output": 0, "cache_read": 0, "reasoning": 0, "tool": 0, "request": 0,
+      "subscription": false, "overage": false, "authorized": true,
+      "pricing_source": "models.dev/api.json", "verified_at": "2026-11-23",
+      "families": ["hy4", "flash"], "roles": ["worker", "documentation", "reviewer"],
+      "phases": ["briefing", "execution"], "score": 80
+    },
+    "opencode/hy4-flash-free": {
+      "input": 0, "output": 0, "cache_read": 0, "reasoning": 0, "tool": 0, "request": 0,
+      "subscription": false, "overage": false, "authorized": true,
+      "pricing_source": "models.dev/api.json", "verified_at": "2026-11-23",
+      "families": ["hy4", "flash"], "roles": ["worker", "documentation"],
+      "phases": ["briefing", "execution"], "score": 78
+    },
+    "opencode/mimo-v2.6-flash-free": {
+      "input": 0, "output": 0, "cache_read": 0, "reasoning": 0, "tool": 0, "request": 0,
+      "subscription": false, "overage": false, "authorized": true,
+      "pricing_source": "models.dev/api.json", "verified_at": "2026-11-23",
+      "families": ["mimo", "flash"], "roles": ["worker"],
+      "phases": ["execution"], "score": 76
+    },
+    "opencode/deepseek-v4.1-flash-free": {
+      "input": 0, "output": 0, "cache_read": 0, "reasoning": 0, "tool": 0, "request": 0,
+      "subscription": false, "overage": false, "authorized": true,
+      "pricing_source": "models.dev/api.json", "verified_at": "2026-11-23",
+      "families": ["deepseek", "flash"], "roles": ["planner", "worker", "reviewer", "debugger"],
+      "phases": ["planning", "briefing", "execution", "review"], "score": 90
+    },
+    "opencode-go/beam-free": {
+      "input": 0, "output": 0, "cache_read": 0, "reasoning": 0, "tool": 0, "request": 0,
+      "subscription": false, "overage": false, "authorized": true,
+      "pricing_source": "models.dev/api.json", "verified_at": "2026-11-23",
+      "families": ["beam", "flash"], "roles": ["worker"], "phases": ["execution"], "score": 74
+    },
+    "opencode-go/iceman-contributor-free": {
+      "input": 0, "output": 0, "cache_read": 0, "reasoning": 0, "tool": 0, "request": 0,
+      "subscription": false, "overage": false, "authorized": true,
+      "pricing_source": "models.dev/api.json", "verified_at": "2026-11-23",
+      "families": ["iceman"], "roles": ["worker"], "phases": ["execution"], "score": 70
+    }
+  }
+}

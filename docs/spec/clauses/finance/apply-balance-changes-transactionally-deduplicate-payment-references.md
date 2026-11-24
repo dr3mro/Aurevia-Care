@@ -15,8 +15,8 @@ active, database-free clause test plus the existing real-PostgreSQL HTTP proof.
 All subjects, identifiers and amounts in the fixtures are synthetic.
 
 - Test class
-  [ApplyBalanceChangesTransactionallyDeduplicatePaymentReferencesTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/finance/clauses/ApplyBalanceChangesTransactionallyDeduplicatePaymentReferencesTest.java)
-  (`com.aurevia.smartclinic.finance.clauses`) drives the real service through a
+  [ApplyBalanceChangesTransactionallyDeduplicatePaymentReferencesTest.java](../../../../apps/api/src/test/java/com/aurevia/finance/clauses/ApplyBalanceChangesTransactionallyDeduplicatePaymentReferencesTest.java)
+  (`com.aurevia.finance.clauses`) drives the real service through a
   fresh test-only repository and a mocked transaction template that runs the
   callback inline, so each assertion is deterministic:
   - `aPaymentUpdatesBalanceAndAllocatesTheNextReceiptAtomically` — one payment
@@ -36,26 +36,26 @@ All subjects, identifiers and amounts in the fixtures are synthetic.
     an active finance membership is refused with `403 FORBIDDEN` and posts no
     entry.
 - Production classes exercised:
-  [FinanceService.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceService.java)
+  [FinanceService.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceService.java)
   (`execute` transaction boundary, `postEntry` row lock, replay dedup, balance
   recompute and version compare-and-set),
-  [FinanceRepository.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceRepository.java)
+  [FinanceRepository.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceRepository.java)
   (`loadForUpdate`, `findByReference`, `nextReceiptNo`, `insertEntry`,
   `updateInvoice`),
-  [FinanceInputs.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceInputs.java)
+  [FinanceInputs.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceInputs.java)
   (`reference`, `digest`),
-  [FinanceContract.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceContract.java)
+  [FinanceContract.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceContract.java)
   (`Invoice`, `LedgerEntry`, `EntryRequest`),
-  [FinanceActions.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceActions.java)
+  [FinanceActions.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceActions.java)
   and
-  [FinanceController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceController.java)
+  [FinanceController.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceController.java)
   (`POST /api/v1/finance/invoices/{id}/payments|credits|refunds`).
 - Durable constraints and HTTP proof already present (not added by this task):
   [V45__finance.sql](../../../../db/migrations/V45__finance.sql) enforces forced
   row-level security, `UNIQUE (organization_id, reference)`,
   `UNIQUE (organization_id, receipt_no)`, the balance identity and a gap-free
   `finance_receipt_counter`;
-  [FinanceFlowTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/finance/FinanceFlowTest.java)
+  [FinanceFlowTest.java](../../../../apps/api/src/test/java/com/aurevia/it/finance/FinanceFlowTest.java)
   proves the same rules end to end on a fresh PostgreSQL database in
   `fullLifecyclePostsItemizedPaymentsAndNumberedReceipts`,
   `refundReestablishesIssuedStateAndReplayIsANoOp`,

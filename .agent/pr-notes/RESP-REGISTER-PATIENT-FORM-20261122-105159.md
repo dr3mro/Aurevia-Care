@@ -43,8 +43,8 @@ Routine (contained presentational React change; no data, contract or permission 
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react` skill applied as the implementation
-definition of done). A bounded, review-only specialist pass (`smartclinic-senior-react`
+Senior React and Vite (`orevia-senior-react` skill applied as the implementation
+definition of done). A bounded, review-only specialist pass (`orevia-senior-react`
 subagent) inspected both scoped files and reported one medium and two low
 findings; all three were addressed (see Findings). The subagent had no shell
 tool, so its review was static — it did not independently run the gates. No
@@ -78,14 +78,14 @@ human participant.
 - `bash apps/staff-web/check.sh` → all six stages green. Typecheck final lines:
 
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
 
   (exit 0, no `error TS…` output). Lint final lines:
 
   ```
-  > smartclinic-staff-web@0.1.0 lint
+  > orevia-staff-web@0.1.0 lint
   > eslint . --max-warnings 0
   ```
 

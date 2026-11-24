@@ -3,7 +3,7 @@
 Synthetic, implementation-facing contract for upload validation, private
 quarantine, mediated downloads and PDF binding to immutable revisions. The
 public REST surface is owned by the API versioning story; this document
-describes the domain commands exposed by `com.aurevia.smartclinic.documents`
+describes the domain commands exposed by `com.aurevia.documents`
 and the observable guarantees each command must keep.
 
 ## Entry points and guarantees

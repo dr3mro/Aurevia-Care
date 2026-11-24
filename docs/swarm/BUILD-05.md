@@ -58,7 +58,7 @@ plus clinical-safety framing from the physician-reviewer role. No blocking findi
 - `care_team_task` — tenant-owned, `(organization_id, id)` key, owner, due date, instruction,
   status, outcome, creator; index on `(organization_id, follow_up_id)`.
 Both: ENABLE + FORCE RLS, `public.app_org()` policy with USING and WITH CHECK, explicit
-SELECT/INSERT/UPDATE grant to `smartclinic_app`, DELETE/TRUNCATE revoked. No existing table
+SELECT/INSERT/UPDATE grant to `orevia_app`, DELETE/TRUNCATE revoked. No existing table
 altered. Rollback is a forward-fix (drop is a separate contract migration).
 
 ## Authorization boundaries and audit events

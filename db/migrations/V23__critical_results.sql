@@ -28,7 +28,7 @@ BEGIN
        OR NOT EXISTS (
               SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                WHERE n.nspname = 'public' AND p.proname = 'reject_immutable_mutation')
-       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'smartclinic_app') THEN
+       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'orevia_app') THEN
         RAISE NOTICE 'V23 critical results deferred: prerequisites not installed yet';
         RETURN;
     END IF;
@@ -197,14 +197,14 @@ BEGIN
         BEFORE UPDATE ON public.critical_result
         FOR EACH ROW EXECUTE FUNCTION public.guard_critical_result_update()$ddl$;
 
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.critical_result TO smartclinic_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.critical_result FROM smartclinic_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.critical_result_event TO smartclinic_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.critical_result_event FROM smartclinic_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.critical_result TO orevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.critical_result FROM orevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.critical_result_event TO orevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.critical_result_event FROM orevia_app$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_critical_result_created_by_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_critical_event_actor_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_critical_result_update() FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_critical_result_created_by_from_actor() TO smartclinic_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_critical_event_actor_from_actor() TO smartclinic_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_critical_result_update() TO smartclinic_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_critical_result_created_by_from_actor() TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_critical_event_actor_from_actor() TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_critical_result_update() TO orevia_app$ddl$;
 END $critical_results$;

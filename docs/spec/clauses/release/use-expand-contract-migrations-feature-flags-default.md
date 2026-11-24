@@ -14,7 +14,7 @@ The clause has two halves and they do not have the same status. The
 expand/contract migration discipline is implemented and verified offline; the
 feature flags that default off are not implemented, and the evidence that would
 prove them is infrastructure-owner and human-gated. Section 8.1 of
-[SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) says WEB-11 evidence
+[PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) says WEB-11 evidence
 is produced with the infrastructure owner. The WEB-11 row of the
 [production readiness register](../../../operations/production-readiness/README.md)
 still reads "not started", owner "unassigned", and the corresponding row of the
@@ -86,10 +86,10 @@ Not built — feature flags that default off:
   checks rollout and rollback *declarations* only, as described above. No
   deployment step gates a release on a flag that is off by default.
 - The only adjacent in-repository switches are
-  [RejectionNotificationPolicy.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/labflow/rejection/RejectionNotificationPolicy.java),
-  which injects `@Value("${smartclinic.lab.rejection.notify-patient:false}")`,
-  and [DocsEnabled.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/web/DocsEnabled.java),
-  which reads `smartclinic.docs.enabled` and keeps production docs off unless a
+  [RejectionNotificationPolicy.java](../../../../apps/api/src/main/java/com/aurevia/labflow/rejection/RejectionNotificationPolicy.java),
+  which injects `@Value("${orevia.lab.rejection.notify-patient:false}")`,
+  and [DocsEnabled.java](../../../../apps/api/src/main/java/com/aurevia/web/DocsEnabled.java),
+  which reads `orevia.docs.enabled` and keeps production docs off unless a
   profile or property enables them. Both are single-purpose switches, not
   WEB-11 rollout flags: neither stages a release, records a rollout or rollback,
   or is wired to deployment.

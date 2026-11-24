@@ -30,7 +30,7 @@ authorization or migration boundary is crossed.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`), plus synthetic UX review against
+Senior React Native and Expo (`orevia-senior-mobile`), plus synthetic UX review against
 `docs/design/accessibility-patterns.md` section 9 and `docs/decisions/0005-patient-app-tablets.md`.
 Real VoiceOver/TalkBack and Arabic-clinician acceptance remain a G5 gate.
 
@@ -88,7 +88,7 @@ screen-reader passes remain a G5 gate.
 and integration suite), which the task prompt explicitly forbids for a worker. The scoped module
 gate (`apps/patient-mobile/check.sh`) and its 100% coverage threshold are the applicable gate and
 passed. Pre-existing committed conflict markers in unrelated
-`apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/*` were observed with `git grep` and
+`apps/api/src/main/java/com/aurevia/exchange/hl7/*` were observed with `git grep` and
 left untouched (outside scope).
 
 ## Coverage

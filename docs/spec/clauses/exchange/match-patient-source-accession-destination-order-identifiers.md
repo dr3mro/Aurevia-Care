@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.MatchPatientSourceAccessionDestinationOrderIdentifiersTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/MatchPatientSourceAccessionDestinationOrderIdentifiersTest.java`),
+Test class `com.aurevia.exchange.clauses.MatchPatientSourceAccessionDestinationOrderIdentifiersTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/MatchPatientSourceAccessionDestinationOrderIdentifiersTest.java`),
 an HTTP-level test driven through `POST /api/v1/xch04/results` with standalone
 MockMvc, the real `ResultController`, the real `ResultRoutingService` and the real
 `ResultRules` domain decision. The repository and audit boundaries are mocked
@@ -39,7 +39,7 @@ untouched.
   mismatch list and no report write. The order identifier is the lookup key, so
   a wrong reference cannot resolve an expectation; the field-level `orderId`
   comparison branch is proved by
-  `com.aurevia.smartclinic.it.exchangeresult.ResultRulesTest.eachMismatchedIdentifierIsReportedByName`
+  `com.aurevia.it.exchangeresult.ResultRulesTest.eachMismatchedIdentifierIsReportedByName`
   (which asserts `orderId` alongside the other four names) and the repository
   always derives `ExpectedOrder.orderId` from the queried order reference.
 - `callerWithoutResultImportRoleIsForbiddenBeforeMatching` — a caller with only
@@ -52,8 +52,8 @@ untouched.
   as 202/unmatched with no report write, and the audit event is bound to the
   active tenant context. The mocked repository models the RLS outcome; it does
   not itself prove PostgreSQL isolation. That evidence is
-  `com.aurevia.smartclinic.it.exchangeresult.ResultRoutingIntegrationTest.authorizationAndTenantIsolationFailClosed`
-  (`apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/ResultRoutingIntegrationTest.java`),
+  `com.aurevia.it.exchangeresult.ResultRoutingIntegrationTest.authorizationAndTenantIsolationFailClosed`
+  (`apps/api/src/test/java/com/aurevia/it/exchangeresult/ResultRoutingIntegrationTest.java`),
   which imports the same order reference in two tenants and shows a cross-tenant
   read returns 404.
 
@@ -62,18 +62,18 @@ Entry-point-to-test trace:
 `ResultRoutingService.importResult` → `ResultRoutingService.importGuarded` →
 `ResultRules.match` → HTTP status, JSON body and repository-verification assertions.
 
-Production classes exercised: `com.aurevia.smartclinic.exchange.result.ResultController`
-(thin HTTP adapter), `com.aurevia.smartclinic.exchange.result.ResultRoutingService`
+Production classes exercised: `com.aurevia.exchange.result.ResultController`
+(thin HTTP adapter), `com.aurevia.exchange.result.ResultRoutingService`
 (validation, authorization and match-before-import transaction),
-`com.aurevia.smartclinic.exchange.result.ResultRules` (five-facet matching and
-routing), `com.aurevia.smartclinic.exchange.result.ResultModel` (`ResultIdentifiers`,
+`com.aurevia.exchange.result.ResultRules` (five-facet matching and
+routing), `com.aurevia.exchange.result.ResultModel` (`ResultIdentifiers`,
 `ExpectedOrder`, `MatchStatus`, `ReconciliationEntry`, `ImportOutcome`),
-`com.aurevia.smartclinic.exchange.result.ResultCommands` (`ImportResultRequest`),
-`com.aurevia.smartclinic.exchange.result.ResultActionPolicy` (real role rules),
-`com.aurevia.smartclinic.api.ApiErrorHandler` (403 rendering) and
-`com.aurevia.smartclinic.tenant.TenantContext` (actor and organization boundary).
+`com.aurevia.exchange.result.ResultCommands` (`ImportResultRequest`),
+`com.aurevia.exchange.result.ResultActionPolicy` (real role rules),
+`com.aurevia.api.ApiErrorHandler` (403 rendering) and
+`com.aurevia.tenant.TenantContext` (actor and organization boundary).
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=MatchPatientSourceAccessionDestinationOrderIdentifiersTest
 test` — `tests="9" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim that

@@ -28,7 +28,7 @@ Routine (test-only change to a CI script's coverage; no runtime behaviour change
 
 ## Review owner
 
-`smartclinic-senior-python` (bounded read-only review of the new test file, routed per
+`orevia-senior-python` (bounded read-only review of the new test file, routed per
 AGENTS.md and TODO.md "Instructions for every agent", step 2). The review returned one
 substantive defect and four hardening findings; all five were addressed in a second tested
 commit. Evidence source: specialist (simulated/static) review; the reviewer explicitly did
@@ -58,7 +58,7 @@ had neither pip nor coverage; the helper was written under `/tmp/opencode`, not 
 reported `Already up to date.` at HEAD `1db647eb`; no conflict markers were introduced by this
 change. Three unrelated Java files already contain conflict markers in the committed HEAD
 (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java` under
-`apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/`); they are out of scope and were
+`apps/api/src/main/java/com/aurevia/exchange/hl7/`); they are out of scope and were
 left untouched.
 
 Commands run (tool evidence, final lines):
@@ -155,7 +155,7 @@ cross-organization sharing, patient association, prescribing or critical result 
   `test_worker_gate*` cases (missing `apps/api/target/surefire-reports`). No production code or
   test in scope caused them.
 - Pre-existing conflict markers were found in three committed Java files under
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/`. They exist at HEAD and are
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/`. They exist at HEAD and are
   outside this task's scope, so they were left untouched; a person/integrator should triage
   them separately.
 - `.coverage` is a tracked file. The coverage runs modified it; it was restored byte-for-byte

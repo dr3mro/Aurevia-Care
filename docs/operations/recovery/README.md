@@ -15,7 +15,7 @@ This directory is the engineering handoff for OPS-04 and OPS-05. It states the
 exact target values, the restore and reconciliation procedure, the monitoring
 and ownership envelope, how an evidence artifact is judged, and — deliberately —
 what this repository cannot prove. The approved clause itself is in the
-[product specification](../../../SMARTCLINIC_V1_SPEC.md).
+[product specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 
 ## Requirement mapping
 

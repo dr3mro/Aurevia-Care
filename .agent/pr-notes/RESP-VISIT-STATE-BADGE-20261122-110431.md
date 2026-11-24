@@ -36,7 +36,7 @@ Routine (contained UI primitive presentation change). Routed per `docs/WORKFLOW.
 
 ## Review owner
 
-Primary implementation: this worker. Bounded plan from the `smartclinic-senior-react` specialist (report received; it had read-only tools and ran no checks). UX/RTL review applied by the primary via the `smartclinic-ux-reviewer` and `smartclinic-senior-typescript` skills. This is synthetic/simulated review, not clinical or human acceptance.
+Primary implementation: this worker. Bounded plan from the `orevia-senior-react` specialist (report received; it had read-only tools and ran no checks). UX/RTL review applied by the primary via the `orevia-ux-reviewer` and `orevia-senior-typescript` skills. This is synthetic/simulated review, not clinical or human acceptance.
 
 ## Data changes
 
@@ -71,7 +71,7 @@ Commands run (exit codes and final lines quoted; evidence source = executed tool
 
 - Typecheck final lines (required paste — no `error TS…` emitted):
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
 
@@ -112,7 +112,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 ## Findings
 
-1. **Pre-existing, out-of-scope conflict markers in HEAD.** `git grep -nE '^(<<<<<<<|>>>>>>>) '` reports committed conflict markers in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` (markers reference `origin/swarm/BUILD-37-469`). Verified present in `git show HEAD:...`. These are unrelated to this staff-web story and were not touched. `git merge --no-edit origin/main` reported "Already up to date", so they were not introduced here. The integrator/owner must resolve them before a full-repository gate can pass.
+1. **Pre-existing, out-of-scope conflict markers in HEAD.** `git grep -nE '^(<<<<<<<|>>>>>>>) '` reports committed conflict markers in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` (markers reference `origin/swarm/BUILD-37-469`). Verified present in `git show HEAD:...`. These are unrelated to this staff-web story and were not touched. `git merge --no-edit origin/main` reported "Already up to date", so they were not introduced here. The integrator/owner must resolve them before a full-repository gate can pass.
 2. **No badge class in `responsive.css`.** There is no dedicated badge/status-chip class. `.cluster` only partially fits: it sets `gap: var(--sc-space-2, 8px)` whereas the badge uses `tokens.spacing.sm` (4 px), and it supplies no `padding-inline`/`border`/`border-radius`. Adding it or overriding it would change presentation the story forbids. Per story rule 3, logical inline styles were used for wrapping.
 3. **Requirements explicitly not applicable to this primitive.** 44×44 coarse-pointer targets and 16 px input font need an interactive control/input; the badge has none. Column stacking, safe-area padding and table reflow are ancestor shell/table responsibilities (`.page`, `.app-shell`, `.table-region`). The badge satisfies its part by adding no physical side, no fixed block size and no hidden text.
 4. **Two `useBreakpoint` subscriptions per badge** (root and `MixedScriptText`) register two listeners per media query; the test's `matchMedia` stand-in uses a `Set` per query so one `fire()` reaches both. A single-listener fake would silently miss the root's band update.

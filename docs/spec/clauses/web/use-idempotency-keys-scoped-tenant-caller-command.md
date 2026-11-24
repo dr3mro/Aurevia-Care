@@ -10,13 +10,13 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.web.clauses.UseIdempotencyKeysScopedTenantCallerCommandTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/UseIdempotencyKeysScopedTenantCallerCommandTest.java`).
+Test class: `com.aurevia.web.clauses.UseIdempotencyKeysScopedTenantCallerCommandTest`
+(path: `apps/api/src/test/java/com/aurevia/web/clauses/UseIdempotencyKeysScopedTenantCallerCommandTest.java`).
 All six tests are active (none disabled) and use synthetic identifiers, a fixed
 clock and 64-hex digests. They drive the real HTTP entry point through the
 Spring MVC pipeline with the synthetic-auth profile, the same wire-up, fixtures
 and style as the neighbouring
-`com.aurevia.smartclinic.events.clauses.ConfirmOrderPatientIdentifiersBeforeLinkingExternalTest`.
+`com.aurevia.events.clauses.ConfirmOrderPatientIdentifiersBeforeLinkingExternalTest`.
 Every refusal case asserts the machine-readable status and that no second
 success audit was created and the dedup mapping still points to the first event;
 the service throws before the atomic insert, so no second outbox row is written.
@@ -47,24 +47,24 @@ the test-only `InMemoryDeliveryStore`; persistence and forced row-level security
 are proven by the existing database clause tests, not by this document's test
 class):
 
-- `com.aurevia.smartclinic.events.DeliveryController` — thin adapter;
+- `com.aurevia.events.DeliveryController` — thin adapter;
   `POST /api/v1/delivery/events` binds the command and delegates to the service.
-- `com.aurevia.smartclinic.events.DurableEventService` — `publish` derives the
+- `com.aurevia.events.DurableEventService` — `publish` derives the
   tenant from `TenantContext`, authorizes the action, scopes the dedup key by
   tenant, sender and event type, binds it to the payload digest, returns the
   first outcome on an identical retry, refuses a different digest with 409 and
   records a `DUPLICATE` audit for a replay.
-- `com.aurevia.smartclinic.events.DeliveryActions`,
-  `com.aurevia.smartclinic.events.DeliveryInputs` and
-  `com.aurevia.smartclinic.api.contract.Sha256Hex` — bounded publish privilege,
+- `com.aurevia.events.DeliveryActions`,
+  `com.aurevia.events.DeliveryInputs` and
+  `com.aurevia.api.contract.Sha256Hex` — bounded publish privilege,
   token and digest validation at the trust boundary.
-- `com.aurevia.smartclinic.events.InMemoryDeliveryStore` — the tenant-keyed test
+- `com.aurevia.events.InMemoryDeliveryStore` — the tenant-keyed test
   fixture behind the `DeliveryStore` port; its production adapter
-  `com.aurevia.smartclinic.events.JdbcDeliveryStore` is exercised by the
+  `com.aurevia.events.JdbcDeliveryStore` is exercised by the
   existing database tests over the V55 `delivery_outbox` tables with forced row
   level security.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` and
-  `com.aurevia.smartclinic.web.TenantContextInterceptor` — the uniform error
+- `com.aurevia.api.ApiErrorHandler` and
+  `com.aurevia.web.TenantContextInterceptor` — the uniform error
   contract (`$.code`) and tenant context derived from the authenticated request.
 
 Existing proof observed in the source survey and not changed by this task:
@@ -94,7 +94,7 @@ pre-existing contract debt, out of scope for this proof-only change.
 
 ## Gap
 
-The generic contract in `com.aurevia.smartclinic.api.contract` is not reachable
+The generic contract in `com.aurevia.api.contract` is not reachable
 from any production HTTP path, so the clause is not proven as written:
 
 1. **Tenant, caller and command scope with a server-computed digest.** The

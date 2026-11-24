@@ -17,15 +17,15 @@ contract, dependency or existing test was changed by this evidence task.
 
 Survey of the patient conversation path (all paths relative to the repository root):
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations/ConversationController.java`
+- `apps/api/src/main/java/com/aurevia/messaging/conversations/ConversationController.java`
   binds only `If-Match` on `POST /api/v1/conversations/{id}/reply` (`:99-103`); it
   does not bind or parse an `Idempotency-Key` header, so a retry key never reaches
   the domain.
-- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations/ConversationService.java`
+- `apps/api/src/main/java/com/aurevia/messaging/conversations/ConversationService.java`
   calls `ConversationRepository.insertMessage` unconditionally in `reply`
   (`:145-180`); there is no replay lookup and no payload-conflict decision, so a
   second reply with the client's last `If-Match` is a stale update or a duplicate.
-- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations/ConversationRepository.java`
+- `apps/api/src/main/java/com/aurevia/messaging/conversations/ConversationRepository.java`
   writes `conversation_message` through `insertMessage` (`:198-210`) with no client
   message id parameter and offers no read-by-client-id method.
 - `db/migrations/V33__conversation_lifecycle.sql` defines `public.conversation_message`
@@ -34,14 +34,14 @@ Survey of the patient conversation path (all paths relative to the repository ro
   and a tenant policy, so an additive column is covered by that policy.
 - `ConversationContract.ReplyRequest`
   (`messaging/conversations/ConversationContract.java:342`) is a body-only record
-  with no client-id field; `com.aurevia.smartclinic.api.contract.IdempotencyKey` is
+  with no client-id field; `com.aurevia.api.contract.IdempotencyKey` is
   the existing validated key vocabulary (428 absent / 422 malformed) that the
   eventual HTTP binding must reuse.
 - `contracts/openapi.yaml` publishes no `POST /api/v1/conversations/{id}/reply`
   operation, so the header and the replay-conflict response are absent from the
   public contract.
 
-Neighbouring top-level `com.aurevia.smartclinic.staffmsg` siblings do deduplicate,
+Neighbouring top-level `com.aurevia.staffmsg` siblings do deduplicate,
 with active green tests, but they are **not** proof of this clause: they use
 different tables, stores, routes and contract records for staff channels, while
 this requirement is patient communication. Status `Not built` therefore means

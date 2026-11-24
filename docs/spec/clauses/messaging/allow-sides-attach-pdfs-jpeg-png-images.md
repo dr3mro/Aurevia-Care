@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.AllowSidesAttachPdfsJpegPngImagesTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/AllowSidesAttachPdfsJpegPngImagesTest.java`).
+Test class: `com.aurevia.messaging.clauses.AllowSidesAttachPdfsJpegPngImagesTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/AllowSidesAttachPdfsJpegPngImagesTest.java`).
 All three tests are active (none are disabled) and use synthetic data only.
 
 - `patientAndStaffCanEachUploadPdfJpegAndPng` — positive proof. A verified patient actor
@@ -38,34 +38,34 @@ Production classes exercised through the normal command entry point
 (`AttachmentService.upload`, using the public `InMemoryAttachmentStore` test fake and a
 fixed clock):
 
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentService` — owns upload
+- `com.aurevia.messaging.attachments.AttachmentService` — owns upload
   validation, the verified-grant binding and the append-only `ACCESS_DENIED` facts.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentContract.FileType` — the only
+- `com.aurevia.messaging.attachments.AttachmentContract.FileType` — the only
   three accepted media types, their canonical extensions and their magic-byte prefixes;
   `Actor`, `ConnectionGrant`, `UploadRequest` and `Attachment` supply the typed command,
   grant snapshot and returned projection.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentInputs` — rejects unsupported
+- `com.aurevia.messaging.attachments.AttachmentInputs` — rejects unsupported
   content types before any durable change; magic, name, size and checksum validation is
   shared with the document upload primitive.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentActions` — grants
+- `com.aurevia.messaging.attachments.AttachmentActions` — grants
   `ATTACHMENT_UPLOAD` to `MESSAGE_SENDERS`, which includes the `patient` role and staff
   sender roles such as `reception`, while withholding it from auditor and unknown roles.
 
 "Both sides" is evidenced across two complementary packages. The new clause-focused test
 drives the shared `AttachmentService` with both a patient and a staff actor. The staff
 side's own type coverage is asserted by
-`com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentDomainTypesTest.contentTypeResolutionIsBounded`
+`com.aurevia.staffmsg.attachments.StaffAttachmentDomainTypesTest.contentTypeResolutionIsBounded`
 (accepts `application/pdf`, `IMAGE/JPEG` and `image/png`) and
-`com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentServiceTest.pdfJpegAndPngAreAcceptedButOtherTypesAreRefused`.
+`com.aurevia.staffmsg.attachments.StaffAttachmentServiceTest.pdfJpegAndPngAreAcceptedButOtherTypesAreRefused`.
 The two protected upload entry points are exercised over HTTP by
-`com.aurevia.smartclinic.messaging.attachments.AttachmentControllerHttpTest.uploadsThroughMultipartScansAndDownloads`
+`com.aurevia.messaging.attachments.AttachmentControllerHttpTest.uploadsThroughMultipartScansAndDownloads`
 (`POST /api/v1/patient/files/upload`) and
-`com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentControllerHttpTest.uploadsScansListsSendsAndDownloadsThroughHttp`
+`com.aurevia.staffmsg.attachments.StaffAttachmentControllerHttpTest.uploadsScansListsSendsAndDownloadsThroughHttp`
 (`POST /api/v1/staff/attachments/upload`); both HTTP fixtures use a PDF payload, so the
 exhaustive three-type proof is the domain tests named above. The end-to-end PostgreSQL
 proof that an uploaded file and its binding are persisted to and read back from the
 database with an immutable binding is
-`com.aurevia.smartclinic.messaging.attachments.it.JdbcAttachmentStoreIntegrationTest`
+`com.aurevia.messaging.attachments.it.JdbcAttachmentStoreIntegrationTest`
 (`draftIsBoundToItsUploaderAndConversationAndCannotBeReused`,
 `twoTenantsWithIdenticalLocalIdentifiersStayIsolated`), backed by
 `db/migrations/V82__attachment_store.sql`, whose `file_type` check names exactly the three

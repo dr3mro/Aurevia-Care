@@ -51,8 +51,8 @@ migration or clinical-policy surface was touched.
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) and UX reviewer
-(`smartclinic-ux-reviewer`), both bounded **simulated** reviews. Earlier workers'
+Senior React and Vite (`orevia-senior-react`) and UX reviewer
+(`orevia-ux-reviewer`), both bounded **simulated** reviews. Earlier workers'
 findings were addressed in the original notes; this pass re-ran both reviews at
 the current branch head. No human or real-clinical evidence is claimed.
 
@@ -95,7 +95,7 @@ stated):
   `./node_modules/.bin/vitest run tests/responsive/app/NotFoundPage.responsive.test.tsx --reporter=dot`
   -> `Test Files  1 passed (1)` / `Tests  32 passed (32)`.
 - Explicit `npm run typecheck` in `apps/staff-web` -> final lines
-  `> smartclinic-staff-web@0.1.0 typecheck` and
+  `> orevia-staff-web@0.1.0 typecheck` and
   `> tsc --noEmit -p tsconfig.json`, `TYPECHECK_EXIT=0`, no `error TS`.
 - `bash scripts/coverage-check.sh` -> final line `coverage check: passed`,
   `COV_EXIT=0`.
@@ -198,7 +198,7 @@ change is presentation only and touched no domain contract or state machine.
   No staff-web file participates in that invocation.
 - **Pre-existing, out of scope — committed conflict markers.** `git grep` shows
   marker lines already committed on `origin/main` inside
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java` and `Hl7Segment.java` (a BUILD-37 merge artifact). They sit
   inside Javadoc comments, so they do not break Java compilation, but they are
   real residue worth a separate cleanup task. No file was edited.

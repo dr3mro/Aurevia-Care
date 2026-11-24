@@ -26,7 +26,7 @@ what the patient will receive, and watch what happens until the result comes bac
 | RAD-01 | An imaging order with urgency and clinical question, scheduling, accession/modality, patient verification before association and a signed interpretation | [Place an order](#2b-place-a-lab-or-imaging-order) and [See the result](#7-see-the-result) |
 | XCH-02 | Separate workflow, transmission and clinical-review states; acknowledgment by an authorized human; a transmission acknowledgment never closes a clinical task | [Follow the item](#6-follow-the-item) and [When a send fails](#5-when-a-send-fails-or-is-ambiguous) |
 
-The approved clauses are in the [product specification](../../../SMARTCLINIC_V1_SPEC.md).
+The approved clauses are in the [product specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 No new requirement ID or threshold is introduced by this guide.
 
 ## The workflow
@@ -190,6 +190,6 @@ current state, the delivery evidence and the full event history.
 | Real clinical acceptance of this workflow | A synthetic UAT run proves the steps can be executed, not that clinicians accept them | G5 acceptance owners with authorized clinical participants |
 
 Evidence source for this guide: the approved clauses in
-[SMARTCLINIC_V1_SPEC.md](../../../SMARTCLINIC_V1_SPEC.md), the existing
+[PROJECT_V1_SPEC.md](../../../.opencode/config/PROJECT_V1_SPEC.md), the existing
 `prescription.rx` domain model (channel families, states and event vocabulary),
 and the ordering tasks in `tasks/`. No human or clinical evidence is claimed.

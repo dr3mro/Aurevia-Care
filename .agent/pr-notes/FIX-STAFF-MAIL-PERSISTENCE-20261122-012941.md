@@ -34,9 +34,9 @@ Acceptance mapping:
 ## Risk class
 
 Cross-boundary (persistence port, migration, HTTP entry point) with tenant
-isolation. Reviewed by the assigned domain specialists: `smartclinic-senior-backend`,
-`smartclinic-senior-database`, `smartclinic-senior-spring-security`,
-`smartclinic-software-architect`, `smartclinic-test-engineer` (simulated reviewer
+isolation. Reviewed by the assigned domain specialists: `orevia-senior-backend`,
+`orevia-senior-database`, `orevia-senior-spring-security`,
+`orevia-software-architect`, `orevia-test-engineer` (simulated reviewer
 routing per AGENTS.md; no human participant).
 
 ## Review owner
@@ -118,9 +118,9 @@ invokes that full verify.
 Command: `mvn -q -B -f apps/api/pom.xml test -Dtest=MailServiceTest,MailControllerHttpTest,MailContractTest,MailInputsTest,MailRulesTest,StaffRecipientDirectoryTest,MailPersistenceIntegrationTest -DfailIfNoTests=false -Pno-security` followed by `mvn -q -B -f apps/api/pom.xml jacoco:report -Pno-security`; report parsed from `apps/api/target/site/jacoco/jacoco.xml`.
 
 Result per touched production class:
-- `com.aurevia.smartclinic.staffmsg.mail.JdbcMailStore` — INSTRUCTION 0/724 missed, LINE 0/113, BRANCH 0/2, METHOD 0/44, CLASS 0/1 → 100%.
-- `com.aurevia.smartclinic.staffmsg.mail.MailService` — INSTRUCTION 0/960 missed, LINE 0/160, BRANCH 0/52, METHOD 0/21, CLASS 0/1 → 100%.
-- `com.aurevia.smartclinic.staffmsg.mail.MailStore` is an interface (no executable counters).
+- `com.aurevia.staffmsg.mail.JdbcMailStore` — INSTRUCTION 0/724 missed, LINE 0/113, BRANCH 0/2, METHOD 0/44, CLASS 0/1 → 100%.
+- `com.aurevia.staffmsg.mail.MailService` — INSTRUCTION 0/960 missed, LINE 0/160, BRANCH 0/52, METHOD 0/21, CLASS 0/1 → 100%.
+- `com.aurevia.staffmsg.mail.MailStore` is an interface (no executable counters).
 
 New/changed branches and their tests:
 - `JdbcMailStore.publish`, retry claim lost (`!claimed` true → read winning id): `MailPersistenceIntegrationTest.aLostRetryClaimStillResolvesToTheWinningMessage` calls the store twice with the same key.
@@ -151,7 +151,7 @@ only; no human clinical or unit participant.
   Workers are forbidden from editing `opencode.json` or `scripts/`; the integrator
   or a maintainer should regenerate it.
 - Pre-existing, out of scope: committed conflict markers remain inside Javadoc
-  comments of `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/`
+  comments of `apps/api/src/main/java/com/aurevia/exchange/hl7/`
   (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`) from
   `origin/swarm/BUILD-37-469`. They do not affect compilation and were not
   introduced or modified here; they are outside this task's scope.

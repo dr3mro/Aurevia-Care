@@ -13,10 +13,10 @@ Partly proven
 Active HTTP-level proof (`synthetic-auth` profile, a fresh PostgreSQL database migrated from
 `db/migrations`, synthetic fixtures only):
 
-- Test class: `com.aurevia.smartclinic.tenant.clauses.PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest`
-  (`apps/api/src/test/java/com/aurevia/smartclinic/tenant/clauses/PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest.java`).
+- Test class: `com.aurevia.tenant.clauses.PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest`
+  (`apps/api/src/test/java/com/aurevia/tenant/clauses/PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest.java`).
   It follows the fixtures and database setup of `patient/clauses/RecordPatientrecordIssuerScopedMrnOrganizationTest`
-  and `it/lab/SpecimenAccessionIsolationTest`, with a dedicated database (`smartclinic_arc01c04_it`) so
+  and `it/lab/SpecimenAccessionIsolationTest`, with a dedicated database (`orevia_arc01c04_it`) so
   durable rows are read back under forced row-level security. Two synthetic organizations and
   synthetic subjects (`reception-a`, `lab-a`, `auditor-a`, `reception-b`, `lab-b`) are used.
 
@@ -42,24 +42,24 @@ type-qualified accession key when those surfaces exist.
 
 Production classes exercised through the normal HTTP entry point:
 
-- HTTP entry point: `com.aurevia.smartclinic.lab.accession.LabAccessionController`
+- HTTP entry point: `com.aurevia.lab.accession.LabAccessionController`
   (`POST /api/v1/lab/accessions`, `GET /api/v1/lab/accessions/{id}`).
-- Domain service and boundary: `com.aurevia.smartclinic.lab.accession.LabAccessionService`
+- Domain service and boundary: `com.aurevia.lab.accession.LabAccessionService`
   (`accession`), `LabAccessionRepository`, `AccessionCommands.AccessionRequest`, `LabAccession`,
   `LabInputs`, `LabActionPolicy`.
 - Schema: `db/migrations/V26__laboratory_accession.sql` defines `lab_accession` with
   `UNIQUE (organization_id, accession_issuer, accession_no)`, enabled and forced row-level security,
   tenant policies, immutable history and database-owned author/version columns.
-- Tenant scope: `com.aurevia.smartclinic.tenant.TenantContext` and the synthetic-auth fixtures
+- Tenant scope: `com.aurevia.tenant.TenantContext` and the synthetic-auth fixtures
   (`X-Synthetic-Subject`, `X-Active-Organization`).
 
 Survey result — where the clause is implemented today:
 
-- Issuer-scoped accession numbers are implemented in `apps/api/src/main/java/com/aurevia/smartclinic/lab/accession`
+- Issuer-scoped accession numbers are implemented in `apps/api/src/main/java/com/aurevia/lab/accession`
   (`LabAccessionService.accession`, `LabAccessionRepository.accessionExists`) and in
   `db/migrations/V26__laboratory_accession.sql`. The service refuses a duplicate with HTTP 409 both
   on the pre-check and on the `DuplicateKeyException` race path.
-- `apps/api/src/main/java/com/aurevia/smartclinic/radiology/ImagingService.accession` keeps the
+- `apps/api/src/main/java/com/aurevia/radiology/ImagingService.accession` keeps the
   issuer-scoped rule for imaging orders with a per-tenant in-memory key of `issuer|accession`.
 - `db/migrations/V22__result_routing.sql` keys inbound result revisions on order reference, source,
   accession and version; it explicitly allows the same accession on two orders. It is result

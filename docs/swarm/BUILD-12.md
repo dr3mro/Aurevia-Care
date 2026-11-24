@@ -14,7 +14,7 @@ This file is the pull-request description and the hand-off for this worker. Synt
 
 ## Bottom line
 
-The PT-01 therapy domain in `apps/api/src/main/java/com/aurevia/smartclinic/therapy` and its
+The PT-01 therapy domain in `apps/api/src/main/java/com/aurevia/therapy` and its
 44 synthetic tests were already present on `main` from earlier work and already satisfy every
 behavioural item in the story (episode lifecycle, baseline measurements with units, goals,
 frequency/duration, versioned outcome scales with units, signed session/progress/discharge
@@ -32,7 +32,7 @@ cannot rewrite an old score).
   progress / discharge notes with signatures and SHA-256 checksums, approved summaries,
   revision-bound return acknowledgments and an append-only PT-01 audit trail.
 - Every table has `organization_id` in its key and foreign keys, `ENABLE` + `FORCE ROW LEVEL
-  SECURITY`, the `public.app_org()` policy, explicit grants to `smartclinic_app`, and append-only
+  SECURITY`, the `public.app_org()` policy, explicit grants to `orevia_app`, and append-only
   triggers/fact-freeze triggers where the domain requires immutability.
 - Two named acceptance rules are enforced twice: in `TherapyService` (existing) and now in the
   database (discharge signature guard; scale-definition immutability + reading/scale-unit guard).
@@ -74,7 +74,7 @@ ever retired (no existing data depends on them today). Applied cleanly by `db/ch
 
 - Tenant scope: `organization_id` is part of every primary/foreign key; RLS is forced and the
   `USING (organization_id = public.app_org())` policy is attached per table.
-- Runtime role `smartclinic_app` gets read + append (and controlled UPDATE on episode,
+- Runtime role `orevia_app` gets read + append (and controlled UPDATE on episode,
   evaluation, scale approval and draft notes); DELETE/TRUNCATE are revoked and append-only
   triggers reject immutable mutation for every role, including the migration owner.
 - Role checks (pt_clinician, pt_coordinator, tenant_admin, clinical_governance, privacy_auditor)

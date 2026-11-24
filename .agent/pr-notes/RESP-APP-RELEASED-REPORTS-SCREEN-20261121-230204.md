@@ -28,7 +28,7 @@ section 9 (target size, text scaling, RTL) and `docs/design/rtl-and-localization
 ## Risk class
 
 Routine. Presentation only — no clinical decision, authorization, data, contract or release change.
-Specialist routing: bounded advisory plan from `smartclinic-senior-mobile` (report only, no edits);
+Specialist routing: bounded advisory plan from `orevia-senior-mobile` (report only, no edits);
 QA/integration gate remains with the integrator. No clinical or human participant evidence.
 
 ## Review owner
@@ -134,7 +134,7 @@ A named VoiceOver/TalkBack pass on device remains a separate launch gate and is 
    `SafeAreaInsetsContext` (with a zero-inset fallback) instead. Production still reacts to
    rotation/split-screen and still receives real safe-area insets; the new test supplies its own
    context so the four inset edges are asserted. A future task should repair the global mock.
-3. **Pre-existing, untouched.** `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/*`
+3. **Pre-existing, untouched.** `apps/api/src/main/java/com/aurevia/exchange/hl7/*`
    contains committed conflict markers at HEAD (`git grep -nE '^(<<<<<<<|>>>>>>>) '`); unrelated to
    this story and left unchanged. `eslint` reports two pre-existing warnings in
    `src/features/tracker/presentation.test.ts`.

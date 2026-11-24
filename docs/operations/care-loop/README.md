@@ -19,7 +19,7 @@ This directory gives one view of the end-to-end care loop across five roles —
    released result.
 
 The authoritative clauses are in the
-[product specification](../../../SMARTCLINIC_V1_SPEC.md). No new requirement or
+[product specification](../../../.opencode/config/PROJECT_V1_SPEC.md). No new requirement or
 threshold is introduced by this handoff.
 
 ## Requirement mapping
@@ -169,7 +169,7 @@ references an immutable revision (XCH-06, PAT-02).
 ## Evidence source
 
 Requirements and workflow steps were taken from the
-[product specification](../../../SMARTCLINIC_V1_SPEC.md) and the existing
+[product specification](../../../.opencode/config/PROJECT_V1_SPEC.md) and the existing
 operations documentation style. Clinical-role framing was informed by the
 simulated pharmacy, laboratory, radiology, patient and physician reviewer
 skills. This is executed-tool plus simulated-review evidence only: there was

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.tenancy.clauses.UsePostgresqlRowLevelSecurityForcedEnforcementTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/UsePostgresqlRowLevelSecurityForcedEnforcementTest.java`),
+Test class: `com.aurevia.tenancy.clauses.UsePostgresqlRowLevelSecurityForcedEnforcementTest`
+(`apps/api/src/test/java/com/aurevia/tenancy/clauses/UsePostgresqlRowLevelSecurityForcedEnforcementTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile with a private
 per-class database migrated from `db/migrations`. Every catalog probe asserts that a
 row was returned and every RLS assertion starts from a seeded ORG_A facility, so a
@@ -22,7 +22,7 @@ zero count cannot be vacuous.
   (`organization`, `user_identity`, `facility`, `membership`, `role_assignment`,
   `audit_event`); `pg_policies`
   reports the `tenant_isolation` policy with both `USING` and `WITH CHECK`; `pg_roles`
-  reports `smartclinic_app` as neither `rolbypassrls` nor `rolsuper`, owning no tenant
+  reports `orevia_app` as neither `rolbypassrls` nor `rolsuper`, owning no tenant
   table. The seeded ORG_A row is visible under ORG_A and concealed under ORG_B both at
   SQL and through the documented HTTP entry point. An ORG_A `WITH CHECK` insert owned
   by the active tenant is visible to ORG_A and invisible to ORG_B.
@@ -47,13 +47,13 @@ zero count cannot be vacuous.
   cannot leak tenant context.
 
 Production path exercised by the HTTP assertions: `contracts/openapi.yaml` entry
-`GET /api/v1/facilities/{code}` → `com.aurevia.smartclinic.web.FacilityController` →
-injected `com.aurevia.smartclinic.tenancy.FacilityService` →
-`com.aurevia.smartclinic.tenancy.FacilityRepository` (the JDBC store bounded by forced
+`GET /api/v1/facilities/{code}` → `com.aurevia.web.FacilityController` →
+injected `com.aurevia.tenancy.FacilityService` →
+`com.aurevia.tenancy.FacilityRepository` (the JDBC store bounded by forced
 RLS) → `public.facility`. Request context is derived by
-`com.aurevia.smartclinic.web.TenantContextInterceptor` into
-`com.aurevia.smartclinic.tenant.TenantContext` and bound transaction-locally by
-`com.aurevia.smartclinic.tenant.TenantGuardTransactionManager`. The migrations that
+`com.aurevia.web.TenantContextInterceptor` into
+`com.aurevia.tenant.TenantContext` and bound transaction-locally by
+`com.aurevia.tenant.TenantGuardTransactionManager`. The migrations that
 create the catalog state are `db/migrations/V1__tenant_schema.sql` and
 `db/migrations/V2__rls_roles_policies.sql`. The wider HTTP fail-closed and
 cross-surface matrix is covered by `IsolationAcrossSurfacesTest`; this suite proves the

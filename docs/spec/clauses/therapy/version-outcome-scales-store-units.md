@@ -13,11 +13,11 @@ Partly proven
 Active proof at the domain-service plus JDBC-store boundary, against a fresh PostgreSQL database
 migrated from `db/migrations`, with synthetic fixtures and two tenants sharing local identifiers.
 Reproduction requires a loopback PostgreSQL on port 5432 with trust authentication for the local
-`smartclinic_migrate`/`smartclinic_app` roles and an admin name supplied through the
-`SMARTCLINIC_PG_ADMIN` environment variable (default: the OS user name):
+`orevia_migrate`/`orevia_app` roles and an admin name supplied through the
+`OREVIA_PG_ADMIN` environment variable (default: the OS user name):
 
-- Test class: `com.aurevia.smartclinic.therapy.clauses.VersionOutcomeScalesStoreUnitsTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/therapy/clauses/VersionOutcomeScalesStoreUnitsTest.java`).
+- Test class: `com.aurevia.therapy.clauses.VersionOutcomeScalesStoreUnitsTest`
+  (path: `apps/api/src/test/java/com/aurevia/therapy/clauses/VersionOutcomeScalesStoreUnitsTest.java`).
   Targeted run: `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0`.
 - `versionsAndStoredReadingsKeepTheirExactScaleVersionAndUnit` — positive proof. A tenant admin
   defines and clinical governance approves version 1 in `points`, then version 2 in `degrees` of the
@@ -37,11 +37,11 @@ Reproduction requires a loopback PostgreSQL on port 5432 with trust authenticati
 
 Production classes exercised by these tests:
 
-- `com.aurevia.smartclinic.therapy.TherapyService` — `defineOutcomeScale`, `approveOutcomeScale`,
+- `com.aurevia.therapy.TherapyService` — `defineOutcomeScale`, `approveOutcomeScale`,
   `versions`, `recordOutcome`, role authorization, version precondition and unit/value guards.
-- `com.aurevia.smartclinic.therapy.JdbcTherapyStore` — `scale`, `scales`, `allocateScaleVersion`,
+- `com.aurevia.therapy.JdbcTherapyStore` — `scale`, `scales`, `allocateScaleVersion`,
   `saveScale`, `find` (reading reload), all inside the tenant-guarded transaction.
-- `com.aurevia.smartclinic.therapy.TherapyContract` — `OutcomeScale`, `OutcomeReading`,
+- `com.aurevia.therapy.TherapyContract` — `OutcomeScale`, `OutcomeReading`,
   `ScaleRequest`, `OutcomeRequest`, `Actor`, `TherapyAggregate`.
 - `db/migrations/V77__build_12.sql` — `therapy_outcome_scale` and `therapy_outcome_reading` tables,
   the immutable-definition and approved-scale/unit-match triggers, RLS and FORCE RLS.
@@ -60,7 +60,7 @@ above. What is missing is HTTP reachability and its published contract:
 
 1. **Scale and outcome HTTP surface.** `TherapyController` has no routes to define or approve a
    scale version, list `versions()`, or record an `OutcomeReading`. Files that would change: add
-   the routes to `apps/api/src/main/java/com/aurevia/smartclinic/therapy/TherapyController.java`
+   the routes to `apps/api/src/main/java/com/aurevia/therapy/TherapyController.java`
    (thin delegations to the existing `TherapyService` methods, identity derived from `TenantContext`
    and fresh membership), add matching entries to `contracts/openapi.yaml` with a tag and an
    `Idempotency-Key` header on each POST, and regenerate the client with `gen:api`. The complete

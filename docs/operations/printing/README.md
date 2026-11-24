@@ -8,7 +8,7 @@
   capabilities, not a claim that a live site is enabled.
 - Audience: clinicians, lab and imaging staff, reception, tenant admins,
   operations, QA and acceptance reviewers.
-- Evidence source: the approved [specification](../../../SMARTCLINIC_V1_SPEC.md)
+- Evidence source: the approved [specification](../../../.opencode/config/PROJECT_V1_SPEC.md)
   and the implemented behaviour. All examples use synthetic data.
   [Authorization boundaries](#authorization-and-audit) are enforced by the
   server, not by this document.

@@ -23,7 +23,7 @@ CALLS = {
     "runs_more": ["run", "list", "--limit", "300", "--json", FIELDS],  # three pages, merged in when it arrives
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
-    # The tasks are one file each under tasks/ (TODO.md is not in git). This call lists only "name oid" lines;
+    # The tasks are one file each under tasks/. This call lists only "name oid" lines;
     # todo_text() then reads the files it has not seen yet, 100 per call, and keeps the rest in a local cache.
     "todo": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q",
              '.data.repository.t.entries[]? | select(.name | test("^[0-9].*[.]md$")) | "\\(.name) \\(.oid)"',
@@ -279,7 +279,7 @@ ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · (.*)$")
 
 
 def parse_tasks(text):
-    """TODO.md entries as dicts with status (todo, taken, done), id, title and agent."""
+    """Task-file entries as dicts with status (todo, taken, done), id, title and agent."""
     tasks, cur = [], None
     for line in (text or "").splitlines():
         m = ENTRY.match(line)
@@ -689,7 +689,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
             t0 = ts(j.get("startedAt"))
             took = span((now - t0).total_seconds()) if t0 else ""
             agent = next((t["agent"] for t in todo if t["id"] == m.group(0) and t["agent"]), "")
-            title = titles.get(m.group(0), "(not in TODO.md)")
+            title = titles.get(m.group(0), "(not in tasks/)")
             rows.append([("  > ", "b_yellow"), (m.group(0) + "  ", "b_cyan"),
                          (clip(title, iw - 6 - len(m.group(0))), "b_white")])
             line = [("    ", "")]
@@ -806,7 +806,7 @@ def once():
 
 # ---- live TUI ---------------------------------------------------------------------------------------
 def swarm_idle(data):
-    """True when no Agent swarm run is live and TODO.md still has open tasks (None until both are known)."""
+    """True when no Agent swarm run is live and tasks/ still has open tasks (None until both are known)."""
     runs, todo = data.get("runs"), data.get("todo")
     if not runs or not todo:
         return None

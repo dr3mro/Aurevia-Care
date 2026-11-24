@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.tenancy.clauses.ValidatePooledConnectionReuseFailClosedContextTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/ValidatePooledConnectionReuseFailClosedContextTest.java`),
+Test class: `com.aurevia.tenancy.clauses.ValidatePooledConnectionReuseFailClosedContextTest`
+(`apps/api/src/test/java/com/aurevia/tenancy/clauses/ValidatePooledConnectionReuseFailClosedContextTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile. It drives the
 HTTP entry point `GET /api/v1/facilities/{code}` and inspects both a dedicated
 one-connection Hikari pool and the application's own single-connection pool.
@@ -37,15 +37,15 @@ code exists only in organization A so a foreign read has an observable empty res
 
 Production classes and files exercised by these request paths:
 
-- `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager` — `doBegin` fails closed
+- `com.aurevia.tenant.TenantGuardTransactionManager` — `doBegin` fails closed
   with `IllegalStateException` when `TenantContext.current()` is null and binds the four
   context values with `set_config(..., true)` so they are transaction-local.
-- `com.aurevia.smartclinic.tenant.TenantContext` — request-scoped context with `set`,
+- `com.aurevia.tenant.TenantContext` — request-scoped context with `set`,
   `current` and `clear`.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` and `ClaimsTenantResolver` —
+- `com.aurevia.web.TenantContextInterceptor` and `ClaimsTenantResolver` —
   derive the context from the authenticated subject and the explicit organization selection;
   401 for a missing subject, 422 for a missing or invalid selection.
-- `com.aurevia.smartclinic.tenancy.FacilityController`, `FacilityService` and
+- `com.aurevia.tenancy.FacilityController`, `FacilityService` and
   `FacilityRepository` — the read entry point and its membership re-check inside the
   guarded transaction.
 - `db/migrations/V1__tenant_schema.sql` — tenant-owned keys and the `facility` table;

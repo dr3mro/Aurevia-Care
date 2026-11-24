@@ -11,7 +11,7 @@ Not built
 ## Evidence
 
 The clause is a governance requirement, not an implementation: it is stated in
-[SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) section 1 as the PRD-02 boundary,
+[PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) section 1 as the PRD-02 boundary,
 restated in section 8 (partner-specific profiles and conformance fixtures at agreed boundaries),
 enforced as a site prerequisite by the section 9 G5 gate, and assigned an accountable role and
 evidence list in section 10: the "Lab, PACS and pharmacy interface contracts" decision is owned by
@@ -22,16 +22,16 @@ only after that evidence exists.
 Repository files found that relate to the clause (none of them is a partner-interface approval):
 
 - Generic named-approval mechanism, reused for configuration and catalog entries (ADM-01) but not
-  for partner interfaces: [ConfigurationService.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/configuration/ConfigurationService.java)
-  (`approve`), [ConfigurationController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/web/ConfigurationController.java)
+  for partner interfaces: [ConfigurationService.java](../../../../apps/api/src/main/java/com/aurevia/configuration/ConfigurationService.java)
+  (`approve`), [ConfigurationController.java](../../../../apps/api/src/main/java/com/aurevia/web/ConfigurationController.java)
   (`POST /api/v1/configuration/{key}/versions/{version}/approve`),
-  [Approval.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/Approval.java),
-  [VersionStore.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/VersionStore.java)
-  and [CatalogController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/web/CatalogController.java).
+  [Approval.java](../../../../apps/api/src/main/java/com/aurevia/catalog/dictionary/Approval.java),
+  [VersionStore.java](../../../../apps/api/src/main/java/com/aurevia/catalog/dictionary/VersionStore.java)
+  and [CatalogController.java](../../../../apps/api/src/main/java/com/aurevia/web/CatalogController.java).
 - Synthetic partner conformance scaffolding (input to conformance evidence, not an approval record):
-  [ConformanceFixtures.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/conformance/ConformanceFixtures.java)
+  [ConformanceFixtures.java](../../../../apps/api/src/main/java/com/aurevia/exchange/conformance/ConformanceFixtures.java)
   and its package (`ConformanceLedger`, `PartnerEvent`, `EventKind`, `Disposition`), the
-  [PartnerConformanceFixturesTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/PartnerConformanceFixturesTest.java)
+  [PartnerConformanceFixturesTest.java](../../../../apps/api/src/test/java/com/aurevia/it/exchange/PartnerConformanceFixturesTest.java)
   integration test, [partner-events.json](../../../../contracts/events/fixtures/partner-events.json),
   [events/README.md](../../../../contracts/events/README.md) and
   [contracts/README.md](../../../../contracts/README.md). The fixtures are explicitly synthetic,
@@ -80,7 +80,7 @@ Repository checks a reviewer can run now (all use synthetic data):
 - `python3 -I scripts/check-docs.py` — link/requirement-ID integrity of this note; must exit 0.
 - `test -f docs/launch/partner-interfaces.md` — currently fails; passes only when the decision pack
   is merged.
-- `grep -rn "approve" apps/api/src/main/java/com/aurevia/smartclinic/configuration apps/api/src/main/java/com/aurevia/smartclinic/catalog apps/api/src/main/java/com/aurevia/smartclinic/web`
+- `grep -rn "approve" apps/api/src/main/java/com/aurevia/configuration apps/api/src/main/java/com/aurevia/catalog apps/api/src/main/java/com/aurevia/web`
   — shows the generic named-approval endpoints; confirms they are not partner-interface approvals.
 - `grep -rn "partner" contracts/events/fixtures/partner-events.json contracts/events/README.md`
   — shows the synthetic partner conformance fixtures.

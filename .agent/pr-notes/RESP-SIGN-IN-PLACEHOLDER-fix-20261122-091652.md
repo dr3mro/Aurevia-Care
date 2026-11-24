@@ -51,9 +51,9 @@ Routine — contained presentational component plus one new test file in two sco
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) owns the staff-web surface; its definition of
+Senior React and Vite (`orevia-senior-react`) owns the staff-web surface; its definition of
 done (`check.sh` + typecheck final lines) is satisfied below. Senior TypeScript
-(`smartclinic-senior-typescript`) and UX (`smartclinic-ux-reviewer`) skills were loaded and
+(`orevia-senior-typescript`) and UX (`orevia-ux-reviewer`) skills were loaded and
 applied. All review in this pass is **simulated**; no human or synthetic-user participation.
 
 ## Data changes
@@ -91,7 +91,7 @@ Evidence source: executed tool commands in this worker. Specialist review is sim
    (gen:api:check, typecheck, lint, build, bundle budget and `test:coverage` all passed).
    - Typecheck final lines (from `npm run typecheck`, exit 0 — **no `error TS…`**):
      ```
-     > smartclinic-staff-web@0.1.0 typecheck
+     > orevia-staff-web@0.1.0 typecheck
      > tsc --noEmit -p tsconfig.json
      ```
      The build step re-ran `tsc --noEmit -p tsconfig.json && vite build` and succeeded.

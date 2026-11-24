@@ -42,11 +42,11 @@ All commands run from the repository root unless noted. Exit codes are from the 
 |---|---|
 | `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` (before implementation) | **RED** — compile errors: `FacilityPage`, `FacilityRepository.FacilityRow`, `FacilityRepository.query`, `FacilityService.list` do not exist |
 | `mvn -B -f apps/api/pom.xml -Pno-security,fast test` | **BUILD SUCCESS — Tests run: 1903, Failures: 0, Errors: 0, Skipped: 0** (includes 10 `FacilityListServiceTest`, 5 `FacilityListControllerTest`) |
-| `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=FacilityListIntegrationTest -DfailIfNoSpecifiedTests=false test` | **BUILD SUCCESS — Tests run: 4, Failures: 0, Errors: 0** against real PostgreSQL (`smartclinic_facility_list_it`, two synthetic tenants) |
-| `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security verify` | **BUILD SUCCESS — Tests run: 2274, Failures: 0, Errors: 0, Skipped: 0; `jacoco:check`: "All coverage checks have been met."** |
+| `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=FacilityListIntegrationTest -DfailIfNoSpecifiedTests=false test` | **BUILD SUCCESS — Tests run: 4, Failures: 0, Errors: 0** against real PostgreSQL (`orevia_facility_list_it`, two synthetic tenants) |
+| `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security verify` | **BUILD SUCCESS — Tests run: 2274, Failures: 0, Errors: 0, Skipped: 0; `jacoco:check`: "All coverage checks have been met."** |
 | `mvn -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false spotbugs:check` | **BUILD SUCCESS — BugInstance size is 0, Error size is 0** |
 | JaCoCo per-file inspection of `apps/api/target/site/jacoco/jacoco.xml` | `FacilityPage.java`: instruction 16/16, line 4/4, method 2/2, class 1/1; `FacilityRepository.java`: instruction 181/181, branch 2/2, line 39/39, method 11/11, class 2/2; `FacilityService.java`: instruction 367/367, branch 40/40, line 71/71, method 15/15, class 2/2; `FacilityController.java`: instruction 47/47, line 8/8, method 5/5, class 2/2 — **100% on every touched production file** |
-| `SMARTCLINIC_PG_ADMIN=postgres bash db/check.sh` | exit 0 — "migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified" |
+| `OREVIA_PG_ADMIN=postgres bash db/check.sh` | exit 0 — "migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified" |
 | `python3 -I contracts/openapi/check.py` | `x-04 drift check OK: 24 commands, contract and client match manifest` (exit 0) |
 | `python3 -I -m unittest discover -s contracts/openapi -p 'test_*.py' -q` | 7 tests OK |
 | `npm run gen:api` / `npm run gen:api:check` (in `apps/staff-web`) | generated client matches the contract (exit 0) |
@@ -57,7 +57,7 @@ All commands run from the repository root unless noted. Exit codes are from the 
 
 ### Worker-gate result and environment caveats
 
-`SMARTCLINIC_PG_ADMIN=postgres bash scripts/worker-check.sh` was run with the committed HEAD `opencode.json` temporarily in place so `check-pack.py` judged HEAD truth. It exited **1** at the pre-existing Python tooling suite, not at this change:
+`OREVIA_PG_ADMIN=postgres bash scripts/worker-check.sh` was run with the committed HEAD `opencode.json` temporarily in place so `check-pack.py` judged HEAD truth. It exited **1** at the pre-existing Python tooling suite, not at this change:
 
 - `ModuleNotFoundError: No module named 'yaml'` in `test_fast_tier`, `test_swarm`, `test_workflow_concurrency` (PyYAML absent from this worker's Python 3.11).
 - `test_agent_run.py` failures/errors from sandbox git/gh behaviour (`git branch -D`, push rejected by the temp bare remote, `gh pr create: permission denied`).

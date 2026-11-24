@@ -10,12 +10,12 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.events.clauses.CommitStateAuditOutboxRecordAtomicallyApplicableTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/events/clauses/CommitStateAuditOutboxRecordAtomicallyApplicableTest.java`).
+Test class: `com.aurevia.events.clauses.CommitStateAuditOutboxRecordAtomicallyApplicableTest`
+(path: `apps/api/src/test/java/com/aurevia/events/clauses/CommitStateAuditOutboxRecordAtomicallyApplicableTest.java`).
 All six tests are active (none disabled) and use synthetic identifiers and digests on a dedicated
 PostgreSQL database migrated from `db/migrations` with forced row-level security. They drive the real
 HTTP entry point with the synthetic-auth profile, reusing the fixtures and style of
-`com.aurevia.smartclinic.it.JdbcDeliveryStoreIntegrationTest`.
+`com.aurevia.it.JdbcDeliveryStoreIntegrationTest`.
 
 - `publishCommitsOutboxAuditAndDedupKeyTogether` — positive proof. `POST /api/v1/delivery/events`
   returns 201. Direct JDBC checks under `app.current_org` find exactly one `delivery_outbox` row for
@@ -51,21 +51,21 @@ HTTP entry point with the synthetic-auth profile, reusing the fixtures and style
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.events.DeliveryController` — thin adapter; `POST /api/v1/delivery/events`
+- `com.aurevia.events.DeliveryController` — thin adapter; `POST /api/v1/delivery/events`
   delegates to the service and maps the result to HTTP 201.
-- `com.aurevia.smartclinic.events.DurableEventService` — `publish(String ...)` validates the command,
+- `com.aurevia.events.DurableEventService` — `publish(String ...)` validates the command,
   derives the tenant context, authorizes the action, resolves the idempotency key, and calls
   `DeliveryStore.publishAtomically` with the outbox event and its audit fact.
-- `com.aurevia.smartclinic.events.DeliveryStore` and
-  `com.aurevia.smartclinic.events.JdbcDeliveryStore` — `publishAtomically` inserts the outbox row
+- `com.aurevia.events.DeliveryStore` and
+  `com.aurevia.events.JdbcDeliveryStore` — `publishAtomically` inserts the outbox row
   with `ON CONFLICT DO NOTHING RETURNING` and appends the audit fact inside one tenant-guarded
   `TransactionTemplate`; `byIdempotencyKey` and `appendAudit` provide the deduplication and
   append-only reads. Nested `appendAudit` joins the outer transaction under the default
   `PROPAGATION_REQUIRED` of the shared template.
-- `com.aurevia.smartclinic.events.DeliveryInputs`, `DeliveryActions`,
+- `com.aurevia.events.DeliveryInputs`, `DeliveryActions`,
   `DurableEventContract` — trust-boundary validation, the PUBLISH role matrix and the
   `PublishRequest`, `OutboxEvent` and `DeliveryAuditEvent` domain records.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` — renders the 403, 404, 409 and 422 machine-readable
+- `com.aurevia.api.ApiErrorHandler` — renders the 403, 404, 409 and 422 machine-readable
   error bodies asserted by the negative tests.
 - `db/migrations/V55__durable_event_outbox.sql` — the `delivery_outbox` and `delivery_audit` tables,
   the `(organization_id, sender, event_type, idempotency_key)` uniqueness that makes the key part of

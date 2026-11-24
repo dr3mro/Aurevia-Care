@@ -2,7 +2,7 @@
  * Wire types and pure approval rules for same-tenant duplicate review (IAM-04).
  *
  * Field names mirror the authoritative Java records in
- * `com.aurevia.smartclinic.patient.consolidation`. The routes are not yet
+ * `com.aurevia.patient.consolidation`. The routes are not yet
  * published in the generated OpenAPI contract, so this module owns the wire
  * projections and the client-side guards; the API stays authoritative for
  * authorization, locking and the actual consolidation.

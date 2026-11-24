@@ -29,12 +29,12 @@ Branch: swarm/BUILD-51-959 (no push, no tag, no `gh`)
 
 ## Requirements and acceptance mapping
 
-- **OPS-07** (SMARTCLINIC_V1_SPEC.md line 140): tenant export with manifest, schema
+- **OPS-07** (PROJECT_V1_SPEC.md line 140): tenant export with manifest, schema
   version, checksums, authorized documents, provenance and audit history. This
   slice renders the export request, the expiring download list with manifest
   checksum, record count and retention instant, and an explicit expired state
   that withholds the download action.
-- **OPS-08** (SMARTCLINIC_V1_SPEC.md line 141): versioned onboarding manifest,
+- **OPS-08** (PROJECT_V1_SPEC.md line 141): versioned onboarding manifest,
   deterministic mapping, dry-run counts / unsupported fields / duplicate risk /
   missing attachments / errors, provenance preservation and authorized sign-off.
   This slice builds a synthetic versioned manifest, renders the whole dry-run
@@ -90,7 +90,7 @@ All commands run from `apps/staff-web` unless noted. Final lines / results:
   inside ThemeProvider") and did not fail the run.
 - `npm run gen:api:check` — `gen:api: generated client matches the contract` (EXIT 0).
 - `npm run typecheck` — final lines:
-  `> smartclinic-staff-web@0.1.0 typecheck`
+  `> orevia-staff-web@0.1.0 typecheck`
   `> tsc --noEmit -p tsconfig.json`
   EXIT 0, no diagnostics. No `error TS…`, no `any`, no `@ts-ignore`.
 - `npm run lint` — `eslint . --max-warnings 0`, EXIT 0.

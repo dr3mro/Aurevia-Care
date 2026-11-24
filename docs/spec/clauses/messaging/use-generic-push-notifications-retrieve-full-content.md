@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.UseGenericPushNotificationsRetrieveFullContentTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/UseGenericPushNotificationsRetrieveFullContentTest.java`),
+Test class: `com.aurevia.messaging.clauses.UseGenericPushNotificationsRetrieveFullContentTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/UseGenericPushNotificationsRetrieveFullContentTest.java`),
 an active MockMvc plus synthetic-port test. No test is skipped and no production
 code, contract or migration was changed.
 
@@ -31,7 +31,7 @@ code, contract or migration was changed.
   companion asserts an `AuditSink.append(..., "DENIED", ...)` fact and that the
   `PatientAppointmentStore` and `PushGateway` boundaries are never touched.
 
-Production classes exercised, all in `com.aurevia.smartclinic.messaging.appointments`
+Production classes exercised, all in `com.aurevia.messaging.appointments`
 (the PAT-01/OPS-02 patient appointment slice, which owns the only generic push
 payload in the repository): `GenericPushNotice`, `PatientAppointmentService`
 (`authorize`, `dispatch`, `confirm`, `notifyStatusChange`, `listAppointments`),
@@ -40,9 +40,9 @@ for the 403 unlinked case; the 401 cases are rejected by the interceptor before
 any controller route, and `confirm`/`notifyStatusChange` are proven at the
 service layer only), and the ports `PushGateway`, `DeviceTokenStore`, `VerifiedPatientLink`,
 `PatientAppointmentStore` and `AuditSink`. Cross-boundary classes:
-`com.aurevia.smartclinic.web.TenantContextInterceptor`,
-`com.aurevia.smartclinic.api.ApiErrorHandler` and
-`com.aurevia.smartclinic.tenant.TenantContext`.
+`com.aurevia.web.TenantContextInterceptor`,
+`com.aurevia.api.ApiErrorHandler` and
+`com.aurevia.tenant.TenantContext`.
 
 Scope of the claim: the generic-push-and-authenticated-retrieval pattern is
 proven for those appointment classes only. MSG-05's own secure patient-to-unit

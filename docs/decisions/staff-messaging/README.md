@@ -1,6 +1,6 @@
 # Staff messaging — decision pack (proposed specification amendment)
 
-> **This document is a proposal only. Do NOT edit `SMARTCLINIC_V1_SPEC.md`.**
+> **This document is a proposal only. Do NOT edit `PROJECT_V1_SPEC.md`.**
 > Only an authorized person (the specification/product owner) amends the
 > specification, after answering the open questions in
 > [Questions a person must answer](#questions-a-person-must-answer). No agent,
@@ -216,12 +216,12 @@ person records one and amends the specification.
 Decision owner: a person (specification/product owner), not an agent. Next step:
 answer the four questions, decide whether to accept this text as new V1
 requirements, assign formal requirement IDs, and amend
-`SMARTCLINIC_V1_SPEC.md` in a person-authored change. Implementation stories
+`PROJECT_V1_SPEC.md` in a person-authored change. Implementation stories
 must not start until that amendment exists.
 
 ## Evidence and review status
 
-- Source of requirement text: `SMARTCLINIC_V1_SPEC.md` sections 6.1 and 7, and
+- Source of requirement text: `PROJECT_V1_SPEC.md` sections 6.1 and 7, and
   requirement IDs MSG-03, MSG-07 and ARC-07 (tool: file reads).
 - No synthetic patient data, credentials or real identifiers are used in this
   pack; it contains no fixtures or code.

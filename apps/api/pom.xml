@@ -12,10 +12,10 @@
     <relativePath />
   </parent>
   <groupId>com.aurevia</groupId>
-  <artifactId>smartclinic-api</artifactId>
+  <artifactId>orevia-api</artifactId>
   <version>0.1.0-SNAPSHOT</version>
-  <name>SmartClinic API</name>
-  <description>Tenant-isolated staff API for SmartClinic Cloud</description>
+  <name>Orevia API</name>
+  <description>Tenant-isolated staff API for Orevia Cloud</description>
 
   <properties>
     <java.version>21</java.version>
@@ -249,9 +249,9 @@
             </dependencies>
             <configuration>
               <targetClasses>
-                <param>com.aurevia.smartclinic.authz.*</param>
-                <param>com.aurevia.smartclinic.audit.*</param>
-                <param>com.aurevia.smartclinic.tenant.*</param>
+                <param>com.aurevia.authz.*</param>
+                <param>com.aurevia.audit.*</param>
+                <param>com.aurevia.tenant.*</param>
               </targetClasses>
               <mutationThreshold>${pitest.threshold}</mutationThreshold>
               <outputFormats>

@@ -74,7 +74,7 @@ Environment: staff-web `node_modules` was absent; installed with
 - **Typecheck (required frontend final lines)** — `cd apps/staff-web && npm run typecheck`
   - Final lines:
     ```
-    > smartclinic-staff-web@0.1.0 typecheck
+    > orevia-staff-web@0.1.0 typecheck
     > tsc --noEmit -p tsconfig.json
     ```
     `TYPECHECK_EXIT=0`, no `error TS…`. An unused `ReactElement` type import found on the first run was removed and the check re-run clean.
@@ -165,7 +165,7 @@ Both specialists were read-only and did not edit files; neither ran checks
   decision. All other acceptance items and every automated gate pass.
 - **Pre-existing committed conflict markers outside scope (not from this
   change).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` reports markers in
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java` and `Hl7Segment.java`, while `git status --short` is clean for
   those files — they are committed on the branch, not working-tree damage from
   this story. They are outside the staff-web scope and were left untouched.

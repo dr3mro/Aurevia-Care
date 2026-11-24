@@ -47,7 +47,7 @@ RUN mvn -B -q -f /tmp/warm/pom.xml dependency:go-offline >/dev/null 2>&1 || true
 COPY start-postgres.sh /usr/local/bin/start-postgres
 RUN chmod 0755 /usr/local/bin/start-postgres
 ENV PATH=/usr/lib/postgresql/17/bin:$PATH \
-    SMARTCLINIC_PG_ADMIN=postgres \
+    OREVIA_PG_ADMIN=postgres \
     OPENCODE_DISABLE_AUTOUPDATE=1 \
     CI=true
 LABEL org.opencontainers.image.description="OpenCode agent runner"

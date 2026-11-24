@@ -10,12 +10,12 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.StaffContactChangeDoesChangeAccountOwnershipTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/StaffContactChangeDoesChangeAccountOwnershipTest.java`).
+Test class: `com.aurevia.patient.clauses.StaffContactChangeDoesChangeAccountOwnershipTest`
+(path: `apps/api/src/test/java/com/aurevia/patient/clauses/StaffContactChangeDoesChangeAccountOwnershipTest.java`).
 It is a real-PostgreSQL HTTP acceptance test tagged `integration`, using the
 `synthetic-auth` profile and two synthetic tenants that share one chart identifier,
 following the fixtures and database setup of
-`com.aurevia.smartclinic.it.messagingenrollment.PatientAccessHttpIntegrationTest`
+`com.aurevia.it.messagingenrollment.PatientAccessHttpIntegrationTest`
 and the neighbouring clause tests. Both tests are active (none disabled) and pass
 with synthetic data only.
 
@@ -39,39 +39,39 @@ Test methods (one positive rule proof, one negative refusal set):
 
 Production classes exercised through the normal HTTP entry point:
 
-- Controller: `com.aurevia.smartclinic.messaging.enrollment.PatientAccessController`
+- Controller: `com.aurevia.messaging.enrollment.PatientAccessController`
   (`POST /api/v1/patient/access/accounts/contact`), which derives the caller from
-  `com.aurevia.smartclinic.web.TenantContextInterceptor` and fresh active roles
-  from `com.aurevia.smartclinic.staff.StaffRepository`.
-- Domain: `com.aurevia.smartclinic.messaging.enrollment.PatientAccessService`
-  (`changeStaffContact`), `com.aurevia.smartclinic.messaging.enrollment.EnrollmentActions`
+  `com.aurevia.web.TenantContextInterceptor` and fresh active roles
+  from `com.aurevia.staff.StaffRepository`.
+- Domain: `com.aurevia.messaging.enrollment.PatientAccessService`
+  (`changeStaffContact`), `com.aurevia.messaging.enrollment.EnrollmentActions`
   (`CONTACT_EDIT_STAFF`, allowed for `reception` and `tenant_admin`), and
-  `com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract`
+  `com.aurevia.messaging.enrollment.EnrollmentContract`
   (`ChangeContactRequest`, `PatientAccount`, `EventType.CONTACT_CHANGED` with the
   `ownership_unchanged` detail).
-- Persistence: `com.aurevia.smartclinic.messaging.enrollment.PatientAccessStore`
-  and its `com.aurevia.smartclinic.messaging.enrollment.JdbcPatientAccessStore`,
+- Persistence: `com.aurevia.messaging.enrollment.PatientAccessStore`
+  and its `com.aurevia.messaging.enrollment.JdbcPatientAccessStore`,
   writing `patient_access_account` inside the tenant-guarded transaction.
 
 Source survey — where the clause is implemented today:
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/PatientAccessService.java`
+- `apps/api/src/main/java/com/aurevia/messaging/enrollment/PatientAccessService.java`
   constructs the updated account from the existing id, organization, subject,
   linked chart ids, fact digest, state, attempt count and creation time, replacing
   only the contact digest. Its class documentation states that a staff contact edit
   never changes account ownership.
-- `apps/api/src/main/java/com/aurevia/smartclinic/patient/identity/IdentityProofingService.java`
+- `apps/api/src/main/java/com/aurevia/patient/identity/IdentityProofingService.java`
   documents the companion invariant: account ownership follows the immutable chart
   identifier, never mutable contact data.
 - Schema: `db/migrations/V83__patient_access_store.sql` owns `patient_access_account`
   and the other patient-access tables with forced row-level security;
   `db/migrations/V4__staff_lifecycle.sql` supplies the `active_roles` fold used for
   the request-time role check.
-- Controllers under `web`: `com.aurevia.smartclinic.web.PatientController` covers
+- Controllers under `web`: `com.aurevia.web.PatientController` covers
   registration and search only; the staff contact edit lives in the
   `messaging/enrollment` controller above.
 - An existing service-level proof is
-  `com.aurevia.smartclinic.it.messagingenrollment.PatientAccessTest.staffContactChangeNeverChangesOwnership`;
+  `com.aurevia.it.messagingenrollment.PatientAccessTest.staffContactChangeNeverChangesOwnership`;
   this clause test adds the HTTP-level evidence and the cross-tenant, wrong-role
   and invalid-input refusals.
 

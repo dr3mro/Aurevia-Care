@@ -1,4 +1,4 @@
-<!-- SMARTCLINIC_V1_SPEC.md section 11: every implementation pull request records the items below. Use synthetic data only. -->
+<!-- PROJECT_V1_SPEC.md section 11: every implementation pull request records the items below. Use synthetic data only. -->
 
 ## Summary
 
@@ -16,7 +16,7 @@ Routine (test-only coverage addition; no production behaviour change). docs/WORK
 
 ## Review owner
 
-smartclinic-senior-python (Python tooling); integrator verifies the full gate.
+orevia-senior-python (Python tooling); integrator verifies the full gate.
 
 ## Data changes
 

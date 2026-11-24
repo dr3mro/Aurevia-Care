@@ -22,7 +22,7 @@ docs/WORKFLOW.md, WORKSPACE.md, TODO.md and its "Instructions for every agent",
 MEMORY.md, PROJECT.md, the story task file, decision `0005-patient-app-tablets.md`,
 both scoped files, `types.ts` and the layout hook), read the newest reconciled
 daily note's lessons (`.agent/pr-notes/2026-11-20.md`) and loaded the matching
-skills: `smartclinic-delivery`, `smartclinic-senior-mobile`. I then re-ran every
+skills: `orevia-delivery`, `orevia-senior-mobile`. I then re-ran every
 scoped gate myself with fresh tool commands; all pass. **This pass changes only
 this notes file** — no production, test, config, threshold, exclusion, tracker,
 workflow, `scripts/` or `.opencode/` file was edited by me.
@@ -60,7 +60,7 @@ association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) guidance loaded and
+Senior React Native and Expo (`orevia-senior-mobile`) guidance loaded and
 applied; its definition of done is met. Independent QA and the full integration
 gate belong to the integrator/Delivery. No named clinical or patient reviewer
 was available.
@@ -208,7 +208,7 @@ remains a separate launch gate and is not claimed here.
    full gate and the 100% coverage check. All scoped frontend gates were run.
 8. **Pre-existing conflict markers, out of scope (flagged, not fixed).**
    `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds markers in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
    (inside comments, so Java compile/tests are unaffected). They are unrelated
    to the patient-mobile reports screen, exist on `origin/main` too, and my
    `git merge --no-edit origin/main` produced no new conflicts. I did not touch

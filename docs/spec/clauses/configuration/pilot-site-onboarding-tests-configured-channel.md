@@ -26,13 +26,13 @@ evidence rather than a skipped placeholder.
 Production classes and files surveyed, none of which tests a configured channel at
 onboarding:
 
-- `com.aurevia.smartclinic.configuration.ConfigurationService` — draft, named
+- `com.aurevia.configuration.ConfigurationService` — draft, named
   approval, effective read and append-only history only; its authorization checks
   active membership and role permission, with no channel input or channel invocation.
-- `com.aurevia.smartclinic.configuration.ConfigurationRepository`, `ConfigEntry` and
+- `com.aurevia.configuration.ConfigurationRepository`, `ConfigEntry` and
   `ConfigHistory` — versioned key/value storage and projections; no channel-test
   result or outcome type.
-- `com.aurevia.smartclinic.web.ConfigurationController` — maps only
+- `com.aurevia.web.ConfigurationController` — maps only
   `POST /api/v1/configuration`,
   `POST /api/v1/configuration/{key}/versions/{version}/approve`,
   `GET /api/v1/configuration/{key}` and `GET /api/v1/configuration/{key}/history`.
@@ -41,14 +41,14 @@ onboarding:
   channel-test table or outcome column.
 - `contracts/openapi.yaml` — the configuration section documents the four operations
   above and no channel-test operation.
-- `com.aurevia.smartclinic.exchange.critical.CriticalResultService` and
+- `com.aurevia.exchange.critical.CriticalResultService` and
   `db/migrations/V23__critical_results.sql` — use
   `critical.escalation.primary_channel` and `critical.escalation.backup_channel` as
   escalation configuration keys, not as channels to be probed.
 - `db/migrations/V92__service_profiles.sql` — stores `escalation_channel`,
   `urgent_channel` and `downtime_channel` on a service profile as declared
   attributes, with no test command or recorded outcome.
-- `com.aurevia.smartclinic.tenant.importing` — an unrelated, controlled onboarding
+- `com.aurevia.tenant.importing` — an unrelated, controlled onboarding
   data import (OPS-08); it neither reads channel configuration nor invokes channels.
 
 ## Gap

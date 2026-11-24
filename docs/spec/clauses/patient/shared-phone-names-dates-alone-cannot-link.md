@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.patient.clauses.SharedPhoneNamesDatesAloneCannotLinkTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/SharedPhoneNamesDatesAloneCannotLinkTest.java`),
+Test class `com.aurevia.patient.clauses.SharedPhoneNamesDatesAloneCannotLinkTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/SharedPhoneNamesDatesAloneCannotLinkTest.java`),
 six active tests with synthetic fixtures only (no `@Disabled`, no real patient data):
 
 - `sharedPhoneNameAndDobKeepTwoIssuerScopedRecordsAndOnlyWarn` — two registrations
@@ -47,26 +47,26 @@ for a real-patient linkage and does not replace the database-level RLS/isolation
 suites. The fixtures match the neighbouring `IdentityProofingUnitTest`,
 `ConsolidationServiceTest` and `PatientServiceTest` fixtures:
 
-- `com.aurevia.smartclinic.patient.PatientService` — `register`/`get` normalize
+- `com.aurevia.patient.PatientService` — `register`/`get` normalize
   names for search only, compute a likely-duplicate warning from normalized name
   and date of birth and never merge or link; `PatientView` carries the warning as
   a separate, immutable record.
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService` —
+- `com.aurevia.patient.consolidation.ConsolidationService` —
   `consolidate` requires two distinct issuer-scoped identifiers present on the two
   locked records (or a documented approved process), a different authorized
   reviewer, a current version and no unresolved blockers; `DuplicatePolicy`
   bounds the reviewer roles.
-- `com.aurevia.smartclinic.patient.identity.IdentityProofingService` —
+- `com.aurevia.patient.identity.IdentityProofingService` —
   `linkWithInvitation` links only when the raw token resolves to an invitation
   bound to the authenticated verified account; `hasAccess` reads the append-only
   current-link fold; `IdentityActionPolicy` bounds the administrative actions.
 
 Source survey (unchanged by this task): the relevant production packages are
-`apps/api/src/main/java/com/aurevia/smartclinic/patient` and its `identity` and
+`apps/api/src/main/java/com/aurevia/patient` and its `identity` and
 `consolidation` neighbours; the web controllers are
-`com.aurevia.smartclinic.web.PatientController`,
-`com.aurevia.smartclinic.patient.identity.IdentityProofingController` and
-`com.aurevia.smartclinic.patient.consolidation.ConsolidationController`; the
+`com.aurevia.web.PatientController`,
+`com.aurevia.patient.identity.IdentityProofingController` and
+`com.aurevia.patient.consolidation.ConsolidationController`; the
 supporting tables (`patient_record`, `chart_association`, `consolidation`,
 `patient_account`, `account_chart_link`, `patient_invitation`) come from Flyway
 migrations V7, V9 and V10 under `db/migrations`; the generated REST surface is in
@@ -84,5 +84,5 @@ The rule is built in both of its senses — records and patient accounts — and
 task added proof only. It did not change production code, an existing test, the
 OpenAPI contract or a migration. The mocked SQL boundaries are the same ones
 covered by the database-level isolation and RLS suites under
-`apps/api/src/test/java/com/aurevia/smartclinic/it/patientidentity`, which the
+`apps/api/src/test/java/com/aurevia/it/patientidentity`, which the
 integrator runs; no authorization for real-patient linkage is implied here.

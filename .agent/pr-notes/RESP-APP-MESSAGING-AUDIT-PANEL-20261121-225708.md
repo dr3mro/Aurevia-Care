@@ -57,8 +57,8 @@ Routine (contained presentation change to one patient-app component, per
 
 ## Review owner
 
-smartclinic-senior-mobile (bounded review returned **no blocking defects** and
-no unmet acceptance criterion); smartclinic-ux-reviewer skill loaded for the
+orevia-senior-mobile (bounded review returned **no blocking defects** and
+no unmet acceptance criterion); orevia-ux-reviewer skill loaded for the
 UX-01 accessibility/RTL criteria. The reviewer verified the production safe-area
 path is valid: React Navigation's `SafeAreaProviderCompat` wraps screens, so
 `useWindowClass` has insets when the panel is mounted in a real screen. One
@@ -203,7 +203,7 @@ a G5 gate. No persistent clinical cache is introduced (PAT-02).
   uncoverable behaviour difference without changing reflow.
 - Observed, out-of-scope defect in the base branch (tool evidence): committed
   Git conflict markers exist on `origin/main` at
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java:6,10`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java:6,10`,
   `Hl7Parser.java:14,18` and `Hl7Segment.java:10,14` (confirmed with
   `git grep -nE '^(<<<<<<<|>>>>>>>) ' HEAD -- .../hl7/`). They are present in HEAD
   and unchanged by this worker; they are not from my merge (`git merge --no-edit

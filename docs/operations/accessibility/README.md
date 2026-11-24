@@ -20,7 +20,7 @@ cannot prove without authorized people and devices.
 | UX-01 | Preserve language and units in exports; keep presentation styling flexible | [Evidence artifact](evidence-artifact.md) |
 | PRD-05 | English and Arabic operation, with one market per production deployment | The language and export checks above |
 
-The approved clause itself is in the [product specification](../../../SMARTCLINIC_V1_SPEC.md).
+The approved clause itself is in the [product specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 No new threshold or requirement ID is introduced by this handoff.
 
 ## Three evidence tiers

@@ -10,14 +10,14 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.lab.clauses.CaptureNumericQualifiedNumericTextCodedObservationsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/CaptureNumericQualifiedNumericTextCodedObservationsTest.java`).
+Test class `com.aurevia.lab.clauses.CaptureNumericQualifiedNumericTextCodedObservationsTest`
+(`apps/api/src/test/java/com/aurevia/lab/clauses/CaptureNumericQualifiedNumericTextCodedObservationsTest.java`).
 It is a synthetic, database-free clause test in the same `clauses` style as
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: a real
 `ResultEntryService` with mocked `LabAccessionRepository`, `CriticalResultService`,
 `TransactionTemplate` (the guarded callback runs synchronously), `AuditAppender`,
 a `Clock.fixed` and a synthetic COLLECTED accession at version one. Every case
-enters through `com.aurevia.smartclinic.labflow.results.ResultEntryService.enter`,
+enters through `com.aurevia.labflow.results.ResultEntryService.enter`,
 the command called by `POST /api/v1/lab/results/{id}`; the verifier is proven
 through `ResultEntryService.verify`. The verifier is a report-level projection
 field (`ReportView.verifier()`) derived from the authenticated tenant context,
@@ -53,27 +53,27 @@ not a client-supplied observation attribute.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.labflow.results.ResultEntryService` — `enter` validates
+- `com.aurevia.labflow.results.ResultEntryService` — `enter` validates
   the boundary, repeats the patient/accession match inside the tenant-guarded
   transaction, parses and flags observations, and delegates to the kernel;
   `verify` records the distinct verifier and the final revision. `parse`, `flag`,
   `authorize`, `matches`, `dueAfter` and `view` are covered through these cases.
-- `com.aurevia.smartclinic.lab.result.LabResultService` — `capture` and `verify`
+- `com.aurevia.lab.result.LabResultService` — `capture` and `verify`
   append immutable tenant-keyed revisions; `evaluate` stamps the verifier on each
   observation via `LabObservation.verified`. `LabObservation`, `LabTypes`
   (`ObservationKind`, `Qualifier`, `AbnormalFlag`, `VerificationState`),
   `LabRules`, `LabPolicyCatalog.ReferenceRange` and `LabPolicyCatalog.CriticalPolicy`
   carry the four kinds, qualifiers, flags and approved evaluation bounds.
-- `com.aurevia.smartclinic.labflow.results.ObservationInput`, `ResultEntryRequest`,
+- `com.aurevia.labflow.results.ObservationInput`, `ResultEntryRequest`,
   `ReportView.ObservationView`, `ResultDecisionRequest` — the bounded wire shapes;
   `ObservationView.display()` is a derived rendering asserted alongside the record
   components, not a record component itself.
-- `com.aurevia.smartclinic.lab.accession.LabAccessionRepository` (`hasActiveMembership`,
-  `activeRoles`, `findById`), `com.aurevia.smartclinic.audit.AuditAppender`,
-  `com.aurevia.smartclinic.exchange.critical.CriticalResultService`,
-  `com.aurevia.smartclinic.tenant.TenantContext` and `com.aurevia.smartclinic.api.ApiException`
+- `com.aurevia.lab.accession.LabAccessionRepository` (`hasActiveMembership`,
+  `activeRoles`, `findById`), `com.aurevia.audit.AuditAppender`,
+  `com.aurevia.exchange.critical.CriticalResultService`,
+  `com.aurevia.tenant.TenantContext` and `com.aurevia.api.ApiException`
   — the authorization, provenance and audit boundaries used by every case.
-- `com.aurevia.smartclinic.labflow.results.LabResultEntryController` —
+- `com.aurevia.labflow.results.LabResultEntryController` —
   `POST /api/v1/lab/results/{id}` binds this command and injects `ResultEntryService`;
   `POST /api/v1/lab/results/{id}/verify` binds the verifier command.
 

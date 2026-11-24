@@ -10,10 +10,10 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.tenant.clauses.InternalForeignKeysIncludeOrganizationIdTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenant/clauses/InternalForeignKeysIncludeOrganizationIdTest.java`).
+Test class: `com.aurevia.tenant.clauses.InternalForeignKeysIncludeOrganizationIdTest`
+(`apps/api/src/test/java/com/aurevia/tenant/clauses/InternalForeignKeysIncludeOrganizationIdTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` that migrates a
-dedicated database (`smartclinic_arc01_clause2_it`) from `db/migrations` with a
+dedicated database (`orevia_arc01_clause2_it`) from `db/migrations` with a
 NOBYPASSRLS runtime role, seeds two synthetic tenants with `app.current_org` and
 `app.actor` bound, and drops the database afterwards. No HTTP route belongs to a
 schema-key rule, so the test drives the authoritative schema directly.
@@ -54,11 +54,11 @@ they rely on; it sets the GUCs directly and loads no Spring context or controlle
   `db/migrations/V93__membership_facility_scope.sql` (for example its
   `(organization_id, membership_id)` and `(organization_id, facility_id)` keys).
   All migrated tenant tables carry enabled and forced row-level security.
-- Tenant scope runtime: `com.aurevia.smartclinic.tenant.TenantContext` (the
+- Tenant scope runtime: `com.aurevia.tenant.TenantContext` (the
   request-scoped organization binding) and
-  `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager` (transaction-local
+  `com.aurevia.tenant.TenantGuardTransactionManager` (transaction-local
   `app.current_org` / `app.actor` binding), which the request path binds before
-  reaching the web controllers under `apps/api/src/main/java/com/aurevia/smartclinic/web`.
+  reaching the web controllers under `apps/api/src/main/java/com/aurevia/web`.
   The test sets those same GUCs directly over JDBC and does not call a controller.
 - Contract: none — a schema key rule has no route, OpenAPI entry or generated
   client. `contracts/` declares no artifact for this clause.

@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.NewRecipientRequiresSeparateAuthorizedConversationExplicitTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/NewRecipientRequiresSeparateAuthorizedConversationExplicitTest.java`).
+Test class: `com.aurevia.messaging.clauses.NewRecipientRequiresSeparateAuthorizedConversationExplicitTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/NewRecipientRequiresSeparateAuthorizedConversationExplicitTest.java`).
 It is a mocked-dependency domain test, not a PostgreSQL or HTTP integration test: it enters
 through the real `ConversationService` command methods that the thin `ConversationController`
 calls, runs the real bounded action matrix and a synchronous tenant-guarded transaction, and
@@ -39,31 +39,31 @@ methods and the success audit untouched.
   recipient for another.
 
 Other refusal branches of the same production methods are already exercised by
-`com.aurevia.smartclinic.it.messagingconversations.ConversationServiceTest`: staff unit denial at
+`com.aurevia.it.messagingconversations.ConversationServiceTest`: staff unit denial at
 open (`openRejectsStaffOfWrongUnit`), missing, revoked, foreign-patient and other-unit connections
 (`patientOpenWithoutAnyVerifiedConnectionIsDenied`, `patientOpenWithARevokedConnectionIsDenied`,
 `patientOpenWithAConnectionBoundToAnotherPatientIsDenied`,
 `patientOpenWithAConnectionToAnotherUnitIsDenied`), inactive and non-staff assignees
 (`assignRejectsInactiveTarget`, `assignRejectsNonStaffTargetRole`), and the forced-RLS immutability
 guard in `db/migrations/V33__conversation_lifecycle.sql` is proven by
-`com.aurevia.smartclinic.it.messagingconversations.ConversationFlowTest.databaseGuardsRejectIllegalWrites`.
+`com.aurevia.it.messagingconversations.ConversationFlowTest.databaseGuardsRejectIllegalWrites`.
 Those tests are cited, not duplicated, because they are outside this story's single-test-file scope.
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService` — domain commands
+- `com.aurevia.messaging.conversations.ConversationService` — domain commands
   `open`, `transfer` and their `requireAccess`, `requireEligibleStaff` and `success` guards.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationActions` — the real bounded
+- `com.aurevia.messaging.conversations.ConversationActions` — the real bounded
   action and unit matrix; no disclosure or add-recipient action is declared.
-- `com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier` — the server-side
+- `com.aurevia.messaging.conversations.PatientConnectionVerifier` — the server-side
   connection boundary; its production implementation is
-  `com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService` (`requireActive`), which
+  `com.aurevia.messaging.units.CareUnitDirectoryService` (`requireActive`), which
   derives the patient, connection and unit from the persistent connection, never the request body.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationContract`,
-  `com.aurevia.smartclinic.messaging.conversations.ConversationRepository` and
-  `com.aurevia.smartclinic.audit.AuditAppender` — the single recipient-unit projection, the SQL
+- `com.aurevia.messaging.conversations.ConversationContract`,
+  `com.aurevia.messaging.conversations.ConversationRepository` and
+  `com.aurevia.audit.AuditAppender` — the single recipient-unit projection, the SQL
   boundary and the transactional audit writer.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController` — the thin HTTP entry
+- `com.aurevia.messaging.conversations.ConversationController` — the thin HTTP entry
   point at `/api/v1/conversations`; it exposes open, reply, inbox, work queue, read, assign,
   transfer, resolve and close only.
 

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.chart.clauses.ExplainRuleAllowAuthorizedOverrideProvenanceTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/ExplainRuleAllowAuthorizedOverrideProvenanceTest.java`),
+Test class `com.aurevia.chart.clauses.ExplainRuleAllowAuthorizedOverrideProvenanceTest`
+(`apps/api/src/test/java/com/aurevia/chart/clauses/ExplainRuleAllowAuthorizedOverrideProvenanceTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from
 the production Flyway migrations, with synthetic subjects and a synthetic patient:
 
@@ -51,26 +51,26 @@ Production classes exercised through `POST /api/v1/follow-ups/suggest`,
 `POST /api/v1/follow-ups/{id}/override` (and `confirm` and `GET .../{id}/tasks`
 for the terminal-state and read preconditions):
 
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpController` — the thin
+- `com.aurevia.scheduling.followup.FollowUpController` — the thin
   HTTP adapter that binds the command bodies and never accepts the organization,
   actor or rule from the request.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpService` — builds the rule
+- `com.aurevia.scheduling.followup.FollowUpService` — builds the rule
   explanation from the approved interval or applicable prior follow-up, and
   records the override actor, reason and instant from the authenticated context.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpSuggestion` and
-  `com.aurevia.smartclinic.scheduling.followup.FollowUpOverride` — the immutable
+- `com.aurevia.scheduling.followup.FollowUpSuggestion` and
+  `com.aurevia.scheduling.followup.FollowUpOverride` — the immutable
   suggestion and its append-only provenance, including the extended explanation.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpCommandService` — the
+- `com.aurevia.scheduling.followup.FollowUpCommandService` — the
   tenant-guarded transaction boundary that commits the suggestion and audit facts.
-- `com.aurevia.smartclinic.authz.ActionPolicy` — the bounded matrix that grants
+- `com.aurevia.authz.ActionPolicy` — the bounded matrix that grants
   `APPOINTMENT_RESCHEDULE` to reception and tenant_admin but not to clinician.
-- `com.aurevia.smartclinic.scheduling.followup.JdbcFollowUpStore` — the
+- `com.aurevia.scheduling.followup.JdbcFollowUpStore` — the
   tenant-scoped JDBC boundary that persists the `override_*` columns on
   `public.follow_up_suggestion` in `db/migrations/V74__build_05.sql` (forced row
   level security).
 
 Corroborating suite already on `main` (not re-tested here):
-`com.aurevia.smartclinic.scheduling.followup.it.FollowUpHttpIntegrationTest`
+`com.aurevia.scheduling.followup.it.FollowUpHttpIntegrationTest`
 (`overrideKeepsProvenanceAndOnlyExplicitConfirmationBooks`,
 `clinicianCannotConfirmBecauseBookingIsNotTheirAction`,
 `peerTenantCannotReadAnotherTenantsSuggestion`) covers the positive,
@@ -78,10 +78,10 @@ reception-actor and peer-tenant outcomes at the same entry points. This test is
 new in its clinician override denial, the direct persisted `override_*` column
 assertion, and the two terminal-state override refusals.
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=ExplainRuleAllowAuthorizedOverrideProvenanceTest test` —
 `tests="6" errors="0" skipped="0" failures="0"` in
-`apps/api/target/surefire-reports/TEST-com.aurevia.smartclinic.chart.clauses.ExplainRuleAllowAuthorizedOverrideProvenanceTest.xml`,
+`apps/api/target/surefire-reports/TEST-com.aurevia.chart.clauses.ExplainRuleAllowAuthorizedOverrideProvenanceTest.xml`,
 with PostgreSQL on 127.0.0.1:5432 as the prerequisite. "Proven by tests" is
 limited to the clause behaviour above; it does not claim that the follow-up
 routes or provenance fields are published in the committed OpenAPI contract.

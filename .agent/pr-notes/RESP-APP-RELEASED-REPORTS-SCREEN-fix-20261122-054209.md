@@ -7,8 +7,8 @@ Continuation fix pass on branch `swarm/RESP-APP-RELEASED-REPORTS-SCREEN-505`
 and the newest hand-off note
 (`RESP-APP-RELEASED-REPORTS-SCREEN-fix-20261122-053421.md`), read the governing
 docs and the story task file, merged `origin/main` at the start
-(`Already up to date.`), loaded the `smartclinic-delivery`,
-`smartclinic-senior-mobile` and `smartclinic-senior-typescript` guidance, and
+(`Already up to date.`), loaded the `orevia-delivery`,
+`orevia-senior-mobile` and `orevia-senior-typescript` guidance, and
 independently re-ran every gate for the touched area with fresh tool commands.
 
 **The scoped repair is already present and correct at committed ancestor
@@ -59,8 +59,8 @@ authorization, patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) and Senior TypeScript
-(`smartclinic-senior-typescript`) guidance loaded and applied. Both skills'
+Senior React Native and Expo (`orevia-senior-mobile`) and Senior TypeScript
+(`orevia-senior-typescript`) guidance loaded and applied. Both skills'
 definition-of-done was satisfied: `bash apps/patient-mobile/check.sh` green,
 typecheck final lines pasted below, every `error TS…` resolved, no `any` or
 `@ts-ignore`. No named clinician/patient review was available and none is

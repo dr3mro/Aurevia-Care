@@ -10,15 +10,15 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.tenancy.clauses.DeriveTenantContextAuthenticationCurrentMembershipTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/DeriveTenantContextAuthenticationCurrentMembershipTest.java`),
+Test class: `com.aurevia.tenancy.clauses.DeriveTenantContextAuthenticationCurrentMembershipTest`
+(`apps/api/src/test/java/com/aurevia/tenancy/clauses/DeriveTenantContextAuthenticationCurrentMembershipTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the
 HTTP entry point `GET /api/v1/facilities/{code}` against two synthetic organizations
 reusing the same tenant-local facility code `MAIN`. Each organization has one
 `tenant_admin` subject with an active membership; a third subject has an active
 membership event followed by a later, explicitly dated revoked event, so the
 current-membership fold resolves to revoked. The suite creates and drops its own
-database `smartclinic_derive_tenant_ctx_it`.
+database `orevia_derive_tenant_ctx_it`.
 
 - `authenticatedSubjectWithActiveMembershipDerivesItsOwnTenant` — an authenticated
   subject with an active membership in its selected organization gets HTTP 200 and
@@ -43,24 +43,24 @@ database `smartclinic_derive_tenant_ctx_it`.
 
 Production path exercised by these HTTP requests:
 
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` and
-  `com.aurevia.smartclinic.tenant.TenantContext` — under the `synthetic-auth` test
+- `com.aurevia.web.TenantContextInterceptor` and
+  `com.aurevia.tenant.TenantContext` — under the `synthetic-auth` test
   profile the interceptor validates the correlation id, requires a subject (401),
   requires a well-formed organization selection (422) and binds the selected
   organization as the request tenant context. It clears the context at completion.
   The production JWT and OIDC browser branches of the same interceptor, which call
-  `com.aurevia.smartclinic.web.ClaimsTenantResolver` to check the verified `orgs`
+  `com.aurevia.web.ClaimsTenantResolver` to check the verified `orgs`
   claim, are **not** traversed by this synthetic-auth suite; that claim half is
-  covered by `com.aurevia.smartclinic.web.ClaimsTenantResolverTest`
+  covered by `com.aurevia.web.ClaimsTenantResolverTest`
   (`rejectsClaimsWithoutSubject`, `rejectsBlankSubject`,
   `rejectsOrganizationNotListedInClaims`, `rejectsMalformedActiveOrganizationHeader`,
   `rejectsMissingActiveOrganizationHeader`, and others).
-- `com.aurevia.smartclinic.tenancy.FacilityController` — thin adapter calling
+- `com.aurevia.tenancy.FacilityController` — thin adapter calling
   `FacilityService.get`.
-- `com.aurevia.smartclinic.tenancy.FacilityService` — `get` opens the tenant-guarded
+- `com.aurevia.tenancy.FacilityService` — `get` opens the tenant-guarded
   transaction and calls `authorize("FACILITY_READ")`, re-evaluating membership and
   permission on every request so revocation takes effect on the next access.
-- `com.aurevia.smartclinic.tenancy.FacilityRepository` — `hasActiveMembership` and
+- `com.aurevia.tenancy.FacilityRepository` — `hasActiveMembership` and
   `activeRoles` query the RLS folds; `findByCode` relies on forced RLS and
   `appendAudit` records successful reads inside the same transaction.
 - `db/migrations/V1__tenant_schema.sql` — tenant-owned `(organization_id, id)` keys;

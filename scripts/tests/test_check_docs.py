@@ -30,7 +30,9 @@ class RepositoryTests(unittest.TestCase):
     def make_repo(self, note):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp)
-        (tmp / docs.SPEC).write_text("| IAM-01 | x |\n")
+        spec = tmp / docs.SPEC
+        spec.parent.mkdir(parents=True, exist_ok=True)
+        spec.write_text("| IAM-01 | x |\n")
         (tmp / "NOTE.md").write_text(note)
         return tmp
 
@@ -59,7 +61,9 @@ class StructureTests(unittest.TestCase):
     def repo(self, note, name="NOTE.md", extra=None):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp)
-        (tmp / docs.SPEC).write_text("| IAM-01 | x |\n")
+        spec = tmp / docs.SPEC
+        spec.parent.mkdir(parents=True, exist_ok=True)
+        spec.write_text("| IAM-01 | x |\n")
         (tmp / name).write_text(note)
         for rel, text in (extra or {}).items():
             path = tmp / rel
@@ -159,7 +163,7 @@ class StructureTests(unittest.TestCase):
         names = sorted(p.relative_to(root).as_posix()
                        for p in docs.generated_markdown_files(root))
         self.assertEqual(names,
-                         ["NOTE.md", "SMARTCLINIC_V1_SPEC.md", "docs/GOOD.md"])
+                         [".opencode/config/PROJECT_V1_SPEC.md", "NOTE.md", "docs/GOOD.md"])
 
     def test_clean_document_passes_all_rules(self):
         doc = ("# Title\n\n## Section\n\ntext\n\n```python\nx = 1\n```\n\n"

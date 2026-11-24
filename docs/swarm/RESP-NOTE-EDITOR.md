@@ -49,8 +49,8 @@ boundary changed.
 
 ## Review owner
 
-Domain skills loaded and applied: `smartclinic-delivery`,
-`smartclinic-senior-react`, `smartclinic-senior-typescript`. No independent
+Domain skills loaded and applied: `orevia-delivery`,
+`orevia-senior-react`, `orevia-senior-typescript`. No independent
 reviewer or human participant was used; all evidence below is **tool evidence**
 from executed commands. No clinical or real-user acceptance is claimed.
 
@@ -100,7 +100,7 @@ Commands executed (tool evidence):
 5. Typecheck final lines, as required by the frontend definition of done:
    `cd apps/staff-web && npm run typecheck`
    ```
-   > smartclinic-staff-web@0.1.0 typecheck
+   > orevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    `typecheck exit: 0` — no `error TS…` reported.
@@ -150,6 +150,6 @@ left to the Playwright tasks named in `docs/design/responsive-layout.md`
 - Out of scope observation only: three unrelated Java files already contain
   committed conflict markers at branch HEAD (working tree clean; `git merge
   --no-edit origin/main` reported `Already up to date.`):
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java`, `Hl7Segment.java` (markers referencing
   `origin/swarm/BUILD-37-469`

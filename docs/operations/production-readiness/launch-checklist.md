@@ -2,7 +2,7 @@
 
 This is the G5 memory aid for launch work an agent cannot complete: it needs cloud
 access, a human decision or workflow permissions. It is derived from
-[section 8.1 of the SmartClinic Cloud V1 specification](../../../SMARTCLINIC_V1_SPEC.md)
+[section 8.1 of the Orevia Cloud V1 specification](../../../.opencode/config/PROJECT_V1_SPEC.md)
 and the adjacent [production readiness evidence register](README.md). The
 register tracks the CI-producible evidence for WEB-01 to WEB-13; this checklist
 tracks only the items that must be carried by a named role. "Owner" is a role,

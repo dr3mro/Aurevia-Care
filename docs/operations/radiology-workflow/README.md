@@ -33,7 +33,7 @@ exact revision.
 | WEB-09 | Each screen states loading, empty, error, forbidden, conflict and session-expired states, keeps typed work on a conflict, and works in English and right-to-left Arabic | [Screen states](#screen-states-and-recovery) |
 
 The approved wording is in the
-[product specification](../../../SMARTCLINIC_V1_SPEC.md). This guide introduces
+[product specification](../../../.opencode/config/PROJECT_V1_SPEC.md). This guide introduces
 no new requirement or threshold.
 
 ## The steps

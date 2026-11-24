@@ -62,10 +62,10 @@ Commands run (from `apps/staff-web` unless stated), with final lines:
    → `Test Files 2 failed | 1 passed (3)`, `Tests 7 failed | 5 passed (12)`
    (the direction test already passed because `dir`/`lang` mirroring existed).
 2. `npm run typecheck` →
-   `> smartclinic-staff-web@0.1.0 typecheck` /
+   `> orevia-staff-web@0.1.0 typecheck` /
    `> tsc --noEmit -p tsconfig.json` / `EXIT=0` (no `error TS…`).
 3. `npm run lint` →
-   `> smartclinic-staff-web@0.1.0 lint` /
+   `> orevia-staff-web@0.1.0 lint` /
    `> eslint . --max-warnings 0` / `EXIT=0`.
 4. `bash apps/staff-web/check.sh` → `Test Files 52 passed (52)`,
    `Tests 554 passed (554)`, then:

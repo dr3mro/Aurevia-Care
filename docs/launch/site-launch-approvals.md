@@ -44,7 +44,7 @@ pack supplies the material for it and decides none of it.
   channels. Enabling messaging without verifying patient eligibility, inbox
   ownership, after-hours guidance and backup coverage would leave messages with
   no accountable owner.
-- The [G5 gate row](../../SMARTCLINIC_V1_SPEC.md) and [section 10](../../SMARTCLINIC_V1_SPEC.md)
+- The [G5 gate row](../../.opencode/config/PROJECT_V1_SPEC.md) and [section 10](../../.opencode/config/PROJECT_V1_SPEC.md)
   of the specification make these approvals and the six accountable-role
   decisions a precondition for production enablement; provider or partner traffic
   is enabled only after the corresponding evidence exists.
@@ -67,7 +67,7 @@ evidence the owner will use; none of them records a site approval.
 
 **G5 and site-readiness material**
 
-- [G5 gate row and section 10 of the specification](../../SMARTCLINIC_V1_SPEC.md)
+- [G5 gate row and section 10 of the specification](../../.opencode/config/PROJECT_V1_SPEC.md)
   — the required evidence and the accountable roles.
 - [Production readiness evidence register](../operations/production-readiness/README.md)
   — the WEB-01 to WEB-13 evidence register; every row is `not started` and owner
@@ -80,23 +80,23 @@ evidence the owner will use; none of them records a site approval.
 
 **Messaging unit evidence (MSG-06)**
 
-- [ServiceProfileContract.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileContract.java)
+- [ServiceProfileContract.java](../../apps/api/src/main/java/com/aurevia/messaging/service/ServiceProfileContract.java)
   — models service hours, response target, topics, urgent instructions, named
   queue owner, backup coverage, escalation/urgent/downtime channels and the
   supervisor snapshot (backlog, unassigned, failed notifications, overdue
   responses).
-- [ServiceProfileController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileController.java)
-  and [ServiceHoursCalculator.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceHoursCalculator.java)
+- [ServiceProfileController.java](../../apps/api/src/main/java/com/aurevia/messaging/service/ServiceProfileController.java)
+  and [ServiceHoursCalculator.java](../../apps/api/src/main/java/com/aurevia/messaging/service/ServiceHoursCalculator.java)
   — publish/approval entry point and zone-aware "next handling" calculation.
-- [CareUnitController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/units/CareUnitController.java)
-  and [ConversationController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations/ConversationController.java)
+- [CareUnitController.java](../../apps/api/src/main/java/com/aurevia/messaging/units/CareUnitController.java)
+  and [ConversationController.java](../../apps/api/src/main/java/com/aurevia/messaging/conversations/ConversationController.java)
   — unit directory and conversation/inbox entry points.
-- [PatientAccessService.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/PatientAccessService.java)
+- [PatientAccessService.java](../../apps/api/src/main/java/com/aurevia/messaging/enrollment/PatientAccessService.java)
   — verified patient connection, the basis for patient eligibility.
-- [MessagingGovernanceController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceController.java)
-  and [PatientFlowPresentationService.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows/PatientFlowPresentationService.java)
+- [MessagingGovernanceController.java](../../apps/api/src/main/java/com/aurevia/messaging/governance/MessagingGovernanceController.java)
+  and [PatientFlowPresentationService.java](../../apps/api/src/main/java/com/aurevia/messaging/flows/PatientFlowPresentationService.java)
   — governance and patient-facing presentation of approved profiles.
-- [GateEvidenceController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence/GateEvidenceController.java)
+- [GateEvidenceController.java](../../apps/api/src/main/java/com/aurevia/messaging/evidence/GateEvidenceController.java)
   — the gate-evidence entry point; it judges synthetic declarations, not a real
   site.
 
@@ -224,7 +224,7 @@ One unchecked item per artifact a site must hold. Nothing is marked complete.
 ## Approval record
 
 Accountable roles are taken from section 10 of the
-[specification](../../SMARTCLINIC_V1_SPEC.md). The Name, Date and Decision columns
+[specification](../../.opencode/config/PROJECT_V1_SPEC.md). The Name, Date and Decision columns
 are intentionally empty and must be completed only by the accountable people at
 the G5 gate.
 

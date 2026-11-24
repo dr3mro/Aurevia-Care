@@ -19,7 +19,7 @@ Routine (test-only change to a CI policy script; no production behavior changed)
 
 ## Review owner
 
-smartclinic-senior-python / smartclinic-test-engineer (simulated review; no human reviewer available).
+orevia-senior-python / orevia-test-engineer (simulated review; no human reviewer available).
 
 ## Data changes
 
