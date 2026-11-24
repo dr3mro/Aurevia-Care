@@ -24,7 +24,7 @@ on:
         type: boolean
         default: false
       ignore_red_main:
-        description: 'Safety override: plan ordinary work even while the latest Delivery verdict on main is a failure. Leave off unless the red verdict is known to be stale.'
+        description: 'Safety override: bypass all scheduling limits (claim, dependency, attempt, scope, in-flight PR, image, budget and worker-cap gates) and just run the wave. Verification and merge gates are unchanged.'
         type: boolean
         default: false
   push:

@@ -1161,6 +1161,32 @@ class ForceSchedulingTests(unittest.TestCase):
         self.assertEqual(ids, ["HELD-1", "BLOCKED-1", "RETRY-1"])
         self.assertNotIn("DONE-1", ids)
 
+    def test_force_plans_tasks_held_by_an_open_pull_request(self):
+        text = "# TODO\n\n- [-] HELD-1 · Held claim\n  - scope: a/held\n  - details:\n    Stale claim\n\n"
+        pr = {"number": 7, "title": "HELD-1: held", "headRefName": "other",
+              "isCrossRepository": False, "labels": [], "comments": []}
+        slots = [{"slot": 1}]
+        self.assertEqual([t["id"] for t in swarm.plan_workers(1, slots, text, [pr])], [])
+        self.assertEqual([t["id"] for t in swarm.plan_workers(1, slots, text, [pr], force=True)], ["HELD-1"])
+
+    def test_force_ignores_live_workers_when_choosing_fix_jobs(self):
+        text = "# TODO\n\n- [-] HELD-1 · Held claim\n  - scope: a/held\n  - details:\n    Stale claim\n\n"
+        pr = {"number": 7, "title": "HELD-1: held", "headRefName": "other",
+              "isCrossRepository": False, "labels": [{"name": "needs-fix"}], "comments": []}
+        slots = [{"slot": 1}]
+        self.assertEqual([t["id"] for t in swarm.plan_workers(1, slots, text, [pr], live=("HELD-1",))], [])
+        self.assertEqual([t["id"] for t in swarm.plan_workers(1, slots, text, [pr], live=("HELD-1",), force=True)], ["HELD-1"])
+
+    def test_override_room_ignores_already_running_workers(self):
+        self.assertEqual(swarm.scheduler_room(5, 19, False), 1)
+        self.assertEqual(swarm.scheduler_room(5, 19, True), 5)
+        self.assertEqual(swarm.scheduler_room(25, 0, True), 20)
+
+    def test_override_input_promises_all_scheduling_limits_are_bypassed(self):
+        config = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())
+        override = config[True]["workflow_dispatch"]["inputs"]["ignore_red_main"]
+        self.assertIn("bypass", override["description"].lower())
+
 
 class ReleaseTests(unittest.TestCase):
     fix = {"kind": "fix", "id": "CW-002", "number": 9, "slot": 1}

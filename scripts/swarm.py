@@ -3087,7 +3087,9 @@ def plan_workers(
         and t["status"] == "taken"
         and (not red or main_repair_id(t["id"], t["task"]))
     ]
-    assigned = set(live)
+    # The safety override ignores live claims so a stale claim cannot keep
+    # the wave at zero workers.
+    assigned = set() if force else set(live)
     fix_busy = [
         t["scope"]
         for t in tasks
@@ -3130,7 +3132,7 @@ def plan_workers(
             and not pr["isCrossRepository"]
             and task
             and task["id"] not in assigned
-            and not any(overlaps(task["scope"], scope) for scope in fix_busy)
+            and (force or not any(overlaps(task["scope"], scope) for scope in fix_busy))
         ):
             assigned.add(task["id"])
             fix_busy.append(task["scope"])
@@ -3169,7 +3171,7 @@ def plan_workers(
         if (
             task["status"] not in (("todo", "taken") if force else ("todo",))
             or not task["scope"]
-            or task["id"] in in_flight
+            or (not force and task["id"] in in_flight)
             or (not force and attempts_of(task) >= MAX_ATTEMPTS and not wanted)
         ):
             continue
@@ -4520,6 +4522,16 @@ def add_latest_repair_task(path=""):
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
 # Repairs, fixes and the debugger are planned first; stories (high, normal, then low) fill every other slot.
 STORY_WAVE_WORKERS = MAX_ACTIVE_WORKERS
+
+
+def scheduler_room(capacity, busy, force=False):
+    """Slots the wave may offer after the per-wave and global worker caps.
+
+    ``force`` is the workflow's safety override: it bypasses the global cap so
+    an operator can start a wave even when other waves still have workers. The
+    per-wave ``--max`` and capacity remain the explicit operator choice.
+    """
+    return max(0, min(capacity, MAX_ACTIVE_WORKERS if force else MAX_ACTIVE_WORKERS - busy))
 
 
 WAITING_WAVE_MAX_AGE_MIN = 30
@@ -6421,12 +6433,13 @@ def main(argv=None):
         live = live_workers()
         text = reclaim(todo_read(a.file), everything, live)
         busy = len(live)
-        room = max(0, min(a.capacity, MAX_ACTIVE_WORKERS - busy))
+        override = a.ignore_red_main or scheduling_override()
+        room = scheduler_room(a.capacity, busy, override)
         print(
             f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}."
         )
-        red = False if a.ignore_red_main else main_is_red()
-        if a.ignore_red_main:
+        red = False if override else main_is_red()
+        if override:
             # A red main still gates merges in the integrator; this override only
             # lets the planner offer ordinary work, so log it.
             print("planner: ignore-red-main override active; main was not checked")
@@ -6440,6 +6453,7 @@ def main(argv=None):
             story_wave=a.max,
             focus=a.task,
             red=red,
+            force=override,
         )
         if not include:
             # An empty wave is a normal outcome, but the old log gave no reason:
