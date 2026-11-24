@@ -384,12 +384,6 @@ class JobsExportsSearchAttachmentsIntegrationsApplySameTest {
      * {@link org.springframework.transaction.UnexpectedRollbackException} before the
      * {@link com.aurevia.api.ApiException} status can be asserted. Catch the refusal outside any
      * transaction so the service's transaction rolls back on its own.</p>
-     * <p>The service opens its own tenant-guarded transaction. Do not wrap the call in
-     * another {@code TransactionTemplate}: the refusal marks that inner transaction
-     * rollback-only, so committing an outer one would raise
-     * {@link org.springframework.transaction.UnexpectedRollbackException} before the
-     * {@link com.aurevia.api.ApiException} status can be asserted. Catch the refusal outside any
-     * transaction so the service's transaction rolls back on its own.</p>
      */
     private ApiException exportDownloadRefusal(String organization, String subject, String jobId) {
         return as(organization, subject, () -> {
@@ -405,9 +399,6 @@ class JobsExportsSearchAttachmentsIntegrationsApplySameTest {
     /**
      * Capture the service refusal when a role tries to start an export.
      *
-     * <p>As with {@link #exportDownloadRefusal(String, String, String)}, the service owns
-     * its transaction; catching outside it lets the refusal propagate and the transaction
-     * roll back cleanly without a spurious rollback-only commit.</p>
      * <p>As with {@link #exportDownloadRefusal(String, String, String)}, the service owns
      * its transaction; catching outside it lets the refusal propagate and the transaction
      * roll back cleanly without a spurious rollback-only commit.</p>
