@@ -40,6 +40,7 @@ class InstantMessagingControllerTest {
     private static final String ACTOR = "nurse-a";
     private static final String FACILITY = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     private static final String CONVERSATION = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    private static final String OTHER_CONVERSATION = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private static final String BASE = "/api/v1/staff/instant";
     private static final Instant AT = Instant.parse("2026-11-21T10:00:00Z");
 
@@ -127,7 +128,7 @@ class InstantMessagingControllerTest {
 
     @Test
     void sendsWithTheIdempotencyHeader() throws Exception {
-        when(service.send(any(), eq("key-1"))).thenReturn(message());
+        when(service.send(eq(CONVERSATION), any(), eq("key-1"))).thenReturn(message());
         mvc.perform(headers(post(BASE + "/{id}/messages", CONVERSATION))
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Idempotency-Key", "key-1")
@@ -136,7 +137,21 @@ class InstantMessagingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sequence").value(2))
                 .andExpect(jsonPath("$.body").value("body"));
-        verify(service).send(any(), eq("key-1"));
+        verify(service).send(eq(CONVERSATION), any(), eq("key-1"));
+    }
+
+    /** Distinct path and body ids make a swapped argument detectable at the HTTP boundary. */
+    @Test
+    void sendBindsTheServiceToTheConversationInThePath() throws Exception {
+        var request = new InstantMessagingContract.SendRequest(FACILITY, OTHER_CONVERSATION, "body");
+        when(service.send(anyString(), any(), anyString())).thenReturn(message());
+        mvc.perform(headers(post(BASE + "/{id}/messages", CONVERSATION))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "key-1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sequence").value(2));
+        verify(service).send(eq(CONVERSATION), eq(request), eq("key-1"));
     }
 
     @Test
