@@ -158,17 +158,17 @@ class PostApiV1OrdersIdAcceptRequiresTest {
                 + "VALUES ('" + org + "', 1, 'MRN-1', 'CLINIC', 'Synthetic Patient', 'synthetic patient', "
                 + "'1990-05-20')");
         for (int index = 1; index <= ORDER_COUNT; index++) {
-            statement.execute("INSERT INTO public.xch03_order "
+            statement.execute("INSERT INTO public.exchange_response_order "
                     + "(organization_id, id, order_code, state, revision, content_checksum, created_by) "
                     + "VALUES ('" + org + "', '" + orderId(org, index) + "', 'LAB-REQ-" + index
                     + "', 'requested', 1, '" + CHECKSUM
                     + "', (SELECT id FROM public.user_identity WHERE subject = 'admin-" + shortName + "'))");
             statement.execute("SET app.actor = 'admin-" + shortName + "'");
-            statement.execute("INSERT INTO public.xch03_revision "
+            statement.execute("INSERT INTO public.exchange_response_revision "
                     + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, NULL, '" + CHECKSUM + "')");
-            statement.execute("INSERT INTO public.xch03_event "
+            statement.execute("INSERT INTO public.exchange_response_event "
                     + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, 'received', NULL, 'requested')");

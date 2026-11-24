@@ -36,7 +36,7 @@ public class PharmacyInboxRepository {
             SELECT id::text AS id, version, patient_id::text AS patient_id, medication, strength,
                    dose, route, frequency, quantity, state, submission_id::text AS submission_id,
                    prescriber_subject, destination_pharmacy, created_at
-              FROM public.rx02_prescription
+              FROM public.prescription_transmission
              WHERE destination_pharmacy = :pharmacy
             """;
 

@@ -390,12 +390,12 @@ class UseStableSubmissionIdsTest {
     }
 
     private static int countSubmissionRows(String org, String prescriptionId) {
-        return count("SELECT COUNT(*) FROM public.rx02_submission WHERE prescription_id = CAST('"
+        return count("SELECT COUNT(*) FROM public.prescription_submission WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid)", org);
     }
 
     private static int countEventsOfType(String org, String prescriptionId, String type) {
-        return count("SELECT COUNT(*) FROM public.rx02_event WHERE prescription_id = CAST('"
+        return count("SELECT COUNT(*) FROM public.prescription_event WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid) AND event_type = '" + type + "'", org);
     }
 
@@ -404,7 +404,7 @@ class UseStableSubmissionIdsTest {
     }
 
     private static String submissionRow(String org, String prescriptionId, String column) {
-        return scalar("SELECT " + column + "::text FROM public.rx02_submission WHERE prescription_id = CAST('"
+        return scalar("SELECT " + column + "::text FROM public.prescription_submission WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid)", org);
     }
 

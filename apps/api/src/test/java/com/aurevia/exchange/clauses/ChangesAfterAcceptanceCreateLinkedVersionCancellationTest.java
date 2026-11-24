@@ -50,13 +50,13 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_xch03_change_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_exchange_response_change_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
 
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_xch03_change_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_exchange_response_change_it";
     private static final String ADMIN = System.getenv().getOrDefault(
             "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String CHECKSUM = "a".repeat(64);
@@ -85,8 +85,8 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
                     + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
                     + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
                     + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS aurevia_xch03_change_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE aurevia_xch03_change_it OWNER aurevia_migrate");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_exchange_response_change_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_exchange_response_change_it OWNER aurevia_migrate");
         }
         Flyway.configure()
                 .dataSource(URL, "aurevia_migrate", "")
@@ -104,7 +104,7 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS aurevia_xch03_change_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_exchange_response_change_it WITH (FORCE)");
         }
     }
 
@@ -159,24 +159,24 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
     /** Seed an accepted work item with its first released revision and retained copy. */
     private static void seedAcceptedOrder(Statement statement, String id, String code) throws Exception {
         statement.execute("SET app.actor = 'admin-1111'");
-        statement.execute("INSERT INTO public.xch03_order "
+        statement.execute("INSERT INTO public.exchange_response_order "
                 + "(organization_id, id, order_code, state, version, revision, content_checksum, "
                 + "local_patient_id, assignee, permitted_purpose, retention_policy, created_by) "
                 + "VALUES ('" + ORG + "', '" + id + "', '" + code + "', 'accepted', 2, 1, '" + CHECKSUM + "', "
                 + "(SELECT id FROM public.patient_record WHERE organization_id = CAST('" + ORG + "' AS uuid) "
                 + "AND mrn = 'MRN-CHANGE'), 'clinician-1111', 'RESULT_REVIEW', 'STANDARD', "
                 + "(SELECT id FROM public.user_identity WHERE subject = 'admin-1111'))");
-        statement.execute("INSERT INTO public.xch03_revision "
+        statement.execute("INSERT INTO public.exchange_response_revision "
                 + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + id + "', 1, NULL, '" + CHECKSUM + "')");
-        statement.execute("INSERT INTO public.xch03_retained_copy "
+        statement.execute("INSERT INTO public.exchange_response_retained_copy "
                 + "(organization_id, id, order_id, revision, content_checksum, permitted_purpose, retention_policy) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + id + "', 1, '" + CHECKSUM + "', "
                 + "'RESULT_REVIEW', 'STANDARD')");
-        statement.execute("INSERT INTO public.xch03_event "
+        statement.execute("INSERT INTO public.exchange_response_event "
                 + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + id + "', 1, 'received', NULL, 'requested')");
-        statement.execute("INSERT INTO public.xch03_event "
+        statement.execute("INSERT INTO public.exchange_response_event "
                 + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + id + "', 2, 'accept', 'requested', 'accepted')");
     }
@@ -184,15 +184,15 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
     /** Seed one order still in requested state for the before-acceptance negative. */
     private static void seedRequestedOrder(Statement statement) throws Exception {
         statement.execute("SET app.actor = 'admin-1111'");
-        statement.execute("INSERT INTO public.xch03_order "
+        statement.execute("INSERT INTO public.exchange_response_order "
                 + "(organization_id, id, order_code, state, version, revision, content_checksum, created_by) "
                 + "VALUES ('" + ORG + "', '" + REQUESTED_ORDER + "', 'LAB-REQUESTED-1', 'requested', 1, 1, '"
                 + CHECKSUM + "', (SELECT id FROM public.user_identity WHERE subject = 'admin-1111'))");
-        statement.execute("INSERT INTO public.xch03_revision "
+        statement.execute("INSERT INTO public.exchange_response_revision "
                 + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + REQUESTED_ORDER + "', 1, NULL, '"
                 + CHECKSUM + "')");
-        statement.execute("INSERT INTO public.xch03_event "
+        statement.execute("INSERT INTO public.exchange_response_event "
                 + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + REQUESTED_ORDER
                 + "', 1, 'received', NULL, 'requested')");
@@ -201,22 +201,22 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
     /** Seed a change already awaiting a recipient response for the separation-of-duties negative. */
     private static void seedPendingChangeOrder(Statement statement) throws Exception {
         statement.execute("SET app.actor = 'admin-1111'");
-        statement.execute("INSERT INTO public.xch03_order "
+        statement.execute("INSERT INTO public.exchange_response_order "
                 + "(organization_id, id, order_code, state, version, revision, content_checksum, "
                 + "local_patient_id, assignee, permitted_purpose, retention_policy, created_by) "
                 + "VALUES ('" + ORG + "', '" + PENDING_CHANGE_ORDER + "', 'LAB-PENDING-1', 'change_pending', 3, 2, '"
                 + CHECKSUM + "', (SELECT id FROM public.patient_record WHERE organization_id = CAST('" + ORG
                 + "' AS uuid) AND mrn = 'MRN-CHANGE'), 'clinician-1111', 'RESULT_REVIEW', 'STANDARD', "
                 + "(SELECT id FROM public.user_identity WHERE subject = 'admin-1111'))");
-        statement.execute("INSERT INTO public.xch03_revision "
+        statement.execute("INSERT INTO public.exchange_response_revision "
                 + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + PENDING_CHANGE_ORDER + "', 1, NULL, '"
                 + CHECKSUM + "')");
-        statement.execute("INSERT INTO public.xch03_revision "
+        statement.execute("INSERT INTO public.exchange_response_revision "
                 + "(organization_id, id, order_id, revision, previous_revision, content_checksum, change_summary) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + PENDING_CHANGE_ORDER + "', 2, 1, '"
                 + NEXT_CHECKSUM + "', 'corrected unit')");
-        statement.execute("INSERT INTO public.xch03_event "
+        statement.execute("INSERT INTO public.exchange_response_event "
                 + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                 + "VALUES ('" + ORG + "', gen_random_uuid(), '" + PENDING_CHANGE_ORDER
                 + "', 1, 'received', NULL, 'requested'), ('" + ORG + "', gen_random_uuid(), '"
@@ -244,9 +244,9 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
         assertEquals(2, revisions.at("/1/revision").asInt());
         assertEquals(1, revisions.at("/1/previousRevision").asInt());
         assertEquals(NEXT_CHECKSUM, revisions.at("/1/contentChecksum").asText());
-        assertEquals(1L, count("SELECT count(*) FROM public.xch03_revision WHERE order_id = CAST('"
+        assertEquals(1L, count("SELECT count(*) FROM public.exchange_response_revision WHERE order_id = CAST('"
                 + CHANGE_ORDER + "' AS uuid) AND revision = 2 AND previous_revision = 1"));
-        assertEquals(1L, count("SELECT count(*) FROM public.xch03_event WHERE order_id = CAST('"
+        assertEquals(1L, count("SELECT count(*) FROM public.exchange_response_event WHERE order_id = CAST('"
                 + CHANGE_ORDER + "' AS uuid) AND action = 'propose_change'"));
 
         // The linked revision lives only in the ledger while the response is pending:
@@ -258,7 +258,7 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
                 "{\"decision\":\"accept\"}", RECIPIENT, "3");
         assertEquals(HttpStatus.OK, changeResponded.getStatusCode(), changeResponded.getBody());
         assertEquals("accepted", text(changeResponded, "/state"));
-        assertEquals(1L, count("SELECT count(*) FROM public.xch03_event WHERE order_id = CAST('"
+        assertEquals(1L, count("SELECT count(*) FROM public.exchange_response_event WHERE order_id = CAST('"
                 + CHANGE_ORDER + "' AS uuid) AND action = 'change_accept'"));
         assertEquals(NEXT_CHECKSUM, text(send(HttpMethod.GET, changePath + "/retrieve", null, RECIPIENT, null),
                 "/contentChecksum"));
@@ -269,16 +269,16 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
         assertEquals(HttpStatus.OK, requested.getStatusCode(), requested.getBody());
         assertEquals("cancellation_pending", text(requested, "/state"));
         assertEquals("3", text(requested, "/version"));
-        assertEquals(1L, count("SELECT count(*) FROM public.xch03_event WHERE order_id = CAST('"
+        assertEquals(1L, count("SELECT count(*) FROM public.exchange_response_event WHERE order_id = CAST('"
                 + CANCEL_ORDER + "' AS uuid) AND action = 'request_cancellation'"));
-        assertEquals(1L, count("SELECT count(*) FROM public.xch03_revision WHERE order_id = CAST('"
+        assertEquals(1L, count("SELECT count(*) FROM public.exchange_response_revision WHERE order_id = CAST('"
                 + CANCEL_ORDER + "' AS uuid)"), "a cancellation request is not a linked version");
 
         ResponseEntity<String> confirmed = send(HttpMethod.POST, cancelPath + "/cancellation-response",
                 "{\"decision\":\"confirm\"}", RECIPIENT, "3");
         assertEquals(HttpStatus.OK, confirmed.getStatusCode(), confirmed.getBody());
         assertEquals("cancelled", text(confirmed, "/state"));
-        assertEquals(1L, count("SELECT count(*) FROM public.xch03_event WHERE order_id = CAST('"
+        assertEquals(1L, count("SELECT count(*) FROM public.exchange_response_event WHERE order_id = CAST('"
                 + CANCEL_ORDER + "' AS uuid) AND action = 'cancellation_confirm'"));
     }
 
@@ -294,9 +294,9 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
                 "{\"reason\":\"not mine\"}", RECIPIENT, "2");
         assertEquals(HttpStatus.FORBIDDEN, cancellation.getStatusCode(), cancellation.getBody());
         assertEquals("FORBIDDEN", text(cancellation, "/code"));
-        assertEquals(0L, count("SELECT count(*) FROM public.xch03_revision WHERE order_id = CAST('"
+        assertEquals(0L, count("SELECT count(*) FROM public.exchange_response_revision WHERE order_id = CAST('"
                 + FORBIDDEN_ORDER + "' AS uuid) AND revision = 2"), "a denied command writes no revision");
-        assertEquals(2L, count("SELECT count(*) FROM public.xch03_event WHERE order_id = CAST('"
+        assertEquals(2L, count("SELECT count(*) FROM public.exchange_response_event WHERE order_id = CAST('"
                 + FORBIDDEN_ORDER + "' AS uuid)"), "a denied command writes no history event");
     }
 
@@ -308,7 +308,7 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
                 SENDER, "1");
         assertEquals(HttpStatus.PRECONDITION_FAILED, response.getStatusCode(), response.getBody());
         assertEquals("STALE_VERSION", text(response, "/code"));
-        assertEquals(0L, count("SELECT count(*) FROM public.xch03_revision WHERE order_id = CAST('"
+        assertEquals(0L, count("SELECT count(*) FROM public.exchange_response_revision WHERE order_id = CAST('"
                 + STALE_ORDER + "' AS uuid) AND revision = 2"));
     }
 
@@ -320,7 +320,7 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
                 SENDER, "1");
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode(), response.getBody());
         assertEquals("INVALID_TRANSITION", text(response, "/code"));
-        assertEquals(0L, count("SELECT count(*) FROM public.xch03_revision WHERE order_id = CAST('"
+        assertEquals(0L, count("SELECT count(*) FROM public.exchange_response_revision WHERE order_id = CAST('"
                 + REQUESTED_ORDER + "' AS uuid) AND revision = 2"));
     }
 
@@ -333,7 +333,7 @@ class ChangesAfterAcceptanceCreateLinkedVersionCancellationTest {
         assertEquals("FORBIDDEN", text(response, "/code"));
         assertEquals("3", text(send(HttpMethod.GET, "/api/v1/xch03/orders/" + PENDING_CHANGE_ORDER,
                 null, RECIPIENT, null), "/order/version"), "a denied response must not advance the order");
-        assertEquals(3L, count("SELECT count(*) FROM public.xch03_event WHERE order_id = CAST('"
+        assertEquals(3L, count("SELECT count(*) FROM public.exchange_response_event WHERE order_id = CAST('"
                 + PENDING_CHANGE_ORDER + "' AS uuid)"));
     }
 
