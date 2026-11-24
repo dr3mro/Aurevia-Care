@@ -170,6 +170,59 @@ One full `check.sh` run hit an unrelated load flake in `src/components/ApiPage.t
 passed in the subsequent full green run. It was not modified — it is unrelated to this change and
 weakening it would violate the no-exclusion rule. Evidence source: executed tool commands.
 
+## Segment 4 — coverage-check repair (repair attempt 2 of 2)
+
+The harness returned a single failing assertion from the full `apps/staff-web/check.sh`
+run at `tests/spec/platform/resilient-screens.test.ts:250`
+(`expected true to be false // Object.is equality` on `savedLeave.defaultPrevented`).
+The same file passes 15/15 in isolation, so this was a load-dependent timing race,
+not a production regression.
+
+Root cause: the final `beforeunload` check dispatched its event synchronously
+immediately after `await screen.findByText(saved)`. `useUnsavedGuard` removes the
+`beforeunload` listener in a passive `useEffect` cleanup keyed on `dirty`; after a
+successful save the `setDirty(false)` and `setStatus('saved')` commits batch
+together, and under parallel load the passive cleanup can lag the "saved" text
+that `findByText` observes. The earlier `dirtyLeave` (after `fireEvent.change`) and
+`reloadedLeave` (after `fireEvent.click`) are `act()`-wrapped and deterministic;
+only the post-`await` dispatch raced.
+
+Change: the final assertion now uses `await waitFor(...)` to re-dispatch a fresh
+cancelable `beforeunload` event on each poll and retries while the guard still
+calls `preventDefault()`. The assertion is unchanged (`defaultPrevented === false`):
+if the guard were genuinely never removed, `waitFor` would time out and fail, so a
+real regression is still caught. No threshold, exclusion, skip or suppression was
+added, and no production source changed. The only edited file is
+`tests/spec/platform/resilient-screens.test.ts`.
+
+### Branch-to-test list for the repair
+
+| Branch / condition | Test / assertion |
+|---|---|
+| `useUnsavedGuard` effect cleanup after successful save (`dirty` true → false) | `keepsTypedWorkAndWiresCompareReloadAndCopyOnAStaleConflict`: `waitFor` re-dispatches a fresh cancelable `beforeunload` and asserts `defaultPrevented === false`; it retries while the listener is attached, so the test fails by timeout if the guard is never removed. |
+| `useUnsavedGuard` effect install while dirty (`dirty` false → true) | same test, `dirtyLeave` after `fireEvent.change('Synthetic surviving reply')` → `defaultPrevented === true` (unchanged). |
+| `useUnsavedGuard` effect cleanup after conflict reload (`dirty` true → false via click) | same test, `reloadedLeave` after `fireEvent.click(reload)` → `defaultPrevented === false` (unchanged). |
+| conflict save failure path (`catch` in `handleSave`, `dirty` stays true) | same test, rejected `onSave` → conflict alert, typed reply preserved, compare/copy/reload panels asserted (unchanged). |
+| successful save path (`onSave` resolves, `setDirty(false)`) | same test, `onSave.mockResolvedValue(undefined)` → `saved` status, then the `waitFor` guard-removed assertion above. |
+
+No production branch was added or removed, so the module coverage set is unchanged.
+
+### Repair evidence (tool commands, final lines)
+
+| Command | Result |
+|---|---|
+| `cd apps/staff-web && npx vitest run tests/spec/platform/resilient-screens.test.ts --reporter=dot` | `Test Files 1 passed (1)`, `Tests 15 passed (15)`, exit 0 |
+| `cd apps/staff-web && npx tsc --noEmit -p tsconfig.json` | exit 0, no output |
+| `cd apps/staff-web && npx eslint tests/spec/platform/resilient-screens.test.ts --max-warnings 0` | exit 0, no output |
+| `python3 -I scripts/check-constraints.py` | exit 0, no findings (no threshold, exclusion, skip or suppression added) |
+| `bash apps/staff-web/check.sh` | `Test Files 271 passed (271)`, `Tests 3051 passed (3051)`; `No files with missing coverage`, `267 files fully covered`; Statements 100% (5107/5107), Branches 100% (2634/2634), Functions 100% (1697/1697), Lines 100% (4903/4903); exit 0 |
+
+The `Not implemented: navigation` lines in the full run are jsdom stderr noise from
+`UnsupportedBrowserPage` tests that click a real anchor; they are not failures, and
+all 3051 tests passed. Evidence source: executed tool commands. The three reviewer
+GO verdicts below still stand: this segment changed no production or spec behavior,
+only the timing of one assertion in an existing test.
+
 ## Review verdicts
 
 - smartclinic-code-reviewer: GO

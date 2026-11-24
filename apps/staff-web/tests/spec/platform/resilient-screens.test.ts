@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createElement } from 'react';
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TransportError } from '../../../src/api/transport';
 import type { TransportErrorKind } from '../../../src/api/transport';
@@ -245,9 +245,17 @@ describe('WEB-09 clause 1 — resilient screens', () => {
     fireEvent.change(replyField(), { target: { value: 'Synthetic corrected reply' } });
     submitSettings();
     expect(await screen.findByText(settingsText('en', 'saved'))).toBeTruthy();
-    const savedLeave = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(savedLeave);
-    expect(savedLeave.defaultPrevented).toBe(false);
+    // The dirty guard is removed by a passive effect after the successful save
+    // commits. Under parallel load that cleanup can lag the "saved" text that
+    // findByText observes, so poll until the listener is genuinely gone rather
+    // than asserting on the same tick the status appears. waitFor re-dispatches
+    // a fresh cancelable event each pass and retries while the guard still
+    // calls preventDefault, keeping the assertion strict and deterministic.
+    await waitFor(() => {
+      const leaveAfterSave = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(leaveAfterSave);
+      expect(leaveAfterSave.defaultPrevented).toBe(false);
+    });
   });
 
   it('logsOnlyTheCorrelationIdAndErrorNameFromTheGlobalBoundary', () => {
