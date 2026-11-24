@@ -35,9 +35,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # slot-matrix and slot-config read .opencode/config/slots.json; the
+          # old .github/swarm path was removed in the repository rename.
           sparse-checkout: |
             scripts
-            .github/swarm
+            .opencode/config
             .github/agent-image
       # One runner builds every slot: the slot layer is tiny and the base image
       # is pulled once, so ten separate runners only added startup time.

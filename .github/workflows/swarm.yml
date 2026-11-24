@@ -78,9 +78,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # images-ready and plan-workers read .opencode/config/slots.json; the
+          # old .github/swarm path was removed in the repository rename.
           sparse-checkout: |
             scripts
-            .github/swarm
+            .opencode/config
             tasks/
             tasks
             docs/archive/TODO-DONE.md
