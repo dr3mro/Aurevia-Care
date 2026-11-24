@@ -12,7 +12,40 @@ listing and a focused real-browser run. The only failing gate is
 whose pinned e2e spec list had already drifted on `main`; a `task-requests`
 entry for it is filed below and the file was deliberately not edited (scope
 rule). The documented `test.fixme` cases are the task-brief-sanctioned way to
-record real defects for follow-up tasks, not incomplete work in this scope.
+record real defects for follow-up tasks, not incomplete work in this scope. **Update (repair 1):** the tripwire was subsequently repaired and the full `check.sh` gate is green (`exit=0`); see "Repair attempt 1" below.
+
+## Repair attempt 1 — GAP-tripwire pin refresh (tool evidence)
+
+The reported "coverage check" failure was not a coverage miss. `bash apps/staff-web/check.sh`
+failed its Vitest stage at the WEB-10 GAP tripwire
+`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`:
+the test pins the exact committed e2e spec set to 9 names, but the checkout now
+contains 15 (five sibling-worker journey specs plus this story's
+`reflowAndZoom.spec.ts`). A second pin (`visualChecks`, formerly `[]`) would have
+failed next because the reflow spec reads computed styles for layout measurement.
+Both pins were refreshed to the actual committed set — exactly what the test's
+own comment prescribes ("a new journey must replace this pin"). No threshold,
+exclusion, pragma, skip or production file was changed; the only modified file is
+that one test. The self-improvement `task-requests` entry below is now satisfied
+and can be retired by reconciliation.
+
+Exit evidence, all commands executed in this worker (tool evidence):
+`npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`
+→ `Test Files 1 passed (1)`, `Tests 3 passed (3)`;
+`bash apps/staff-web/check.sh` → `exit=0`, `Test Files 271 passed (271)`,
+`Tests 3051 passed (3051)`, Coverage `Statements 100% (5107/5107)`,
+`Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`,
+`Lines 100% (4903/4903)`, `No files with missing coverage.`.
+
+### Branch-to-test list (repair 1)
+
+The changed lines are data pins inside a test file, so they add no production
+coverage denominator; each is exercised by the existing `GAP:` case in that file.
+
+| Changed line / pin | Branch or data exercised | Deterministic test / evidence |
+|---|---|---|
+| `currentSpecs` expanded 9 → 15 entries (`...test.ts:93-107`) | spec-set equality, including every newly added journey | `GAP:...` case, `expect(specs.sort()).toEqual([...currentSpecs].sort())` at line 179; the 15 names were enumerated with `find e2e -name '*.spec.ts' \| sort` (tool evidence) |
+| `visualChecks` `[]` → `['reflowAndZoom.spec.ts']` (`...test.ts:186-196`) | vocabulary match over computed-style reads vs screenshot/theme tokens | same `GAP` case, `expect(visualChecks.sort()).toEqual(['reflowAndZoom.spec.ts'])` at line 196; `grep -nE 'toHaveScreenshot\|toMatchSnapshot\|getComputedStyle\|data-theme\|colorScheme' e2e/reflowAndZoom.spec.ts` (tool) shows only `getComputedStyle` layout reads — no screenshot or light/dark theme assertion, so the clause's visual-evidence half stays genuinely absent |
 
 ## Summary
 
@@ -150,7 +183,7 @@ Evidence sources for this note: executed tool commands (browser probes and Playw
 
 The scoped file is complete and every runnable gate is green; the following are documented, evidence-backed fixmes, not omissions. Production fixes and harness corrections belong to other tasks/files.
 
-- **Full module gate `bash apps/staff-web/check.sh` (exit 1).** Out-of-scope, pre-existing drift; does not block completion of the scoped story. Segment 2 re-ran it on merged HEAD `99cd56cf`: Vitest `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` → `expected [ …(15) ] to deeply equal [ …(9) ]`, `Test Files 1 failed | 270 passed (271)`, `Tests 1 failed | 3050 passed (3051)`; all prior stages (gen:api:check, typecheck, lint, build, bundle) green. The delta is five sibling-worker spec files already on `main` plus this story's sixth. Most likely cause: an intentional GAP tripwire whose pinned list was not refreshed as e2e specs landed. Tried: two segments of diagnosis, including a coverage invocation excluding only that one tripwire file (100% on all touched source files). Next step: execute the task-request above; the file is outside this story's scope, so editing it here would fail the worker scope rule.
+- **Full module gate `bash apps/staff-web/check.sh` — RESOLVED in repair 1.** The GAP-tripwire pins were refreshed (see "Repair attempt 1" above), so the gate now passes with `exit=0`, 3051/3051 tests and 100% coverage. Original failure history (pre-existing drift, outside the original single-file scope): Segment 2 re-ran it on merged HEAD `99cd56cf`: Vitest `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` → `expected [ …(15) ] to deeply equal [ …(9) ]`, `Test Files 1 failed | 270 passed (271)`, `Tests 1 failed | 3050 passed (3051)`; all prior stages (gen:api:check, typecheck, lint, build, bundle) green. The delta is five sibling-worker spec files already on `main` plus this story's sixth. Most likely cause: an intentional GAP tripwire whose pinned list was not refreshed as e2e specs landed. Tried: two segments of diagnosis, including a coverage invocation excluding only that one tripwire file (100% on all touched source files). Next step: execute the task-request above; the file is outside this story's scope, so editing it here would fail the worker scope rule.
 
 - **400% CSS-zoom reflow (all renderable routes × 16 projects).** Command: `npx playwright test --config e2e/playwright.config.ts e2e/reflowAndZoom.spec.ts -g design-preview --project=chromium` before the fixme. Error: `document-horizontal-scroll:html measured[scrollWidth=1696 clientWidth=1280]` at 1280px zoom4; probe also measured `448/320` at 320px zoom4. Cause: CSS zoom does not reflow viewport media queries. Tried: isolated passes at native and 320px viewports; both overflow. Next step: provide a true browser-zoom harness (for example device-metric emulation at 320 CSS px with an appropriate DPR) and remove the `zoom-400`/`combined` fixme.
 - **RTL document reflow on `/design-preview` (16 projects).** The RTL case first runs `runRtlEvidencePass`, which exercises the real Language toggle, asserts `lang=ar`/`dir=rtl` and proves the four text overrides including Arabic tracking 0; only the document-reflow assertion is then fixme'd. Error: `document-horizontal-scroll:html measured[scrollWidth=10767 clientWidth=768]`, caused by `a.skip-link` at `-9999…10767`. Cause: the off-screen inset is logical (`inset-inline-start:-9999px`) so it mirrors to the right under RTL. Tried: real toggle at 768px (works) and a no-probe/no-spacing `dir=rtl` probe (same overflow), which refuted an initial reviewer hypothesis that the harness zoom probe caused it. Next step: fix the skip-link hiding technique in `apps/staff-web/src/theme/responsive.css` (owner of an RTL/responsive task) and remove the single RTL fixme.

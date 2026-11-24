@@ -82,17 +82,30 @@ const axeGateConsumers: readonly string[] = [
 const e2eSpecs = (): string[] =>
   filesBelow(resolve(moduleRoot, 'e2e')).filter((path) => path.endsWith('.spec.ts'));
 
-/** The exact e2e spec set committed today; a new journey must replace this pin. */
+/**
+ * The exact e2e spec set committed today; a new journey must replace this pin.
+ *
+ * Keeping the whole set (not only the recognised journeys) is what makes the
+ * tripwire below notice any newly added journey spec. Six specs landed after
+ * this pin was first written — five per-role journeys from sibling work and
+ * the cross-cutting `reflowAndZoom.spec.ts` — so the pin is refreshed here.
+ */
 const currentSpecs: readonly string[] = [
+  'adminflow/admin-journey.spec.ts',
   'clinicalnote/clinicalnote-journey.spec.ts',
+  'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
+  'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
+  'reflowAndZoom.spec.ts',
   'smoke.spec.ts',
+  'therapyflow/therapy-journey.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {
@@ -175,7 +188,12 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
         readModule(`e2e/${path}`),
       ),
     );
-    expect(visualChecks.sort()).toEqual([]);
+    // Pin the whole matched set, as above, so a genuinely new visual-evidence
+    // spec still trips this wire. `reflowAndZoom.spec.ts` matches only because
+    // it reads computed styles to measure reflow, zoom and text spacing; it
+    // contains no screenshot/snapshot or light/dark theme assertion, so the
+    // clause's light/dark evidence half is still genuinely absent.
+    expect(visualChecks.sort()).toEqual(['reflowAndZoom.spec.ts']);
 
     expectTypeOf<Role>().toEqualTypeOf<
       | 'staff'
