@@ -6,8 +6,8 @@ on:
         description: Whether this optional daily workflow can run
         value: ${{ jobs.admit.outputs.ready }}
 concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: swarm-daily-admission-${{ github.run_id }}
+  cancel-in-progress: false
 permissions:
   contents: read
   actions: read

@@ -8,8 +8,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: pr-rebase-${{ github.run_id }}
+  cancel-in-progress: false
 jobs:
   rebase:
     name: Rebase ${{ github.event.pull_request.head.ref }} onto main

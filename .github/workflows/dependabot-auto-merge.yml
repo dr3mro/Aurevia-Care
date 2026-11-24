@@ -6,8 +6,8 @@ permissions:
   contents: write
   pull-requests: write
 concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: dependabot-auto-merge-${{ github.run_id }}
+  cancel-in-progress: false
 jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]'

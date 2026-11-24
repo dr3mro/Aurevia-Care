@@ -18,8 +18,8 @@ permissions:
   packages: write
 # Queue: a cancelled slot-image publish leaves workers on a stale base.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: swarm-images-${{ github.run_id }}
+  cancel-in-progress: false
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}

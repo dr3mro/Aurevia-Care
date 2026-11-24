@@ -1,11 +1,11 @@
-"""Every workflow keeps one run per workflow per branch.
+"""Only Delivery is branch-scoped; every other workflow stays concurrent.
 
-A newer trigger on the same branch cancels the older run instead of overlapping
-it or queueing behind it. GitHub rejects ``queue: max`` together with
-``cancel-in-progress: true`` at validation time, so no concurrency group
-declares a queue. The group includes the repository so forks with the same
-branch name stay independent. Cancelling a run on main means that exact SHA
-gets no verdict, so branch protection must be configured with that trade-off.
+Delivery keeps one run per workflow per branch: a newer trigger cancels the
+older run, so the newest commit on a branch is the only one still building.
+Other workflows use a group unique to each run, so parallel runs, matrix
+workers and scheduled jobs never cancel or queue behind one another. GitHub
+rejects ``queue: max`` together with cancellation, so Delivery declares no
+queue; a cancelled exact SHA on main receives no verdict.
 """
 import unittest
 
@@ -14,7 +14,7 @@ import yaml
 from helpers import ROOT
 
 WORKFLOWS = ROOT / ".github" / "workflows"
-GROUP = "${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}"
+DELIVERY_GROUP = "${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}"
 
 
 def load(path):
@@ -25,38 +25,39 @@ class WorkflowConcurrencyTest(unittest.TestCase):
     def workflows(self):
         return sorted(WORKFLOWS.glob("*.yml"))
 
-    def test_every_workflow_has_one_branch_scoped_cancelling_group(self):
-        paths = self.workflows()
-        self.assertTrue(paths)
-        for path in paths:
+    def test_delivery_keeps_one_cancelling_run_per_branch(self):
+        concurrency = load(WORKFLOWS / "delivery.yml")["concurrency"]
+        self.assertEqual(concurrency["group"], DELIVERY_GROUP)
+        self.assertIs(concurrency["cancel-in-progress"], True)
+        self.assertNotIn("queue", concurrency)
+
+    def test_other_workflows_run_concurrently_per_run(self):
+        for path in self.workflows():
+            if path.name == "delivery.yml":
+                continue
             with self.subTest(workflow=path.name):
                 concurrency = load(path)["concurrency"]
-                self.assertEqual(concurrency["group"], GROUP)
-                self.assertIs(concurrency["cancel-in-progress"], True)
-                # GitHub rejects queue:max together with cancellation at load time.
+                self.assertIn("github.run_id", concurrency["group"])
+                self.assertIs(concurrency["cancel-in-progress"], False)
                 self.assertNotIn("queue", concurrency)
 
-    def test_job_level_concurrency_uses_the_same_branch_group(self):
-        """A job-level group must not reintroduce a second overlapping run."""
+    def test_swarm_workers_have_a_group_per_slot(self):
+        group = load(WORKFLOWS / "swarm-worker.yml")["concurrency"]["group"]
+        self.assertIn("github.run_id", group)
+        self.assertIn("inputs.slot", group)
+
+    def test_swarm_plan_keeps_its_own_run_scoped_group(self):
         jobs = load(WORKFLOWS / "swarm.yml")["jobs"]
-        checks = 0
-        for job in jobs.values():
-            if "concurrency" not in job:
-                continue
-            checks += 1
-            concurrency = job["concurrency"]
-            self.assertEqual(concurrency["group"], GROUP)
-            self.assertIs(concurrency["cancel-in-progress"], True)
-            self.assertNotIn("queue", concurrency)
-        self.assertGreater(checks, 0)
+        plan = jobs["plan"]["concurrency"]
+        self.assertIn("github.run_id", plan["group"])
+        self.assertIs(plan["cancel-in-progress"], False)
+        self.assertNotIn("queue", plan)
 
     def test_delivery_reports_a_check_for_every_pull_request(self):
-        """A bare trigger covers every PR; a filter map would omit the check."""
         trigger = load(WORKFLOWS / "delivery.yml")[True]["pull_request"]
         self.assertIsNone(trigger)
 
     def test_delivery_reports_a_check_for_every_branch_and_tag_push(self):
-        """A path-filtered push also leaves the exact-SHA gate unreported."""
         trigger = load(WORKFLOWS / "delivery.yml")[True]["push"]
         self.assertIsInstance(trigger, dict)
         self.assertNotIn("paths", trigger)

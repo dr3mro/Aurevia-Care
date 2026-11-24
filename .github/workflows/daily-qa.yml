@@ -15,8 +15,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: daily-qa-${{ github.run_id }}
+  cancel-in-progress: false
   # Keep every waiting run: without this a newer trigger replaces a waiting one,
   # so a failure event or the 2 AM run could be dropped.
 env:
