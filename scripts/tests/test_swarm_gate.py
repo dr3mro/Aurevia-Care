@@ -10,7 +10,6 @@ import runpy
 import json
 import subprocess
 import tempfile
-import runpy
 import sys
 import unittest
 from pathlib import Path
@@ -357,7 +356,7 @@ class CoverageTests(unittest.TestCase):
             self.assertEqual(caught.exception.code, 1)
 
 
-class CoverageTests(unittest.TestCase):
+class AdditionalCoverageTests(unittest.TestCase):
     """Exercise the few branches not reached by the behaviour tests."""
 
     def test_gh_json_empty_output_is_an_empty_object(self):
