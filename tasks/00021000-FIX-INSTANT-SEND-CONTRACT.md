@@ -1,6 +1,5 @@
-- [-] FIX-INSTANT-SEND-CONTRACT · Bind instant message sends to the conversation in the URL
-  - agent: swarm-4
-  - attempts: 1
+- [ ] FIX-INSTANT-SEND-CONTRACT · Bind instant message sends to the conversation in the URL
+  - attempts: 2
   - requirements: MSG-02, ARC-07, WEB-05
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts
   - depends: SMSG-03, FIX-OPENAPI-03
