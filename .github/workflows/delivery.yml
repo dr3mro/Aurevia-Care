@@ -21,7 +21,8 @@ permissions:
 # the trade-off is that a cancelled exact SHA on main receives no verdict.
 concurrency:
   group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   policy:
