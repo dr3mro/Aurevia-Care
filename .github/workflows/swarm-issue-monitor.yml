@@ -90,7 +90,10 @@ jobs:
         shell: bash
     env:
       # A repository variable lets an operator change the agent model without editing workflows.
-      MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
+      # Base model hint only; the centralized model-router owns all selection.
+      MODEL: opencode-go/hy4-flash-free
+      SWARM_MODEL: ${{ vars.SWARM_MODEL }}
+      SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}
       SWARM: '1'
       AGENT_TIMEOUT: 45m
     steps:

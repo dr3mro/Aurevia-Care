@@ -3590,17 +3590,28 @@ class TrustedCopyTests(unittest.TestCase):
 
 
 class ModelOverrideTests(unittest.TestCase):
-    def test_every_opencode_workflow_honours_the_swarm_model_variable(self):
+    def test_workflows_pass_precedence_to_the_central_router(self):
+        # The old `vars.SWARM_MODEL || ...` expressions made SWARM_MODEL the
+        # primary override. Selection now lives in scripts/model-router.py, so
+        # workflows supply only a base-model hint plus the two control variables.
         for path in (ROOT / ".github/workflows").glob("*.yml"):
             text = path.read_text()
             if "MODEL:" not in text:
                 continue
-            self.assertIn("vars.SWARM_MODEL", text, path.name)
-            self.assertNotIn("MODEL: opencode-go/", text, path.name)
+            self.assertNotIn("vars.SWARM_MODEL ||", text, path.name)
+            self.assertIn("SWARM_MODEL: ${{ vars.SWARM_MODEL }}", text, path.name)
+            self.assertIn("SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}", text, path.name)
 
-    def test_the_worker_falls_back_to_the_slot_model(self):
+    def test_the_worker_uses_the_slot_model_as_a_base_hint(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
-        self.assertIn("MODEL: ${{ vars.SWARM_MODEL || fromJSON(inputs.task).model }}", text)
+        self.assertIn("MODEL: ${{ fromJSON(inputs.task).model }}", text)
+
+    def test_the_router_enforces_strict_boolean_config(self):
+        router = load("model-router")
+        self.assertEqual(router.parse_force_model(""), 0)
+        self.assertEqual(router.parse_force_model("1"), 1)
+        with self.assertRaises(router.ConfigurationError):
+            router.parse_force_model("yes")
 
 
 class FailureReportTests(unittest.TestCase):

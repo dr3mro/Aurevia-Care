@@ -101,18 +101,43 @@ restore_config() {
   git checkout -q -- opencode.json
 }
 
+# Centralized model routing. Every production opencode run obtains its model
+# from scripts/model-router.py, which enforces SWARM_FORCE_MODEL (strict 0/1),
+# strict $0.00/M pricing and role/phase ranking. Raw workflow MODEL values are
+# passed only as a hint; a paid or unverified value can never reach --model.
+# FORCE_MODEL=1 -> sole candidate; 0 -> ranked primaries then SWARM_MODEL last.
+# A rate limit rotates to the next verified free candidate (bounded by the
+# router's candidate list); timeout/failed stay terminal.
+route_models() {
+  python3 -I scripts/model-router.py resolve \
+    --agent "${1:-}" --phase "${AGENT_PHASE:-execution}" \
+    --base-model "${MODEL:-}" --paths "${ROUTE_PATHS:-}" \
+    --title "${ROUTE_TITLE:-}" --attempts "${ROUTE_ATTEMPTS:-0}" \
+    2>&1 | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin).get("candidates", [])))'
+}
+
 # run_agent AGENT PROMPT LOG: prints ok, rate_limited, timeout or failed.
-# Rate limits and timeouts end the run instead of retrying, so one story never
-# burns the free-model quota or runner minutes in a retry loop.
 run_agent() {
-  local agent=$1 prompt=$2 log=$3 status=0
-  timeout "${AGENT_TIMEOUT:-30m}" opencode run --auto --agent "$agent" --model "$MODEL" \
-    "$prompt" 2>&1 | strip_ansi | tee "$log" >&2 || status=$?
-  if [[ $status -eq 0 ]]; then echo ok
-  elif [[ $status -eq 124 ]]; then echo timeout
-  elif grep -qiE 'rate.?limit|too many requests|quota|\b429\b' "$log"; then echo rate_limited
-  else echo failed
-  fi
+  local agent=$1 prompt=$2 log=$3 status=0 model result=rate_limited
+  local models
+  models=$(route_models "$agent") || { echo configuration_error; return; }
+  if [[ -z "$models" ]]; then echo no_free_model; return; fi
+  while IFS= read -r model; do
+    [[ -z "$model" ]] && continue
+    status=0
+    printf 'model-router: selected %s for %s\n' "$model" "$agent" >&2
+    timeout "${AGENT_TIMEOUT:-30m}" opencode run --auto --agent "$agent" --model "$model" \
+      "$prompt" 2>&1 | strip_ansi | tee "$log" >&2 || status=$?
+    if [[ $status -eq 0 ]]; then echo ok; return
+    elif [[ $status -eq 124 ]]; then echo timeout; return
+    elif grep -qiE 'rate.?limit|too many requests|quota|\b429\b' "$log"; then
+      result=rate_limited
+      printf 'model-router: %s rate-limited; rotating to next verified model\n' "$model" >&2
+      continue
+    else echo failed; return
+    fi
+  done <<< "$models"
+  echo "$result"
 }
 
 tracker_rules() {
