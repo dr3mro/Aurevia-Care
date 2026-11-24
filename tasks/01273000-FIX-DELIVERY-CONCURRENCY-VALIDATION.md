@@ -57,3 +57,14 @@
     `queue: max` on every workflow; bare pull_request trigger; bare push
     trigger; swarm per-run group. No suppression, skip, exclusion or threshold
     change was introduced.
+  - delivery:
+    Branch `fix/delivery-concurrency-validation`, commit 611c2d9f, PR
+    https://github.com/dr3mro/Aurevia-Care/pull/1613 (open, mergeable).
+    Tool: Delivery run 45330751996 on PR head 611c2d9f has 1 job
+    `Policy and tooling` (queued) and a `Policy and tooling` check run:
+    the workflow now passes GitHub validation and creates jobs, unlike the
+    zero-job runs before the fix. The full `Delivery gate` verdict is still
+    pending behind the existing runner backlog; the full Python suite is red
+    on pristine `origin/main` with 15 pre-existing failures/errors (same list
+    reproduced in an unmodified worktree), so this PR cannot be green until
+    that baseline is repaired by its owners. No gate was weakened here.
