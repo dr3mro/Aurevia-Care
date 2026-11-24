@@ -551,6 +551,19 @@ class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentR
     def argv(self):
         return (self.tmp / "argv.log").read_bytes().decode().split("\0")[:-1]
 
+    def assert_configuration_error(self, command, **env):
+        prompts = self.tmp / f"{command}-prompts.log"
+        argv = self.tmp / f"{command}-argv.log"
+        result = self.run_cmd(command, SWARM_MODEL=None, PROMPT_LOG=str(prompts),
+                              ARGV_LOG=str(argv), **env)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "configuration_error")
+        self.assertFalse(prompts.exists())
+        self.assertFalse(argv.exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+        return result
+
     def test_swarm_model_is_passed_exactly_and_legacy_values_are_ignored(self):
         model = "opencode/custom model\nnext"
         result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_MODEL=model,
@@ -569,12 +582,17 @@ class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentR
         prompts = self.tmp / "missing-unset.log"
         argv = self.tmp / "missing-unset.argv"
         result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_MODEL=None,
-                              PROMPT_LOG=str(prompts), ARGV_LOG=str(argv))
+                              SWARM="1", STORY_BODY="  - scope: apps/api\n",
+                              BRIEF_MODE="good", PROMPT_LOG=str(prompts), ARGV_LOG=str(argv))
         self.assertNotEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.outputs()["result"], "configuration_error")
         self.assertEqual(self.outputs()["checks"], "skipped")
+        self.assertEqual(self.outputs()["commits"], "0")
+        self.assertEqual(self.outputs()["more"], "false")
         self.assertFalse(prompts.exists())
         self.assertFalse(argv.exists())
+        for name in ("coverage.log", "frontend-typecheck.log", "quality.log"):
+            self.assertFalse((self.repo / ".agent" / name).exists(), name)
         self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
                          '{"real": true}')
 
@@ -586,8 +604,115 @@ class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentR
         self.assertNotEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.outputs()["result"], "configuration_error")
         self.assertEqual(self.outputs()["checks"], "skipped")
+        self.assertEqual(self.outputs()["commits"], "0")
+        self.assertEqual(self.outputs()["more"], "false")
         self.assertFalse(prompts.exists())
         self.assertFalse(argv.exists())
+        for name in ("coverage.log", "frontend-typecheck.log", "quality.log"):
+            self.assertFalse((self.repo / ".agent" / name).exists(), name)
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_debugger_configuration_error_is_terminal(self):
+        self.assert_configuration_error("debug", PR_NUMBER="9", DEBUG_ROUND="2")
+        self.assertEqual(self.outputs()["merge"], "clean")
+        self.assertEqual(self.outputs()["report"], "no")
+
+    def test_triage_configuration_error_is_terminal(self):
+        self.assert_configuration_error("triage")
+
+    def test_triage_success_emits_ok(self):
+        result = self.run_cmd("triage", FAKE_MODE="none",
+                              PROMPT_LOG=str(self.tmp / "triage-success.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        self.assertTrue((self.tmp / "triage-success.log").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_reconcile_configuration_error_is_terminal(self):
+        self.assert_configuration_error("reconcile")
+        self.assertFalse((self.repo / ".agent/reconcile/rules.patch").exists())
+
+    def test_reconcile_success_emits_ok_and_creates_patch(self):
+        result = self.run_cmd("reconcile", FAKE_MODE="none",
+                              PROMPT_LOG=str(self.tmp / "reconcile-success.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        self.assertTrue((self.repo / ".agent/reconcile/rules.patch").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_audit_configuration_error_is_terminal(self):
+        self.assert_configuration_error("audit")
+
+    def test_audit_success_emits_ok(self):
+        result = self.run_cmd("audit", FAKE_MODE="none",
+                              PROMPT_LOG=str(self.tmp / "audit-success.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        self.assertTrue((self.tmp / "audit-success.log").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_daily_review_configuration_error_is_terminal(self):
+        for role in ("qa", "devsecops"):
+            with self.subTest(role=role):
+                self.assert_configuration_error(f"daily-{role}")
+
+    def test_daily_review_success_emits_ok(self):
+        for role in ("qa", "devsecops"):
+            with self.subTest(role=role):
+                result = self.run_cmd(f"daily-{role}", FAKE_MODE="none",
+                                      PROMPT_LOG=str(self.tmp / f"daily-{role}-success.log"))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.outputs()["result"], "ok")
+                self.assertTrue((self.tmp / f"daily-{role}-success.log").exists())
+                self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                                 '{"real": true}')
+
+    def test_strategy_configuration_error_is_terminal(self):
+        self.assert_configuration_error("strategy")
+
+    def test_read_only_review_configuration_error_does_not_clean_workspace(self):
+        (self.repo / "keep.txt").write_text("keep\n")
+        (self.repo / ".agent").mkdir(exist_ok=True)
+        (self.repo / ".agent/base-sha").write_text("synthetic-base\n")
+        self.assert_configuration_error("review", REVIEWERS="a")
+        self.assertEqual((self.repo / "keep.txt").read_text(), "keep\n")
+        self.assertFalse((self.repo / ".agent/review-a.md").exists())
+
+    def test_conflict_resolution_configuration_error_is_terminal(self):
+        self.push_to_main("feature.txt", "main version\n")
+        result = self.merge_main("resolve", SWARM_MODEL=None,
+                                 PROMPT_LOG=str(self.tmp / "merge-prompts.log"),
+                                 ARGV_LOG=str(self.tmp / "merge-argv.log"))
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "configuration_error")
+        self.assertEqual(self.outputs()["merge"], "conflict")
+        self.assertFalse((self.tmp / "merge-prompts.log").exists())
+        self.assertFalse((self.tmp / "merge-argv.log").exists())
+        self.assertFalse((self.repo / ".agent/merge-2.log").exists())
+        self.assertFalse((self.repo / ".git/MERGE_HEAD").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_resolve_command_configuration_error_is_terminal(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.git("branch", "pr-5")
+        self.git("switch", "-q", "main")
+        self.push_to_main("feature.txt", "main version\n")
+        self.assertEqual(self.run_cmd("fetch-main").returncode, 0)
+        result = self.run_cmd("resolve", CONFLICTED="[5]", MERGE_ATTEMPTS="2",
+                              SWARM_MODEL=None,
+                              PROMPT_LOG=str(self.tmp / "resolve-prompts.log"),
+                              ARGV_LOG=str(self.tmp / "resolve-argv.log"))
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.repo / ".agent/resolve/5").read_text(), "failed")
+        self.assertEqual((self.repo / ".agent/resolve/5.checks").read_text(),
+                         "configuration_error")
+        self.assertFalse((self.tmp / "resolve-prompts.log").exists())
+        self.assertFalse((self.tmp / "resolve-argv.log").exists())
         self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
                          '{"real": true}')
 

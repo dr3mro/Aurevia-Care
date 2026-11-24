@@ -3730,6 +3730,12 @@ class ModelEnvironmentTests(unittest.TestCase):
                 self.assertFalse(line.strip().startswith("SWARM_FORCE_MODEL:"),
                                  f"{path.name}: {line.strip()}")
 
+    def test_candidate_validation_example_uses_repository_model_default(self):
+        text = (ROOT / "docs/operations/workflow-changes/candidate-validation-isolation.md").read_text()
+        expected = "SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}"
+        self.assertIn(expected, text)
+        self.assertNotIn("SWARM_MODEL: opencode-go/hy4-flash-free", text)
+
     def test_router_and_registry_artifacts_are_absent(self):
         self.assertFalse((ROOT / "scripts/model-router.py").exists())
         self.assertFalse((ROOT / "scripts/tests/test_model_router.py").exists())

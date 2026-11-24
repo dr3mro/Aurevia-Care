@@ -17,7 +17,7 @@
 
 ## Progress
 - [x] Owner clarified the sole model input is SWARM_MODEL.
-- [x] Direct one-model runner restored; missing/empty values fail before invocation and `cmd_implement` exits nonzero after restoring config, before gates or commits.
+- [x] Direct one-model runner restored; missing/empty values fail before invocation and every independently invocable agent command exits nonzero after restoring config, before further work.
 - [x] Router, router tests and pricing registry removed.
 - [x] Nine workflows export only SWARM_MODEL with the Hy4 Flash default.
 - [x] Runtime-profile validation no longer reads a model registry.
@@ -31,7 +31,7 @@
 - Full suite before the reset: 1,573 tests, one unrelated pre-existing planner assertion failure (`claim_open(..., force=False)` versus older expected call).
 - After the reset, work was restored from the exact session diff and backed up to `/private/var/folders/5f/1bz7m8qs7t380l7r_08cbx540000gn/T/opencode/remove-model-router-backup.tgz`.
 - Owner then prohibited all Git-using scripts. Non-Git green checks after restore: `py_compile` on every changed Python file; `bash -n scripts/agent-run.sh`; `shellcheck scripts/agent-run.sh`; `gen-opencode.py --check-runtime`; `gen-opencode.py --check`; `actionlint -ignore 'unexpected key "queue"' .github/workflows/*.yml`; `check-docs.py`; `check-pack.py`; runtime-profile suites 23 + 18 tests OK; `ModelEnvironmentTests` 7 OK; nested slot CLI test 1 OK; static YAML/JSON model-contract audit passed.
-- Code review found a fail-open `configuration_error` path; fixed by recording `checks=skipped`, emitting outputs and returning nonzero from `cmd_implement` after `restore_config`, before any commit or repair gate. Unset/empty tests now require nonzero exit.
+- Code review found fail-open `configuration_error` paths. Fixed `cmd_implement` and added terminal handling after `restore_config` to debugger, triage, reconciliation, audit, daily review, strategy, read-only review, merge-conflict resolution and `resolve`. The advisor call is skipped when the model is absent; review returns before workspace cleanup. Command-family tests assert nonzero exit, no invocation and restored config; implement tests also assert zero commits, no next segment and no repair logs.
 - Final non-Git rerun after that fix: Python syntax, shell syntax/shellcheck, actionlint, `check-docs.py`, `check-pack.py`, both `gen-opencode.py` checks, runtime-profile suites, `ModelEnvironmentTests`, nested-slot CLI test, and direct changed-range coverage all passed again.
 - Backup archive verified: 29 entries, SHA-256 `6c9d3ad0ab1744f7a0988209b268ea9385246629dba235c88260793003fdee4a` before the final checkpoint-only refresh.
 - The full suite and `scripts/python-coverage.sh` were not rerun because both invoke Git.
@@ -45,9 +45,9 @@
 Workflow `SWARM_MODEL` env → `scripts/agent-run.sh run_agent` → one `opencode run --model "$SWARM_MODEL"` → `DirectModelEnvironmentTests`; slot image config → `scripts/swarm.py load_slots` → `ModelEnvironmentTests` and nested-model CLI test; runtime profile → `scripts/gen-opencode.py check_runtime` → runtime-profile suites.
 
 ## Review verdicts
-- aurevia-coverage-auditor: GO (re-confirmed after fail-closed fix)
-- aurevia-devsecops: GO (re-confirmed after fail-closed fix)
-- aurevia-code-reviewer: re-review pending; initial NO-GO fail-open finding fixed
+- aurevia-coverage-auditor: GO (all terminal and success branches mapped)
+- aurevia-devsecops: GO (all caller families fail closed)
+- aurevia-code-reviewer: re-review pending after all-caller expansion
 
 ## Findings
 - At 14:26:36 -0500 the workspace was reset twice to `be65c427`, discarding the first restored patch. The exact process was not proven; no intentional workspace reset was issued. All changes were reconstructed from the session diff.
