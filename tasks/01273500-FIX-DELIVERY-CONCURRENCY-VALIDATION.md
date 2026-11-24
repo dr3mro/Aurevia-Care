@@ -1,6 +1,6 @@
 - [-] FIX-DELIVERY-CONCURRENCY-VALIDATION · Restore Delivery runs rejected by GitHub concurrency validation
   - agent: swarm-1
-  - attempts: 7
+  - attempts: 8
   - requirements: OPS-06
   - scope: .github/workflows/delivery.yml, scripts/tests/test_workflow_concurrency.py, scripts/tests/test_swarm_delivery_state.py, .opencode/skills/aurevia-github-workflow/SKILL.md, .opencode/config/MEMORY.md, .opencode/config/BUGS.md, tasks/01273000-FIX-DELIVERY-CONCURRENCY-VALIDATION.md
   - depends: none
