@@ -125,9 +125,9 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertIn("Candidate was not validated", published)
         self.assertIn("VALIDATED_SHA", published)
 
-    def test_integrator_candidate_job_has_no_nvd_consumer_key(self):
+    def test_integrator_validate_job_has_no_nvd_consumer_key(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
-        job = workflow["jobs"]["integrate"]
+        job = workflow["jobs"]["validate"]
         self.assertNotIn("NVD_API_KEY", job.get("env", {}))
 
     def test_delivery_frontend_runs_the_canonical_coverage_entry_points(self):
