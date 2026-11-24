@@ -1056,7 +1056,9 @@ class PlanTests(unittest.TestCase):
         self.assertIn("needs: work", worker)
         self.assertIn("workflow_call:", worker)
         identity = "worker-${{ fromJSON(inputs.task).id }}"
-        self.assertEqual(worker.count(f"name: {identity}"), 2)
+        # Upload in the work job, then the same artifact downloaded by the validate
+        # job and again by the trusted publish job.
+        self.assertEqual(worker.count(f"name: {identity}"), 3)
         self.assertIn(f"path: results/{identity}", worker)
         self.assertIn("results/worker-$TASK_ID", worker)
         self.assertIn("pr-flow --no-wave", text)

@@ -156,7 +156,7 @@ class NotesClockTest(unittest.TestCase):
         root = scratch()
         self.addCleanup(shutil.rmtree, root)
         good = root / "good.md"
-        good.write_text("see pr-notes/KEEP.md")
+        good.write_text("see docs/pr/notes/KEEP.md")
         listed = f"{good}\n{root / 'missing.md'}\n"
         # Absolute fixture paths keep this test independent of the process cwd.
         with mock.patch.object(swarm, "git", return_value=listed):

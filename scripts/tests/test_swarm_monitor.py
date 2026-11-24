@@ -535,6 +535,19 @@ class NotesTests(unittest.TestCase):
         self.assertIn("later still", (archive / "2026-11-18.md").read_text())
         self.assertFalse((self.notes / "2026-11-18.md").exists())
 
+    def test_store_daily_writes_reconciled_reports_to_the_reports_directory(self):
+        import inspect
+        self.assertEqual(inspect.signature(swarm.store_daily).parameters["archive_dir"].default,
+                         swarm.REPORTS_DIR)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            report = root / "reports" / "2026-11-22.md"
+            report.parent.mkdir(parents=True)
+            report.write_text("first pass\n")
+            swarm.store_daily("2026-11-22", "second pass", str(root / "notes"), str(root / "reports"))
+            self.assertIn("first pass", report.read_text())
+            self.assertIn("## Late notes\n\nsecond pass", report.read_text())
+
     def test_only_the_newest_daily_file_stays(self):
         for name in ("2026-11-17.md", "2026-11-18.md", "2026-11-19.md", "X-20261119-010101.md"):
             (self.notes / name).write_text("x")
