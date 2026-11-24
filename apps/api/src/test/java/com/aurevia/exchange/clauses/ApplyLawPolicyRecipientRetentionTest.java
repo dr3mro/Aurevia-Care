@@ -50,14 +50,14 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_xch03_retention_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_exchange_response_retention_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ApplyLawPolicyRecipientRetentionTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    private static final String DB = "aurevia_xch03_retention_it";
+    private static final String DB = "aurevia_exchange_response_retention_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
             "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
@@ -157,17 +157,17 @@ class ApplyLawPolicyRecipientRetentionTest {
                 + "VALUES ('" + org + "', 1, 'MRN-1', 'CLINIC', 'Synthetic Patient', 'synthetic patient', "
                 + "'1990-05-20')");
         for (int index = 1; index <= ORDER_COUNT; index++) {
-            statement.execute("INSERT INTO public.xch03_order "
+            statement.execute("INSERT INTO public.exchange_response_order "
                     + "(organization_id, id, order_code, state, revision, content_checksum, created_by) "
                     + "VALUES ('" + org + "', '" + orderId(org, index) + "', 'LAB-REQ-" + index
                     + "', 'requested', 1, '" + CHECKSUM
                     + "', (SELECT id FROM public.user_identity WHERE subject = 'admin-" + shortName + "'))");
             statement.execute("SET app.actor = 'admin-" + shortName + "'");
-            statement.execute("INSERT INTO public.xch03_revision "
+            statement.execute("INSERT INTO public.exchange_response_revision "
                     + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, NULL, '" + CHECKSUM + "')");
-            statement.execute("INSERT INTO public.xch03_event "
+            statement.execute("INSERT INTO public.exchange_response_event "
                     + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, 'received', NULL, 'requested')");
@@ -302,9 +302,9 @@ class ApplyLawPolicyRecipientRetentionTest {
         assertEquals("STANDARD", standardView.at("/retained/0/retentionPolicy").asText());
         assertFalse(standardView.at("/retained/0/legalHold").asBoolean());
 
-        assertEquals(1L, scalar(ORG_A, "SELECT count(*) FROM public.xch03_retained_copy "
+        assertEquals(1L, scalar(ORG_A, "SELECT count(*) FROM public.exchange_response_retained_copy "
                 + "WHERE order_id = '" + heldOrder + "' AND retention_policy = 'LEGAL_HOLD' AND legal_hold = true"));
-        assertEquals(1L, scalar(ORG_A, "SELECT count(*) FROM public.xch03_retained_copy "
+        assertEquals(1L, scalar(ORG_A, "SELECT count(*) FROM public.exchange_response_retained_copy "
                 + "WHERE order_id = '" + standardOrder + "' AND retention_policy = 'STANDARD' AND legal_hold = false"));
     }
 
@@ -317,7 +317,7 @@ class ApplyLawPolicyRecipientRetentionTest {
         assertEquals(422, refused.getStatusCode().value(), refused.getBody());
         assertEquals("INVALID_RETENTION_POLICY", text(refused, "/code"));
         assertEquals(0L, scalar(ORG_A,
-                "SELECT count(*) FROM public.xch03_retained_copy WHERE order_id = '" + id + "'"));
+                "SELECT count(*) FROM public.exchange_response_retained_copy WHERE order_id = '" + id + "'"));
         JsonNode view = json(send(HttpMethod.GET, "/api/v1/xch03/orders/" + id,
                 null, VERIFIER_A, ORG_A, null));
         assertEquals(0, view.at("/retained").size());
@@ -334,7 +334,7 @@ class ApplyLawPolicyRecipientRetentionTest {
         assertEquals(HttpStatus.FORBIDDEN, refused.getStatusCode(), refused.getBody());
         assertEquals("FORBIDDEN", text(refused, "/code"));
         assertEquals(0L, scalar(ORG_A,
-                "SELECT count(*) FROM public.xch03_retained_copy WHERE order_id = '" + id + "'"));
+                "SELECT count(*) FROM public.exchange_response_retained_copy WHERE order_id = '" + id + "'"));
         JsonNode view = json(send(HttpMethod.GET, "/api/v1/xch03/orders/" + id,
                 null, VERIFIER_A, ORG_A, null));
         assertEquals(0, view.at("/retained").size());
@@ -353,7 +353,7 @@ class ApplyLawPolicyRecipientRetentionTest {
                 acceptBody(patientId(ORG_A), "clinician-1111", "LEGAL_HOLD"), VERIFIER_A, ORG_A, "1");
         assertEquals(HttpStatus.NOT_FOUND, refused.getStatusCode(), refused.getBody());
         assertEquals(0L, scalar(ORG_B,
-                "SELECT count(*) FROM public.xch03_retained_copy WHERE order_id = '" + peerOrder + "'"));
+                "SELECT count(*) FROM public.exchange_response_retained_copy WHERE order_id = '" + peerOrder + "'"));
 
         JsonNode peerView = json(send(HttpMethod.GET, "/api/v1/xch03/orders/" + peerOrder,
                 null, VERIFIER_B, ORG_B, null));
@@ -370,7 +370,7 @@ class ApplyLawPolicyRecipientRetentionTest {
         assertEquals(412, refused.getStatusCode().value(), refused.getBody());
         assertEquals("STALE_VERSION", text(refused, "/code"));
         assertEquals(0L, scalar(ORG_A,
-                "SELECT count(*) FROM public.xch03_retained_copy WHERE order_id = '" + id + "'"));
+                "SELECT count(*) FROM public.exchange_response_retained_copy WHERE order_id = '" + id + "'"));
         JsonNode view = json(send(HttpMethod.GET, "/api/v1/xch03/orders/" + id,
                 null, VERIFIER_A, ORG_A, null));
         assertEquals(0, view.at("/retained").size());
@@ -388,7 +388,7 @@ class ApplyLawPolicyRecipientRetentionTest {
         assertEquals(422, refused.getStatusCode().value(), refused.getBody());
         assertEquals("REQUIRED", text(refused, "/code"));
         assertEquals(0L, scalar(ORG_A,
-                "SELECT count(*) FROM public.xch03_retained_copy WHERE order_id = '" + id + "'"));
+                "SELECT count(*) FROM public.exchange_response_retained_copy WHERE order_id = '" + id + "'"));
         JsonNode view = json(send(HttpMethod.GET, "/api/v1/xch03/orders/" + id,
                 null, VERIFIER_A, ORG_A, null));
         assertEquals(0, view.at("/retained").size());
@@ -414,7 +414,7 @@ class ApplyLawPolicyRecipientRetentionTest {
         assertEquals("STANDARD", view.at("/retained/0/retentionPolicy").asText());
         assertFalse(view.at("/retained/0/legalHold").asBoolean());
         assertEquals(1L, scalar(ORG_A,
-                "SELECT count(*) FROM public.xch03_retained_copy WHERE order_id = '" + id + "'"));
+                "SELECT count(*) FROM public.exchange_response_retained_copy WHERE order_id = '" + id + "'"));
     }
 
 }

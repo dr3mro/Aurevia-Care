@@ -36,7 +36,7 @@ import org.yaml.snakeyaml.Yaml;
  * before comparison is the method-less {@code /error} fallback that Spring
  * registers for {@code BasicErrorController}; it is servlet plumbing, not a
  * staff-API operation, and {@link OpenApiRouteCoverage#withoutFrameworkRoutes(Set)}
- * excludes it with an explicit, unit-tested predicate. The X-04 catalog document
+ * excludes it with an explicit, unit-tested predicate. The generated command catalog document
  * is command-oriented and intentionally contains virtual routes.</p>
  */
 @Tag("integration")

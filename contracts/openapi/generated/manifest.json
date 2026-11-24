@@ -1,6 +1,6 @@
 {
   "generator": "com.aurevia.api.authorization.CommandClientGenerator",
-  "contractSha256": "0c6fdd436b564852daad999d7de0e238f167ee4e304d96ec308eccceef2b75cd",
+  "contractSha256": "7ee1fe31c8825d996da0e8e77d5e50dfdbbab081eb174c6ed6a834d7a7132e0f",
   "clientSha256": "604b1855d5f555a84a874687fc62627dd6fefd983d3743e898502c5a304cdc7d",
   "commands": [
     {"id": "createFacility", "action": "FACILITY_WRITE", "method": "POST", "path": "/api/v1/facilities", "policy": "ActionPolicy"},

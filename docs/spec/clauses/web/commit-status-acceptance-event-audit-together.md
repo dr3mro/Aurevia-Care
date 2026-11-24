@@ -22,7 +22,7 @@ Both organizations seed the same local order codes, so tenant separation is exer
 
 - `acceptCommitsStatusEventAndAuditTogether` — positive proof. `POST /api/v1/xch03/orders/{id}/accept`
   with `If-Match: 1` returns 200 with state `accepted` and version 2. Direct tenant-bound JDBC reads
-  confirm the order projection is `accepted`/2, exactly one `xch03_event` row has action `accept` from
+  confirm the order projection is `accepted`/2, exactly one `exchange_response_event` row has action `accept` from
   `requested` to `accepted`, and exactly one `public.audit_event` row has action `EXCHANGE_ACCEPT`,
   `resource_id` equal to the order id, `outcome` `SUCCESS` and the request's unique `correlation_id`.
   The status change, append-only event and audit fact are therefore one commit.
@@ -33,7 +33,7 @@ Both organizations seed the same local order codes, so tenant separation is exer
   remains `requested`/1, no `accept` event exists and no audit row carries the marker. This proves the
   three writes share one transaction rather than three independent commits.
 - `auditFactRollsBackWhenOrderCommitFails` — reverse-direction all-or-nothing proof. A second
-  test-only deferred constraint trigger on `xch03_order`, keyed to this test's order and always dropped
+  test-only deferred constraint trigger on `exchange_response_order`, keyed to this test's order and always dropped
   in `finally`, raises at the transaction's commit, which is after the audit fact has been appended.
   The 500 response, unchanged `requested`/1 order, zero accept events and zero audit facts for the
   request's correlation id prove that the audit fact is not committed in a transaction of its own;
@@ -72,7 +72,7 @@ Production classes exercised through the normal HTTP entry point:
   correlation id from request headers before the controller runs.
 - `com.aurevia.api.ApiErrorHandler` — renders the 403, 404, 409, 412 and 422 machine-readable
   error bodies asserted by the negative tests.
-- `db/migrations/V21__xch03_order_response.sql` — `xch03_order` and the append-only `xch03_event` ledger,
+- `db/migrations/V21__xch03_order_response.sql` — `exchange_response_order` and the append-only `exchange_response_event` ledger,
   with forced RLS and actor-derived authorship.
 - `db/migrations/V1__tenant_schema.sql` and `db/migrations/V3__audit_chain.sql` — `audit_event` with its
   `correlation_id`, outcome and immutable hash chain, with forced RLS.

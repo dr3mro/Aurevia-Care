@@ -168,7 +168,7 @@ class PharmacyInboxHttpTest {
     private static void seedPrescription(Statement statement, String org, String id, String destination,
                                          String state, String createdAt, String medication) throws Exception {
         bind(statement, org, "clinician-" + org.substring(0, 4));
-        statement.execute("INSERT INTO public.rx02_prescription "
+        statement.execute("INSERT INTO public.prescription_transmission "
                 + "(organization_id, id, patient_id, medication, strength, dose, route, frequency, quantity, "
                 + " prescriber_subject, destination_pharmacy, state, created_at) "
                 + "VALUES ('" + org + "', '" + id + "', '" + PATIENT + "', '" + medication

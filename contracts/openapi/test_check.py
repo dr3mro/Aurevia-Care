@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for the X-04 offline drift gate (PRD-06, ARC-03).
+"""Unit tests for the offline command-contract drift gate (PRD-06, ARC-03).
 
 Every fixture is a copy of the committed synthetic artifacts with one
 authority or precondition regression injected; no patient data, credential

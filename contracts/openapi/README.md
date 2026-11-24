@@ -1,4 +1,4 @@
-# X-04 — Generated command clients and server-side authorization (PRD-06)
+# Generated command clients and server-side authorization (PRD-06)
 
 Synthetic-only cross-cutting slice. The authoritative command catalog is
 [CommandCatalog.java](../../apps/api/src/main/java/com/aurevia/api/authorization/CommandCatalog.java).

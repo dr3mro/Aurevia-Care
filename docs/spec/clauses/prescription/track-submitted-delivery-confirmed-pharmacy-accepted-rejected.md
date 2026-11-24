@@ -86,7 +86,7 @@ routes plus `GET /api/v1/prescriptions/{id}`:
   `insertSubmission` creates the one logical submission row asserted by the
   test.
 - `db/migrations/V44__rx02_prescription_transmission.sql` and
-  `db/migrations/V59__rx02_ambiguous_transition.sql` — the `rx02_event`
+  `db/migrations/V59__rx02_ambiguous_transition.sql` — the `prescription_event`
   append-only ledger with its `event_type` check, forced tenant RLS, immutable
   event triggers and the database state-transition guard.
 

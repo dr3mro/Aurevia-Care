@@ -45,7 +45,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_rx02_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_prescription_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class RxTransmissionFlowTest {
@@ -54,7 +54,7 @@ class RxTransmissionFlowTest {
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String ORG_C = "33333333-3333-3333-3333-333333333333";
     static final String ORG_D = "44444444-4444-4444-4444-444444444444";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_rx02_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_prescription_it";
     static final String ADMIN = System.getenv().getOrDefault(
             "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
@@ -87,8 +87,8 @@ class RxTransmissionFlowTest {
                     + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
                     + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
                     + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS aurevia_rx02_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE aurevia_rx02_it OWNER aurevia_migrate");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_prescription_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_prescription_it OWNER aurevia_migrate");
         }
         Flyway.configure()
                 .dataSource(URL, "aurevia_migrate", "")
@@ -134,7 +134,7 @@ class RxTransmissionFlowTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS aurevia_rx02_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_prescription_it WITH (FORCE)");
         }
     }
 
@@ -483,18 +483,18 @@ class RxTransmissionFlowTest {
 
         // The database is the second line of defence: the send row is append-only
         // and the submission id stamped on the prescription is immutable.
-        String update = "UPDATE public.rx02_prescription SET submission_id = gen_random_uuid()";
+        String update = "UPDATE public.prescription_transmission SET submission_id = gen_random_uuid()";
         assertThrowsSql(() -> execute(org, prescriber, update));
-        String eventUpdate = "UPDATE public.rx02_event SET outcome = 'tampered'";
+        String eventUpdate = "UPDATE public.prescription_event SET outcome = 'tampered'";
         assertThrowsSql(() -> execute(org, prescriber, eventUpdate));
-        String replay = "INSERT INTO public.rx02_submission (organization_id, submission_id, "
+        String replay = "INSERT INTO public.prescription_submission (organization_id, submission_id, "
                 + "prescription_id, channel) VALUES (public.app_org(), CAST('" + sid
                 + "' AS uuid), CAST('" + id + "' AS uuid), 'E_PRESCRIBE')";
         assertThrowsSql(() -> execute(org, prescriber, replay));
 
         // A fresh submission id for the same prescription is refused too: the
         // ledger holds exactly one downstream submission per RX-02 record (G4).
-        String duplicate = "INSERT INTO public.rx02_submission (organization_id, submission_id, "
+        String duplicate = "INSERT INTO public.prescription_submission (organization_id, submission_id, "
                 + "prescription_id, channel) VALUES (public.app_org(), gen_random_uuid(), CAST('"
                 + id + "' AS uuid), 'E_PRESCRIBE')";
         assertThrowsSql(() -> execute(org, prescriber, duplicate));
@@ -649,12 +649,12 @@ class RxTransmissionFlowTest {
     }
 
     private static int countSubmissionRows(String org, String prescriptionId) {
-        return count("SELECT COUNT(*) FROM public.rx02_submission WHERE prescription_id = CAST('"
+        return count("SELECT COUNT(*) FROM public.prescription_submission WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid)", org);
     }
 
     private static int countEventsOfType(String org, String prescriptionId, String type) {
-        return count("SELECT COUNT(*) FROM public.rx02_event WHERE prescription_id = CAST('"
+        return count("SELECT COUNT(*) FROM public.prescription_event WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid) AND event_type = '" + type + "'", org);
     }
 

@@ -819,7 +819,7 @@ class PlanTests(unittest.TestCase):
 
     def test_label_editing_jobs_have_issues_write(self):
         import yaml
-        for name, job in (("swarm-integrator.yml", "integrate"), ("fix-pr-gate.yml", "handoff")):
+        for name, job in (("swarm-integrator.yml", "publish"), ("fix-pr-gate.yml", "handoff")):
             config = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
             perms = config["jobs"][job]["permissions"]
             self.assertEqual(perms.get("issues"), "write", f"{name} {job}")
@@ -1775,8 +1775,8 @@ esac
         for path in (ROOT / ".github/workflows").glob("*.yml"):
             calls |= set(re.findall(r"scripts/swarm\.py (?:-I )?([a-z-]+)", path.read_text()))
             calls |= set(re.findall(r"swarm\.py ([a-z-]+)", path.read_text()))
-        self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-batch",
-                         "plan-integration", "slot-config", "slot-matrix",
+        self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-validate",
+                         "integrate-publish", "plan-integration", "slot-config", "slot-matrix",
                          "images-ready", "ensure-labels"} <= calls)
         for command in calls:
             done = subprocess.run(["python3", "-I", str(ROOT / "scripts/swarm.py"), command, "--help"],

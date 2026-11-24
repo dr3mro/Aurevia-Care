@@ -51,7 +51,7 @@ import tools.jackson.databind.ObjectMapper;
 @Timeout(300)
 class CommitStatusAcceptanceEventAuditTogetherTest {
 
-    static final String DB = "aurevia_xch03_atomicity_it";
+    static final String DB = "aurevia_exchange_response_atomicity_it";
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
@@ -149,17 +149,17 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
                 + "VALUES ('" + org + "', 1, 'MRN-1', 'CLINIC', 'Synthetic Patient', 'synthetic patient', "
                 + "'1990-05-20')");
         for (int index = 1; index <= ORDER_COUNT; index++) {
-            statement.execute("INSERT INTO public.xch03_order "
+            statement.execute("INSERT INTO public.exchange_response_order "
                     + "(organization_id, id, order_code, state, revision, content_checksum, created_by) "
                     + "VALUES ('" + org + "', '" + orderId(org, index) + "', 'LAB-REQ-" + index
                     + "', 'requested', 1, '" + CHECKSUM
                     + "', (SELECT id FROM public.user_identity WHERE subject = 'admin-" + shortName + "'))");
             statement.execute("SET app.actor = 'admin-" + shortName + "'");
-            statement.execute("INSERT INTO public.xch03_revision "
+            statement.execute("INSERT INTO public.exchange_response_revision "
                     + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, NULL, '" + CHECKSUM + "')");
-            statement.execute("INSERT INTO public.xch03_event "
+            statement.execute("INSERT INTO public.exchange_response_event "
                     + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, 'received', NULL, 'requested')");
@@ -254,7 +254,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
     private static Projection projection(String org, String actor, String id) throws Exception {
         Connection connection = scoped(org, actor);
         try (PreparedStatement query = connection.prepareStatement(
-                "SELECT state, version FROM public.xch03_order WHERE id = CAST(? AS uuid)")) {
+                "SELECT state, version FROM public.exchange_response_order WHERE id = CAST(? AS uuid)")) {
             query.setString(1, id);
             try (ResultSet rows = query.executeQuery()) {
                 assertTrue(rows.next(), "the order must remain visible to its own tenant");
@@ -270,7 +270,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
     private static long eventCount(String org, String actor, String id, String action) throws Exception {
         Connection connection = scoped(org, actor);
         try (PreparedStatement query = connection.prepareStatement(
-                "SELECT count(*) FROM public.xch03_event "
+                "SELECT count(*) FROM public.exchange_response_event "
                         + "WHERE order_id = CAST(? AS uuid) AND action = ?")) {
             query.setString(1, id);
             query.setString(2, action);
@@ -289,7 +289,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
                                         String fromState, String toState) throws Exception {
         Connection connection = scoped(org, actor);
         try (PreparedStatement query = connection.prepareStatement(
-                "SELECT count(*) FROM public.xch03_event WHERE order_id = CAST(? AS uuid) "
+                "SELECT count(*) FROM public.exchange_response_event WHERE order_id = CAST(? AS uuid) "
                         + "AND action = ? AND from_state = ? AND to_state = ?")) {
             query.setString(1, id);
             query.setString(2, action);
@@ -376,7 +376,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
             statement.execute("REVOKE EXECUTE ON FUNCTION public.clause_test_fail_order_commit() FROM PUBLIC");
             statement.execute("GRANT EXECUTE ON FUNCTION public.clause_test_fail_order_commit() TO aurevia_app");
             statement.execute("CREATE CONSTRAINT TRIGGER clause_test_fail_order_commit AFTER UPDATE "
-                    + "ON public.xch03_order DEFERRABLE INITIALLY DEFERRED FOR EACH ROW "
+                    + "ON public.exchange_response_order DEFERRABLE INITIALLY DEFERRED FOR EACH ROW "
                     + "EXECUTE FUNCTION public.clause_test_fail_order_commit()");
         }
     }
@@ -385,7 +385,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
     private static void removeDeferredCommitFailure() throws Exception {
         try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
-            statement.execute("DROP TRIGGER IF EXISTS clause_test_fail_order_commit ON public.xch03_order");
+            statement.execute("DROP TRIGGER IF EXISTS clause_test_fail_order_commit ON public.exchange_response_order");
             statement.execute("DROP FUNCTION IF EXISTS public.clause_test_fail_order_commit()");
         }
     }

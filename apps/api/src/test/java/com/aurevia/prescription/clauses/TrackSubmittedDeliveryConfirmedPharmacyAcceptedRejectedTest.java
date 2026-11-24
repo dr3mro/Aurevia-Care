@@ -55,14 +55,14 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_rx02_clause4_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_prescription_clause4_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class TrackSubmittedDeliveryConfirmedPharmacyAcceptedRejectedTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    private static final String DB = "aurevia_rx02_clause4_it";
+    private static final String DB = "aurevia_prescription_clause4_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
             "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
@@ -613,18 +613,18 @@ class TrackSubmittedDeliveryConfirmedPharmacyAcceptedRejectedTest {
     }
 
     private static int eventCount(String org, String subject, String prescriptionId) {
-        return count("SELECT COUNT(*) FROM public.rx02_event WHERE prescription_id = CAST('"
+        return count("SELECT COUNT(*) FROM public.prescription_event WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid)", org, subject);
     }
 
     private static int countEventsOfType(String org, String prescriptionId, String type) {
-        return count("SELECT COUNT(*) FROM public.rx02_event WHERE prescription_id = CAST('"
+        return count("SELECT COUNT(*) FROM public.prescription_event WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid) AND event_type = '" + type + "'",
                 org, "clinician-" + suffix(org));
     }
 
     private static int countSubmissionRows(String org, String prescriptionId) {
-        return count("SELECT COUNT(*) FROM public.rx02_submission WHERE prescription_id = CAST('"
+        return count("SELECT COUNT(*) FROM public.prescription_submission WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid)", org, "clinician-" + suffix(org));
     }
 
