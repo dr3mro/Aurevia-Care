@@ -1367,7 +1367,10 @@ export interface paths {
         /** List messages visible to the caller in one conversation */
         get: operations["listInstantMessages"];
         put?: never;
-        /** Publish one message, deduplicating retries by the client message key */
+        /**
+         * Publish one message, deduplicating retries by the client message key
+         * @description Publishes to the conversation named by the path parameter. The body `conversationId` is retained for client compatibility and must equal the path `{conversationId}`. A mismatch is rejected with 422 `INVALID_INPUT` before any write, so neither conversation is changed.
+         */
         post: operations["sendInstantMessage"];
         delete?: never;
         options?: never;
@@ -7433,8 +7436,10 @@ export interface components {
             conversationId: string;
             subject: string;
         };
+        /** @description Body of a send command; the conversation id must match the request path. */
         InstantSendRequest: {
             facilityId: string;
+            /** @description Must equal the path conversationId; a mismatch returns 422 INVALID_INPUT and writes to neither conversation. */
             conversationId: string;
             body: string;
         };

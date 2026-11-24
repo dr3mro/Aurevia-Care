@@ -85,10 +85,11 @@ const e2eSpecs = (): string[] =>
 /**
  * The exact e2e spec set committed today; a new journey must replace this pin.
  *
- * Adding a spec is an intentional change to the harness and must be recorded
- * here so the tripwire keeps detecting any future unannounced addition. The
- * list is deliberately exhaustive (domain journeys, bilingual variants, smoke
- * and the device-orientation spec) rather than a substring allow-list.
+ * The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
+ * journeys were added by commit 4698687f (BUILD-60), and the device-orientation
+ * journey is pinned here as an intentional harness change. Pinning them keeps
+ * the tripwire honest: the remaining GAP assertions (no staging-RC report, no
+ * light/dark visual checks) still fail the day that evidence actually lands.
  */
 const currentSpecs: readonly string[] = [
   'adminflow/admin-journey.spec.ts',
@@ -96,6 +97,7 @@ const currentSpecs: readonly string[] = [
   'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
+  'navigationDrawerFlow.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
   'orientationChange.spec.ts',
   'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
@@ -104,6 +106,7 @@ const currentSpecs: readonly string[] = [
   'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
+  'responsive-patients.spec.ts',
   'smoke.spec.ts',
   'therapyflow/therapy-journey.spec.ts',
 ];
