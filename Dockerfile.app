@@ -8,7 +8,7 @@
 # stop and restored on the next start.
 
 # node:22-alpine (digest pinned; Dependabot bumps it)
-FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS web
+FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS web
 WORKDIR /src
 COPY project.json ./project.json
 COPY apps/staff-web/package.json apps/staff-web/package-lock.json ./apps/staff-web/
@@ -17,7 +17,7 @@ COPY apps/staff-web ./apps/staff-web
 RUN cd apps/staff-web && npm run build
 
 # maven:3.9-eclipse-temurin-21 (digest pinned; Dependabot bumps it)
-FROM maven:3.9-eclipse-temurin-26@sha256:b2c1ad85954592f9928e84327c65201f308ad9b5d8ed7d5b823717c97bf23fbb AS api
+FROM maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320 AS api
 WORKDIR /src
 COPY apps/api/pom.xml ./apps/api/pom.xml
 RUN mvn -B -q -f apps/api/pom.xml dependency:go-offline -Pno-security || true
@@ -27,7 +27,7 @@ RUN mvn -B -q -f apps/api/pom.xml -Pno-security -DskipTests package spring-boot:
  && cp apps/api/target/*.jar /api.jar
 
 # postgres:17-alpine (digest pinned; Dependabot bumps it)
-FROM postgres:19-alpine@sha256:8b0ff4cdf221f0c53d7fcda681d3b461be725c492cd881c5ec9c0ad25023f188
+FROM postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
 RUN apk add --no-cache nginx openjdk21-jre-headless
 ARG VERSION=dev
 ARG REVISION=unknown

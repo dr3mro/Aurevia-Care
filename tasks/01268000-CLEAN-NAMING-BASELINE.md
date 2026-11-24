@@ -13,7 +13,9 @@
     a reintroduced story-ID folder is rejected, with a red test first.
     Owner decision 2026-11-24: do NOT change any Dockerfile version text. The
     stale image comments were reverted to HEAD and both files left untouched;
-    the directive is recorded in MEMORY.md.
+    the directive is recorded in MEMORY.md. SUPERSEDED later the same day: the
+    owner chose "Make FROM match comments"; see
+    tasks/01268300-PIN-DOCKER-BASE-IMAGES.md and the override row in MEMORY.md.
     Replace the vacuous `tools/tooling.test.ts` bootstrap placeholder with a
     meaningful assertion about the shared toolchain, keeping 100% coverage.
     Do not touch anything under `.agent/` (worker rule and .gitignore:12);
