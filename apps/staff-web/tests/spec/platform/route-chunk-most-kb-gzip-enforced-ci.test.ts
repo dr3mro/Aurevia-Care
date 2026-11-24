@@ -6,11 +6,9 @@
  * `scripts/check-bundle-size.test.mjs` suite and the real post-build gate at
  * `check.sh:18-19`. This file pins the checked-in ceiling, measurement and
  * refusal message of that gate so a silent change to the budget is caught, and
- * holds the CI-enforcement half as an ACTIVE tripwire: the required
- * `Frontend standards` job delegates to frontend-check.sh, which never builds
- * and never invokes the budget script. The repository forbids skipped tests,
- * so on the day CI wires the gate this case must be replaced with a positive
- * proof of enforcement and the clause status flipped to proven.
+ * holds the CI-enforcement half as an ACTIVE positive proof: the required
+ * `Frontend standards` job runs the staff-web canonical check.sh, which builds
+ * the app and invokes the budget script. Dropping that run step fails the proof.
  *
  * Synthetic buffers only: no network, database, fixture or patient data.
  */
@@ -27,17 +25,28 @@ const repoRoot = resolve(here, '../../../../../');
 const read = (path: string): string => readFileSync(resolve(repoRoot, path), 'utf8');
 
 const BUDGET_SCRIPT = 'apps/staff-web/scripts/check-bundle-size.mjs';
-const FRONTEND_CHECK = 'scripts/frontend-check.sh';
+const STAFF_CHECK = 'apps/staff-web/check.sh';
 const DELIVERY_WORKFLOW = '.github/workflows/delivery.yml';
 // WEB-08 states 250 KB; the gate is expressed in decimal bytes for determinism.
 const BUDGET_BYTES = 256_000;
 
-/** Return the trimmed lines of `text` that start with `prefix`. */
-const linesStarting = (text: string, prefix: string): string[] =>
-  text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith(prefix));
+/**
+ * Return the shell command of every `run:` step in a CI job body, accepting both
+ * the inline form (`- run: cmd`) and the named form (`- name: ...` with an
+ * indented `run: cmd`). This lets the enforcement proof survive a harmless YAML
+ * reformat of the step list.
+ */
+function runCommands(job: string): string[] {
+  const commands: string[] = [];
+  for (const line of job.split('\n')) {
+    const match = /^\s*(?:-\s*)?run:\s*(.+)$/.exec(line);
+    const command = match?.[1];
+    if (command !== undefined) {
+      commands.push(command.trim());
+    }
+  }
+  return commands;
+}
 
 /** Return the body of a two-space-indented CI job, excluding its header. */
 function workflowJob(workflow: string, name: string): string {
@@ -49,18 +58,6 @@ function workflowJob(workflow: string, name: string): string {
   const body = workflow.slice(start + header.length);
   const nextJob = body.search(/^ {2}[A-Za-z][A-Za-z0-9_-]*:\s*$/m);
   return nextJob < 0 ? body : body.slice(0, nextJob);
-}
-
-/** Return the npm commands in the per-module subshell of frontend-check.sh. */
-function moduleCommands(script: string): string[] {
-  const startMarker = '  (\n    cd "$module"';
-  const endMarker = '  ) || fail=1';
-  const start = script.indexOf(startMarker);
-  const end = script.indexOf(endMarker, start);
-  if (start < 0 || end < 0) {
-    return [];
-  }
-  return linesStarting(script.slice(start + startMarker.length, end), 'npm ');
 }
 
 describe('WEB-08 clause 3 — route chunks at most 250 KB gzip, enforced in CI', () => {
@@ -89,35 +86,24 @@ describe('WEB-08 clause 3 — route chunks at most 250 KB gzip, enforced in CI',
   });
 
   /**
-   * GAP tripwire: the required CI frontend job does not run the gzip budget
-   * gate. It is an active test because the repository forbids skipped tests.
-   * The two exact arrays are load-bearing: every change to the frontend job's
-   * run steps or to frontend-check.sh's per-module commands — including a
-   * switch to `bash apps/staff-web/check.sh`, which DOES enforce the budget —
-   * fails this case. The follow-up task that wires the gate must replace this
-   * case with a positive proof of enforcement and flip the clause to proven.
+   * Positive proof for the CI-enforcement half of WEB-08 clause 3. The required
+   * "Frontend standards" job now runs the staff-web canonical check.sh, which
+   * builds the app and invokes the WEB-08 budget gate. This case pins that
+   * chain so a future regression that drops the build, the budget script or the
+   * run step fails the build. Synthetic fixtures only.
    */
-  it('GAP: the required CI frontend job never runs the gzip budget gate', () => {
+  it('CI Frontend standards job builds and enforces the WEB-08 gzip budget gate', () => {
     const frontendJob = workflowJob(read(DELIVERY_WORKFLOW), 'frontend');
     expect(frontendJob).toContain('name: Frontend standards');
 
-    // The required job delegates entirely to the shared frontend script.
-    const runSteps = linesStarting(frontendJob, '- run:');
-    expect(runSteps).toEqual(['- run: bash scripts/frontend-check.sh']);
+    const commands = runCommands(frontendJob);
+    expect(commands).toContain('bash scripts/frontend-check.sh');
+    expect(commands).toContain('bash apps/staff-web/check.sh');
 
-    // That script's per-module commands run typecheck, lint and test only.
-    const commands = moduleCommands(read(FRONTEND_CHECK));
-    expect(commands).toEqual([
-      'npm ci --no-audit --no-fund',
-      'npm run typecheck',
-      'npm run lint',
-      'npm test',
-    ]);
-
-    // Narrow absence check: neither the delegated job nor the delegated
-    // command list can produce a build or invoke the budget gate today.
-    const enforcedPath = `${frontendJob}\n${commands.join('\n')}`;
-    expect(enforcedPath).not.toContain('check-bundle-size');
-    expect(enforcedPath).not.toContain('npm run build');
+    // The canonical check really builds and runs the budget script, so CI
+    // refuses an oversized route chunk rather than only typecheck/lint/testing.
+    const staffCheck = read(STAFF_CHECK);
+    expect(staffCheck).toContain('npm run build');
+    expect(staffCheck).toContain('node scripts/check-bundle-size.mjs');
   });
 });
