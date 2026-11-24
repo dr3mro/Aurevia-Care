@@ -135,7 +135,7 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertNotIn("secrets: inherit", caller)
         for name in ("swarm-worker.yml", "swarm-integrator.yml"):
             workflow = yaml.safe_load((WORKFLOWS / name).read_text(encoding="utf-8"))
-            declared = workflow["on"]["workflow_call"].get("secrets", {})
+            declared = workflow[True]["workflow_call"].get("secrets", {})
             self.assertIn("SWARM_TOKEN", declared, name)
             self.assertIn("GITHUB_TOKEN", declared, name)
 
