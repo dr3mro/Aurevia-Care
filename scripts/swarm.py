@@ -1538,13 +1538,12 @@ def parse_tasks(text):
     return tasks
 
 
-ARCHIVE = "docs/archive/TODO-DONE.md"
+ARCHIVE = ""  # Finished tasks live in tasks/done; no separate archive file remains.
 
 
 def archived_done_ids(path=ARCHIVE):
     """Ids and aliases of tasks moved out of TODO.md by archive_done; they still satisfy `depends`."""
-    file = Path(path)
-    text = file.read_text() if file.exists() else ""
+    text = Path(path).read_text() if path and Path(path).exists() else ""
     if path == ARCHIVE:
         text += "\n" + store().archived()
     return {name for t in parse_tasks(text) if t["status"] == "done"
@@ -2159,7 +2158,6 @@ def archived_task_scope(task_id):
     An open PR can belong to a task that was already marked done and moved to the
     archive; its scope must still block overlapping work until the PR merges.
     """
-    text = Path(ARCHIVE).read_text() if Path(ARCHIVE).exists() else ""
     if store().active():
         text += "\n" + store().archived()
     for t in parse_tasks(text):

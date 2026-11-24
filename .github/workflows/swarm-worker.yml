@@ -294,9 +294,83 @@ jobs:
           if-no-files-found: ignore
           # Kept for a week so a blocked or failed publish never loses the work.
           retention-days: 7
+  # Candidate code is validated here with NO secrets and read-only contents.
+  # Publication below runs trusted scripts only and refuses a bundle that is
+  # not the exact commit this job validated.
+  validate:
+    name: Validate candidate commit (no secrets)
+    needs: work
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      passed: ${{ steps.gate.outputs.passed }}
+      sha: ${{ steps.candidate.outputs.sha }}
+    services:
+      postgres:
+        image: postgres:17.12@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      AUREVIA_PG_ADMIN: postgres
+    steps:
+      # Trusted scripts come from the default branch; candidate source comes
+      # only from the bundle produced by the work job.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: ./.github/actions/setup-tooling-python
+      - name: Download the worker bundle
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: worker-${{ fromJSON(inputs.task).id }}
+          path: results/worker-${{ fromJSON(inputs.task).id }}
+      - name: Resolve the candidate commit and put trusted scripts in its tree
+        id: candidate
+        env:
+          TASK_ID: ${{ fromJSON(inputs.task).id }}
+        run: |
+          set -euo pipefail
+          bundle="results/worker-$TASK_ID/result.bundle"
+          if [[ ! -s "$bundle" ]]; then echo "no candidate bundle to validate" >&2; exit 1; fi
+          git fetch -q "$bundle" HEAD:refs/remotes/candidate
+          sha=$(git rev-parse refs/remotes/candidate)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          git worktree add -q --detach candidate-tree "$sha"
+          cp -R scripts/. candidate-tree/scripts/
+      - name: Run the trusted gate on the candidate tree
+        id: gate
+        run: |
+          set +e
+          (cd candidate-tree && bash scripts/worker-check.sh) > validate.log 2>&1
+          code=$?
+          set -e
+          tail -80 validate.log
+          if [[ "$code" -eq 0 ]]; then echo "passed=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: validate-${{ fromJSON(inputs.task).id }}
+          path: validate.log
+          if-no-files-found: ignore
+          retention-days: 3
   publish:
     name: Publish result
-    needs: work
+    needs: [work, validate]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -305,6 +379,10 @@ jobs:
       pull-requests: write
       issues: write
       actions: write
+    # This job holds credentials but runs NO candidate code. It consumes only
+    # the SHA that the isolated validate job proved.
+    env:
+      VALIDATED_SHA: ${{ needs.validate.outputs.sha }}
     steps:
       # Trusted copy of the scripts: the work job never had a token and cannot
       # alter what runs here.
@@ -320,6 +398,27 @@ jobs:
         with:
           name: worker-${{ fromJSON(inputs.task).id }}
           path: results/worker-${{ fromJSON(inputs.task).id }}
+      - name: Refuse to publish an unvalidated candidate
+        env:
+          PASSED: ${{ needs.validate.outputs.passed }}
+          SHA: ${{ needs.validate.outputs.sha }}
+        run: |
+          if [[ "$PASSED" != "true" || -z "$SHA" ]]; then
+            echo "::error::Candidate was not validated; no branch or pull request will be published."
+            echo "PUBLISH=skip" >> "$GITHUB_ENV"
+          fi
+      - name: Re-check that the bundle is exactly the validated commit
+        if: env.PUBLISH != 'skip'
+        env:
+          TASK_ID: ${{ fromJSON(inputs.task).id }}
+        run: |
+          set -euo pipefail
+          bundle="results/worker-$TASK_ID/result.bundle"
+          test -s "$bundle"
+          git fetch -q "$bundle" HEAD:refs/remotes/validated-candidate
+          actual=$(git rev-parse refs/remotes/validated-candidate)
+          [[ "$actual" == "$VALIDATED_SHA" ]] || {
+            echo "bundle $actual is not the validated commit $VALIDATED_SHA" >&2; exit 1; }
       - name: Warn when SWARM_TOKEN is not configured
         env:
           HAS_SWARM_TOKEN: ${{ secrets.SWARM_TOKEN != '' }}
@@ -328,6 +427,7 @@ jobs:
             echo "::warning title=SWARM_TOKEN missing::Falling back to the job token: it cannot push workflow files or open pull requests that trigger other workflows."
           fi
       - name: Push the branch and open the pull request
+        if: env.PUBLISH != 'skip'
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           # Issues and labels use the job's own token, which always has issues: write.

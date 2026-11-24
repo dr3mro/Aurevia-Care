@@ -20,7 +20,7 @@ ID_NAME = re.compile(
     re.IGNORECASE)
 JAVA_PACKAGE = re.compile(r"^\s*package\s+([\w.]+)\s*;", re.MULTILINE)
 SKIP = {".git", "node_modules", ".agent", "target", "__pycache__"}
-SKIP_PREFIXES = ("docs/archive/", "docs/swarm/")
+SKIP_PREFIXES = ("docs/pr/", "docs/swarm/")
 
 
 def tracked_files(root):

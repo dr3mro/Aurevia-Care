@@ -350,7 +350,7 @@ def _collect_task_and_evidence(ctx, root):
     if not task_id:
         return ctx
     task_path = Path(root) / "tasks" / f"{task_id}.md"
-    notes = sorted((Path(root) / ".agent" / "pr-notes").glob(f"{task_id}-*.md"))
+    notes = sorted((Path(root) / "docs" / "pr" / "notes").glob(f"{task_id}-*.md"))
     return GateContext(**{**ctx.__dict__,
                           "task_text": task_path.read_text() if task_path.is_file() else "",
                           "evidence_text": notes[-1].read_text() if notes else ""})
@@ -380,12 +380,16 @@ def main(argv=None):
     parser.add_argument("--event-path", required=True)
     parser.add_argument("--event-name", required=True)
     parser.add_argument("--root", default=".")
+    # The verifier runs from the trusted base checkout, but the manifest and
+    # ancestry describe the revision under test and live in a separate checkout.
+    # Reading them from --root would judge a stale revision.
+    parser.add_argument("--head-root", default=None)
     parser.add_argument("--required-checks", default=os.environ.get("SWARM_GATE_REQUIRED_CHECKS", ""))
     args = parser.parse_args(argv)
     try:
         event = json.loads(Path(args.event_path).read_text())
         required = tuple(n.strip() for n in args.required_checks.split(",") if n.strip())
-        ctx = collect_context(event, args.event_name, args.root, required)
+        ctx = collect_context(event, args.event_name, args.root, required, args.head_root)
         result = evaluate(ctx)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Swarm gate: verification error: {error}", file=sys.stderr)

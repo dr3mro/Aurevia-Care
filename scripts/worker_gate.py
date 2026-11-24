@@ -401,7 +401,7 @@ def find_notes_file(story_id, root="."):
     """Newest committed notes file for a story, as a repository-relative path."""
     if not story_id:
         return ""
-    pattern = str(Path(root) / ".agent" / "pr-notes" / (glob.escape(story_id) + "-*.md"))
+    pattern = str(Path(root) / "docs" / "pr" / "notes" / (glob.escape(story_id) + "-*.md"))
     matches = sorted(glob.glob(pattern))
     return str(Path(matches[-1]).relative_to(root)) if matches else ""
 

@@ -289,6 +289,34 @@ class ModelAndCLITests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("evidence_schema: failed", out.getvalue())
 
+    def test_main_accepts_head_root_for_the_tested_checkout(self):
+        """The Swarm gate workflow checks the manifest out of --head-root, not --root."""
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            path = base / "event.json"
+            path.write_text(json.dumps({"pull_request": {
+                "number": 42, "title": "TASK-01: x", "draft": False,
+                "head": {"sha": HEAD, "ref": "swarm/TASK-01-7"},
+                "base": {"sha": BASE}, "labels": []}}))
+            (head / gate.MANIFEST_PATH).parent.mkdir(parents=True)
+            (head / gate.MANIFEST_PATH).write_text(json.dumps(manifest_data()))
+            details = {"title": "TASK-01: x", "labels": [], "commits": []}
+            out, err = io.StringIO(), io.StringIO()
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"), \
+                 mock.patch.object(gate.subprocess, "run",
+                                   return_value=subprocess.CompletedProcess([], 0)), \
+                 mock.patch.object(gate, "collect_context", wraps=gate.collect_context) as collect, \
+                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                try:
+                    code = gate.main(["evaluate", "--event-path", str(path),
+                                      "--event-name", "pull_request", "--root", str(base),
+                                      "--head-root", str(head)])
+                except SystemExit as exit_error:
+                    code = exit_error.code
+            self.assertNotEqual(code, 2, err.getvalue())
+            self.assertEqual(collect.call_args.kwargs["head_root"], str(head))
+
     def test_main_handles_bad_event(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "event.json")

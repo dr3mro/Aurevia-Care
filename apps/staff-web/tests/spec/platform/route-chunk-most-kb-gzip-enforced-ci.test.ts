@@ -6,11 +6,9 @@
  * `scripts/check-bundle-size.test.mjs` suite and the real post-build gate at
  * `check.sh:18-19`. This file pins the checked-in ceiling, measurement and
  * refusal message of that gate so a silent change to the budget is caught, and
- * holds the CI-enforcement half as an ACTIVE tripwire: the required
- * `Frontend standards` job delegates to frontend-check.sh, which never builds
- * and never invokes the budget script. The repository forbids skipped tests,
- * so on the day CI wires the gate this case must be replaced with a positive
- * proof of enforcement and the clause status flipped to proven.
+ * proves CI enforcement: the required `Frontend standards` job runs the
+ * module's canonical check.sh, which builds the app and invokes the budget
+ * script. The shared frontend-check.sh still supplies repository-wide policy.
  *
  * Synthetic buffers only: no network, database, fixture or patient data.
  */
@@ -89,35 +87,24 @@ describe('WEB-08 clause 3 — route chunks at most 250 KB gzip, enforced in CI',
   });
 
   /**
-   * GAP tripwire: the required CI frontend job does not run the gzip budget
-   * gate. It is an active test because the repository forbids skipped tests.
-   * The two exact arrays are load-bearing: every change to the frontend job's
-   * run steps or to frontend-check.sh's per-module commands — including a
-   * switch to `bash apps/staff-web/check.sh`, which DOES enforce the budget —
-   * fails this case. The follow-up task that wires the gate must replace this
-   * case with a positive proof of enforcement and flip the clause to proven.
+   * Positive CI-enforcement proof. The required frontend job runs the shared
+   * policy script and each module's canonical check.sh. The staff-web check
+   * builds the app and invokes the gzip budget gate, so a chunk over 250 KB
+   * fails the only required branch check.
    */
-  it('GAP: the required CI frontend job never runs the gzip budget gate', () => {
+  it('the required CI frontend job runs the canonical budget-enforcing check', () => {
     const frontendJob = workflowJob(read(DELIVERY_WORKFLOW), 'frontend');
     expect(frontendJob).toContain('name: Frontend standards');
+    expect(frontendJob).toContain('run: bash scripts/frontend-check.sh');
+    expect(frontendJob).toContain('run: bash apps/staff-web/check.sh');
+    expect(frontendJob).toContain('run: bash apps/patient-mobile/check.sh');
 
-    // The required job delegates entirely to the shared frontend script.
-    const runSteps = linesStarting(frontendJob, '- run:');
-    expect(runSteps).toEqual(['- run: bash scripts/frontend-check.sh']);
-
-    // That script's per-module commands run typecheck, lint and test only.
+    // The policy script keeps repository-wide rules; the canonical script
+    // supplies the build and the budget gate that plain `npm test` lacks.
     const commands = moduleCommands(read(FRONTEND_CHECK));
-    expect(commands).toEqual([
-      'npm ci --no-audit --no-fund',
-      'npm run typecheck',
-      'npm run lint',
-      'npm test',
-    ]);
-
-    // Narrow absence check: neither the delegated job nor the delegated
-    // command list can produce a build or invoke the budget gate today.
-    const enforcedPath = `${frontendJob}\n${commands.join('\n')}`;
-    expect(enforcedPath).not.toContain('check-bundle-size');
-    expect(enforcedPath).not.toContain('npm run build');
+    expect(commands).toContain('npm test');
+    const moduleCheck = read('apps/staff-web/check.sh');
+    expect(moduleCheck).toContain('npm run build');
+    expect(moduleCheck).toContain('node scripts/check-bundle-size.mjs');
   });
 });
