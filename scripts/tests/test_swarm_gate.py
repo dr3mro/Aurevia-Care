@@ -486,5 +486,15 @@ class GitHubContextTests(unittest.TestCase):
                          ["gh", "--repo", "dr3mro/Aurevia-Care"])
 
 
+class TrustedVerifierCheckoutTests(unittest.TestCase):
+    """The verifier follows current main, not a PR's stale recorded base SHA."""
+
+    def test_workflow_checks_out_current_protected_branch(self):
+        workflow = (ROOT / ".github" / "workflows" / "swarm-gate.yml").read_text(encoding="utf-8")
+        self.assertIn("github.event.merge_group.base_sha || github.event.repository.default_branch",
+                      workflow)
+        self.assertNotIn("github.event.pull_request.base.sha", workflow)
+
+
 if __name__ == "__main__":
     unittest.main()
