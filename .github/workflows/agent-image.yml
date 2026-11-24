@@ -12,10 +12,10 @@ on:
     inputs:
       opencode_version:
         description: OpenCode V2 CLI npm version to install (@opencode/cli)
-        default: 2.3.2
+        default: 2.4.1
       opencode_integrity:
         description: npm integrity (sha512-...) of that version; required when the version is changed
-        default: sha512-U/DD6X8kgnEFM3VYT7+QN/UJotW++qOxTJtPEUiNzKwu9tNHtAC1jOtup1gpk773j0AFNmMBbLNou4YkdvlRKA==
+        default: sha512-3TbGzJO3Y7NAR4oUvNkJtr1YREZIlc7iKKZflkHALjchMgEMGnekX26edv8icleNA60pq86bZcDN/aQ+I3pQPA==
 permissions:
   contents: read
   packages: write
@@ -38,8 +38,8 @@ jobs:
       - name: Build and push
         env:
           GH_TOKEN: ${{ github.token }}
-          OPENCODE_VERSION: ${{ inputs.opencode_version || '2.3.2' }}
-          OPENCODE_INTEGRITY: ${{ inputs.opencode_integrity || 'sha512-U/DD6X8kgnEFM3VYT7+QN/UJotW++qOxTJtPEUiNzKwu9tNHtAC1jOtup1gpk773j0AFNmMBbLNou4YkdvlRKA==' }}
+          OPENCODE_VERSION: ${{ inputs.opencode_version || '2.4.1' }}
+          OPENCODE_INTEGRITY: ${{ inputs.opencode_integrity || 'sha512-3TbGzJO3Y7NAR4oUvNkJtr1YREZIlc7iKKZflkHALjchMgEMGnekX26edv8icleNA60pq86bZcDN/aQ+I3pQPA==' }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}-agent"
           cp apps/api/pom.xml .github/agent-image/pom.xml
