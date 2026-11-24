@@ -85,7 +85,7 @@ class DeliveryStateTest(unittest.TestCase):
         self.assertEqual(swarm.delivery_state(list(reversed(runs)), HEAD), "failed")
 
     def test_cancelled_stale_head_does_not_mask_the_current_head(self):
-        """Delivery cancels stale PR runs; only the current head can be merged."""
+        """A cancelled run for a stale head cannot mask the current head's verdict."""
         runs = [delivery_run(sha=OLD, conclusion="cancelled")]
         self.assertEqual(swarm.delivery_state(runs, HEAD), "missing")
         self.assertEqual(swarm.delivery_state(
