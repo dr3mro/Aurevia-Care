@@ -65,7 +65,7 @@ Entry point to test trace: `page.goto('/e2e/reception/reception-harness.html')` 
    Test Files  1 failed | 267 passed (268)
    Tests       1 failed | 3044 passed (3045)
    ```
-   exit 1. Every stage before Vitest passed: `gen:api:check`, `npm run typecheck`, `npm run lint`, `npm run build`, bundle-size gate. The only failure is the pre-existing WEB-10 spec-set tripwire in `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`: it pins 9 e2e specs while 14 were already committed on main before this change (15 with the new spec). Its own comment says "a new journey must replace this pin". The file is outside this task's scope. The same failure was reproduced at baseline before the new spec existed (`1 failed | 3044 passed`, 14 vs 9).
+   exit 1. Every stage before Vitest passed: `gen:api:check`, `npm run typecheck`, `npm run lint`, `npm run build`, bundle-size gate. The only failure is the pre-existing WEB-10 spec-set tripwire in `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`: it pins 9 e2e specs while 14 were already committed on main before this change (15 with the new spec). Its own comment says "a new journey must replace this pin". The file is outside this task's scope. The same failure was reproduced at baseline before the new spec existed (`1 failed | 3044 passed`, 14 vs 9). **Superseded by segment 3**, which refreshed the pin and made this check green.
 6. `python3 -I scripts/check-constraints.py` (repo root) — exit 0, no findings; no threshold, exclusion, skip or suppression added.
 7. `npx playwright install chromium` and `npx playwright install-deps chromium` were run once to make the local image capable of launching the browser; these change only the tool cache/OS packages, not the repository.
 8. OWASP Dependency-Check and SpotBugs are not applicable: this is a test-only Playwright spec with no dependency change and no Java source or compiled bytecode. The dependency set is identical to the reviewed baseline (no new CVE surface) and SpotBugs analyses `apps/api` classes, a module this change does not touch. No false claim of running them is made; `check-constraints.py` exit 0 confirms no gate was weakened.
@@ -130,6 +130,46 @@ Fresh tool evidence gathered after the merge (all exit 0 unless stated):
 
 Blocker classification (per the newest daily note's rule): both remaining items are **pre-existing / out of scope**, not in-scope defects, so no code change is justified here. (1) The compact-width layout defect is real production behavior in `SchedulingScreen.tsx`/`ReceptionNav.tsx`, outside this task's single-file scope; it is routed via the existing `task-requests` block below. (2) The `check.sh` red is a pre-existing `main` red (the WEB-10 tripwire pins 9 specs while main already had 14 before this spec); the owner/follow-up task below owns it. Segment 1's three reviewer GO verdicts stand because no production or spec code changed in segment 2.
 
+## Segment 3 — coverage-check repair (repair attempt 1 of 2)
+
+The harness returned the `apps/staff-web/check.sh` failure from the WEB-10 spec-set tripwire at
+`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`
+(`expected [ …(15) ] to deeply equal [ …(9) ]`). Segments 1–2 classified this as pre-existing and
+out of scope; the repair instruction is explicit that the failing check must be made green, so
+this segment refreshes the stale pin.
+
+Change: `currentSpecs` in that file now lists all 15 e2e specs committed on the branch instead of
+9. This is exactly the maintenance the test's own comment mandates ("a new journey must replace
+this pin"): the tripwire still compares the full dynamic `e2eSpecs()` set against the pin, so it
+stays active for future additions. No threshold was lowered, no exclusion or skip added, and no
+test was weakened. Only this one test-artifact file changed; the in-scope spec from segment 1 was
+not rewritten.
+
+### Branch-to-test list for the repair
+
+| Branch / condition | Test / assertion |
+|---|---|
+| committed e2e spec set equals the pin (`automate-critical-journey-supported-role-real-browser.test.ts:166`) | GAP tripwire test; `currentSpecs` updated from 9 to the 15 committed spec paths, including the 6 added on main and this story's `responsive-scheduling.spec.ts` |
+| visual-check vocabulary still absent (`:173-178`) | same test's `visualChecks` filter; grep over all 15 specs returned no `toHaveScreenshot`/`toMatchSnapshot`/`getComputedStyle`/`data-theme`/`colorScheme`, so the empty-set assertion holds |
+| 7 recognised journeys still bilingual with RTL `dir` and blocking axe gate (`:104-129`) | positive proof test; the 7 recognised journey files and their `toHaveAttribute('dir'` / axe assertions were left untouched |
+| wrong-role route guard (`:136-150`) | negative test; unchanged |
+| compile-time `Role` union (`:180-193`) | `expectTypeOf<Role>()` tripwire; unchanged |
+
+### Repair evidence (tool commands, final lines)
+
+| Command | Result |
+|---|---|
+| `cd apps/staff-web && npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts --reporter=dot` | 3 passed (1 failed + 2 passed before), exit 0 |
+| `cd apps/staff-web && npx tsc --noEmit -p tsconfig.json` | exit 0 |
+| `cd apps/staff-web && npx eslint tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts --max-warnings 0` | exit 0 |
+| `python3 -I scripts/check-constraints.py` | exit 0, no findings |
+| `bash apps/staff-web/check.sh` | 271 files / 3051 tests passed; coverage 100% (stmts 5107/5107, branches 2634/2634, funcs 1697/1697, lines 4903/4903), exit 0 |
+
+One full `check.sh` run hit an unrelated load flake in `src/components/ApiPage.test.tsx:211`
+(`onSessionExpired` called 0 times under parallel load); that file passed 3/3 in isolation and
+passed in the subsequent full green run. It was not modified — it is unrelated to this change and
+weakening it would violate the no-exclusion rule. Evidence source: executed tool commands.
+
 ## Review verdicts
 
 - smartclinic-code-reviewer: GO
@@ -138,10 +178,10 @@ Blocker classification (per the newest daily note's rule): both remaining items 
 
 ## Why this is not finished
 
-The one repository file is implemented and its Playwright matrix is green (44 passed, 6 documented fixmes), re-confirmed after the segment-2 merge. The in-scope deliverable is complete; two out-of-scope items prevent an unqualified "done":
+The in-scope spec is implemented and its Playwright matrix is green (44 passed, 6 documented fixmes), re-confirmed after the segment-2 merge. The WEB-10 spec-set tripwire that made `check.sh` red in segments 1–2 was refreshed in segment 3 and the full staff-web check is now green (271 files / 3051 tests, 100% coverage, exit 0). One out-of-scope item still prevents an unqualified "done":
 
-1. `bash apps/staff-web/check.sh` exits 1 solely because of the pre-existing WEB-10 e2e spec-set tripwire (`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`, expected 9 specs, received 15). It was already red at baseline (14 vs 9) and remains the single failure on the fresh post-merge run (`Tests 1 failed | 3050 passed (3051)`). The pin lives outside this task's scope. Next step: the maintainer or a following task updates `currentSpecs` to include all committed specs, then reruns check.sh.
-2. Three assertions per compact phone project are legitimately `test.fixme` because of the production nav/row layout defect described above; a production fix is required before WEB-07/UX-01 can be claimed green on phones. Next step: the task below fixes `SchedulingScreen`/`ReceptionNav`, then remove the three `test.fixme` guards.
+1. ~~`bash apps/staff-web/check.sh` red on the WEB-10 spec-set tripwire.~~ **Resolved in segment 3:** `currentSpecs` now pins all 15 committed specs; `check.sh` is green (3051 passed, 100% coverage). The tripwire remains active for future spec additions.
+2. Three assertions per compact phone project are legitimately `test.fixme` because of the production nav/row layout defect described above; a production fix is required before WEB-07/UX-01 can be claimed green on phones. Next step: the task below fixes `SchedulingScreen`/`ReceptionNav`, then remove the three `test.fixme` guards. This is a separate production task and was not changed in this repair.
 
 ```task-requests
 [
