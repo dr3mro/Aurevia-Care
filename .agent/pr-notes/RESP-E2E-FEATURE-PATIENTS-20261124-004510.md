@@ -1,5 +1,27 @@
 # RESP-E2E-FEATURE-PATIENTS — responsive patients browser journey
 
+## Repair attempt 1 — coverage/tripwire fix (RESOLVED)
+
+The coverage gate failed at `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`: the `currentSpecs` pin listed 9 e2e specs while the tree contains 15. Six specs had been added by other work (5) and this story (`responsive-patients.spec.ts`, 1). The other two GAP assertions in that test (no playwright/e2e workflow files, and no light/dark visual-check vocabulary in any spec) were re-checked and still hold, so they were left untouched.
+
+Fix: updated the `currentSpecs` **expected-value pin** to all 15 committed specs. This is test-only data, not a production change; the assertion still compares the exact spec set, so a 16th spec will trip it again. No threshold was lowered, no exclusion or suppression added, no test skipped. The pin file is outside the original single-file story scope but is explicitly within this repair task's scope.
+
+### Branch-to-test list
+
+No production lines or branches were added or changed in this repair (the only edit is the `currentSpecs` literal in a test file), so there are no new production branches requiring coverage tests. Coverage of all existing production lines/branches is unchanged and proven by the full gate below.
+
+| New/changed production branch | Covering test |
+|---|---|
+| none — test-only expected-value pin update | full suite: `bash apps/staff-web/check.sh` → 100% on all metrics |
+
+The 15 pinned specs are concrete committed browser artifacts; no code path was made unreachable or deleted.
+
+### Repair verification (tool evidence)
+
+- `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` → `Test Files 1 passed (1)`, `Tests 3 passed (3)`.
+- `bash apps/staff-web/check.sh` → exit 0; `Test Files 268 passed (268)`, `Tests 3045 passed (3045)`; coverage `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`, `No files with missing coverage. 267 files fully covered.` All earlier stages (generated-client check, `tsc --noEmit`, lint, build, bundle-size) passed before the coverage stage.
+- The jsdom "Not implemented: navigation" console messages during the run are pre-existing, non-fatal noise and did not fail any test.
+
 ## Summary
 
 Added one new Playwright spec, `apps/staff-web/e2e/responsive-patients.spec.ts`, that proves in a real browser that patient registration and search work at phone, tablet and desktop widths in English and Arabic RTL, with the keyboard and with the device's primary pointer. It reuses the existing reception harness and synthetic reception API; no production source, harness, config, dependency or tracker was changed. Patient overview is explicitly **not** proven: it is unreachable in this single-file scope and is recorded as `test.fixme` plus a task request.
@@ -35,8 +57,8 @@ All commands were run from the repository checkout. Evidence is from executed to
 
 - `npm run e2e -- --config e2e/playwright.config.ts --project=phone-portrait-390x844 --project=tablet-portrait-820x1180 --project=laptop-1280x720 responsive-patients` → `12 passed (15.2s)` on the final re-run, `3 skipped` (the three overview `test.fixme` instances). Entry-point trace: harness `/e2e/reception/reception-harness.html` → `ReceptionWorkstation` → real `PatientsPage` → `PatientsScreen`/`RegisterPatientForm` → stubbed `POST /api/v1/patients` → asserted registration status and search result cells.
 - Full installed Chromium matrix, `npm run e2e -- --config e2e/playwright.config.ts responsive-patients` → `40 passed (43.9s)`, `10 skipped` (overview fixme only). Covers 360/390 phone, 844x390 landscape phone, 768/820/1024/1180 tablets, 1280 laptop, 1920 desktop and the base `chromium` project. WebKit/Firefox binaries are not installed in this worker image, so those cross-browser projects are omitted by the config rather than failed.
-- `bash apps/staff-web/check.sh` → **fails at an existing tripwire**, final lines: `Test Files  1 failed | 267 passed (268)`, `Tests  1 failed | 3044 passed (3045)`. The earlier stages (generated-client check, typecheck, lint, build, bundle-size gate) all passed; `set -e` stops at `npm run test:coverage`. Failing test: `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`, which pins the exact e2e spec set to 9 files.
-- Pre-existing proof: the same tripwire was run with the new spec temporarily removed → `Test Files  1 failed (1)`, `Tests  1 failed | 2 passed (3)`, received 14 specs vs pinned 9. The pin was already red on the base tree because five other specs had been added by other work; this story adds a 15th. The pin file is outside the task scope and was not edited.
+- `bash apps/staff-web/check.sh` → (pre-repair observation, superseded by the Repair attempt 1 section above) **failed at an existing tripwire**, final lines: `Test Files  1 failed | 267 passed (268)`, `Tests  1 failed | 3044 passed (3045)`. The earlier stages (generated-client check, typecheck, lint, build, bundle-size gate) all passed; `set -e` stopped at `npm run test:coverage`. Failing test: `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`, which pinned the exact e2e spec set to 9 files. The repaired, green re-run is recorded under Repair attempt 1.
+- Pre-existing proof (recorded during the original single-file story run; pin subsequently refreshed in repair attempt 1 above): the same tripwire was run with the new spec temporarily removed → `Test Files  1 failed (1)`, `Tests  1 failed | 2 passed (3)`, received 14 specs vs pinned 9. The pin was already red on the base tree because five other specs had been added by other work; this story adds a 15th. The pin file was outside the original single-file story scope and was not edited during that run.
 - `npx vitest run --coverage --exclude 'e2e/**' --exclude 'tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts'` → `Test Files  267 passed (267)`, `Tests  3042 passed (3042)`, `No files with missing coverage. 267 files fully covered.`
 - `npm run typecheck` (`tsc --noEmit -p tsconfig.json`) → exit 0. Note: `tsconfig.json` excludes `e2e/`, so this does not typecheck the new spec.
 - `npx tsc --noEmit -p tsconfig.lint.json` (includes `e2e/`) → exit 0.
@@ -82,7 +104,7 @@ All six reviewers reported no Critical or Required finding after the plan gaps a
 
 ## Findings
 
-1. **Pre-existing gate failure (tool evidence).** `bash apps/staff-web/check.sh` is red at `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`: the `currentSpecs` pin holds 9 spec paths while the tree contains 14 before this story and 15 after. The test comment says "a new journey must replace this pin". The file is outside the task scope, so it was not edited. A task request asks the owner to refresh the pin.
+1. **Pre-existing gate failure — RESOLVED in repair attempt 1 (tool evidence).** `bash apps/staff-web/check.sh` was red at `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`: the `currentSpecs` pin held 9 spec paths while the tree contained 14 before this story and 15 after. Repair attempt 1 refreshed the pin to all 15 committed specs; the full check is now green (see Repair attempt 1 above). The obsolete "refresh the pin" task request was removed.
 2. **Pre-existing reception journey failure (tool evidence).** While verifying the browser environment, `npm run e2e -- --project=chromium e2e/reception/reception-journey.spec.ts --retries=0` produced `2 failed`: the seeded-row check-in assertion expects a disabled button that no longer exists after reload, and the Arabic toggle `getByRole('button', { name: 'العربية' })` resolves to two elements (the harness toggle and a scheduling language toggle). This story's spec scopes the toggle to the harness's direct child button and does not depend on check-in. Not fixed: outside scope.
 3. **Compact scheduling overflow (tool evidence).** At 390 px the reception harness co-mounts `SchedulingPage`; the document measures `scrollWidth 640` vs `clientWidth 390`, and in RTL the fixed scheduling rail shifts patients controls to x≈574 and intercepts `tap()`. The horizontal-scroll assertion is scoped to `[data-part=patients-page]` on compact (document-level is kept on medium/expanded), and a local style tag hides `[data-scheduling-page]` so touch is measured on the patients screen. No patients assertion was weakened; the scheduling defect is recorded for a separate task.
 4. **Compact table does not need inline scrolling (tool evidence).** The labelled region's clinical cells wrap (`overflow-wrap: anywhere`), so `scrollWidth <= clientWidth` inside the region; forcing `scrollWidth > clientWidth` was impossible without a production change. Reachability is instead proven by role/label/tabIndex, Tab focus and every column box being inside the viewport.
@@ -98,7 +120,7 @@ All six reviewers reported no Critical or Required finding after the plan gaps a
 ## Why this is not finished
 
 - **Patient overview is not proven.** No dev harness mounts `PatientOverviewPage`, and `src/app/navigation.ts` denies `/patients/:id` to the harness's fixed `reception` role. It is one documented `test.fixme` per project and a task request asks for a clinician-role harness. No overview assertion was weakened or claimed as passing.
-- **`bash apps/staff-web/check.sh` is red** solely at the pre-existing spec-set tripwire described in Findings 1; the new spec cannot be added without tripping it, and the pin file is outside scope. All other check stages pass, and a coverage run excluding that one test is 100%.
+- **`bash apps/staff-web/check.sh` is green** after repair attempt 1 refreshed the spec-set tripwire pin described in Findings 1: 268 files / 3045 tests passed and coverage is 100% on all four metrics with no exclusion of the previously failing test. The remaining open items below (overview harness, cross-browser engines) are separate story scope, not gate failures.
 - **Cross-browser engines not observed locally.** WebKit/Firefox binaries are absent in this worker image; the config omits them. Only Chromium projects were executed; CI must provide the WebKit/Firefox evidence.
 
 ## task-requests
@@ -109,12 +131,6 @@ All six reviewers reported no Critical or Required finding after the plan gaps a
     "title": "Add a clinician-role harness for the patient overview responsive journey",
     "details": "RESP-E2E-FEATURE-PATIENTS left the overview screen as a documented test.fixme: no dev harness mounts PatientOverviewPage and navigation.ts denies /patients/:id to the fixed reception role. Provide a dev-only harness/role capability so overview can be exercised at phone, tablet and desktop in en and ar, then replace the fixme with real assertions.",
     "scope": ["apps/staff-web/e2e/**", "apps/staff-web/src/app/**"],
-    "depends": ["RESP-E2E-FEATURE-PATIENTS"]
-  },
-  {
-    "title": "Refresh the WEB-10 e2e spec-set tripwire pin",
-    "details": "tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166 pins currentSpecs to 9 spec files while the tree had 14 before this story and 15 after. Update the pin to the actual committed spec set and reassess the clause-note GAP assertions so check.sh is green again.",
-    "scope": ["apps/staff-web/tests/spec/platform/**"],
     "depends": ["RESP-E2E-FEATURE-PATIENTS"]
   },
   {
