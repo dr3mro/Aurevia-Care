@@ -237,9 +237,13 @@ describe('WEB-09 clause 1 — resilient screens', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByTestId('settings-compare')).toBeNull();
     expect(replyField().value).toBe(outOfOfficeSettings.outOfOfficeReply);
-    const reloadedLeave = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(reloadedLeave);
-    expect(reloadedLeave.defaultPrevented).toBe(false);
+    // The passive effect that removes the listener can run after the status
+    // paints, so poll the observable guard state instead of racing one dispatch.
+    await waitFor(() => {
+      const reloadedLeave = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(reloadedLeave);
+      expect(reloadedLeave.defaultPrevented).toBe(false);
+    });
 
     onSave.mockResolvedValue(undefined);
     fireEvent.change(replyField(), { target: { value: 'Synthetic corrected reply' } });
