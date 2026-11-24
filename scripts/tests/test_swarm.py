@@ -1077,7 +1077,13 @@ class PlanTests(unittest.TestCase):
         import yaml
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         config = yaml.safe_load(text)
-        self.assertEqual(config[True]["workflow_dispatch"]["inputs"]["now"]["type"], "boolean")
+        inputs = config[True]["workflow_dispatch"]["inputs"]
+        self.assertEqual(inputs["now"]["type"], "boolean")
+        self.assertEqual(inputs["ignore_red_main"]["type"], "boolean")
+        self.assertIs(inputs["ignore_red_main"]["default"], False)
+        plan = text.split("  plan:", 1)[1].split("  worker:", 1)[0]
+        self.assertIn("IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}", plan)
+        self.assertIn("--ignore-red-main", plan)
         self.assertIn("github.run_id", config["concurrency"]["group"])
         self.assertIs(config["concurrency"]["cancel-in-progress"], False)
         plan = config["jobs"]["plan"]["concurrency"]

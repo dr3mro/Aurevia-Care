@@ -23,6 +23,10 @@ on:
         description: 'Start immediately instead of queueing behind the running or queued waves'
         type: boolean
         default: false
+      ignore_red_main:
+        description: 'Safety override: plan ordinary work even while the latest Delivery verdict on main is a failure. Leave off unless the red verdict is known to be stale.'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: [tasks/**]
@@ -121,6 +125,7 @@ jobs:
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           LAUNCH_TASK: ${{ inputs.task }}
+          IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}
           IMAGES_REASON: ${{ steps.images.outputs.reason }}
         run: |
@@ -139,7 +144,12 @@ jobs:
           # Repairs and fixes are queued before offering spare workers to backlog tasks.
           # Ready merges use the independent serialized integrator instead of waiting for this wave.
           python3 -I scripts/swarm.py pr-flow --no-wave
-          python3 -I scripts/swarm.py plan-workers --max "$WORKERS" --capacity "$capacity" --repair-run "$REPAIR_RUN" --task "$LAUNCH_TASK"
+          plan_args=(--max "$WORKERS" --capacity "$capacity" --repair-run "$REPAIR_RUN" --task "$LAUNCH_TASK")
+          if [[ "${IGNORE_RED_MAIN:-false}" == true ]]; then
+            plan_args+=(--ignore-red-main)
+            echo "Safety override: red main will not block ordinary work in this wave." >&2
+          fi
+          python3 -I scripts/swarm.py plan-workers "${plan_args[@]}"
   worker:
     # Static name: GitHub renders matrix values in a job name only when the
     # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.

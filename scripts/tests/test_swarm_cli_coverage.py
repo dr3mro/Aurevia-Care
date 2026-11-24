@@ -203,6 +203,26 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertIn("repository rules", emitted["reason"])
         note.assert_not_called()
 
+    def test_main_plan_workers_ignore_red_main_skips_the_check(self):
+        include = [{"id": "CW-001", "kind": "story", "slot": 1, "title": "",
+                    "body": "", "fix": ""}]
+        with mock.patch.object(swarm, "gh_json", return_value=[]), \
+                mock.patch.object(swarm, "main_is_red") as red, \
+                mock.patch.object(swarm, "live_workers", return_value=[]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value="text"), \
+                mock.patch.object(swarm, "reclaim", return_value="text"), \
+                mock.patch.object(swarm, "plan_workers", return_value=include) as planned, \
+                mock.patch.object(swarm, "update_todo"), mock.patch.object(swarm, "note_claims"), \
+                mock.patch.object(swarm, "emit"), \
+                mock.patch("builtins.print") as shown:
+            self.assertEqual(swarm.main(["plan-workers", "--ignore-red-main",
+                                         "--file", str(self.dir / "TODO.md")]), 0)
+        red.assert_not_called()
+        self.assertIs(planned.call_args.kwargs["red"], False)
+        lines = [str(c.args[0]) for c in shown.call_args_list if c.args]
+        self.assertTrue(any("ignore-red-main override active" in line for line in lines))
+
     def test_main_plan_workers_explains_an_empty_wave(self):
         text = (
             "# TODO\n\n"

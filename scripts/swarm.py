@@ -6253,6 +6253,8 @@ def main(argv=None):
     p.add_argument("--file", default="")
     p.add_argument("--repair-run", default="")
     p.add_argument("--task", default="")
+    p.add_argument("--ignore-red-main", action="store_true",
+                   help="plan ordinary work even while main is red (explicit safety override)")
     sub.add_parser("watchdog")
     p = sub.add_parser("pr-flow")
     p.add_argument("--no-wave", action="store_true")
@@ -6396,7 +6398,11 @@ def main(argv=None):
         print(
             f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}."
         )
-        red = main_is_red()
+        red = False if a.ignore_red_main else main_is_red()
+        if a.ignore_red_main:
+            # A red main still gates merges in the integrator; this override only
+            # lets the planner offer ordinary work, so log it.
+            print("planner: ignore-red-main override active; main was not checked")
         include = plan_workers(
             room,
             worker_slots(load_slots(a.slots), busy),
