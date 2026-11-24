@@ -14,11 +14,11 @@ on:
   merge_group:
 permissions:
   contents: read
-# Two runs of this workflow on one branch are redundant: a newer run cancels
-# the older one instead of overlapping it or queueing behind it. Group by
-# repository and branch so forks and other branches keep independent runs.
-# GitHub rejects queue:max together with cancellation, so no queue is declared;
-# the trade-off is that a cancelled exact SHA on main receives no verdict.
+# Branch protection checks the exact SHA, so a cancelled or dropped run leaves
+# the required "Delivery gate" check unreported. Runs on one branch queue
+# instead: cancellation stays off and queue:max keeps up to 100 pending runs,
+# so a re-pushed PR head still receives its own verdict after stale heads finish.
+# Group by repository and branch so forks and other branches stay independent.
 concurrency:
   group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: false
@@ -46,7 +46,7 @@ jobs:
           "$RUNNER_TEMP/actionlint/bin/pip" install -q actionlint-py==1.7.12.25
           # actionlint 1.7.12 predates GitHub's concurrency `queue` key. Ignore
           # only that unknown-key message; scripts/tests/test_workflow_concurrency.py
-          # asserts every workflow declares queue: max.
+          # asserts that Delivery queues and that other workflows declare no queue.
           "$RUNNER_TEMP/actionlint/bin/actionlint" \
             -ignore 'unexpected key "queue" for "concurrency" section'
       - name: Agent pack, docs and secret checks
