@@ -99,3 +99,7 @@
     component tests explicit per-test timeouts, keep 100% coverage, and prove
     with a full bash apps/staff-web/check.sh run. Do not lower a threshold or
     skip a test.
+
+  - evidence:
+    Tool: python3 -I -m unittest discover -s scripts/tests -p 'test_delivery_workflow_gates.py' -v -> Ran 6 tests OK; actionlint delivery.yml, dependabot-auto-merge.yml, swarm-worker.yml, swarm-integrator.yml exit 0; check-docs/check-secrets/check-constraints exit 0. Dependabot approval now exits 1 and the merge step has an if: guard. Delivery runs python-coverage.sh and both module check.sh files. Worker publication has an isolated validate job with SHA binding. Evidence source: executed tool commands; no simulated or human participant.
+  - pr: local scoped commits on main; GitHub delivery not authorized in this request.

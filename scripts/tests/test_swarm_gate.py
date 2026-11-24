@@ -426,5 +426,38 @@ class MaintenancePRTests(unittest.TestCase):
         self.assertEqual(kind, gate.UNKNOWN)
 
 
+class GitHubContextTests(unittest.TestCase):
+    """The gate runs outside a worktree, so every gh call names its repository."""
+
+    def test_no_repo_selector_locally(self):
+        with mock.patch.dict(gate.os.environ, {}, clear=True):
+            self.assertEqual(gate._gh_repo_args(), ())
+
+    def test_repo_selector_from_actions_environment(self):
+        with mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "dr3mro/Aurevia-Care"}):
+            self.assertEqual(gate._gh_repo_args(), ("--repo", "dr3mro/Aurevia-Care"))
+
+    def test_gh_json_uses_repo_selector(self):
+        with mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "dr3mro/Aurevia-Care"}), \
+             mock.patch.object(gate.subprocess, "check_output", return_value=b"{}") as run:
+            gate._gh_json("pr", "view", "42")
+        self.assertEqual(run.call_args.args[0][:5],
+                         ["gh", "--repo", "dr3mro/Aurevia-Care", "pr", "view"])
+
+    def test_collect_context_uses_repo_selector_for_diff(self):
+        event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                  "head": {"sha": HEAD, "ref": "swarm/TASK-01-7"},
+                                  "base": {"sha": BASE}, "labels": []}}
+        details = {"title": "TASK-01: x", "labels": [], "commits": []}
+        with mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "dr3mro/Aurevia-Care"}), \
+             mock.patch.object(gate, "_gh_json", return_value=details), \
+             mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n") as run, \
+             mock.patch.object(gate.subprocess, "run",
+                               return_value=subprocess.CompletedProcess([], 0)):
+            gate.collect_context(event, "pull_request", ".")
+        self.assertEqual(run.call_args.args[0][:3],
+                         ["gh", "--repo", "dr3mro/Aurevia-Care"])
+
+
 if __name__ == "__main__":
     unittest.main()
