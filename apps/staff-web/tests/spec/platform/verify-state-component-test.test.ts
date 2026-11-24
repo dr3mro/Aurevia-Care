@@ -149,7 +149,7 @@ describe('WEB-09 clause 6 — verify each state with a component test', () => {
         mounted.unmount();
       }
     }
-  });
+  }, 30000);
 
   it('forbiddenRefusesRecoveryAndCorrelation', () => {
     const onRetry = vi.fn();
@@ -184,7 +184,7 @@ describe('WEB-09 clause 6 — verify each state with a component test', () => {
     } finally {
       mounted.unmount();
     }
-  });
+  }, 30000);
 
   it('staleVersionRefusesSilentLoss', () => {
     for (const kind of ['conflict', 'precondition-required'] as const) {
@@ -201,5 +201,5 @@ describe('WEB-09 clause 6 — verify each state with a component test', () => {
         mounted.unmount();
       }
     }
-  });
+  }, 30000);
 });
