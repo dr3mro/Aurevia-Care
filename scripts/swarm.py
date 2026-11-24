@@ -2904,17 +2904,20 @@ def update_todo(edit, message, path="", attempts=8):
     return False
 
 
-def claim_open(text, claims):
+def claim_open(text, claims, force=False):
     """Mark the still-open tasks in `claims` ({id: agent}) taken.
 
     Returns `(new_text, granted_ids)`. A task that is already taken or done in
     `text` is left alone and not granted: two plan jobs that read TODO.md a few
-    seconds apart (two pushes) must not both start a worker for it.
+    seconds apart (two pushes) must not both start a worker for it. ``force``
+    is the operator's safety override: it re-grants a stale taken claim so the
+    wave is not silently emptied by a claim another run left behind.
     """
     status = {t["id"]: t["status"] for t in parse_tasks(text)}
     granted = set()
     for task_id, agent in claims.items():
-        if status.get(task_id) == "todo":
+        state = status.get(task_id)
+        if state == "todo" or (force and state == "taken"):
             text = set_task_status(text, task_id, "taken", agent=agent)
             granted.add(task_id)
     return text, granted
@@ -6478,7 +6481,7 @@ def main(argv=None):
             # Re-evaluated on every push retry against the newest TODO.md, so a
             # task another plan job claimed meanwhile is not started twice.
             current = reclaim(current, everything, live)
-            current, won = claim_open(current, claims)
+            current, won = claim_open(current, claims, force=override)
             granted.clear()
             granted.update(won)
             return current

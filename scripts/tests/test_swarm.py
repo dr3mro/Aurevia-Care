@@ -2811,6 +2811,14 @@ class GitTests(unittest.TestCase):
         self.assertEqual(granted_again, set())
         self.assertEqual(again, new)
 
+    def test_force_claim_open_grants_taken_tasks(self):
+        text = "- [-] T-1 · one\n  - agent: swarm-1\n  - scope: a\n"
+        new, granted = swarm.claim_open(text, {"T-1": "swarm-2"})
+        self.assertEqual(granted, set())
+        new, granted = swarm.claim_open(text, {"T-1": "swarm-2"}, force=True)
+        self.assertEqual(granted, {"T-1"})
+        self.assertIn("agent: swarm-2", new)
+
     def test_image_runs_passes_only_string_arguments_to_gh(self):
         seen = []
         def fake(*args):
