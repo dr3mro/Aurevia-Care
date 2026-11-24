@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ActiveOrganizationProvider } from '../../src/api/activeOrganization';
-import { TransportError } from '../../src/api/transport';
+import type { RequestDescriptor } from '../../src/api/client';
+import { TransportError, send } from '../../src/api/transport';
 import type { TransportErrorKind } from '../../src/api/transport';
 import { useApi } from '../../src/api/useApi';
 import { must } from '../must';
@@ -94,6 +95,10 @@ const ALL_KINDS: readonly TransportErrorKind[] = [
 function errorDetails(kind: TransportErrorKind) {
   return { correlationId: kind, code: kind, retryAfterSeconds: undefined };
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('useApi', () => {
   it('moves from loading to ready with the loaded data', async () => {
@@ -266,5 +271,43 @@ describe('useApi', () => {
     await settle(gate, 'default-rows');
 
     expect(data()).toBe('default-rows');
+  });
+
+  it('forwards the loader signal to the transport so an organization switch aborts the fetch', async () => {
+    const fetchPromises: Promise<Response>[] = [];
+    const fetchMock = vi.fn<typeof fetch>((_url, init) => {
+      const pending = new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(new DOMException('aborted', 'AbortError')),
+        );
+      });
+      fetchPromises.push(pending);
+      return pending;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const request: RequestDescriptor = {
+      url: '/api/v1/facilities',
+      method: 'GET',
+      headers: { 'X-Correlation-Id': 'synthetic-correlation-id' },
+    };
+    const load: Loader = (signal) => send(request, { signal });
+
+    const view = renderHarness(load, [], ALPHA);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const firstSignal = fetchMock.mock.calls[0]?.[1]?.signal;
+    expect(firstSignal?.aborted).toBe(false);
+
+    view.rerender(withOrganization(BETA, [], load));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(firstSignal?.aborted).toBe(true);
+    expect(status()).toBe('loading');
+    expect(data()).toBe('none');
+
+    // Await the rejection settling; the aborted request must never paint an error.
+    await act(async () => {
+      await must(fetchPromises[0]).catch(() => undefined);
+      await Promise.resolve();
+    });
+    expect(errorKind()).toBe('none');
   });
 });
