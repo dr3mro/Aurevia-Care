@@ -8,10 +8,10 @@
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": false,
-      "bundleIdentifier": "com.example.aureviacare"
+      "bundleIdentifier": "com.aurevia.patient"
     },
     "android": {
-      "package": "com.example.aureviacare"
+      "package": "com.aurevia.patient"
     }
   }
 }

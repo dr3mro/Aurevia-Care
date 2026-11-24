@@ -95,8 +95,8 @@ def violations(root, files=None, legacy=()):
 def main(root="."):
     bad = violations(root)
     for item in bad:
-        print(f"check-names: {item} is named after a story/task ID; use a business-domain name "
-              "(see CODING_STYLE.md)", file=sys.stderr)
+        print(f"check-names: {item} violates the canonical naming policy; use a "
+              "business-domain name and the aurevia prefix (see CODING_STYLE.md)", file=sys.stderr)
     return 1 if bad else 0
 
 
