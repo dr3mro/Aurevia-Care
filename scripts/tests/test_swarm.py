@@ -1884,6 +1884,19 @@ class AuditTests(unittest.TestCase):
         self.assertNotIn("GH_TOKEN", audit)
         self.assertNotIn("contents: write", audit)
 
+    def test_scheduled_reviews_publish_their_findings_from_agents(self):
+        expected = {
+            "daily-audit.yml": ".agents/audit-findings.json",
+            "daily-qa.yml": ".agents/daily-qa.json",
+            "daily-devsecops.yml": ".agents/daily-devsecops.json",
+            "swarm-strategist.yml": ".agents/strategy.json",
+        }
+        for name, path in expected.items():
+            with self.subTest(workflow=name):
+                text = (ROOT / ".github/workflows" / name).read_text()
+                self.assertIn(f"path: {path}", text)
+                self.assertNotIn("path: .agent/", text)
+
 
 class ScriptModeTests(unittest.TestCase):
     def test_every_script_a_workflow_runs_directly_is_executable(self):
