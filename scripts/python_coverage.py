@@ -12,6 +12,11 @@ import json
 import re
 import subprocess
 import sys
+from pathlib import Path
+
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
 
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 SCRIPT = re.compile(r"^scripts/[^/]+\.py$")
@@ -59,12 +64,15 @@ def full_gaps(report):
 
 def diff_against(base):
     """Unified diff of the scripts against `base`, or None when the base cannot be resolved."""
-    probe = subprocess.run(["git", "rev-parse", "--verify", "-q", base], capture_output=True, text=True)
+    probe = subprocess.run(["git", "rev-parse", "--verify", "-q", base], capture_output=True,
+                           text=True, env=child_environment(read_only=True))
     if probe.returncode != 0:
         return None
-    merge_base = subprocess.run(["git", "merge-base", base, "HEAD"], capture_output=True, text=True)
+    merge_base = subprocess.run(["git", "merge-base", base, "HEAD"], capture_output=True,
+                                text=True, env=child_environment(read_only=True))
     point = merge_base.stdout.strip() or base
-    work = subprocess.run(["git", "diff", "-U0", point, "--", "scripts"], capture_output=True, text=True)
+    work = subprocess.run(["git", "diff", "-U0", point, "--", "scripts"], capture_output=True,
+                          text=True, env=child_environment(read_only=True))
     return work.stdout
 
 

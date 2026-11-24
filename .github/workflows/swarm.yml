@@ -58,8 +58,9 @@ jobs:
     # Planning reads tasks/ and claims tasks, so it never overlaps another
     # plan, whichever wave it belongs to.
     concurrency:
-      group: swarm-plan-${{ github.run_id }}
+      group: swarm-plan-${{ github.repository }}
       cancel-in-progress: false
+      queue: max
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -218,7 +219,7 @@ jobs:
   loop:
     name: Start the next wave
     needs: [plan, worker, integrate]
-    if: always() && needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
+    if: always() && needs.plan.result == 'success' && needs.integrate.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:

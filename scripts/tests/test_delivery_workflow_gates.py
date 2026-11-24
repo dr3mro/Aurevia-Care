@@ -7,6 +7,7 @@ coverage threshold while its tooling job ran plain unittest. Synthetic
 fixtures prove the detectors distinguish the broken shapes from the fixes;
 the real workflows are then asserted so a YAML-only regression fails too.
 """
+import shlex
 import unittest
 
 import yaml
@@ -27,6 +28,23 @@ def run_text(step):
     """Return a step's ``run:`` block as text, or an empty string."""
     body = step.get("run", "")
     return body if isinstance(body, str) else ""
+
+
+def nvd_input(event_name, secret):
+    """Model the workflow's push-only secret expression for synthetic events."""
+    return secret if event_name == "push" else ""
+
+
+def scalar_paths(value, path=()):
+    """Yield every scalar path/value from parsed YAML for structural policy checks."""
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield from scalar_paths(child, (*path, str(key)))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from scalar_paths(child, (*path, str(index)))
+    else:
+        yield path, value
 
 
 def commands(step_list):
@@ -172,6 +190,73 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertIn("integrate-publish", published)
         self.assertNotIn("integrate-validate", published)
 
+    def test_delivery_nvd_secret_is_limited_to_trusted_push_events(self):
+        workflow = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))
+        step = next(s for s in workflow["jobs"]["java-verify"]["steps"]
+                    if s.get("uses") == "./.github/actions/java-verify")
+        expression = "${{ github.event_name == 'push' && secrets.NVD_API_KEY || '' }}"
+        self.assertEqual(step["with"]["nvd-api-key"], expression)
+        for event in ("pull_request", "merge_group", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertEqual(nvd_input(event, "synthetic-secret"), "")
+        self.assertEqual(nvd_input("push", "synthetic-secret"), "synthetic-secret")
+        self.assertEqual(nvd_input("push", ""), "")
+
+    def test_repository_nvd_references_have_one_push_guarded_secret_source(self):
+        expression = "${{ github.event_name == 'push' && secrets.NVD_API_KEY || '' }}"
+        secret_refs = []
+        nvd_refs = []
+        inherited = []
+        for path in sorted((ROOT / ".github").rglob("*.yml")):
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+            relative = str(path.relative_to(ROOT))
+            for scalar_path, value in scalar_paths(document):
+                if not isinstance(value, str):
+                    continue
+                if "secrets.NVD_API_KEY" in value:
+                    secret_refs.append((relative, scalar_path, value))
+                if "NVD_API_KEY" in value or (scalar_path and scalar_path[-1] == "NVD_API_KEY"):
+                    nvd_refs.append((relative, scalar_path, value))
+            if isinstance(document, dict) and document.get("secrets") == "inherit":
+                inherited.append(relative)
+            for job in document.get("jobs", {}).values() if isinstance(document, dict) else []:
+                if isinstance(job, dict) and job.get("secrets") == "inherit":
+                    inherited.append(relative)
+        self.assertEqual(inherited, [])
+        self.assertEqual(len(secret_refs), 1)
+        relative, scalar_path, value = secret_refs[0]
+        self.assertEqual(relative, ".github/workflows/delivery.yml")
+        self.assertEqual(scalar_path[:3], ("jobs", "java-verify", "steps"))
+        self.assertEqual(scalar_path[-2:], ("with", "nvd-api-key"))
+        self.assertEqual(value, expression)
+        self.assertEqual(len(nvd_refs), 2)
+        action_refs = [item for item in nvd_refs
+                       if item[0] == ".github/actions/java-verify/action.yml"]
+        delivery_refs = [item for item in nvd_refs
+                         if item[0] == ".github/workflows/delivery.yml"]
+        self.assertEqual(len(action_refs), 1)
+        self.assertEqual(action_refs[0][1][-2:], ("env", "NVD_API_KEY"))
+        self.assertEqual(action_refs[0][2], "${{ inputs.nvd-api-key }}")
+        self.assertEqual(len(delivery_refs), 1)
+        self.assertEqual(delivery_refs[0][1][-2:], ("with", "nvd-api-key"))
+        self.assertEqual(delivery_refs[0][2], expression)
+
+    def test_delivery_pins_actionlint_and_only_ignores_the_queue_key(self):
+        workflow = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))
+        step = next(s for s in workflow["jobs"]["policy"]["steps"]
+                    if s.get("name") == "Workflow lint (actionlint)")
+        run = run_text(step)
+        self.assertIn("actionlint-py==1.7.12.25", run)
+        invocation = run[run.index('"$RUNNER_TEMP/actionlint/bin/actionlint"'):]
+        tokens = shlex.split(invocation)
+        ignores = []
+        for index, token in enumerate(tokens):
+            if token in {"-ignore", "--ignore"}:
+                ignores.append(tokens[index + 1])
+            elif token.startswith(("-ignore=", "--ignore=")):
+                ignores.append(token.split("=", 1)[1])
+        self.assertEqual(ignores, ['unexpected key "queue" for "concurrency" section'])
+
     def test_delivery_frontend_runs_the_canonical_coverage_entry_points(self):
         workflow = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))
         runs = commands(workflow["jobs"]["frontend"]["steps"])
@@ -195,3 +280,27 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         self.assertIn("report", workflow["jobs"]["validate"]["outputs"])
         self.assertIn("needs.validate.outputs.report", workflow["jobs"]["publish"]["if"])
+
+    def test_reconciliation_uses_clean_main_least_privilege_and_success_gate(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
+        jobs = workflow["jobs"]
+        self.assertFalse(any("reconcile-tasks" in run_text(step) for step in jobs["publish"]["steps"]))
+        reconcile = jobs["reconcile"]
+        self.assertEqual(reconcile["needs"], "publish")
+        self.assertEqual(reconcile["if"], "always() && needs.publish.result == 'success'")
+        self.assertEqual(reconcile["permissions"], {"contents": "write", "pull-requests": "read"})
+        self.assertEqual(reconcile["env"]["GH_TOKEN"],
+                         "${{ secrets.SWARM_TOKEN || github.token }}")
+        checkout = next(step for step in reconcile["steps"] if step.get("uses", "").startswith("actions/checkout@"))
+        self.assertEqual(checkout["with"]["ref"], "main")
+        self.assertIs(checkout["with"]["persist-credentials"], False)
+        self.assertFalse(any(step.get("uses", "").startswith("actions/download-artifact@")
+                             for step in reconcile["steps"]))
+        self.assertFalse(any("integrate-publish" in run_text(step) for step in reconcile["steps"]))
+        self.assertTrue(any("reconcile-tasks" in run_text(step) for step in reconcile["steps"]))
+
+    def test_follow_up_jobs_require_successful_publication(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
+        jobs = workflow["jobs"]
+        self.assertIn("needs.publish.result == 'success'", jobs["resolve"]["if"])
+        self.assertEqual(jobs["resolve-publish"]["if"], "always() && needs.resolve.result == 'success'")

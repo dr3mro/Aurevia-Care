@@ -20,7 +20,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-SCRIPT = Path(__file__).parents[1] / "check-names.py"
+SCRIPTS = Path(__file__).parents[1]
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+SCRIPT = SCRIPTS / "check-names.py"
 spec = importlib.util.spec_from_file_location("check_names_cov", SCRIPT)
 check_names = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check_names)

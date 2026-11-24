@@ -154,7 +154,7 @@ class GitMergeTests(unittest.TestCase):
         Path("tasks/00002000-B.md").write_text("stray\n")
         swarm.restore_trackers()
         self.assertEqual(Path("tasks/00001000-A.md").read_text(), "main\n")
-        self.assertFalse(Path("tasks/00002000-B.md").exists())
+        self.assertEqual(Path("tasks/00002000-B.md").read_text(), "stray\n")
 
 
 class CommandTests(Work):

@@ -1,5 +1,10 @@
 import curses, json, os, re, shutil, subprocess, sys, tempfile, threading, time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
 
 INTERVAL, RECENT, ONCE = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3] == "1"
 AUTOSTART = int(sys.argv[4]) if len(sys.argv) > 4 else 0  # minutes between automatic wave starts; 0 = off
@@ -88,7 +93,8 @@ def todo_text(listing):
 
 # ---- data ---------------------------------------------------------------------------------
 def spawn(args):
-    return subprocess.Popen(["gh", *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    return subprocess.Popen(["gh", *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                            text=True, env=child_environment(read_only=True))
 
 
 def collect(procs, text_keys=()):
@@ -817,14 +823,16 @@ def swarm_idle(data):
 
 def start_swarm():
     """Dispatch one Agent swarm wave. Returns an empty string on success, else the error text."""
-    p = subprocess.run(["gh", "workflow", "run", "swarm.yml", "-f", "now=true"], capture_output=True, text=True)
+    p = subprocess.run(["gh", "workflow", "run", "swarm.yml", "-f", "now=true"],
+                       capture_output=True, text=True, env=child_environment())
     return "" if p.returncode == 0 else (p.stderr.strip().splitlines() or ["gh failed"])[-1]
 
 
 def beep():
     for cmd in (["afplay", "/System/Library/Sounds/Glass.aiff"], ["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"]):
         if shutil.which(cmd[0]):
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             env=child_environment())
             return
     curses.beep()
 

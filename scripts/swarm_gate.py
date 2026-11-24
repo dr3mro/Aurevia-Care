@@ -26,6 +26,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
+
 PASSED, FAILED, NOT_APPLICABLE, ERROR = "passed", "failed", "not_applicable", "error"
 VALID_STATES = frozenset({PASSED, FAILED, NOT_APPLICABLE, ERROR})
 WORKER, INTEGRATION, RECONCILIATION, HUMAN, UNKNOWN = "worker", "integration", "reconcile", "human", "unknown"
@@ -313,8 +317,10 @@ def _gh_repo_args():
 
 def _gh_json(*args):
     """Run ``gh`` with the workflow's read-only token and parse its JSON output."""
-    return json.loads(subprocess.check_output(["gh", *_gh_repo_args(), *args], text=True,
-                                              stderr=subprocess.DEVNULL) or "{}")
+    return json.loads(subprocess.check_output(
+        ["gh", *_gh_repo_args(), *args], text=True, stderr=subprocess.DEVNULL,
+        env=child_environment(read_only=True),
+    ) or "{}")
 
 
 def collect_context(event, event_name, root, required_checks=(), head_root=None):
@@ -345,8 +351,10 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None)
     if not number:
         return ctx
     details = _gh_json("pr", "view", str(number), "--json", "headRefOid,title,labels,commits")
-    files = subprocess.check_output(["gh", *_gh_repo_args(), "pr", "diff", str(number),
-                                     "--name-only"], text=True).split()
+    files = subprocess.check_output(
+        ["gh", *_gh_repo_args(), "pr", "diff", str(number), "--name-only"],
+        text=True, env=child_environment(read_only=True),
+    ).split()
     ctx = GateContext(**{**ctx.__dict__, "title": details.get("title") or ctx.title,
                          "labels": tuple(x.get("name", "") for x in details.get("labels", [])),
                          "commit_authors": tuple((x.get("author") or {}).get("login", "")
@@ -404,8 +412,10 @@ def _collect_manifest(ctx, root):
         sha = item.get("head_sha", "")
         if not SHA.fullmatch(sha):
             continue
-        done = subprocess.run(["git", "merge-base", "--is-ancestor", sha, ctx.tested_sha],
-                              cwd=root, capture_output=True, text=True)
+        done = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", sha, ctx.tested_sha],
+            cwd=root, capture_output=True, text=True, env=child_environment(read_only=True),
+        )
         ancestors[sha] = done.returncode == 0
     return GateContext(**{**ctx.__dict__, "manifest": manifest, "ancestors": ancestors})
 

@@ -4,6 +4,7 @@ All data is synthetic: these records model what ``gh run list`` and ``gh pr``
 return, with no network, credentials or real pull requests involved.
 """
 import json
+import subprocess
 import unittest
 from unittest import mock
 
@@ -13,11 +14,15 @@ swarm = load("swarm")
 
 HEAD = "a" * 40
 OLD = "b" * 40
+WORKFLOW_ID = 123
 
 
-def delivery_run(sha=HEAD, status="completed", conclusion="success", jobs=None, database_id=7, **extra):
+def delivery_run(sha=HEAD, status="completed", conclusion="success", jobs=None, database_id=7,
+                 event="pull_request", workflow_id=WORKFLOW_ID, pr=7, base="main", **extra):
     """Build one synthetic Delivery workflow run record."""
-    record = {"headSha": sha, "status": status, "conclusion": conclusion}
+    record = {"headSha": sha, "status": status, "conclusion": conclusion, "event": event,
+              "workflowDatabaseId": workflow_id,
+              "pullRequests": [{"number": pr, "base": {"ref": base}, "head": {"sha": sha}}]}
     if database_id is not None:
         record["databaseId"] = database_id
     if jobs is not None:
@@ -97,32 +102,44 @@ class DeliveryStateTest(unittest.TestCase):
         record = delivery_run(conclusion="skipped", status="completed")
         self.assertEqual(swarm.delivery_state([record], HEAD), "missing")
 
+    def test_workflow_dispatch_success_does_not_mask_pr_failure(self):
+        runs = [delivery_run(event="workflow_dispatch", database_id=8, conclusion="success"),
+                delivery_run(event="pull_request", database_id=7, conclusion="failure")]
+        self.assertEqual(swarm.delivery_state(runs, HEAD), "failed")
+
+    def test_push_success_does_not_mask_pr_failure(self):
+        runs = [delivery_run(event="push", conclusion="success"),
+                delivery_run(event="pull_request", conclusion="failure")]
+        self.assertEqual(swarm.delivery_state(runs, HEAD), "failed")
+
+    def test_missing_event_is_not_evidence(self):
+        record = delivery_run()
+        record.pop("event")
+        self.assertEqual(swarm.delivery_state([record], HEAD), "missing")
+
     def test_synthetic_head_sha_key_and_malformed_records(self):
-        runs = ["not a run", {"head_sha": HEAD, "status": "completed", "conclusion": "success"},
+        runs = ["not a run", {"head_sha": HEAD, "status": "completed", "conclusion": "success",
+                              "event": "pull_request"},
                 {"status": "completed", "conclusion": "failure"}]
         self.assertEqual(swarm.delivery_state(runs, HEAD), "passed")
-
-
-class MarkdownOnlyTest(unittest.TestCase):
-    """The documented exception must not swallow a real code change."""
-
-    def test_docs_and_markdown_paths(self):
-        self.assertTrue(swarm.markdown_only(["docs/operations/runbook.md", "README.md"]))
-
-    def test_empty_change_list_is_not_documentation(self):
-        self.assertFalse(swarm.markdown_only([]))
-        self.assertFalse(swarm.markdown_only([""]))
-        self.assertTrue(swarm.markdown_only(["", "docs/a.md"]))
-
-    def test_code_change_breaks_the_exception(self):
-        self.assertFalse(swarm.markdown_only(["docs/a.md", "scripts/swarm.py"]))
 
 
 class DeliveryRunsTest(unittest.TestCase):
     """The run listing is filtered by commit and enriched with job-level gates."""
 
-    def gh_for(self, runs, jobs=None):
+    def gh_for(self, runs, jobs=None, details=None, workflow_id=WORKFLOW_ID):
         def fake(*args, check=True):
+            if args[0] == "api" and "actions/workflows/delivery.yml" in args[-1]:
+                return json.dumps({"id": workflow_id})
+            if args[0] == "api" and "actions/runs/" in args[-1]:
+                run_id = int(args[-1].rsplit("/", 1)[1])
+                if details is not None:
+                    return json.dumps(details.get(run_id, {}))
+                run = next((item for item in (runs or [])
+                            if isinstance(item, dict) and item.get("databaseId") == run_id), {})
+                return json.dumps({"workflow_id": run.get("workflowDatabaseId"),
+                                   "event": run.get("event"), "head_sha": run.get("headSha"),
+                                   "pull_requests": run.get("pullRequests")})
             if args[:2] == ("run", "list"):
                 return json.dumps(runs)
             if args[:2] == ("run", "view"):
@@ -134,36 +151,108 @@ class DeliveryRunsTest(unittest.TestCase):
         runs = [delivery_run(jobs=None), delivery_run(sha=OLD)]
         with mock.patch.object(swarm, "gh", self.gh_for(
                 runs, jobs=[{"status": "waiting", "conclusion": None}])) as gh:
-            enriched = swarm.delivery_runs(HEAD)
+            enriched = swarm.delivery_runs(HEAD, 7)
         self.assertEqual(swarm.delivery_state(enriched, HEAD), "approval-required")
         self.assertTrue(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
 
     def test_no_runs_returns_empty_list_without_a_job_lookup(self):
-        with mock.patch.object(swarm, "gh", self.gh_for(None)) as gh:
-            self.assertEqual(swarm.delivery_runs(HEAD), [])
+        with mock.patch.object(swarm, "gh", self.gh_for([])) as gh:
+            self.assertEqual(swarm.delivery_runs(HEAD, 7), [])
         self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
 
     def test_no_matching_run_does_not_look_up_jobs(self):
         with mock.patch.object(swarm, "gh", self.gh_for([delivery_run(sha=OLD)])) as gh:
-            self.assertEqual(swarm.delivery_runs(HEAD), [delivery_run(sha=OLD)])
+            self.assertEqual(swarm.delivery_runs(HEAD, 7), [])
         self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
 
     def test_run_without_database_id_is_not_enriched(self):
         record = delivery_run(database_id=None)
         with mock.patch.object(swarm, "gh", self.gh_for([record])) as gh:
-            self.assertEqual(swarm.delivery_runs(HEAD), [record])
+            self.assertEqual(swarm.delivery_runs(HEAD, 7), [])
         self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
 
     def test_empty_jobs_payload_is_treated_as_no_jobs(self):
         record = delivery_run()
         with mock.patch.object(swarm, "gh", self.gh_for([record], jobs=None)):
-            enriched = swarm.delivery_runs(HEAD)
+            enriched = swarm.delivery_runs(HEAD, 7)
         self.assertEqual(enriched[0]["jobs"], [])
+
+    def test_non_pr_success_does_not_hide_pr_failure(self):
+        runs = [delivery_run(event="workflow_dispatch", database_id=8, conclusion="success"),
+                delivery_run(event="pull_request", database_id=7, conclusion="failure")]
+        with mock.patch.object(swarm, "gh", self.gh_for(runs)):
+            enriched = swarm.delivery_runs(HEAD, 7)
+        self.assertEqual([run["event"] for run in enriched], ["pull_request"])
+        self.assertEqual(swarm.delivery_state(enriched, HEAD), "failed")
+
+    def test_delivery_runs_api_failure_propagates(self):
+        error = subprocess.CalledProcessError(1, ("run", "list"))
+        with mock.patch.object(swarm, "gh", side_effect=error):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.delivery_runs(HEAD, 7)
+
+    def test_wrong_workflow_id_is_not_evidence(self):
+        runs = [delivery_run(workflow_id=999)]
+        with mock.patch.object(swarm, "gh", self.gh_for(runs)) as gh:
+            self.assertEqual(swarm.delivery_runs(HEAD, 7), [])
+        self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
+
+    def test_wrong_pr_base_or_head_is_not_evidence(self):
+        cases = (
+            delivery_run(pr=8),
+            delivery_run(base="develop"),
+            delivery_run(sha=OLD),
+        )
+        for record in cases:
+            with self.subTest(record=record), \
+                    mock.patch.object(swarm, "gh", self.gh_for([record])):
+                self.assertEqual(swarm.delivery_runs(HEAD, 7), [])
+
+    def test_rest_association_api_failure_propagates(self):
+        fake = self.gh_for([delivery_run()])
+
+        def failing(*args, **kwargs):
+            if args[0] == "api" and "actions/runs/" in args[-1]:
+                raise subprocess.CalledProcessError(1, args)
+            return fake(*args, **kwargs)
+
+        with mock.patch.object(swarm, "gh", side_effect=failing):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.delivery_runs(HEAD, 7)
+
+    def test_malformed_rest_association_fails_closed(self):
+        detail = {"workflow_id": WORKFLOW_ID, "event": "pull_request", "head_sha": HEAD,
+                  "pull_requests": "not a list"}
+        with mock.patch.object(swarm, "gh", self.gh_for([delivery_run()], details={7: detail})):
+            with self.assertRaises(ValueError):
+                swarm.delivery_runs(HEAD, 7)
+
+    def test_full_mixed_listing_still_falls_back(self):
+        old = delivery_run(sha=OLD)
+        raw = [delivery_run(event="push", database_id=1000 + i) for i in range(99)] + [old]
+        listing = swarm.DeliveryListing(raw, WORKFLOW_ID, True)
+        with mock.patch.object(swarm, "delivery_runs", return_value=[delivery_run()]) as lookup:
+            self.assertEqual(swarm.delivery_runs_from(listing, HEAD, 7), [delivery_run()])
+        lookup.assert_called_once_with(HEAD, 7)
+
+    def test_stale_head_is_not_enriched(self):
+        record = delivery_run(sha=OLD)
+        with mock.patch.object(swarm, "gh", self.gh_for([record])) as gh:
+            self.assertEqual(swarm.delivery_runs(HEAD, 7), [])
+        self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
+
+    def test_full_listing_fallback_uses_pr_events(self):
+        record = delivery_run(sha=OLD, event="pull_request", conclusion="success")
+        listing = swarm.DeliveryListing([record] * 100, WORKFLOW_ID, True)
+        with mock.patch.object(swarm, "delivery_runs", return_value=[delivery_run()]) as lookup:
+            runs = swarm.delivery_runs_from(listing, HEAD, 7)
+        lookup.assert_called_once_with(HEAD, 7)
+        self.assertEqual(runs, [delivery_run()])
 
     def test_malformed_listing_entries_are_ignored_by_the_classifier(self):
         record = delivery_run()
         with mock.patch.object(swarm, "gh", self.gh_for(["malformed", record])):
-            enriched = swarm.delivery_runs(HEAD)
+            enriched = swarm.delivery_runs(HEAD, 7)
         self.assertEqual(swarm.delivery_state(enriched, HEAD), "passed")
 
 
@@ -205,76 +294,112 @@ class DeliveryGateTest(unittest.TestCase):
         gh.assert_not_called()
         failed.assert_not_called()
 
-    def test_missing_docs_only_change_uses_the_documentation_exception(self):
-        gh = mock.Mock(return_value="docs/runbook.md\nREADME.md\n")
+    def test_markdown_missing_run_does_not_merge(self):
+        gh = mock.Mock(return_value="")
         with mock.patch.object(swarm, "delivery_runs", return_value=[]), \
              mock.patch.object(swarm, "gh", gh), mock.patch.object(swarm, "fail") as failed:
-            self.assertEqual(swarm.delivery_gate(7, HEAD), "merge")
-        failed.assert_not_called()
-        gh.assert_any_call("pr", "diff", "7", "--name-only")
-
-    def test_skipped_run_on_markdown_only_change_uses_the_documentation_exception(self):
-        gh = mock.Mock(return_value="docs/runbook.md\nREADME.md\n")
-        with mock.patch.object(swarm, "gh", gh), mock.patch.object(swarm, "fail") as failed:
-            self.assertEqual(
-                swarm.delivery_gate(7, HEAD, runs=[delivery_run(conclusion="skipped")]), "merge")
-        failed.assert_not_called()
-
-    def test_skipped_run_on_code_change_requests_a_run(self):
-        def fake(*args, check=True):
-            if args[:2] == ("pr", "diff"):
-                return "scripts/swarm.py\n"
-            if args[:2] == ("pr", "view") and "--json" in args:
-                return json.dumps({"headRefName": "swarm/WQUALITY-01-1"})
-            return ""
-        with mock.patch.object(swarm, "gh", side_effect=fake) as gh:
-            self.assertEqual(
-                swarm.delivery_gate(7, HEAD, runs=[delivery_run(conclusion="skipped")]), "request")
-        self.assertTrue(any(c.args[:2] == ("workflow", "run") for c in gh.call_args_list))
-
-    def test_missing_code_change_requests_a_run_and_never_merges(self):
-        def fake(*args, check=True):
-            if args[:2] == ("pr", "diff"):
-                return "scripts/swarm.py\n"
-            if args[:2] == ("pr", "view") and "--json" in args:
-                return json.dumps({"headRefName": "swarm/WQUALITY-01-1"})
-            return ""
-        with mock.patch.object(swarm, "delivery_runs", return_value=[]), \
-             mock.patch.object(swarm, "gh", side_effect=fake) as gh, \
-             mock.patch.object(swarm, "fail") as failed:
             self.assertEqual(swarm.delivery_gate(7, HEAD), "request")
         failed.assert_not_called()
-        self.assertTrue(any(c.args[:4] == ("workflow", "run", "delivery.yml", "--ref")
-                            and c.args[4] == "swarm/WQUALITY-01-1" for c in gh.call_args_list))
+        self.assertFalse(any(c.args[:2] == ("workflow", "run") for c in gh.call_args_list))
+        self.assertFalse(any(c.args[:2] == ("pr", "diff") for c in gh.call_args_list))
+
+    def test_skipped_run_on_markdown_only_change_does_not_merge(self):
+        gh = mock.Mock(return_value="")
+        with mock.patch.object(swarm, "gh", gh), mock.patch.object(swarm, "fail") as failed:
+            self.assertEqual(
+                swarm.delivery_gate(7, HEAD, runs=[delivery_run(conclusion="skipped")]), "request")
+        failed.assert_not_called()
+        gh.assert_any_call("run", "rerun", "7")
+        self.assertFalse(any(c.args[:2] == ("workflow", "run") for c in gh.call_args_list))
+
+    def test_missing_code_change_reruns_exact_pr_run_without_branch_dispatch(self):
+        record = delivery_run(conclusion="skipped")
+        gh = mock.Mock(return_value="")
+        with mock.patch.object(swarm, "delivery_runs", return_value=[record]), \
+             mock.patch.object(swarm, "gh", gh), mock.patch.object(swarm, "fail") as failed:
+            self.assertEqual(swarm.delivery_gate(7, HEAD), "request")
+        failed.assert_not_called()
+        gh.assert_any_call("run", "rerun", "7")
+        self.assertFalse(any(c.args[:2] == ("workflow", "run") for c in gh.call_args_list))
         self.assertTrue(any(c.args[:2] == ("pr", "comment") for c in gh.call_args_list))
 
-    def test_approval_required_requests_a_run_and_never_merges(self):
-        def fake(*args, check=True):
-            if args[:2] == ("pr", "view") and "--json" in args:
-                return json.dumps({"headRefName": "swarm/WQUALITY-01-1"})
-            return ""
+    def test_missing_run_waits_without_dispatch(self):
+        gh = mock.Mock(return_value="")
         with mock.patch.object(swarm, "delivery_runs", return_value=[]), \
-             mock.patch.object(swarm, "gh", side_effect=fake) as gh:
-            self.assertEqual(swarm.delivery_gate(7, HEAD, runs=[delivery_run(status="waiting")]), "request")
-        self.assertTrue(any(c.args[:2] == ("workflow", "run") for c in gh.call_args_list))
+             mock.patch.object(swarm, "gh", gh):
+            self.assertEqual(swarm.delivery_gate(7, HEAD), "request")
+        self.assertFalse(any(c.args[:2] in {("workflow", "run"), ("run", "rerun")}
+                             for c in gh.call_args_list))
 
-    def test_head_and_branch_are_fetched_when_not_supplied(self):
+    def test_rerun_uses_exact_pr_run_id(self):
+        runs = [delivery_run(event="workflow_dispatch", database_id=8, conclusion="success"),
+                delivery_run(event="pull_request", database_id=7, conclusion="skipped")]
+        gh = mock.Mock(return_value="")
+        with mock.patch.object(swarm, "delivery_runs", return_value=runs), \
+             mock.patch.object(swarm, "gh", gh):
+            self.assertEqual(swarm.delivery_gate(7, HEAD), "request")
+        gh.assert_any_call("run", "rerun", "7")
+        self.assertFalse(any(c.args[:2] == ("run", "rerun") and c.args[2] == "8"
+                             for c in gh.call_args_list))
+
+    def test_rerun_refuses_active_or_approval_run(self):
+        for record in (delivery_run(status="in_progress", conclusion=None),
+                       delivery_run(status="waiting", conclusion=None)):
+            with self.subTest(status=record["status"]):
+                gh = mock.Mock(return_value="")
+                with mock.patch.object(swarm, "delivery_runs", return_value=[record]), \
+                     mock.patch.object(swarm, "gh", gh):
+                    self.assertEqual(swarm.delivery_gate(7, HEAD), "wait")
+                self.assertFalse(any(c.args[:2] == ("run", "rerun") for c in gh.call_args_list))
+
+    def test_missing_head_reruns_exact_skipped_pr_run(self):
+        record = delivery_run(conclusion="skipped")
+        gh = mock.Mock(return_value="")
+        with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": HEAD}), \
+                mock.patch.object(swarm, "delivery_runs", return_value=[record]) as listed, \
+                mock.patch.object(swarm, "gh", gh):
+            self.assertEqual(swarm.delivery_gate(7, runs=[record]), "request")
+        listed.assert_not_called()
+        gh.assert_any_call("run", "rerun", "7")
+
+    def test_zero_or_non_ascii_run_id_is_not_rerun(self):
+        for run_id in (0, -1, True, "１２", "0", "7x"):
+            with self.subTest(run_id=run_id):
+                record = delivery_run(database_id=run_id, conclusion="skipped")
+                gh = mock.Mock(return_value="")
+                with mock.patch.object(swarm, "gh", gh):
+                    self.assertFalse(swarm.request_delivery_rerun(7, HEAD, [record]))
+                self.assertFalse(any(c.args[:2] == ("run", "rerun") for c in gh.call_args_list))
+
+    def test_failed_rerun_never_merges(self):
+        error = subprocess.CalledProcessError(1, ("run", "rerun"))
+        def fake(*args, check=True):
+            if args[:2] == ("run", "rerun"):
+                raise error
+            return ""
+        gh = mock.Mock(side_effect=fake)
+        with mock.patch.object(swarm, "delivery_runs",
+                               return_value=[delivery_run(conclusion="skipped")]), \
+             mock.patch.object(swarm, "gh", gh):
+            self.assertEqual(swarm.delivery_gate(7, HEAD), "request")
+        self.assertFalse(any(c.args[:2] == ("workflow", "run") for c in gh.call_args_list))
+
+    def test_rerun_api_failure_never_merges(self):
+        error = subprocess.CalledProcessError(1, ("run", "rerun"))
+        with mock.patch.object(swarm, "delivery_runs", return_value=[]), \
+             mock.patch.object(swarm, "gh", side_effect=error):
+            self.assertEqual(swarm.delivery_gate(7, HEAD), "request")
+
+    def test_head_is_fetched_when_not_supplied(self):
         def fake(*args, check=True):
             if args[:2] == ("pr", "view") and "--json" in args:
-                key = "headRefOid" if "headRefOid" in args else "headRefName"
-                return json.dumps({key: HEAD if key == "headRefOid" else "swarm/WQUALITY-01-1"})
+                return json.dumps({"headRefOid": HEAD})
             return ""
         with mock.patch.object(swarm, "delivery_runs",
                                return_value=[delivery_run(status="waiting")]) as listed, \
              mock.patch.object(swarm, "gh", side_effect=fake):
-            self.assertEqual(swarm.delivery_gate(7), "request")
-        listed.assert_called_once_with(HEAD)
-
-    def test_missing_pr_fields_fall_back_to_empty_strings(self):
-        with mock.patch.object(swarm, "delivery_runs", return_value=[]), \
-             mock.patch.object(swarm, "gh", return_value="") as gh:
-            self.assertEqual(swarm.delivery_gate(7, HEAD, runs=[delivery_run(status="waiting")]), "request")
-        self.assertTrue(any(c.args[:2] == ("workflow", "run") for c in gh.call_args_list))
+            self.assertEqual(swarm.delivery_gate(7), "wait")
+        listed.assert_called_once_with(HEAD, 7)
 
 
 class IntegratorWiringTest(unittest.TestCase):
@@ -285,6 +410,8 @@ class IntegratorWiringTest(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "git", return_value="base-sha\n"), \
+             mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
              mock.patch.object(swarm, "delivery_gate", return_value="wait") as gate, \
              mock.patch.object(swarm, "merge_local") as merged, \
              mock.patch.object(swarm, "emit"):
@@ -297,6 +424,7 @@ class IntegratorWiringTest(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
              mock.patch.object(swarm, "delivery_gate", return_value="merge"), \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
@@ -305,7 +433,8 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "record_merges",
                                return_value=([(7, "WQUALITY-01", HEAD)], ["comment"], [])), \
              mock.patch.object(swarm, "close_merged_issues"), \
-             mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"), \
+             mock.patch.object(swarm, "git", return_value="base-sha\n"), \
+             mock.patch.object(swarm, "authed_git"), \
              mock.patch.object(swarm, "emit"):
             self.assertEqual(swarm.integrate_batch([7], check_delivery=True), 1)
 
@@ -314,6 +443,8 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "gh", return_value=json.dumps({"headRefOid": HEAD})), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "git", return_value="base-sha\n"), \
+             mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
              mock.patch.object(swarm, "delivery_gate", return_value="request") as gate, \
              mock.patch.object(swarm, "merge_local") as merged, \
              mock.patch.object(swarm, "emit"):
@@ -326,6 +457,7 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "gh", return_value=json.dumps({"headRefOid": HEAD})), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
              mock.patch.object(swarm, "delivery_gate") as gate, \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
@@ -334,7 +466,8 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "record_merges",
                                return_value=([(7, "WQUALITY-01", HEAD)], ["comment"], [])), \
              mock.patch.object(swarm, "close_merged_issues"), \
-             mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"), \
+             mock.patch.object(swarm, "git", return_value="base-sha\n"), \
+             mock.patch.object(swarm, "authed_git"), \
              mock.patch.object(swarm, "emit"):
             self.assertEqual(swarm.integrate_batch([7]), 1)
         gate.assert_not_called()
@@ -344,6 +477,7 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "gh", return_value=json.dumps({"headRefOid": HEAD})), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
              mock.patch.object(swarm, "delivery_gate") as gate, \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
@@ -352,7 +486,8 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "record_merges",
                                return_value=([(7, "WQUALITY-01", HEAD)], ["comment"], [])), \
              mock.patch.object(swarm, "close_merged_issues"), \
-             mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"), \
+             mock.patch.object(swarm, "git", return_value="base-sha\n"), \
+             mock.patch.object(swarm, "authed_git"), \
              mock.patch.object(swarm, "emit"):
             self.assertEqual(swarm.integrate_batch([7], check_delivery=False), 1)
         gate.assert_not_called()

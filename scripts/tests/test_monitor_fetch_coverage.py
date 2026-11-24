@@ -225,7 +225,8 @@ class CommandTableAndSpawnTests(unittest.TestCase):
             self.assertEqual(monitor.spawn(["repo", "view"]), "proc")
         popen.assert_called_once_with(
             ["gh", "repo", "view"], stdout=monitor.subprocess.PIPE,
-            stderr=monitor.subprocess.DEVNULL, text=True)
+            stderr=monitor.subprocess.DEVNULL, text=True, env=mock.ANY)
+        self.assertEqual(popen.call_args.kwargs["env"]["GIT_CONFIG_COUNT"], "3")
 
 
 class CollectAndTimingTests(unittest.TestCase):

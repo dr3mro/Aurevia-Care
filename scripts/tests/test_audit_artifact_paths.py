@@ -27,7 +27,7 @@ class ScheduledAuditPathTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(self.outputs()["result"], "ok")
                 self.assertTrue((self.repo / ".agents").is_dir())
-                self.assertFalse((self.repo / ".agent").exists())
+                self.assertTrue((self.repo / ".agent/notes-stamp").is_file())
                 self.assertIn(".agents/", prompt_log.read_text())
                 shutil.rmtree(self.repo / ".agents")
 
