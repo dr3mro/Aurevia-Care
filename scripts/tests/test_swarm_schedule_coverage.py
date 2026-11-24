@@ -223,45 +223,134 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
         with answer, mock.patch("glob.glob", return_value=paths):
             return swarm.reconcile_tasks(directory=str(self.dir), file=explicit or "")
 
-    def test_a_failed_pr_list_leaves_the_task_untouched(self):
-        # Without the merged list the monitor cannot know what finished: a task
-        # must never be closed on a guess, and the explicit-file path is used.
+    def test_a_failed_pr_list_leaves_the_task_untouched_and_raises(self):
         path = self.write("one.md", "- [-] CW-001 · one\n  - attempts: 4\n")
-        self.reconcile(RuntimeError("gh is down"), explicit=str(path))
+        with self.assertRaises(swarm.ReconciliationError):
+            self.reconcile(RuntimeError("gh is down"), explicit=str(path))
         self.assertEqual(path.read_text(), "- [-] CW-001 · one\n  - attempts: 4\n")
 
-    def test_a_malformed_pr_list_is_ignored(self):
-        # A non-JSON response is as unusable as a transport failure: treat it
-        # as an empty merged set rather than crashing the reconcile step.
+    def test_a_malformed_pr_list_raises_without_editing(self):
         path = self.write("one.md", "- [ ] CW-001 · one\n  - attempts: 4\n")
         with mock.patch.object(subprocess, "check_output", return_value="not json"):
-            swarm.reconcile_tasks(directory=str(self.dir), file=str(path))
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.reconcile_tasks(directory=str(self.dir), file=str(path))
         self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n  - attempts: 4\n")
 
     def test_only_open_tasks_named_by_a_merged_pr_are_closed(self):
         # A merged title identifies a task by id; a merged PR number identifies
         # one by its `pr:` field. Unrelated, unknown and malformed files stay put.
         merged = [
-            {"number": 42, "title": "CW-002: fix the thing"},
-            {"number": 43, "title": "ISS-7: other thing"},
+            {"number": 42, "title": "CW-009: pr", "baseRefName": "main", "state": "MERGED"},
+            {"number": 43, "title": "ISS-7: other thing", "baseRefName": "main", "state": "MERGED"},
+            {"number": 44, "title": "CW-002: fix the thing", "baseRefName": "main", "state": "MERGED"},
+            {"number": 99, "title": "Repair protected workflow", "baseRefName": "main", "state": "MERGED"},
         ]
         by_id = self.write("by_id.md", "- [-] CW-002\n  - attempts: 5\n  - details:\n    body\n")
         by_pr = self.write("by_pr.md", "- [ ] CW-009 · pr\n  - pr: #42\n  - details:\n    body\n")
         unknown = self.write("unknown.md", "- [ ] CW-003 · unknown\n  - attempts: 1\n")
-        wrong_pr = self.write("wrong_pr.md", "- [ ] CW-004 · wrong pr\n  - pr: #99\n")
         heading = self.write("heading.md", "# Just a heading\n")
         has_evidence = self.write("evidence.md", "- [ ] ISS-7 · evidence\n"
                                                  "  - evidence: already recorded\n")
-        self.reconcile(merged, names=("by_id.md", "by_pr.md", "unknown.md", "wrong_pr.md",
+        self.reconcile(merged, names=("by_id.md", "by_pr.md", "unknown.md",
                                       "heading.md", "evidence.md", "missing.md"))
         for path, task in ((by_id, "CW-002"), (by_pr, "CW-009"), (has_evidence, "ISS-7")):
             self.assertIn(f"- [x] {task}", path.read_text())
-        self.assertIn("  - evidence: PR #42 merged to main (auto-reconciled)\n", by_id.read_text())
+        self.assertIn("  - evidence: PR #44 merged to main (auto-reconciled)\n", by_id.read_text())
         self.assertIn("  - evidence: already recorded\n", has_evidence.read_text())
         self.assertNotIn("auto-reconciled", has_evidence.read_text())
         self.assertEqual(unknown.read_text(), "- [ ] CW-003 · unknown\n  - attempts: 1\n")
-        self.assertEqual(wrong_pr.read_text(), "- [ ] CW-004 · wrong pr\n  - pr: #99\n")
         self.assertEqual(heading.read_text(), "# Just a heading\n")
+
+    def test_full_500_record_window_fails_before_write(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        merged = [{"number": n + 1, "title": f"X-{n}: task", "baseRefName": "main",
+                   "state": "MERGED"} for n in range(500)]
+        with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+                mock.patch.object(swarm, "git") as git:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
+        git.assert_not_called()
+        self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
+
+    def test_non_list_envelope_fails_before_write(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        with mock.patch.object(subprocess, "check_output",
+                               return_value=json.dumps({"items": []})), \
+                mock.patch.object(swarm, "git") as git:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
+        git.assert_not_called()
+        self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
+
+    def test_duplicate_pr_number_fails_before_write(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        merged = [
+            {"number": 7, "title": "CW-001: one", "baseRefName": "main", "state": "MERGED"},
+            {"number": 7, "title": "CW-002: other", "baseRefName": "main", "state": "MERGED"},
+        ]
+        with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+                mock.patch.object(swarm, "git") as git:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
+        git.assert_not_called()
+        self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
+
+    def test_duplicate_task_file_or_repeated_pr_field_fails_before_write(self):
+        merged = [{"number": 7, "title": "CW-001: one", "baseRefName": "main", "state": "MERGED"}]
+        first = self.write("first.md", "- [ ] CW-001 · one\n")
+        second = self.write("second.md", "- [ ] CW-001 · one\n")
+        with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+                mock.patch("glob.glob", return_value=[str(first), str(second)]), \
+                mock.patch.object(swarm, "git") as git:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.reconcile_tasks(directory=str(self.dir), persist=True)
+        git.assert_not_called()
+        self.assertEqual(first.read_text(), "- [ ] CW-001 · one\n")
+        self.assertEqual(second.read_text(), "- [ ] CW-001 · one\n")
+        repeated = self.write("repeated.md", "- [ ] CW-001 · one\n  - pr: #7\n  - pr: #7\n")
+        with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+                mock.patch.object(swarm, "git") as git:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.reconcile_tasks(directory=str(self.dir), file=str(repeated), persist=True)
+        git.assert_not_called()
+        self.assertIn("  - pr: #7\n  - pr: #7\n", repeated.read_text())
+
+    def test_malformed_or_unmatched_explicit_pr_fails_before_write(self):
+        merged = [{"number": 7, "title": "CW-001: one", "baseRefName": "main", "state": "MERGED"}]
+        for field in ("invalid", "#99"):
+            with self.subTest(field=field):
+                path = self.write("one.md", f"- [ ] CW-001 · one\n  - pr: {field}\n")
+                with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+                        mock.patch.object(swarm, "git") as git:
+                    with self.assertRaises(swarm.ReconciliationError):
+                        swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
+                git.assert_not_called()
+                self.assertEqual(path.read_text(), f"- [ ] CW-001 · one\n  - pr: {field}\n")
+
+    def test_wrong_base_or_reused_task_evidence_fails_before_write(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n  - pr: #7\n")
+        cases = (
+            [{"number": 7, "title": "CW-001: one", "baseRefName": "develop", "state": "MERGED"}],
+            [{"number": 7, "title": "OTHER: one", "baseRefName": "main", "state": "MERGED"}],
+            [{"number": 7, "title": "CW-001: one", "baseRefName": "main", "state": "OPEN"}],
+        )
+        for merged in cases:
+            with self.subTest(merged=merged):
+                with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+                     mock.patch.object(swarm, "git") as git:
+                    with self.assertRaises(swarm.ReconciliationError):
+                        swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
+                git.assert_not_called()
+                self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n  - pr: #7\n")
+
+    def test_reconciliation_write_failure_returns_nonzero(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        merged = [{"number": 7, "title": "CW-001: one", "baseRefName": "main", "state": "MERGED"}]
+        with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+             mock.patch.object(swarm, "git", side_effect=subprocess.CalledProcessError(1, ("git",))), \
+             mock.patch.dict(os.environ, {"GH_TOKEN": "t"}):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
 
 
 class DraftTriageCoverageTests(unittest.TestCase):

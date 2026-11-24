@@ -22,6 +22,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
+
 ROOT = Path(__file__).resolve().parents[1]
 
 # The reviewers every code change needs: correctness, 100% coverage, and security.
@@ -81,11 +85,12 @@ def verdicts_and_findings(section):
 def changed_files(root, base):
     """Paths changed since ``base`` (committed or not); None when git cannot say."""
     done = subprocess.run(["git", "diff", "--name-only", base], cwd=root, capture_output=True,
-                          text=True, check=False)
+                          text=True, check=False, env=child_environment(read_only=True))
     if done.returncode != 0:
         return None
     others = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=root,
-                            capture_output=True, text=True, check=False)
+                            capture_output=True, text=True, check=False,
+                            env=child_environment(read_only=True))
     return [name for name in (done.stdout + others.stdout).splitlines() if name]
 
 

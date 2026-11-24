@@ -249,6 +249,36 @@ class AgentRunTests(unittest.TestCase):
             (self.repo / ".agent/branch").write_text(name)
             self.assertNotEqual(self.run_cmd("adopt").returncode, 0, name)
 
+    def test_publish_rejects_wrong_task_or_run_branch(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        (self.repo / ".agent/branch").write_text("opencode/OTHER-99")
+        result = self.run_cmd("publish")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unexpected branch", result.stderr.lower())
+        self.assertNotIn("pr create", self.gh_log.read_text())
+
+    def test_publish_rejects_when_head_is_not_the_recorded_branch(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.git("switch", "-q", "main")
+        result = self.run_cmd("publish")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("head is on main", result.stderr.lower())
+        self.assertNotIn("pr create", self.gh_log.read_text())
+        heads = subprocess.run(["git", "ls-remote", "--heads", "origin",
+                                "refs/heads/opencode/issue-5-9"], cwd=self.repo,
+                               capture_output=True, text=True)
+        self.assertEqual(heads.stdout, "")
+
+    def test_conflicted_input_rejects_malformed_lists_before_fetch(self):
+        invalid = ("not-json", "[]", "[0]", "[-1]", "[1.5]", '["5"]', "[true]", "[5,5]")
+        for value in invalid:
+            with self.subTest(value=value):
+                result = self.run_cmd("fetch-prs", CONFLICTED=value)
+                self.assertNotEqual(result.returncode, 0)
+                ref = subprocess.run(["git", "show-ref", "--verify", "refs/heads/pr-5"],
+                                     cwd=self.repo, capture_output=True, text=True)
+                self.assertNotEqual(ref.returncode, 0)
+
     def test_publish_without_any_run_files_reports_no_changes(self):
         shutil.rmtree(self.repo / ".agent", ignore_errors=True)
         (self.repo / ".agent").mkdir()
@@ -380,13 +410,14 @@ class AgentRunTests(unittest.TestCase):
         self.assertIn("issue comment 5", log)
         self.assertNotIn("pr create", log)
 
-    def test_reviews_discard_edits_and_stop_on_rate_limit(self):
+    def test_reviews_refuse_edits_and_stop_on_rate_limit(self):
         self.run_cmd("implement", FAKE_MODE="commit")
-        self.assertEqual(self.run_cmd("review", FAKE_MODE="edit", REVIEWERS="a b").returncode, 0)
-        status = subprocess.run(["git", "status", "--porcelain"], cwd=self.repo,
-                                capture_output=True, text=True).stdout
-        self.assertEqual(status, "")
-        self.assertEqual((self.repo / "feature.txt").read_text(), "work\n")
+        changed = self.run_cmd("review", FAKE_MODE="edit", REVIEWERS="a b")
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn("reviewer changed the workspace", changed.stderr.lower())
+        self.assertEqual((self.repo / "feature.txt").read_text(), "work\nmore\n")
+        self.assertFalse((self.repo / ".agent/review-b.md").exists())
+        self.git("checkout", "-q", "--", "feature.txt")
         for review in (self.repo / ".agent").glob("review-*.md"):
             review.unlink()
         self.run_cmd("review", FAKE_MODE="rate", REVIEWERS="a b")
@@ -394,6 +425,16 @@ class AgentRunTests(unittest.TestCase):
         self.assertFalse((self.repo / ".agent/review-b.md").exists())
         self.run_cmd("post-reviews", PR_NUMBER="7")
         self.assertIn("pr comment 7", self.gh_log.read_text())
+
+    def test_agent_runner_restores_existing_auth_and_config_after_failure(self):
+        auth = self.tmp / "home/.local/share/opencode/auth.json"
+        auth.parent.mkdir(parents=True)
+        auth.write_text("original auth\n")
+        auth.chmod(0o644)
+        self.run_cmd("review", FAKE_MODE="fail", REVIEWERS="a")
+        self.assertEqual(auth.read_text(), "original auth\n")
+        self.assertEqual(auth.stat().st_mode & 0o777, 0o644)
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(), '{"real": true}')
 
     def test_a_timed_out_segment_continues_on_the_same_branch(self):
         self.run_cmd("implement", FAKE_MODE="slow", AGENT_TIMEOUT="1", SEGMENT="1", SEGMENTS="2")
@@ -674,13 +715,20 @@ class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentR
     def test_strategy_configuration_error_is_terminal(self):
         self.assert_configuration_error("strategy")
 
-    def test_read_only_review_configuration_error_does_not_clean_workspace(self):
+    def test_read_only_review_refuses_dirty_workspace_without_cleaning(self):
         (self.repo / "keep.txt").write_text("keep\n")
         (self.repo / ".agent").mkdir(exist_ok=True)
         (self.repo / ".agent/base-sha").write_text("synthetic-base\n")
-        self.assert_configuration_error("review", REVIEWERS="a")
+        result = self.run_cmd("review", REVIEWERS="a")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("dirty workspace", result.stderr.lower())
         self.assertEqual((self.repo / "keep.txt").read_text(), "keep\n")
         self.assertFalse((self.repo / ".agent/review-a.md").exists())
+
+    def test_read_only_review_configuration_error_is_terminal(self):
+        (self.repo / ".agent").mkdir(exist_ok=True)
+        (self.repo / ".agent/base-sha").write_text("synthetic-base\n")
+        self.assert_configuration_error("review", REVIEWERS="a")
 
     def test_conflict_resolution_configuration_error_is_terminal(self):
         self.push_to_main("feature.txt", "main version\n")

@@ -3,6 +3,8 @@
 # on the merge result: policy (shell, pack, docs, secrets, Python tests), Java
 # compile and unit tests. Heavy checks (OWASP, SpotBugs, JaCoCo coverage and
 # real-PostgreSQL integration) run in the integrator gate and in Delivery.
+
+
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

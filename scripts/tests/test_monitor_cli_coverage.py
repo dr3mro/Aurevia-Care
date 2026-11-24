@@ -14,9 +14,13 @@ import subprocess
 import sys
 import unittest
 from contextlib import ExitStack
+from pathlib import Path
 from unittest import mock
 
-MONITOR_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "monitor.py"))
+SCRIPTS = Path(__file__).resolve().parents[1]
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+MONITOR_PATH = str(SCRIPTS / "monitor.py")
 
 
 class FakeGhProcess:
@@ -140,7 +144,8 @@ class AutoStartLaunchTest(MonitorLoadMixin, unittest.TestCase):
 
         self.assertEqual(result, "")
         run.assert_called_once_with(["gh", "workflow", "run", "swarm.yml", "-f", "now=true"],
-                                    capture_output=True, text=True)
+                                    capture_output=True, text=True, env=mock.ANY)
+        self.assertEqual(run.call_args.kwargs["env"]["GIT_CONFIG_COUNT"], "3")
 
     def test_failure_returns_last_stderr_line(self):
         result, _ = self.run_swarm(1, "first line\nsecond line\nthird line\n")

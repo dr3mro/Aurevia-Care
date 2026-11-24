@@ -36,6 +36,12 @@ class WorkerCoverageTests(unittest.TestCase):
         self.assertEqual(task["agent"], "swarm-1")
         self.assertNotIn("mystery", task)
 
+    def test_parse_tasks_keeps_inline_details(self):
+        """A one-line details field is the body, not an empty continuation."""
+        text = "- [ ] CW-001 · Staff\n  - scope: apps/api/staff\n  - details: Full tooling suite passes.\n"
+        task = swarm.parse_tasks(text)[0]
+        self.assertEqual(task["details"], "Full tooling suite passes.")
+
     def test_redact_secrets_returns_text_when_the_checker_cannot_load(self):
         """If check-secrets.py is missing or broken, text is returned unchanged.
 

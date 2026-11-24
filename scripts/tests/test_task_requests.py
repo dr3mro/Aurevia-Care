@@ -1,6 +1,7 @@
 """A worker can ask for a task that does not exist: the integrator checks and adds it."""
 import json
 import os
+import subprocess
 import shutil
 import tempfile
 import unittest
@@ -140,15 +141,87 @@ class MergeTests(unittest.TestCase):
 
     def test_merging_a_task_adds_its_requested_tasks(self):
         self.note("T-01-20261121-100000.md", [good(depends=["T-02"])])
-        with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": "abc", "body": "done"}):
+        with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": "abc", "body": "done",
+                                                               "title": "T-01: task", "baseRefName": "main",
+                                                               "state": "OPEN"}):
             comment = swarm.record_merge(415, "T-01", "abc")
         text = swarm.store().read()
         self.assertIn("[x] T-01", text)
         self.assertIn("- [ ] FU-415-01 · Add the missing report endpoint", text)
         self.assertIn("Added the follow-up task(s) this worker asked for: FU-415-01.", comment)
 
+    def test_record_merge_rejects_mismatched_task_identity(self):
+        self.note("T-01-20261121-100000.md", [good()])
+        info = {"headRefOid": "abc", "body": "done", "title": "OTHER: task",
+                "baseRefName": "main", "state": "OPEN"}
+        with mock.patch.object(swarm, "gh_json", return_value=info):
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.record_merge(415, "T-01", "abc")
+        self.assertNotIn("- [x] T-01", swarm.store().read())
+
+    def test_record_merge_rejects_missing_or_duplicate_task(self):
+        info = {"headRefOid": "abc", "body": "done", "title": "T-01: task",
+                "baseRefName": "main", "state": "OPEN"}
+        with mock.patch.object(swarm, "gh_json", return_value=info):
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.record_merge(415, "GONE-1", "abc")
+        self.assertFalse(Path("docs/swarm/GONE-1.md").exists())
+        swarm.store().write(TEXT + "\n- [ ] T-01 · duplicate\n")
+        with mock.patch.object(swarm, "gh_json", return_value=info):
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.record_merge(415, "T-01", "abc")
+        self.assertFalse(Path("docs/swarm/T-01.md").exists())
+
+    def test_record_merge_rejects_reused_or_malformed_prior_pr(self):
+        info = {"headRefOid": "abc", "body": "done", "title": "T-01: task",
+                "baseRefName": "main", "state": "OPEN"}
+        for prior in ("#414", "invalid"):
+            with self.subTest(prior=prior):
+                swarm.store().write(TEXT.replace(
+                    "  - scope: apps/api/src/a",
+                    f"  - scope: apps/api/src/a\n  - pr: {prior}"))
+                with mock.patch.object(swarm, "gh_json", return_value=info):
+                    with self.assertRaises(swarm.ReconciliationError):
+                        swarm.record_merge(415, "T-01", "abc")
+                self.assertFalse(Path("docs/swarm/T-01.md").exists())
+
+    def test_record_merge_rejects_done_task_without_pr_binding(self):
+        swarm.store().write(TEXT.replace("- [-] T-01", "- [x] T-01"))
+        before = swarm.store().read()
+        info = {"headRefOid": "abc", "body": "done", "title": "T-01: task",
+                "baseRefName": "main", "state": "OPEN"}
+        with mock.patch.object(swarm, "gh_json", return_value=info):
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.record_merge(415, "T-01", "abc")
+        self.assertFalse(Path("docs/swarm/T-01.md").exists())
+        self.assertEqual(swarm.store().read(), before)
+
+    def test_record_merge_allows_idempotent_same_pr_retry(self):
+        text = TEXT.replace("- [-] T-01", "- [x] T-01").replace(
+            "  - scope: apps/api/src/a",
+            "  - scope: apps/api/src/a\n  - pr: #415")
+        swarm.store().write(text)
+        info = {"headRefOid": "abc", "body": "done", "title": "T-01: task",
+                "baseRefName": "main", "state": "OPEN"}
+        with mock.patch.object(swarm, "gh_json", return_value=info):
+            comment = swarm.record_merge(415, "T-01", "abc")
+        self.assertIn("Merged to main", comment)
+        self.assertTrue(Path("docs/swarm/T-01.md").exists())
+
+    def test_record_merge_normalizes_api_or_malformed_evidence(self):
+        error = subprocess.CalledProcessError(1, ("pr", "view"))
+        for answer in (error, None, {"headRefOid": "abc"}):
+            with self.subTest(answer=answer):
+                options = {"side_effect": answer} if isinstance(answer, Exception) else {"return_value": answer}
+                with mock.patch.object(swarm, "gh_json", **options):
+                    with self.assertRaises(swarm.ReconciliationError):
+                        swarm.record_merge(415, "T-01", "abc")
+                self.assertFalse(Path("docs/swarm/T-01.md").exists())
+
     def test_a_merge_without_requests_says_nothing_extra(self):
-        with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": "abc", "body": "done"}):
+        with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": "abc", "body": "done",
+                                                               "title": "T-01: task", "baseRefName": "main",
+                                                               "state": "OPEN"}):
             comment = swarm.record_merge(415, "T-01", "abc")
         self.assertNotIn("follow-up", comment)
 

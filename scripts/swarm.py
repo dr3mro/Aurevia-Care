@@ -23,6 +23,11 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import NamedTuple
+
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
 
 MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
@@ -108,6 +113,12 @@ TRACKERS = [
 # TODO.md marks: [ ] open, [-] taken by an agent, [x] done.
 BOXES = {"todo": " ", "taken": "-", "done": "x"}
 STATUS = {box: name for name, box in BOXES.items()}
+# Read-only Git commands must not refresh or write the index opportunistically.
+READ_ONLY_GIT_COMMANDS = frozenset({
+    "diff", "status", "rev-parse", "merge-base", "ls-files", "ls-tree", "show",
+    "cat-file", "merge-tree", "rev-list", "log", "symbolic-ref", "for-each-ref",
+    "check-ref-format", "remote",
+})
 ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · (.*)$")
 FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
 
@@ -177,12 +188,16 @@ def gh(*args, check=True):
     )
     # Issue, comment and label calls use the job's own token when GH_ISSUES_TOKEN is set:
     # it always has issues: write, while SWARM_TOKEN (used for pushes) may not.
-    env = None
-    if os.environ.get("GH_ISSUES_TOKEN") and is_issue_call(args):
-        env = {**os.environ, "GH_TOKEN": os.environ["GH_ISSUES_TOKEN"]}
+    extra = (
+        {"GH_TOKEN": os.environ["GH_ISSUES_TOKEN"]}
+        if os.environ.get("GH_ISSUES_TOKEN") and is_issue_call(args)
+        else None
+    )
     attempt = 0
     while True:  # the last attempt always returns or raises
-        done = subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
+        done = subprocess.run(
+            ["gh", *args], capture_output=True, text=True, env=child_environment(extra)
+        )
         if not (check and done.returncode):
             return done.stdout
         if transient.search(done.stderr or "") and attempt < 3:
@@ -214,6 +229,10 @@ def safe_command(args):
     return tuple(AUTH_HEADER_ARG.sub(r"\1***", str(arg)) for arg in args)
 
 
+class ReconciliationError(RuntimeError):
+    """Authoritative merge evidence is missing, malformed or inconsistent."""
+
+
 class TrackerPushBlocked(RuntimeError):
     """A tracker write was rejected by a repository rule and must not be retried."""
 
@@ -235,7 +254,11 @@ def repo_rule_rejection(stderr):
 
 
 def git(*args, check=True):
-    done = subprocess.run(["git", *args], capture_output=True, text=True)
+    read_only = bool(args) and args[0] in READ_ONLY_GIT_COMMANDS
+    done = subprocess.run(
+        ["git", *args], capture_output=True, text=True,
+        env=child_environment(read_only=read_only),
+    )
     if check and done.returncode:
         # Surface the real git error (for example a ruleset rejection) in the
         # trusted job log; CalledProcessError alone hides stderr from CI.
@@ -1359,43 +1382,49 @@ def issue_input(issue):
 
 
 def reconcile_tasks(directory="tasks", file="", persist=False):
-    """Mark taken/todo tasks done when their PR merged, and persist the change.
+    """Complete tasks only from unique, authoritative merges into the default branch.
 
-    This is the fallback for a manual or squash merge where ``record_merge``
-    could not update the tracker. Derived from the merged-PR list so the mark
-    carries real evidence; a file edit that is never committed is lost when the
-    runner ends and leaves the task stuck ``[-]`` forever.
+    Evidence/API failures raise :class:`ReconciliationError` before any task write;
+    Git write failures propagate to the caller. An explicit ``pr:`` must match both
+    the merged PR number and its task title.
     """
+    branch = os.environ.get("DEFAULT_BRANCH", "main")
     try:
         out = subprocess.check_output(
-            [
-                "gh",
-                "pr",
-                "list",
-                "--state",
-                "merged",
-                "--limit",
-                "500",
-                "--json",
-                "number,title",
-            ],
+            ["gh", "pr", "list", "--state", "merged", "--base", branch,
+             "--limit", "500", "--json", "number,title,baseRefName,state"],
             text=True,
             stderr=subprocess.DEVNULL,
+            env=child_environment(read_only=True),
         )
-        merged = json.loads(out) if out else []
-    except (subprocess.CalledProcessError, ValueError, OSError, RuntimeError):
-        merged = []
-    merged_ids = set()
-    merged_prs = {}
-    for p in merged:
-        number = p["number"]
-        key = p["title"].split(":")[0].strip()
-        merged_ids.add(key)
-        merged_ids.add(p["title"].split()[0])
-        merged_prs[key] = number
-        merged_prs[p["title"].split()[0]] = number
+        merged = json.loads(out) if out else None
+    except (subprocess.CalledProcessError, ValueError, OSError, RuntimeError) as error:
+        raise ReconciliationError(f"cannot read merged pull requests: {error}") from error
+    if not isinstance(merged, list) or len(merged) >= 500:
+        raise ReconciliationError("merged pull-request evidence is malformed or incomplete")
+    by_task, by_number = {}, {}
+    for item in merged:
+        if not isinstance(item, dict):
+            raise ReconciliationError("merged pull-request record is not an object")
+        number, title = item.get("number"), item.get("title")
+        if (not isinstance(number, int) or isinstance(number, bool) or number <= 0
+                or not isinstance(title, str) or item.get("baseRefName") != branch
+                or item.get("state") != "MERGED"):
+            raise ReconciliationError("merged pull-request record has invalid identity or base")
+        if number in by_number:
+            raise ReconciliationError("merged pull-request number is duplicated")
+        task_id = task_id_of_title(title)
+        if not task_id:
+            # Repair and other unrelated PRs still matter when a task names
+            # their number explicitly, but they must not create a title match.
+            by_number[number] = item
+            continue
+        if task_id in by_task:
+            raise ReconciliationError("merged pull-request task identity is duplicated")
+        by_task[task_id] = item
+        by_number[number] = item
     files = [file] if file else sorted(glob.glob(os.path.join(directory, "*.md")))
-    changed = []
+    updates, seen_tasks = [], set()
     for path in files:
         if not os.path.isfile(path):
             continue
@@ -1404,13 +1433,25 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
         if not match:
             continue
         tid = match.group(1)
-        pr_match = re.search(r"^\s*-\s*pr:\s*#?(\d+)", text, re.M)
-        pr_num = int(pr_match.group(1)) if pr_match else None
-        pr = merged_prs.get(tid, pr_num)
-        if tid not in merged_ids and (
-            pr_num is None or pr_num not in merged_prs.values()
-        ):
-            continue
+        if tid in seen_tasks:
+            raise ReconciliationError(f"task {tid} appears in more than one open file")
+        seen_tasks.add(tid)
+        pr_fields = re.findall(r"^  - pr:[ \t]*(.*)$", text, re.M)
+        if len(pr_fields) > 1:
+            raise ReconciliationError(f"task {tid} has repeated pr: fields")
+        if pr_fields:
+            raw_number = pr_fields[0].strip()
+            if not re.fullmatch(r"#?[1-9][0-9]*", raw_number):
+                raise ReconciliationError(f"task {tid} has a malformed pr: field")
+            number = int(raw_number.lstrip("#"))
+            item = by_number.get(number)
+            if item is None or task_id_of_title(item["title"]) != tid:
+                raise ReconciliationError(f"task {tid} does not match merged PR #{number}")
+        else:
+            item = by_task.get(tid)
+            if item is None:
+                continue
+        number = item["number"]
         line_start = text.rfind("\n", 0, match.start()) + 1
         line_end = text.find("\n", match.start())
         full_line = text[line_start:line_end]
@@ -1419,32 +1460,25 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
         insert_after = marked + "\n"
         extra = ""
         if "evidence:" not in new:
-            extra += (
-                f"  - evidence: PR #{pr} merged to main (auto-reconciled)\n"
-                if pr
-                else "  - evidence: Task id found in a merged PR title (auto-reconciled)\n"
-            )
-        if pr and "pr:" not in new:
-            extra += f"  - pr: #{pr}\n"
+            extra += f"  - evidence: PR #{number} merged to main (auto-reconciled)\n"
+        if "pr:" not in new:
+            extra += f"  - pr: #{number}\n"
         if extra:
             new = new.replace(insert_after, insert_after + extra, 1)
+        updates.append((path, new, tid))
+    changed = []
+    for path, new, tid in updates:
         Path(path).write_text(new)
         changed.append(path)
         print(f"reconciled {tid}")
     if not changed or not persist:
         return len(changed)
     git("add", *changed)
-    git(
-        *IDENTITY, "commit", "-qm", f"Reconcile {len(changed)} merged task(s) [skip ci]"
-    )
-    branch = os.environ.get("DEFAULT_BRANCH", "main")
+    git(*IDENTITY, "commit", "-qm", f"Reconcile {len(changed)} merged task(s) [skip ci]")
     if os.environ.get("GH_TOKEN"):
         authed_git("push", "origin", f"HEAD:{branch}")
     else:
-        print(
-            "GH_TOKEN not set: reconciliation was committed but not pushed",
-            file=sys.stderr,
-        )
+        print("GH_TOKEN not set: reconciliation was committed but not pushed", file=sys.stderr)
     return len(changed)
 
 
@@ -2220,6 +2254,8 @@ def parse_tasks(text):
             if field and not in_details:
                 if field.group(1) == "details":
                     in_details = True
+                    if field.group(2):
+                        body.append(field.group(2))
                 elif field.group(1) in current:
                     current[field.group(1)] = field.group(2).strip()
             elif in_details:
@@ -3752,7 +3788,8 @@ def open_rules_pr(day, patch_path):
     # would only turn main red on the next code push: check the docs here instead.
     for check in ("check-docs.py", "check-secrets.py"):
         checked = subprocess.run(
-            [sys.executable, "-I", f"scripts/{check}"], capture_output=True, text=True
+            [sys.executable, "-I", f"scripts/{check}"], capture_output=True, text=True,
+            env=child_environment(read_only=True),
         )
         if checked.returncode:
             print(
@@ -4024,10 +4061,9 @@ def delivery_state(runs, head_sha):
     - ``failed`` — it failed, timed out or was cancelled;
     - ``approval-required`` — it waits for a contributor or environment approval;
     - ``pending`` — it is queued or running and not waiting on approval;
-    - ``missing`` — no run tested this SHA, or the run was skipped and therefore
-      produced no verification. A skipped run cannot prove a Markdown-only
-      change by itself: the caller applies that documented exception after
-      inspecting the actual changed files.
+    - ``missing`` — no pull-request run tested this SHA, or the run was skipped
+      and therefore produced no verification. Push/dispatch runs for the same
+      SHA are not pull-request merge evidence.
 
     The caller applies the integrator policy; this function only reports facts.
     """
@@ -4035,6 +4071,7 @@ def delivery_state(runs, head_sha):
         run
         for run in (runs or [])
         if isinstance(run, dict)
+        and run.get("event") == "pull_request"
         and (run.get("headSha") or run.get("head_sha")) == head_sha
     ]
     if not current:
@@ -4048,96 +4085,164 @@ def delivery_state(runs, head_sha):
     if conclusion in DELIVERY_FAILED:
         return "failed"
     if conclusion == "skipped":
-        # A skipped run is never verification evidence. Keep this defensive
-        # branch for historical runs and other skip reasons; the caller decides
-        # from the changed files rather than trusting the label.
+        # A skipped run is never verification evidence. The caller waits for
+        # or requests another exact-head pull-request run; there is no docs-only bypass.
         return "missing"
     return "pending"
 
 
-def markdown_only(files):
-    """True when every changed path is documentation (docs/ or a Markdown file).
+class DeliveryListing(NamedTuple):
+    """Raw Delivery run window plus its canonical workflow id and completeness."""
 
-    Every pull request now runs Delivery, so this is a defensive exception for
-    a missing or skipped run (for example a run from before the path filter was
-    removed). The integrator's local docs check is the evidence in that case.
-    """
-    paths = [name for name in files if name]
-    return bool(paths) and all(
-        name.startswith("docs/") or name.endswith(".md") for name in paths
-    )
-
-
-def delivery_runs(head):
-    """Newest Delivery runs for one commit, with jobs on the newest matching run.
-
-    Filtering the listing by commit prevents an old green run from being read as
-    evidence for a newer head. Jobs are read separately because the run listing
-    does not expose them and an environment gate is only visible at job level.
-    """
-    runs = (
-        gh_json(
-            "run",
-            "list",
-            "--workflow",
-            "Delivery",
-            "--commit",
-            head,
-            "--json",
-            "databaseId,headSha,status,conclusion",
-        )
-        or []
-    )
-    current = [
-        run
-        for run in runs
-        if isinstance(run, dict) and (run.get("headSha") or "") == head
-    ]
-    if current and current[0].get("databaseId"):
-        jobs = (
-            gh_json("run", "view", str(current[0]["databaseId"]), "--json", "jobs")
-            or {}
-        )
-        current[0]["jobs"] = jobs.get("jobs") or []
-    return runs
+    runs: list[object]
+    workflow_id: int
+    full: bool
 
 
 DELIVERY_LISTING_LIMIT = 100
 
 
-def delivery_listing():
-    """One call listing the newest Delivery runs of every branch, shared by a whole pr-flow pass."""
-    runs = gh_json(
-        "run",
-        "list",
-        "--workflow",
-        "Delivery",
-        "--limit",
-        str(DELIVERY_LISTING_LIMIT),
-        "--json",
-        "databaseId,headSha,status,conclusion",
+def delivery_run_id(value):
+    """Return a positive ASCII decimal run id, rejecting booleans and lookalikes."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return str(value) if value > 0 else None
+    if isinstance(value, str) and re.fullmatch(r"[1-9][0-9]*", value):
+        return value
+    return None
+
+
+def delivery_workflow_id():
+    """Resolve the canonical numeric id of the trusted default-branch Delivery workflow."""
+    info = gh_json("api", f"repos/{repo_slug()}/actions/workflows/delivery.yml")
+    value = info.get("id") if isinstance(info, dict) else None
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError("canonical Delivery workflow identity is missing or malformed")
+    return value
+
+
+def delivery_pr_matches(pull_requests, pr, head):
+    """Whether one REST PR association exactly matches the expected number, base and head."""
+    if not isinstance(pull_requests, list) or len(pull_requests) != 1:
+        raise ValueError("Delivery run PR association is missing or ambiguous")
+    item = pull_requests[0]
+    if not isinstance(item, dict) or not isinstance(item.get("number"), int) \
+            or isinstance(item.get("number"), bool):
+        raise ValueError("Delivery run PR association is malformed")
+    base, head_ref = item.get("base"), item.get("head")
+    if not isinstance(base, dict) or not isinstance(base.get("ref"), str) \
+            or not isinstance(head_ref, dict) or not isinstance(head_ref.get("sha"), str):
+        raise ValueError("Delivery run PR base or head is malformed")
+    return (
+        item["number"] == pr
+        and base["ref"] == os.environ.get("DEFAULT_BRANCH", "main")
+        and head_ref["sha"] == head
     )
-    return runs if isinstance(runs, list) else []
 
 
-def delivery_runs_from(listing, head):
-    """Runs for one head taken from a shared listing, so a pass costs one call, not two per PR.
+def delivery_record_matches(run, pr, head):
+    """Whether an already validated run record still names the expected PR association."""
+    if not isinstance(run, dict) or run.get("event") != "pull_request" \
+            or (run.get("headSha") or run.get("head_sha")) != head:
+        return False
+    return delivery_pr_matches(run.get("pullRequests"), pr, head)
 
-    Jobs are read only for a run that has not finished, the one case where an environment
-    gate shows at job level. A head absent from a full listing may just be older than the
-    window, so only then is it looked up on its own.
+
+def validated_delivery_runs(raw_runs, head, pr, workflow_id):
+    """Validate canonical workflow/PR identity and enrich only matching exact-head runs."""
+    if not isinstance(raw_runs, list):
+        raise ValueError("Delivery run listing is not an array")
+    validated = []
+    for run in raw_runs:
+        if not isinstance(run, dict) or run.get("event") != "pull_request" \
+                or (run.get("headSha") or "") != head \
+                or run.get("workflowDatabaseId") != workflow_id:
+            continue
+        run_id = delivery_run_id(run.get("databaseId"))
+        if run_id is None:
+            continue
+        detail = gh_json("api", f"repos/{repo_slug()}/actions/runs/{run_id}")
+        if not isinstance(detail, dict) or detail.get("workflow_id") != workflow_id \
+                or detail.get("event") != "pull_request" or detail.get("head_sha") != head:
+            raise ValueError("Delivery run identity does not match the canonical workflow")
+        if not delivery_pr_matches(detail.get("pull_requests"), pr, head):
+            continue
+        jobs = gh_json("run", "view", run_id, "--json", "jobs")
+        if not isinstance(jobs, dict) or not isinstance(jobs.get("jobs"), list):
+            raise ValueError("Delivery run jobs are malformed")
+        validated.append({**run, "jobs": jobs["jobs"],
+                          "pullRequests": detail["pull_requests"]})
+    return validated
+
+
+def delivery_runs(head, pr):
+    """Return validated exact-head Delivery PR runs for one pull request.
+
+    The workflow id and REST PR association are checked before jobs are read, so
+    a same-SHA push, dispatch or another pull request cannot become merge evidence.
     """
-    runs = [
-        r for r in listing if isinstance(r, dict) and (r.get("headSha") or "") == head
-    ]
-    if not runs and len(listing) >= DELIVERY_LISTING_LIMIT:
-        return delivery_runs(head)
-    if runs and runs[0].get("databaseId") and runs[0].get("status") != "completed":
-        jobs = (
-            gh_json("run", "view", str(runs[0]["databaseId"]), "--json", "jobs") or {}
-        )
-        runs[0]["jobs"] = jobs.get("jobs") or []
+    workflow_id = delivery_workflow_id()
+    runs = gh_json(
+        "run", "list", "--workflow", str(workflow_id), "--commit", head,
+        "--json", "databaseId,headSha,status,conclusion,event,workflowDatabaseId",
+    )
+    return validated_delivery_runs(runs, head, pr, workflow_id)
+
+
+def delivery_listing():
+    """Return the raw newest Delivery window shared by one PR-flow pass."""
+    workflow_id = delivery_workflow_id()
+    runs = gh_json(
+        "run", "list", "--workflow", str(workflow_id), "--limit",
+        str(DELIVERY_LISTING_LIMIT),
+        "--json", "databaseId,headSha,status,conclusion,event,workflowDatabaseId",
+    )
+    if not isinstance(runs, list):
+        raise ValueError("Delivery run listing is not an array")
+    return DeliveryListing(runs, workflow_id, len(runs) >= DELIVERY_LISTING_LIMIT)
+
+
+def delivery_runs_from(listing, head, pr):
+    """Validate one head from a shared raw listing, falling back only when the window is full."""
+    if not isinstance(listing, DeliveryListing):
+        raise ValueError("Delivery listing metadata is missing")
+    runs = validated_delivery_runs(listing.runs, head, pr, listing.workflow_id)
+    if not runs and listing.full:
+        return delivery_runs(head, pr)
     return runs
+
+
+def request_delivery_rerun(pr, head, runs):
+    """Re-run only an existing terminal pull-request Delivery run for this exact head."""
+    def notify(message):
+        try:
+            gh("pr", "comment", str(pr), "--body",
+               f"{MARK}\n{marker('delivery-rerun', head)}\n{message}", check=False)
+        except (subprocess.CalledProcessError, OSError) as error:
+            print(f"delivery rerun comment failed: {error}", file=sys.stderr)
+
+    candidates = [
+        run for run in (runs or [])
+        if delivery_record_matches(run, pr, head)
+        and delivery_run_id(run.get("databaseId")) is not None
+    ]
+    if not candidates:
+        notify(f"Delivery has no valid pull-request run for {head[:12]}; waiting for one.")
+        return False
+    run = candidates[0]
+    if run.get("status") != "completed" or _delivery_needs_approval(run):
+        notify(f"Delivery for {head[:12]} is active or awaiting approval; it will not be re-run.")
+        return False
+    if run.get("conclusion") not in DELIVERY_FAILED | {"skipped"}:
+        return False
+    try:
+        gh("run", "rerun", delivery_run_id(run["databaseId"]))
+    except (subprocess.CalledProcessError, OSError) as error:
+        notify(f"Delivery rerun for {head[:12]} failed: {error}. Nothing merges until it passes.")
+        return False
+    notify(f"Delivery rerun was requested for {head[:12]}. Nothing merges until it passes.")
+    return True
 
 
 def delivery_failure_log(run_id):
@@ -4153,6 +4258,7 @@ def queue_delivery_failure(pr, head, runs, dispatch=True, only_actionable=False)
             item
             for item in runs
             if isinstance(item, dict)
+            and item.get("event") == "pull_request"
             and (item.get("headSha") or item.get("head_sha")) == head
         ),
         {},
@@ -4193,68 +4299,50 @@ def queue_delivery_failure(pr, head, runs, dispatch=True, only_actionable=False)
     return fail(pr, reason, simple=actionable, dispatch=dispatch, evidence=evidence)
 
 
+def delivery_head(pr):
+    """Read and validate the current PR head used for every Delivery decision."""
+    info = gh_json("pr", "view", str(pr), "--json", "headRefOid")
+    head = info.get("headRefOid") if isinstance(info, dict) else ""
+    return head if isinstance(head, str) else ""
+
+
 def delivery_gate(pr, head=None, runs=None, report=True):
     """Apply the integrator's Delivery policy to one pull request.
 
     Returns ``merge``, ``wait``, ``fix`` or ``request``. Only ``merge`` may stage
     the pull request: ``wait`` leaves it untouched with no label, ``fix`` sends a
-    failed run back to the fix workers, and ``request`` asks for a fresh run for
-    ``missing`` or ``approval-required`` evidence. A Markdown-only change uses the
-    documented defensive exception: if its run is missing or skipped, the local
-    docs gate is the evidence instead. ``runs`` may be supplied by a caller that
-    already listed them.
+    failed run back to the fix workers, and ``request`` re-runs an existing exact
+    pull-request run or waits for one when evidence is missing. ``runs`` may be
+    supplied by a caller that already listed them.
     """
-    verdict, state, _ = delivery_decision(pr, head, runs)
+    head = delivery_head(pr) if head is None else head
+    verdict, state, runs = delivery_decision(pr, head, runs)
     if not report:
         return verdict
     if verdict == "merge" or verdict == "wait":
         return verdict
     if verdict == "fix":
-        head = head or (
-            gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}
-        ).get("headRefOid", "")
-        runs = delivery_runs(head) if runs is None else runs
         queue_delivery_failure(pr, head, runs)
         return "fix"
-    branch = (gh_json("pr", "view", str(pr), "--json", "headRefName") or {}).get(
-        "headRefName", ""
-    )
-    gh(
-        "pr",
-        "comment",
-        str(pr),
-        "--body",
-        f"{MARK}\nDelivery is {state} for {(head or '')[:12]}; a fresh run was requested on this branch. "
-        "Nothing merges until it reports passed.",
-        check=False,
-    )
-    gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
+    request_delivery_rerun(pr, head, runs)
     return "request"
 
 
-def delivery_decision(pr, head=None, runs=None):
-    """Return (verdict, state, runs) without writing to GitHub.
+def delivery_decision(pr, head, runs=None):
+    """Classify validated Delivery evidence for one already resolved PR head.
 
-    The validation job calls this while candidate code is in the tree and holds
-    only a read-only token. ``verdict`` matches :func:`delivery_gate`: merge,
-    wait, fix or request. Reporting and re-run dispatch stay in the caller.
+    ``verdict`` matches :func:`delivery_gate`: merge, wait, fix or request.
+    Reporting and re-run dispatch stay in the caller; the gate resolves the
+    head before calling this pure classifier.
     """
-    if head is None:
-        head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get(
-            "headRefOid", ""
-        )
-    runs = delivery_runs(head) if runs is None else runs
+    runs = delivery_runs(head, pr) if runs is None else runs
     state = delivery_state(runs, head)
     if state == "passed":
         return "merge", state, runs
     if state == "failed":
         return "fix", state, runs
-    if state == "pending":
+    if state in {"pending", "approval-required"}:
         return "wait", state, runs
-    if state == "missing" and markdown_only(
-        gh("pr", "diff", str(pr), "--name-only").split()
-    ):
-        return "merge", state, runs
     return "request", state, runs
 
 
@@ -4292,12 +4380,38 @@ def draft_recovery(pr_info, runs=None):
     ):
         return DRAFT_LEAVE
     head = pr_info.get("headRefOid", "")
-    state = delivery_state(delivery_runs(head) if runs is None else runs, head)
+    state = delivery_state(
+        delivery_runs(head, pr_info["number"]) if runs is None else runs, head
+    )
     if state == "passed":
         return DRAFT_RECOVER
     if state == "failed":
         return DRAFT_FIX
     return DRAFT_LEAVE
+
+
+def comment_best_effort(pr, text):
+    """Post a trusted PR diagnostic without letting reporting failure block flow."""
+    try:
+        gh("pr", "comment", str(pr), "--body", f"{MARK}\n{text}", check=False)
+    except (subprocess.CalledProcessError, OSError) as error:
+        print(f"PR #{pr} comment failed: {error}", file=sys.stderr)
+
+
+def confirm_pr_ready(pr, head):
+    """Confirm a fresh PR read still names the tested open, non-draft head."""
+    try:
+        info = gh_json(
+            "pr", "view", str(pr), "--json", "isDraft,headRefOid,state"
+        ) or {}
+    except (subprocess.CalledProcessError, ValueError, OSError):
+        return False
+    return (
+        isinstance(info, dict)
+        and info.get("isDraft") is False
+        and info.get("headRefOid") == head
+        and info.get("state") == "OPEN"
+    )
 
 
 def plan_integration(red=False):
@@ -4333,7 +4447,14 @@ def plan_integration(red=False):
         if p.get("isDraft"):
             decision = draft_recovery(p)
             if decision == DRAFT_RECOVER:
-                gh("pr", "ready", str(number), check=False)
+                try:
+                    gh("pr", "ready", str(number))
+                except (subprocess.CalledProcessError, OSError):
+                    comment_best_effort(number, "Draft promotion failed; the pull request stays blocked.")
+                    continue
+                if not confirm_pr_ready(number, p["headRefOid"]):
+                    comment_best_effort(number, "Draft state could not be confirmed; the pull request stays blocked.")
+                    continue
             elif decision == DRAFT_FIX:
                 fail(number, "Draft pull request: local checks failed", simple=True)
                 continue
@@ -5021,14 +5142,17 @@ def active_runs(workflow):
 
 
 def delivery_requested(pr, head):
-    """True when the flow already asked for a fresh Delivery run for this exact head."""
+    """True when a trusted comment already records an exact-head Delivery rerun request."""
     comments = (
         gh_json("api", f"repos/{repo_slug()}/issues/{pr}/comments?per_page=100") or []
     )
+    tag = marker("delivery-rerun", head)
     return any(
         trusted_author(c)
-        and "Delivery is" in (c.get("body") or "")
-        and head[:12] in (c.get("body") or "")
+        and (tag in (c.get("body") or "") or (
+            "Delivery is" in (c.get("body") or "")
+            and head[:12] in (c.get("body") or "")
+        ))
         for c in comments
     )
 
@@ -5074,7 +5198,7 @@ def pr_flow(now=None, dispatch_wave=True):
                 re.fullmatch(r"fix-\d", label) for label in labels
             ):
                 head = item.get("headRefOid", "")
-                runs = delivery_runs_from(listing, head)
+                runs = delivery_runs_from(listing, head, pr)
                 if delivery_state(runs, head) == "failed" and queue_delivery_failure(
                     pr, head, runs, dispatch=False, only_actionable=True
                 ):
@@ -5092,7 +5216,7 @@ def pr_flow(now=None, dispatch_wave=True):
             try:
                 delivered = (
                     bool(head)
-                    and delivery_state(delivery_runs_from(listing, head), head)
+                    and delivery_state(delivery_runs_from(listing, head, pr), head)
                     == "passed"
                 )
             except subprocess.CalledProcessError as exc:
@@ -5103,15 +5227,24 @@ def pr_flow(now=None, dispatch_wave=True):
                 )
                 continue
             if delivered:
+                if item.get("isDraft"):
+                    try:
+                        gh("pr", "ready", str(pr))
+                    except (subprocess.CalledProcessError, OSError):
+                        comment_best_effort(pr, "Draft promotion failed; needs-fix stays in place.")
+                        continue
+                if not confirm_pr_ready(pr, head):
+                    comment_best_effort(pr, "Draft state could not be confirmed; needs-fix stays in place.")
+                    continue
                 remove_label(pr, "needs-fix")
-                gh("pr", "ready", str(pr), check=False)
+                ready.append((pr, 0))
                 acted.append((pr, "needs-fix cleared: delivery already passed"))
             else:
                 wants_wave = True
             continue
         idle = minutes_since(item["updatedAt"], now)
         head = item.get("headRefOid", "")
-        runs = delivery_runs_from(listing, head)
+        runs = delivery_runs_from(listing, head, pr)
         state = delivery_state(runs, head)
         if state == "failed":
             queued = queue_delivery_failure(pr, head, runs, dispatch=False)
@@ -5135,28 +5268,9 @@ def pr_flow(now=None, dispatch_wave=True):
                 )
                 acted.append((pr, "draft sent to fix"))
             continue
-        if state == "missing" and markdown_only(
-            gh("pr", "diff", str(pr), "--name-only").split()
-        ):
-            # delivery.yml ignores docs-only changes, so no run will ever come: the integrator's
-            # local docs check is the evidence, as in delivery_gate. Do not ask for a run.
-            ready.append((pr, idle))
-        elif state in ("missing", "approval-required"):
+        if state in ("missing", "approval-required"):
             if not delivery_requested(pr, head):
-                branch = (
-                    gh_json("pr", "view", str(pr), "--json", "headRefName") or {}
-                ).get("headRefName", "")
-                gh(
-                    "pr",
-                    "comment",
-                    str(pr),
-                    "--body",
-                    f"{MARK}\nDelivery is {state} for {head[:12]}; a fresh run was requested on this branch. "
-                    "Nothing merges until it reports passed.",
-                    check=False,
-                )
-                gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
-                acted.append((pr, f"delivery {state}, run requested"))
+                request_delivery_rerun(pr, head, runs)
         elif state == "passed":
             ready.append((pr, idle))
     if wants_debugger and not active_runs("swarm-debugger.yml"):
@@ -5475,13 +5589,32 @@ def is_tracker(name):
 TRACKER_PATHS = ("tasks/", "docs/swarm/")
 
 
+def tracker_restore_plan(path):
+    """Return main/current tracker paths, refusing untracked collisions."""
+    desired = set(git("ls-tree", "-r", "--name-only", "origin/main", "--", path).splitlines())
+    tracked = set(git("ls-files", "--", path).splitlines())
+    collisions = sorted(name for name in desired - tracked if os.path.lexists(name))
+    if collisions:
+        raise RuntimeError(
+            "refusing to overwrite untracked tracker path(s): " + ", ".join(collisions)
+        )
+    return path, desired, tracked
+
+
+def restore_tracker_root(path, desired, tracked):
+    """Restore one preflighted tracker root and remove only deleted tracked paths."""
+    if desired:
+        git("checkout", "origin/main", "--", path)
+    for name in sorted(tracked - desired):
+        git("rm", "-f", "--ignore-unmatch", "--", name)
+
+
 def restore_trackers():
-    """Take the trackers from fresh main: the task files and the notes."""
-    if Path(store().ROOT).exists():
-        shutil.rmtree(store().ROOT)
-    # One path at a time: a path main does not have must not stop the others from being restored.
-    for path in (store().ROOT, "docs/swarm"):
-        git("checkout", "origin/main", "--", path, check=False)
+    """Restore task/note roots without overwriting untracked files or symlinks."""
+    tasks = tracker_restore_plan(store().ROOT)
+    notes = tracker_restore_plan("docs/swarm")
+    restore_tracker_root(*tasks)
+    restore_tracker_root(*notes)
 
 
 def merge_local(pr):
@@ -5502,6 +5635,7 @@ def merge_local(pr):
         ],
         capture_output=True,
         text=True,
+        env=child_environment(),
     )
     if done.returncode:
         files = git("diff", "--name-only", "--diff-filter=U", check=False).split()
@@ -5522,8 +5656,18 @@ def merge_local(pr):
     return git("rev-parse", f"pr-{pr}").strip(), task_id_of(info["headRefName"]), []
 
 
+# Integration helpers otherwise return a nonnegative merge count; keep failure
+# distinct so one successful merge cannot be mistaken for a failing exit code.
+INTEGRATION_FAILED = -1
+
+
 class BranchMoved(SystemExit):
     """The pull request branch changed after its merge was tested."""
+
+
+def integration_exit_code(result):
+    """Map a nonnegative merge count or negative failure sentinel to a process status."""
+    return 1 if isinstance(result, int) and result < 0 else 0
 
 
 def record_merges(merged, gates):
@@ -5543,12 +5687,38 @@ def record_merges(merged, gates):
 
 
 def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
-    """Record one already-gated merge in the shared trackers. No commit or push."""
-    info = gh_json("pr", "view", str(pr), "--json", "headRefOid,body")
+    """Record one already-gated merge in the shared trackers. No commit or push.
+
+    The task must exist exactly once and have no conflicting prior PR binding.
+    An already-completed task is accepted only for an idempotent same-PR retry.
+    """
+    try:
+        info = gh_json(
+            "pr", "view", str(pr), "--json", "headRefOid,body,title,baseRefName,state"
+        )
+    except (subprocess.CalledProcessError, ValueError, OSError, TypeError) as error:
+        raise ReconciliationError(f"cannot read pull request #{pr}: {error}") from error
+    if not isinstance(info, dict) or any(
+        not isinstance(info.get(field), str)
+        for field in ("headRefOid", "body", "title", "baseRefName", "state")
+    ):
+        raise ReconciliationError("pull request evidence is malformed")
     if info["headRefOid"] != sha:
         raise BranchMoved("the branch changed after it was tested; it will be retested")
-    tasks = {t["id"]: t for t in parse_tasks(todo_read())}
-    title = tasks.get(task_id, {}).get("task", task_id)
+    if (task_id_of_title(info["title"]) != task_id
+            or info["baseRefName"] != os.environ.get("DEFAULT_BRANCH", "main")
+            or info["state"] not in {"OPEN", "MERGED"}):
+        raise ReconciliationError("pull request no longer matches the task being completed")
+    tasks = [t for t in parse_tasks(todo_read()) if t["id"] == task_id]
+    if len(tasks) != 1:
+        raise ReconciliationError(f"task {task_id} is missing or duplicated")
+    task = tasks[0]
+    prior = task.get("pr", "").strip()
+    if prior and prior not in {str(pr), f"#{pr}"}:
+        raise ReconciliationError(f"task {task_id} is already bound to PR {prior}")
+    if task["status"] == "done" and not prior:
+        raise ReconciliationError(f"completed task {task_id} has no PR binding")
+    title = task["task"]
     Path("docs/swarm").mkdir(parents=True, exist_ok=True)
     notes = Path(f"docs/swarm/{task_id}.md")
     notes.write_text(
@@ -5659,7 +5829,7 @@ def daily_can_start():
         return True
     runs = delivery_listing()
     return not any(
-        delivery_state(delivery_runs_from(runs, p["headRefOid"]), p["headRefOid"])
+        delivery_state(delivery_runs_from(runs, p["headRefOid"], p["number"]), p["headRefOid"])
         == "passed"
         for p in mergeable
     )
@@ -5696,27 +5866,29 @@ GATE_SECRET_WORDS = ("TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "_KEY")
 GATE_KEY_ALLOWLIST = frozenset({"NVD_API_KEY"})
 
 
-def gate_environment():
-    """Return a copy of the process environment without credentials.
+def gate_environment(extra_env=None):
+    """Return a credential-free, repository-safe environment for candidate gates.
 
-    Gate scripts are candidate code and may be malicious. A name-based filter is
-    used instead of an explicit list so a newly introduced token variable cannot
-    silently reach the gate. ``NVD_API_KEY`` is retained because the dependency
-    scan needs it and it cannot write to GitHub.
+    The shared child helper removes repository overrides and installs its safe
+    Git configuration before credentials are filtered. Only those helper-owned
+    config keys bypass the credential-name filter. ``NVD_API_KEY`` remains
+    available for the dependency scan.
     """
+    env = child_environment(extra_env)
     return {
         name: value
-        for name, value in os.environ.items()
-        if name in GATE_KEY_ALLOWLIST
+        for name, value in env.items()
+        if name.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))
+        or name in GATE_KEY_ALLOWLIST
         or not any(word in name.upper() for word in GATE_SECRET_WORDS)
     }
 
 
 def run_gate(gate, extra_env=None):
     """Run the fast gate on the current merge. Returns (ok, log tail)."""
-    env = gate_environment()
-    env.update(extra_env or {})
-    done = subprocess.run(["bash", gate], capture_output=True, text=True, env=env)
+    done = subprocess.run(
+        ["bash", gate], capture_output=True, text=True, env=gate_environment(extra_env)
+    )
     log = (done.stdout + "\n" + done.stderr).strip()
     return done.returncode == 0, log
 
@@ -5760,7 +5932,10 @@ def pr_already_in_main(pr, head, base):
         return False
 
     def run(*args):
-        return subprocess.run(["git", *args], capture_output=True, text=True)
+        return subprocess.run(
+            ["git", *args], capture_output=True, text=True,
+            env=child_environment(read_only=True),
+        )
 
     if run("merge-base", "--is-ancestor", head, base).returncode == 0:
         return True
@@ -5778,27 +5953,30 @@ def pr_already_in_main(pr, head, base):
 
 
 def close_integrated_pr(pr, task_id):
-    """Close a PR whose work is already on main and mark its task done."""
+    """Close a redundant PR and restore its task without claiming a merge.
+
+    Close and tracker failures propagate so a later run cannot mistake an open
+    PR or a still-completed task for successful cleanup.
+    """
     gh(
         "pr",
         "close",
         str(pr),
         "--comment",
-        f"{MARK}\nThis PR's changes are already in main; closing to avoid a redundant gate run.",
-        check=False,
+        f"{MARK}\nThis PR's changes are already in main; closing to avoid a redundant gate run. "
+        "The task remains recoverable until an authoritative merge is confirmed.",
     )
     if task_id:
-
-        def edit(text):
-            for old in (f"- [-] {task_id}", f"- [ ] {task_id}"):
+        def reopen(text):
+            for old in (f"- [-] {task_id}", f"- [x] {task_id}"):
                 if old in text:
-                    return text.replace(old, f"- [x] {task_id}", 1)
+                    return text.replace(old, f"- [ ] {task_id}", 1)
             return text
 
-        try:
-            update_todo(edit, f"Mark {task_id} done (PR already in main)")
-        except Exception:
-            pass
+        update_todo(
+            reopen,
+            f"Reopen {task_id} (PR already in main; merge unconfirmed)",
+        )
 
 
 def integrate_prepare(
@@ -5938,12 +6116,12 @@ def report_validation(result, report_evidence=True):
                 fail(pr, reason, log, simple=simple)
             else:
                 fail(pr, reason, simple=simple)
-    # Already-integrated PRs are recorded separately from rejections; close them
-    # here so the worker's task is marked done and the pull request is not left open.
+    # Already-integrated PRs are recorded separately from rejections. Close the
+    # redundant PR but leave its task recoverable until a merge is confirmed.
     for item in result.get("already", []):
         tid = item.get("task_id", "")
         print(
-            f"PR #{item['pr']} already in main; closed and task {tid or '?'} marked done"
+            f"PR #{item['pr']} already in main; closed and task {tid or '?'} left recoverable"
         )
         close_integrated_pr(item["pr"], tid)
     for detail in result.get("conflict_details", []):
@@ -6016,114 +6194,142 @@ def integrate_finalize(merged, gates, gate):
     """Record merges, commit, push once with concurrency reconciliation, report.
 
     Trusted: the caller has already gated this exact tree and verified every
-    head SHA. Returns the number of pull requests pushed.
+    head SHA. Returns the number of pull requests pushed, or
+    :data:`INTEGRATION_FAILED` when no batch was published. Every pre-push
+    failure restores the latest task snapshot and the original note bytes.
     """
-    merged, comments, moved = record_merges(merged, gates)
-    files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
-    git("add", *files)
+    def snapshot_records(items):
+        notes = {}
+        for _, task_id, _ in items:
+            path = Path(f"docs/swarm/{task_id}.md")
+            notes[path] = path.read_text() if path.exists() else None
+        return todo_read(), notes
+
+    def restore_records(tasks, notes):
+        todo_write("", tasks)
+        for path, content in notes.items():
+            if content is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_text(content)
+
+    before_tasks, before_notes = snapshot_records(merged)
     try:
-        git(
-            *IDENTITY,
-            "commit",
-            "-q",
-            "--allow-empty",
-            "-m",
-            f"Integrate {len(merged)} swarm pull request(s)",
-        )
-    except subprocess.CalledProcessError as error:
-        status = git("status", "--short", check=False)
-        staged = git("diff", "--cached", "--stat", check=False)
-        raise subprocess.CalledProcessError(
-            error.returncode,
-            error.cmd,
-            (error.stdout or "")
-            + "\n--- status ---\n"
-            + status
-            + "\n--- staged ---\n"
-            + staged,
-            error.stderr,
-        )
-    # A full gate can take many minutes; concurrent [skip ci] tracker commits
-    # can advance main meanwhile. Integrators are serialized by their
-    # concurrency group, so the only new commits are tracker-only. Move HEAD
-    # onto fresh main with --soft (keeping the already-gated tree staged),
-    # adopt the fresh shared trackers, re-apply our merge records, re-gate and
-    # retry. No commit replay means no committer identity or rebase conflicts.
-    for attempt in range(3):
+        merged, comments, moved = record_merges(merged, gates)
+        files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
+        git("add", *files)
         try:
-            authed_git("push", "origin", "HEAD:main")
-            break
-        except subprocess.CalledProcessError as exc:
-            if repo_rule_rejection(exc.stderr):
-                # Policy rejection is permanent: three identical pushes would
-                # only fail three times and leave every PR waiting in silence.
-                print(
-                    "integrator: protected-main push rejected by repository rules; "
-                    "batch was not merged",
-                    file=sys.stderr,
-                )
-                for pr, _, _ in merged:
-                    gh(
-                        "pr",
-                        "comment",
-                        str(pr),
-                        "--body",
-                        f"{MARK}\nIntegration could not push to main: repository rules rejected "
-                        "the protected-branch write. The batch stays open for the next integrator run.",
-                        check=False,
-                    )
-                emit("merged", 0)
-                return 0
-            if attempt == 2:
-                raise
-            authed_git("fetch", "origin", "main")
-            # The staged tree was gated on the old main. `reset --soft` keeps that tree, so any
-            # other path that changed on main since (a person's push, a workflow or script fix)
-            # would be silently reverted by the next commit. Only the trackers restored below are
-            # safe to differ; anything else means this batch must be retried from the new main.
-            old_base = git("merge-base", "HEAD", "origin/main").strip()
-            moved_paths = git(
-                "diff", "--no-renames", "--name-only", "-z", old_base, "origin/main"
-            )
-            if any(
-                not path.startswith(TRACKER_PATHS)
-                for path in moved_paths.split("\0")
-                if path
-            ):
-                print(
-                    "Main advanced with non-tracker changes; retry this batch from the new base.",
-                    file=sys.stderr,
-                )
-                raise
-            git("reset", "--soft", "origin/main")
-            restore_trackers()
-            merged, comments, newly_moved = record_merges(merged, gates)
-            moved += newly_moved
-            files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
-            git("add", *files)
             git(
                 *IDENTITY,
                 "commit",
-                "-qm",
-                "Integrate swarm PRs (reconciled)",
+                "-q",
                 "--allow-empty",
-                check=False,
+                "-m",
+                f"Integrate {len(merged)} swarm pull request(s)",
             )
-            # Re-gate with the strictest gate the batch used: the full one if any PR needed it.
-            regate = gate if any(g == gate for g, _ in gates.values()) else REPAIR_GATE
-            renv = next((e for g, e in gates.values() if g == regate), {})
-            ok, log = run_gate(regate, renv)
-            if not ok:
-                # Nothing was pushed. Failing the job here left every pull request waiting with
-                # nobody told, so send the whole batch back to the workers instead.
-                for pr, _, _ in merged:
-                    fail(
-                        pr,
-                        f"Merge gate ({regate}) failed on the merge of the newest main and this batch",
-                        log,
+        except subprocess.CalledProcessError as error:
+            status = git("status", "--short", check=False)
+            staged = git("diff", "--cached", "--stat", check=False)
+            raise subprocess.CalledProcessError(
+                error.returncode,
+                error.cmd,
+                (error.stdout or "")
+                + "\n--- status ---\n"
+                + status
+                + "\n--- staged ---\n"
+                + staged,
+                error.stderr,
+            )
+        # A full gate can take many minutes; concurrent [skip ci] tracker commits
+        # can advance main meanwhile. Integrators are serialized by their
+        # concurrency group, so the only new commits are tracker-only. Move HEAD
+        # onto fresh main with --soft (keeping the already-gated tree staged),
+        # adopt the fresh shared trackers, re-apply our merge records, re-gate and
+        # retry. No commit replay means no committer identity or rebase conflicts.
+        for attempt in range(3):
+            try:
+                authed_git("push", "origin", "HEAD:main")
+                break
+            except subprocess.CalledProcessError as exc:
+                if repo_rule_rejection(exc.stderr):
+                    # Policy rejection is terminal. Restore local completion records
+                    # before telling a person; no PR is merged and no follow-up runs.
+                    restore_records(before_tasks, before_notes)
+                    print(
+                        "integrator: protected-main push rejected by repository rules; "
+                        "batch was not merged",
+                        file=sys.stderr,
                     )
-                emit("merged", 0)
-                return 0
+                    for pr, _, _ in merged:
+                        remove_label(pr, "needs-fix")
+                        add_labels(pr, "needs-human")
+                        comment_best_effort(
+                            pr,
+                            "Integration could not push to main: repository rules rejected "
+                            "the protected-branch write. A person must take over.",
+                        )
+                        report_pr_stuck(
+                            pr, "protected-main push rejected",
+                            "Repository rules blocked the write.",
+                        )
+                    emit("merged", 0)
+                    return INTEGRATION_FAILED
+                if attempt == 2:
+                    raise
+                authed_git("fetch", "origin", "main")
+                # The staged tree was gated on the old main. `reset --soft` keeps that tree, so any
+                # other path that changed on main since (a person's push, a workflow or script fix)
+                # would be silently reverted by the next commit. Only the trackers restored below are
+                # safe to differ; anything else means this batch must be retried from the new main.
+                old_base = git("merge-base", "HEAD", "origin/main").strip()
+                moved_paths = git(
+                    "diff", "--no-renames", "--name-only", "-z", old_base, "origin/main"
+                )
+                if any(
+                    not path.startswith(TRACKER_PATHS)
+                    for path in moved_paths.split("\0")
+                    if path
+                ):
+                    print(
+                        "Main advanced with non-tracker changes; retry this batch from the new base.",
+                        file=sys.stderr,
+                    )
+                    raise
+                git("reset", "--soft", "origin/main")
+                restore_trackers()
+                # Keep the original note snapshot: restore_trackers may remove a
+                # note that this batch just tracked but that was already untracked
+                # before the batch. Only the task snapshot adopts fresh main.
+                before_tasks = todo_read()
+                merged, comments, newly_moved = record_merges(merged, gates)
+                moved += newly_moved
+                files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
+                git("add", *files)
+                git(
+                    *IDENTITY,
+                    "commit",
+                    "-qm",
+                    "Integrate swarm PRs (reconciled)",
+                    "--allow-empty",
+                )
+                # Re-gate with the strictest gate the batch used: the full one if any PR needed it.
+                regate = gate if any(g == gate for g, _ in gates.values()) else REPAIR_GATE
+                renv = next((e for g, e in gates.values() if g == regate), {})
+                ok, log = run_gate(regate, renv)
+                if not ok:
+                    # Nothing was pushed. Restore completion records before sending the batch back.
+                    restore_records(before_tasks, before_notes)
+                    for pr, _, _ in merged:
+                        fail(
+                            pr,
+                            f"Merge gate ({regate}) failed on the merge of the newest main and this batch",
+                            log,
+                        )
+                    emit("merged", 0)
+                    return INTEGRATION_FAILED
+    except Exception:
+        restore_records(before_tasks, before_notes)
+        raise
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
     for pr, _, sha in moved:
@@ -6147,7 +6353,8 @@ def integrate_publish(manifest_file, bundle_file, gate="scripts/integrator-gate.
 
     Re-verifies the bundle tip and every accepted PR head against the manifest
     before any write. Runs no candidate code and checks out no candidate branch
-    until those checks pass. Returns the number of pull requests merged.
+    until those checks pass. Returns the number of pull requests merged, or
+    :data:`INTEGRATION_FAILED` when publication is rejected.
     """
     manifest = json.loads(Path(manifest_file).read_text())
     git("fetch", "-q", str(bundle_file), "HEAD:refs/remotes/validated-batch")
@@ -6696,19 +6903,18 @@ def main(argv=None):
     elif a.cmd == "reconcile-tasks":
         try:
             print(f"reconciled {reconcile_tasks(a.dir, a.file, persist=True)} task(s)")
-        except TrackerPushBlocked as exc:
-            # Reconciliation is best effort after a merge: report the policy
-            # block without failing the whole integrator job again.
-            print(f"reconcile: {exc.reason}", file=sys.stderr)
-            return 0
+        except (ReconciliationError, TrackerPushBlocked, subprocess.CalledProcessError) as exc:
+            reason = exc.reason if isinstance(exc, TrackerPushBlocked) else str(exc)
+            print(f"reconcile: {reason}", file=sys.stderr)
+            return 1
     elif a.cmd == "draft-triage":
         emit("drafts", draft_triage())
     elif a.cmd == "integrate-batch":
-        integrate_batch(json.loads(a.queue), a.gate)
+        return integration_exit_code(integrate_batch(json.loads(a.queue), a.gate))
     elif a.cmd == "integrate-validate":
         integrate_validate(json.loads(a.queue), a.gate, a.out)
     elif a.cmd == "integrate-publish":
-        integrate_publish(a.manifest, a.bundle, a.gate)
+        return integration_exit_code(integrate_publish(a.manifest, a.bundle, a.gate))
     elif a.cmd == "resolve-publish":
         resolve_publish(a.dir)
     elif a.cmd == "guard":

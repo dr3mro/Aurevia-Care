@@ -26,24 +26,196 @@
 # parallel workers), PR_NUMBER, ISSUE_NUMBER, AGENT_TIMEOUT, BRIEF_TIMEOUT,
 # OPENCODE_API_KEY (agent steps), GH_TOKEN (publish steps only).
 set -euo pipefail
+# Inherited Git routing/configuration must never redirect this automation at the
+# primary checkout. Unset in this process only; every child (including OpenCode)
+# inherits the clean environment while the caller's shell remains unchanged.
+# SSH agents may still authenticate through SSH_AUTH_SOCK; executable SSH,
+# askpass and proxy helpers are deliberately not inherited from an untrusted env.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE GIT_IMPLICIT_WORK_TREE GIT_PREFIX \
+  GIT_SHALLOW_FILE GIT_GRAFT_FILE GIT_REPLACE_REF_BASE GIT_QUARANTINE_PATH \
+  GIT_CEILING_DIRECTORIES GIT_DISCOVERY_ACROSS_FILESYSTEM GIT_CONFIG GIT_CONFIG_COUNT \
+  GIT_CONFIG_PARAMETERS GIT_CONFIG_SYSTEM GIT_CONFIG_GLOBAL GIT_EXEC_PATH GIT_TEMPLATE_DIR \
+  GIT_PROXY_COMMAND GIT_SSH GIT_SSH_COMMAND GIT_ASKPASS GIT_EDITOR GIT_SEQUENCE_EDITOR \
+  GIT_PAGER GIT_EXTERNAL_DIFF GIT_TRACE GIT_TRACE_PACKET GIT_TRACE_PERFORMANCE \
+  GIT_TRACE_SETUP GIT_TRACE_CURL GIT_TRACE_CURL_NO_DATA GIT_TRACE_SHALLOW GIT_TRACE2 \
+  GIT_TRACE2_EVENT GIT_TRACE2_PERF GIT_CONFIG_NOSYSTEM GIT_NO_REPLACE_OBJECTS GIT_OPTIONAL_LOCKS
+for prefix in GIT_CONFIG_KEY_ GIT_CONFIG_VALUE_ GIT_TRACE; do
+  while IFS= read -r name; do unset "$name"; done < <(compgen -A variable "$prefix" || true)
+done
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
+export GIT_OPTIONAL_LOCKS=0 GIT_CONFIG_COUNT=3
+export GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0='*'
+export GIT_CONFIG_KEY_1=core.hooksPath GIT_CONFIG_VALUE_1=/dev/null
+export GIT_CONFIG_KEY_2=core.fsmonitor GIT_CONFIG_VALUE_2=false
+
 cd "${GITHUB_WORKSPACE:-$(dirname "$0")/..}"
+repo_root=$(pwd -P)
+git() { command git -C "$repo_root" "$@"; }
 mkdir -p "$HOME"
-git config --global --add safe.directory "$PWD"
+repo_top=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_top" || "$repo_top" != "$repo_root" ]]; then
+  printf 'repository context is unsafe: expected top-level %s, got %s\n' "$repo_root" "${repo_top:-missing}" >&2
+  exit 1
+fi
+github_url_matches() {
+  local url=$1
+  case "$url" in
+    https://github.com/"$GITHUB_REPOSITORY"|https://github.com/"$GITHUB_REPOSITORY".git|\
+    git@github.com:"$GITHUB_REPOSITORY"|git@github.com:"$GITHUB_REPOSITORY".git|\
+    ssh://git@github.com/"$GITHUB_REPOSITORY"|ssh://git@github.com/"$GITHUB_REPOSITORY".git) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
+  fetch_url=$(git remote get-url origin 2>/dev/null || true)
+  push_url=$(git remote get-url --push origin 2>/dev/null || true)
+  if ! github_url_matches "$fetch_url" || ! github_url_matches "$push_url"; then
+    printf 'repository context is unsafe: origin fetch/push URLs do not match %s\n' "$GITHUB_REPOSITORY" >&2
+    exit 1
+  fi
+fi
+worktree_status() {
+  local status
+  if ! status=$(git status --porcelain --untracked-files=all "$@"); then
+    printf 'unable to determine workspace status safely\n' >&2
+    return 1
+  fi
+  printf '%s' "$status"
+}
+
+require_clean_worktree() {
+  local status
+  if ! status=$(worktree_status); then
+    return 1
+  fi
+  if [[ -n "$status" ]]; then
+    printf 'refusing to run in a dirty workspace; commit or stash unrelated work first\n' >&2
+    return 1
+  fi
+}
+
+# Snapshot user-owned configuration and credentials before automation changes
+# them. The EXIT trap restores bytes, mode and index flags on success, failure,
+# cancellation and termination; the parent shell is never modified.
+temp_root=${TMPDIR:-/tmp}
+backup_dir=$(mktemp -d "$temp_root/aurevia-backup.XXXXXX")
+if ! chmod 700 "$backup_dir"; then
+  rmdir "$backup_dir"
+  exit 1
+fi
+config_file=.opencode/opencode.json
+config_backup="$backup_dir/config"
+config_exists=0
+config_nonregular=0
+config_skip=0
+config_active=0
+auth_file=${XDG_DATA_HOME:-$HOME/.local/share}/opencode/auth.json
+auth_backup="$backup_dir/auth"
+auth_exists=0
+auth_nonregular=0
+auth_active=0
+auth_mode=""
+auth_tmp=""
+cleanup() {
+  local failed=0
+  if [[ "$config_active" == 1 ]]; then
+    restore_config || failed=1
+  fi
+  if [[ "$auth_active" == 1 ]]; then
+    restore_auth || failed=1
+  fi
+  if [[ -n "$auth_tmp" ]] && ! rm -f "$auth_tmp"; then
+    printf 'failed to remove temporary OpenCode key file %s\n' "$auth_tmp" >&2
+    failed=1
+  fi
+  if [[ "$failed" == 1 ]]; then
+    printf 'workspace cleanup failed; retained backups: %s %s\n' "$config_backup" "$auth_backup" >&2
+    exit 1
+  fi
+  rm -f "$config_backup" "$auth_backup"
+  rmdir "$backup_dir"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+if [[ ( -L "$config_file" || -e "$config_file" ) && ! -f "$config_file" ]]; then
+  config_nonregular=1
+elif [[ -f "$config_file" ]]; then
+  cp -p "$config_file" "$config_backup"
+  config_exists=1
+  if ! config_flag=$(git ls-files -v -- "$config_file" | cut -c1); then
+    exit 1
+  fi
+  [[ "$config_flag" != S ]] || config_skip=1
+fi
+if [[ -L "$auth_file" || ( -e "$auth_file" && ! -f "$auth_file" ) ]]; then
+  auth_nonregular=1
+elif [[ -f "$auth_file" ]]; then
+  cp -p "$auth_file" "$auth_backup"
+  chmod 600 "$auth_backup"
+  auth_mode=$(python3 -c 'import os,sys; print(format(os.stat(sys.argv[1]).st_mode & 0o777, "o"))' "$auth_file")
+  auth_exists=1
+fi
+atomic_move() {
+  local source=$1 target=$2
+  if [[ -d "$target" ]]; then
+    printf 'refusing to replace directory target %s\n' "$target" >&2
+    return 1
+  fi
+  python3 -c 'import os,sys; os.replace(sys.argv[1], sys.argv[2])' "$source" "$target"
+}
+
+atomic_restore() {
+  local source=$1 target=$2 directory tmp
+  directory=$(dirname "$target")
+  if ! mkdir -p "$directory"; then
+    return 1
+  fi
+  if ! tmp=$(mktemp "$directory/.aurevia-restore.XXXXXX"); then
+    return 1
+  fi
+  if ! cp -p "$source" "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! atomic_move "$tmp" "$target"; then
+    rm -f "$tmp"
+    return 1
+  fi
+}
+restore_auth() {
+  [[ "$auth_active" == 1 ]] || return 0
+  if [[ "$auth_exists" == 1 ]]; then
+    if ! atomic_restore "$auth_backup" "$auth_file"; then
+      printf 'failed to restore OpenCode credentials from %s\n' "$auth_backup" >&2
+      return 1
+    fi
+    if ! chmod "$auth_mode" "$auth_file"; then
+      printf 'failed to restore OpenCode credential mode on %s\n' "$auth_file" >&2
+      return 1
+    fi
+  elif ! rm -f "$auth_file"; then
+    printf 'failed to remove temporary OpenCode credentials at %s\n' "$auth_file" >&2
+    return 1
+  fi
+  auth_active=0
+}
 # Scheduled read-only reviews are audits: their findings are published as workflow
 # artifacts from .agents/, while .agent/ remains the transient scratch of swarm workers.
 case "${1:-}" in
   audit|daily-qa|daily-devsecops|strategy) out=.agents ;;
   *) out=.agent ;;
 esac
-mkdir -p "$out"
+mkdir -p "$out" .agent
 # Each task writes its notes to its own committed file under .agents/notes/, named
 # with the task id and a UTC timestamp, so no two runs (parallel workers, a retry or a
 # fix pass) ever touch the same path and pull requests never conflict. The stamp is
 # fixed once per job in .agent/notes-stamp (ignored) so every work segment of one run
 # keeps writing to the same file. The ignored copy the publish job reads is
 # .agent/publish-notes.md.
-[[ -s "$out/notes-stamp" ]] || date -u +%Y%m%d-%H%M%S > "$out/notes-stamp"
-notes_stamp=$(<"$out/notes-stamp")
+[[ -s .agent/notes-stamp ]] || date -u +%Y%m%d-%H%M%S > .agent/notes-stamp
+notes_stamp=$(<.agent/notes-stamp)
 # A fix pass names its notes after the task too (<task-id>-fix-<stamp>.md), so the daily
 # reconciliation can tell which task every note belongs to.
 if [[ -n "${STORY_ID:-}" ]]; then
@@ -84,25 +256,79 @@ github_git() { # git with token auth, for fetch and push only
   git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" "$@"
 }
 
-configure_auth() { # write the OpenCode credential file without echoing it
+configure_auth() { # write the OpenCode credential atomically without putting the key in argv
   : "${OPENCODE_API_KEY:?OPENCODE_API_KEY is required}"
+  if [[ "$auth_nonregular" == 1 ]]; then
+    printf 'refusing to replace non-regular OpenCode credential path %s\n' "$auth_file" >&2
+    return 1
+  fi
   local dir=${XDG_DATA_HOME:-$HOME/.local/share}/opencode
-  mkdir -p "$dir"
-  (umask 077 && jq -n --arg k "$OPENCODE_API_KEY" \
-    '{opencode: {type: "api", key: $k}}' > "$dir/auth.json")
+  if ! mkdir -p "$dir"; then
+    return 1
+  fi
+  if ! auth_tmp=$(mktemp "$dir/auth.json.XXXXXX"); then
+    return 1
+  fi
+  if ! OPENCODE_API_KEY="$OPENCODE_API_KEY" jq -n \
+      '{opencode: {type: "api", key: env.OPENCODE_API_KEY}}' > "$auth_tmp"; then
+    rm -f "$auth_tmp"
+    auth_tmp=""
+    return 1
+  fi
+  if ! chmod 600 "$auth_tmp"; then
+    return 1
+  fi
+  auth_active=1
+  if ! atomic_move "$auth_tmp" "$auth_file"; then
+    return 1
+  fi
+  auth_tmp=""
 }
 
 # Project config outranks OPENCODE_CONFIG, so the unattended profile replaces
 # .opencode/opencode.json for the run. skip-worktree keeps it out of agent commits,
-# and restore_config puts the real file back before anything is published.
+# and the snapshot trap restores the user's bytes, mode and prior index flag.
 activate_ci_config() {
-  cp .opencode/opencode.ci.json .opencode/opencode.json
-  git update-index --skip-worktree .opencode/opencode.json
+  if [[ "$config_nonregular" == 1 ]]; then
+    printf 'refusing to replace non-regular OpenCode config path %s\n' "$config_file" >&2
+    return 1
+  fi
+  config_active=1
+  local directory tmp
+  directory=$(dirname "$config_file")
+  if ! tmp=$(mktemp "$directory/.opencode-ci.XXXXXX"); then
+    return 1
+  fi
+  if ! cp .opencode/opencode.ci.json "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! atomic_move "$tmp" "$config_file"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  git update-index --skip-worktree "$config_file"
 }
 
 restore_config() {
-  git update-index --no-skip-worktree .opencode/opencode.json
-  git checkout -q -- .opencode/opencode.json
+  [[ "$config_active" == 1 ]] || return 0
+  if [[ "$config_exists" == 1 ]]; then
+    if ! atomic_restore "$config_backup" "$config_file"; then
+      printf 'failed to restore OpenCode config from %s\n' "$config_backup" >&2
+      return 1
+    fi
+  elif ! rm -f "$config_file"; then
+    printf 'failed to remove temporary OpenCode config at %s\n' "$config_file" >&2
+    return 1
+  fi
+  if [[ "$config_skip" == 1 ]]; then
+    if ! git update-index --skip-worktree "$config_file"; then
+      return 1
+    fi
+  elif ! git update-index --no-skip-worktree "$config_file"; then
+    return 1
+  fi
+  config_active=0
 }
 
 # Persist and emit the terminal missing-model result after the caller restores
@@ -258,6 +484,7 @@ EARLIER
 }
 
 cmd_implement() {
+  require_clean_worktree
   configure_auth
   git config user.name "${SWARM_GIT_NAME:-github-actions[bot]}"
   git config user.email "${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
@@ -471,6 +698,7 @@ PROMPT
 }
 
 cmd_debug() {
+  require_clean_worktree
   configure_auth
   context_index
   git config user.name "${SWARM_GIT_NAME:-github-actions[bot]}"
@@ -556,6 +784,7 @@ PROMPT
 }
 
 cmd_triage() {
+  require_clean_worktree
   configure_auth
   context_index
   rm -rf "$out/triage"
@@ -592,6 +821,7 @@ PROMPT
 }
 
 cmd_reconcile() {
+  require_clean_worktree
   configure_auth
   context_index
   rm -rf "$out/reconcile"
@@ -637,6 +867,7 @@ PROMPT
 # branch is published exactly as the story left it.
 cmd_merge_main() {
   finish_merge() { printf '%s' "$1" > "$out/merge"; emit merge "$1"; }
+  require_clean_worktree
   configure_auth
   git config user.name "${SWARM_GIT_NAME:-github-actions[bot]}"
   git config user.email "${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
@@ -715,10 +946,42 @@ cmd_merge_main() {
   [[ "${result:-}" != configuration_error ]] || return 1
 }
 
+validate_conflicted() {
+  jq -e 'type == "array" and length > 0 and length == (unique | length) and
+         all(.[]; type == "number" and . > 0 and floor == .)' \
+    <<< "${CONFLICTED:?CONFLICTED is required}" >/dev/null
+}
+
+expected_branch() {
+  if [[ "${MODE:-story}" == fix ]]; then
+    printf '%s' "${BRANCH:?BRANCH is required in fix mode}"
+  else
+    local slug
+    slug=$(printf '%s' "${STORY_ID:?}" | tr -c 'A-Za-z0-9' '-' | cut -c1-40)
+    printf '%s/%s-%s' "${BRANCH_PREFIX:-opencode}" "$slug" "${GITHUB_RUN_NUMBER:-0}"
+  fi
+}
+
+validate_branch() {
+  local branch=$1
+  [[ "$branch" =~ ^[A-Za-z0-9._/-]+$ && "$branch" != -* && "$branch" != *..* ]] || return 1
+  [[ "$branch" != main ]] || return 1
+  git check-ref-format --branch "$branch" >/dev/null 2>&1
+}
+
+validate_expected_branch() {
+  local branch=$1 expected
+  expected=$(expected_branch)
+  validate_branch "$branch" && [[ "$branch" == "$expected" ]]
+}
+
 cmd_fetch_prs() {
   : "${GH_TOKEN:?GH_TOKEN is required}" "${CONFLICTED:?CONFLICTED is required}"
+  validate_conflicted
+  local -a prs
+  mapfile -t prs < <(jq -r '.[]' <<< "$CONFLICTED")
   local pr
-  for pr in $(jq -r '.[]' <<< "$CONFLICTED"); do
+  for pr in "${prs[@]}"; do
     github_git fetch -q origin "pull/$pr/head:pr-$pr"
   done
 }
@@ -728,9 +991,13 @@ cmd_fetch_prs() {
 # the outcome per PR for the trusted publish step. No GitHub token in this step.
 cmd_resolve() {
   : "${CONFLICTED:?CONFLICTED is required}"
+  validate_conflicted
+  local -a prs
+  mapfile -t prs < <(jq -r '.[]' <<< "$CONFLICTED")
   local pr
   mkdir -p "$out/resolve"
-  for pr in $(jq -r '.[]' <<< "$CONFLICTED"); do
+  for pr in "${prs[@]}"; do
+    require_clean_worktree
     git switch -q -C "resolve-$pr" "pr-$pr"
     printf '1' > "$out/commits"
     rm -f "$out/merge" "$out/checks"
@@ -754,6 +1021,7 @@ cmd_resolve() {
 }
 
 cmd_audit() {
+  require_clean_worktree
   configure_auth
   context_index
   rm -f "$out/audit-findings.json"
@@ -833,7 +1101,8 @@ PROMPT
 }
 
 cmd_daily() {
-  local role="$1"
+  local role=$1
+  require_clean_worktree
   configure_auth
   context_index
   rm -f "$out/daily-${role}.json"
@@ -878,6 +1147,7 @@ PROMPT
 }
 
 cmd_strategy() {
+  require_clean_worktree
   configure_auth
   context_index
   rm -f "$out/strategy.json"
@@ -919,18 +1189,26 @@ cmd_bundle() {
 }
 
 cmd_review() {
+  require_clean_worktree
   configure_auth
-  local role result
+  local role result status
   for role in $REVIEWERS; do
     activate_ci_config
     result=$(run_agent orca "Review the changes on this branch against $(cat "$out/base-sha") in review-only mode. Do not edit files, commit or push. Delegate to ${role}. Reply with findings only, each naming the requirement ID, impact, evidence and suggested fix. State plainly when evidence is only simulated." "$out/review-${role}.md")
-    # Reviewers must not leave changes behind.
+    # Reviewers are read-only. Preserve any evidence of a violation instead of
+    # deleting it, and stop before another reviewer can overwrite the trail.
     restore_config
     if [[ "$result" == configuration_error ]]; then
       record_configuration_error
       return 1
     fi
-    git checkout -q -- . && git clean -fdq -e "$out"
+    if ! status=$(worktree_status -- . ":(exclude)$out" ":(exclude)$out/**"); then
+      return 1
+    fi
+    if [[ -n "$status" ]]; then
+      printf 'reviewer changed the workspace; refusing to delete its changes\n' >&2
+      return 1
+    fi
     if [[ "$result" == rate_limited ]]; then
       printf 'Review stopped: model rate limit reached before %s finished.\n' "$role" >> "$out/review-${role}.md"
       break
@@ -945,12 +1223,12 @@ cmd_adopt() {
   local branch
   [[ -f "$out/result.bundle" ]] || return 0
   branch=$(cat "$out/branch")
-  [[ "$branch" =~ ^[A-Za-z0-9._/-]+$ && "$branch" != -* && "$branch" != *..* ]] || { echo "bad branch name" >&2; return 1; }
+  if ! validate_expected_branch "$branch"; then
+    echo "unexpected branch" >&2
+    return 1
+  fi
   if [[ "${MODE:-story}" == fix ]]; then
-    [[ "$branch" == "${BRANCH:?BRANCH is required in fix mode}" ]] || { echo "unexpected branch" >&2; return 1; }
     github_git fetch -q origin "$branch"
-  else
-    [[ "$branch" == "${BRANCH_PREFIX:-opencode}"/* ]] || { echo "unexpected branch" >&2; return 1; }
   fi
   git fetch -q "$out/result.bundle" HEAD:refs/heads/incoming
   git switch -q -C "$branch" incoming
@@ -958,7 +1236,7 @@ cmd_adopt() {
 
 cmd_publish() {
   : "${GH_TOKEN:?GH_TOKEN is required}"
-  local branch result commits checks note
+  local branch result commits checks note current
   branch=$(cat "$out/branch" 2> /dev/null || echo "") ; result=$(cat "$out/result" 2> /dev/null || echo failed)
   checks=$(cat "$out/checks" 2> /dev/null || echo skipped)
   commits=$(cat "$out/commits" 2> /dev/null || echo 0)
@@ -968,6 +1246,15 @@ cmd_publish() {
     [[ -n "$target" ]] && gh issue comment "$target" --body "$note"
     emit pr ""
     return 0
+  fi
+  if ! validate_expected_branch "$branch"; then
+    printf 'unexpected branch %s for this task/run\n' "$branch" >&2
+    return 1
+  fi
+  current=$(git symbolic-ref --quiet --short HEAD || true)
+  if [[ "$current" != "$branch" ]]; then
+    printf 'HEAD is on %s, not the recorded branch %s\n' "${current:-detached}" "$branch" >&2
+    return 1
   fi
   github_git push origin "HEAD:refs/heads/${branch}"
   if [[ "${MODE:-story}" == fix ]]; then

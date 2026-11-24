@@ -2,10 +2,14 @@
 import importlib.util
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS = ROOT / "scripts"
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 
 # The suite runs inside swarm workers and CI jobs whose environment already carries
 # the task being worked (BRANCH, STORY_*, SWARM, MODE...) and GitHub context and

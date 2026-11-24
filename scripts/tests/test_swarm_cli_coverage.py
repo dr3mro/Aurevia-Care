@@ -95,18 +95,21 @@ class DeliveryListingCoverageTests(CliTestCase):
     """The shared Delivery listing always returns a well-formed list."""
 
     def test_a_list_answer_is_returned_with_the_shared_query(self):
-        listing = [{"headSha": "a", "conclusion": "success"}]
-        with mock.patch.object(swarm, "gh_json", return_value=listing) as gh_json:
-            self.assertEqual(swarm.delivery_listing(), listing)
-        gh_json.assert_called_once_with(
-            "run", "list", "--workflow", "Delivery", "--limit", str(swarm.DELIVERY_LISTING_LIMIT),
-            "--json", "databaseId,headSha,status,conclusion")
+        listing = [{"headSha": "a", "conclusion": "success", "event": "pull_request",
+                    "workflowDatabaseId": 123}]
+        with mock.patch.object(swarm, "gh_json", side_effect=[{"id": 123}, listing]) as gh_json:
+            result = swarm.delivery_listing()
+        self.assertEqual(result.runs, listing)
+        self.assertEqual(result.workflow_id, 123)
+        self.assertFalse(result.full)
+        gh_json.assert_any_call(
+            "run", "list", "--workflow", "123", "--limit", str(swarm.DELIVERY_LISTING_LIMIT),
+            "--json", "databaseId,headSha,status,conclusion,event,workflowDatabaseId")
 
-    def test_a_non_list_answer_becomes_an_empty_list(self):
-        # gh can answer an error envelope instead of an array; a whole pr-flow pass
-        # must still have an empty listing it can iterate safely.
-        with mock.patch.object(swarm, "gh_json", return_value={"message": "rate limited"}):
-            self.assertEqual(swarm.delivery_listing(), [])
+    def test_a_non_list_answer_raises(self):
+        with mock.patch.object(swarm, "gh_json", side_effect=[{"id": 123}, {"message": "rate limited"}]):
+            with self.assertRaises(ValueError):
+                swarm.delivery_listing()
 
 
 class RepairTaskCoverageTests(CliTestCase):
@@ -245,12 +248,19 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertIn("live=1", reason)
         self.assertIn("open_prs=0", reason)
 
-    def test_main_reconcile_tasks_reports_a_blocked_push_without_crashing(self):
+    def test_main_reconcile_tasks_reports_write_failure_as_nonzero(self):
         with mock.patch.object(swarm, "reconcile_tasks",
                                side_effect=swarm.TrackerPushBlocked()), \
                 contextlib.redirect_stderr(io.StringIO()) as err:
-            self.assertEqual(swarm.main(["reconcile-tasks"]), 0)
+            self.assertEqual(swarm.main(["reconcile-tasks"]), 1)
         self.assertIn("repository rules", err.getvalue())
+
+    def test_main_reconcile_tasks_reports_evidence_failure_as_nonzero(self):
+        with mock.patch.object(swarm, "reconcile_tasks",
+                               side_effect=swarm.ReconciliationError("bad evidence")), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(swarm.main(["reconcile-tasks"]), 1)
+        self.assertIn("bad evidence", err.getvalue())
 
     def test_main_archive_todo_prints_the_archived_count(self):
         with mock.patch.object(swarm, "archive_todo", return_value=2):
@@ -313,7 +323,7 @@ class MainDispatchCoverageTests(CliTestCase):
             self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
         update.assert_called_once()
         self.assertEqual(reclaim.call_count, 2)  # once when planning, once in `mark`
-        claim.assert_called_once_with("reclaimed", {"CW-001": "swarm-1"})
+        claim.assert_called_once_with("reclaimed", {"CW-001": "swarm-1"}, force=False)
         note.assert_called_once()
         emitted = self.emitted()
         self.assertEqual([t["id"] for t in json.loads(emitted["matrix"])["include"]],
@@ -503,6 +513,50 @@ class MainDispatchCoverageTests(CliTestCase):
         emitted = self.emitted()
         self.assertEqual(emitted.get("queue"), "[1, 2, 3]")
         self.assertEqual(emitted.get("count"), "3")
+
+    def test_main_integrate_batch_maps_status_without_exiting_on_merge_count(self):
+        for result, expected in ((-1, 1), (0, 0), (1, 0), (2, 0)):
+            with self.subTest(result=result), \
+                    mock.patch.object(swarm, "integrate_batch", return_value=result) as integrate:
+                self.assertEqual(swarm.main(["integrate-batch", "--queue", "[7]",
+                                             "--gate", "gate.sh"]), expected)
+            integrate.assert_called_once_with([7], "gate.sh")
+
+    def test_main_integrate_publish_maps_status_without_exiting_on_merge_count(self):
+        for result, expected in ((-1, 1), (0, 0), (1, 0), (2, 0)):
+            with self.subTest(result=result), \
+                    mock.patch.object(swarm, "integrate_publish", return_value=result) as publish:
+                self.assertEqual(swarm.main(["integrate-publish", "--manifest", "m.json",
+                                             "--bundle", "b.bundle", "--gate", "gate.sh"]), expected)
+            publish.assert_called_once_with("m.json", "b.bundle", "gate.sh")
+
+    def test_main_integrate_publish_rejection_emits_zero_and_skips_dispatch(self):
+        manifest = self.dir / "manifest.json"
+        bundle = self.dir / "main.bundle"
+        manifest.write_text(json.dumps({"tip": "tip", "accepted": [
+            {"pr": 7, "task_id": "CW-001", "head_sha": "abc", "merge_sha": "merge"}],
+            "gates": {"7": ["gate.sh", {}]}, "rejected": [], "already": [],
+            "conflict_details": []}))
+        bundle.write_text("synthetic")
+        error = subprocess.CalledProcessError(1, ("push",), stderr="GH013 protected branch")
+        original = Path.cwd()
+        os.chdir(self.dir)
+        self.addCleanup(os.chdir, original)
+        with mock.patch.object(swarm, "git", return_value="tip"), \
+                mock.patch.object(swarm, "gh_json", return_value={"headRefOid": "abc"}), \
+                mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "report_validation"), \
+                mock.patch.object(swarm, "record_merges",
+                                  return_value=([(7, "CW-001", "merge")], ["comment"], [])), \
+                mock.patch.object(swarm, "todo_read", return_value="before\n"), \
+                mock.patch.object(swarm, "todo_write"), \
+                mock.patch.object(swarm, "authed_git", side_effect=error), \
+                mock.patch.object(swarm, "dispatch_delivery") as dispatch, \
+                mock.patch.object(swarm, "report_pr_stuck"):
+            self.assertEqual(swarm.main(["integrate-publish", "--manifest", str(manifest),
+                                         "--bundle", str(bundle), "--gate", "gate.sh"]), 1)
+        self.assertEqual(self.emitted().get("merged"), "0")
+        dispatch.assert_not_called()
 
     def test_main_resolve_publish_routes_to_resolve_publish(self):
         with mock.patch.object(swarm, "resolve_publish") as resolve:

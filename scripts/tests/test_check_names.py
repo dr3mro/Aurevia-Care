@@ -1,9 +1,13 @@
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-spec = importlib.util.spec_from_file_location("check_names", Path(__file__).parents[1] / "check-names.py")
+SCRIPTS = Path(__file__).parents[1]
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+spec = importlib.util.spec_from_file_location("check_names", SCRIPTS / "check-names.py")
 check_names = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check_names)
 

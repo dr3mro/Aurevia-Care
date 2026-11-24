@@ -9,6 +9,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
+
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = "synthetic-ok"
 SKIP_DIRS = {".git", "__pycache__", "plan", "build", "node_modules", "target", "dist", "coverage", ".expo"}
@@ -35,7 +39,8 @@ def candidate_files(root):
     try:
         out = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z", "--cached", "--others",
-             "--exclude-standard"], check=True, capture_output=True).stdout
+             "--exclude-standard"], check=True, capture_output=True,
+            env=child_environment(read_only=True)).stdout
         names = [n for n in out.decode().split("\0") if n]
     except (OSError, subprocess.CalledProcessError):
         names = [str(p.relative_to(root)) for p in root.rglob("*")

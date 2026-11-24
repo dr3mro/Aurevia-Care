@@ -4,6 +4,7 @@ Every pull request, label and Delivery run here is a synthetic fixture: no netwo
 credentials, token or real GitHub data is read or written.
 """
 import json
+import subprocess
 import unittest
 from unittest import mock
 
@@ -23,8 +24,11 @@ def draft(number=7, title="WQUALITY-02: Recover drafts", labels=(), head=HEAD, *
 
 
 def delivery_run(sha=HEAD, conclusion="success", **extra):
-    """Build one synthetic Delivery workflow run record."""
-    return {"headSha": sha, "status": "completed", "conclusion": conclusion, **extra}
+    """Build one synthetic canonical Delivery pull-request run record."""
+    return {"headSha": sha, "status": "completed", "conclusion": conclusion,
+            "event": "pull_request", "workflowDatabaseId": 123,
+            "pullRequests": [{"number": 7, "base": {"ref": "main"}, "head": {"sha": sha}}],
+            **extra}
 
 
 class DraftRecoveryTest(unittest.TestCase):
@@ -81,7 +85,7 @@ class DraftRecoveryTest(unittest.TestCase):
              mock.patch.object(swarm, "delivery_state", return_value="passed"):
             decision = swarm.draft_recovery(draft())
         self.assertEqual(decision, swarm.DRAFT_RECOVER)
-        listed.assert_called_once_with(HEAD)
+        listed.assert_called_once_with(HEAD, 7)
 
 
 class PlanDraftTest(unittest.TestCase):
@@ -92,7 +96,13 @@ class PlanDraftTest(unittest.TestCase):
                  "labels": [{"name": "swarm"}], "headRefOid": "d" * 40,
                  "isCrossRepository": False}
         prs = [*drafts, other]
-        fake = mock.Mock(return_value=json.dumps(prs))
+        def fake(*args, check=True):
+            if args[:2] == ("pr", "list"):
+                return json.dumps(prs)
+            if args[:2] == ("pr", "view"):
+                return json.dumps({"isDraft": False, "headRefOid": HEAD, "state": "OPEN"})
+            return ""
+        fake = mock.Mock(side_effect=fake)
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "draft_recovery", return_value=decision) as recovery, \
              mock.patch.object(swarm, "fail") as failed, \
@@ -124,6 +134,70 @@ class PlanDraftTest(unittest.TestCase):
                 failed.assert_not_called()
                 added.assert_not_called()
                 self.assertFalse(any(c.args[:2] == ("pr", "ready") for c in fake.call_args_list))
+
+    def test_failed_ready_is_not_queued(self):
+        prs = [draft(), {"number": 8, "title": "CW-002: Ordinary", "isDraft": False,
+                         "labels": [{"name": "swarm"}], "headRefOid": "d" * 40,
+                         "isCrossRepository": False}]
+        def fake(*args, check=True):
+            if args[:2] == ("pr", "list"):
+                return json.dumps(prs)
+            if args[:2] == ("pr", "ready"):
+                raise subprocess.CalledProcessError(1, args)
+            return ""
+        with mock.patch.object(swarm, "gh", side_effect=fake), \
+             mock.patch.object(swarm, "draft_recovery", return_value=swarm.DRAFT_RECOVER):
+            self.assertEqual(swarm.plan_integration(), [8])
+
+    def test_still_draft_after_ready_is_not_queued(self):
+        prs = [draft(), {"number": 8, "title": "CW-002: Ordinary", "isDraft": False,
+                         "labels": [{"name": "swarm"}], "headRefOid": "d" * 40,
+                         "isCrossRepository": False}]
+        def fake(*args, check=True):
+            if args[:2] == ("pr", "list"):
+                return json.dumps(prs)
+            if args[:2] == ("pr", "view"):
+                return json.dumps({"isDraft": True})
+            return ""
+        with mock.patch.object(swarm, "gh", side_effect=fake), \
+             mock.patch.object(swarm, "draft_recovery", return_value=swarm.DRAFT_RECOVER):
+            self.assertEqual(swarm.plan_integration(), [8])
+
+    def test_moved_or_closed_pr_is_not_promoted(self):
+        prs = [draft(), {"number": 8, "title": "CW-002: Ordinary", "isDraft": False,
+                         "labels": [{"name": "swarm"}], "headRefOid": "d" * 40,
+                         "isCrossRepository": False}]
+        for view in ({"isDraft": False, "headRefOid": "e" * 40, "state": "OPEN"},
+                     {"isDraft": False, "headRefOid": HEAD, "state": "MERGED"}):
+            with self.subTest(view=view):
+                def fake(*args, check=True):
+                    if args[:2] == ("pr", "list"):
+                        return json.dumps(prs)
+                    if args[:2] == ("pr", "view"):
+                        return json.dumps(view)
+                    return ""
+                with mock.patch.object(swarm, "gh", side_effect=fake), \
+                        mock.patch.object(swarm, "draft_recovery", return_value=swarm.DRAFT_RECOVER):
+                    self.assertEqual(swarm.plan_integration(), [8])
+
+    def test_ready_read_api_or_json_failure_is_not_queued(self):
+        prs = [draft(), {"number": 8, "title": "CW-002: Ordinary", "isDraft": False,
+                         "labels": [{"name": "swarm"}], "headRefOid": "d" * 40,
+                         "isCrossRepository": False}]
+        for answer in (subprocess.CalledProcessError(1, ("pr", "view")), "not-json",
+                       json.dumps({"isDraft": "false"})):
+            with self.subTest(answer=str(answer)):
+                def fake(*args, check=True):
+                    if args[:2] == ("pr", "list"):
+                        return json.dumps(prs)
+                    if args[:2] == ("pr", "view"):
+                        if isinstance(answer, Exception):
+                            raise answer
+                        return answer
+                    return ""
+                with mock.patch.object(swarm, "gh", side_effect=fake), \
+                     mock.patch.object(swarm, "draft_recovery", return_value=swarm.DRAFT_RECOVER):
+                    self.assertEqual(swarm.plan_integration(), [8])
 
     def test_draft_with_a_blocking_label_is_skipped_before_recovery(self):
         info = draft(labels=("needs-human",))
