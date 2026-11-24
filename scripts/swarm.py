@@ -4133,8 +4133,10 @@ def report_validation(result, report_evidence=True):
 def integrate_validate(queue, gate="scripts/quick-check.sh", out="validated", check_delivery=None):
     """Validate a ready batch without repository writes; persist a manifest.
 
-    Emits ``accepted`` and ``conflicted`` for the workflow. Never pushes,
-    comments, labels or opens issues; those belong to :func:`integrate_publish`.
+    Emits ``accepted``, ``conflicted`` and ``report`` for the workflow. The
+    report carries decisions that need publication but are neither an accepted
+    merge nor a conflict handed to the resolver. Never pushes, comments, labels
+    or opens issues; those belong to :func:`integrate_publish`.
     """
     target = Path(out)
     target.mkdir(parents=True, exist_ok=True)
@@ -4145,6 +4147,8 @@ def integrate_validate(queue, gate="scripts/quick-check.sh", out="validated", ch
     git("bundle", "create", str(target / "main.bundle"), "--all")
     emit("accepted", json.dumps([a["pr"] for a in result["accepted"]]))
     emit("conflicted", json.dumps(result["conflicted"]))
+    report = result["rejected"] + result["already"] + result["conflict_details"]
+    emit("report", json.dumps(report))
     return result
 
 
@@ -4658,6 +4662,10 @@ def main(argv=None):
         emit("drafts", draft_triage())
     elif a.cmd == "integrate-batch":
         integrate_batch(json.loads(a.queue), a.gate)
+    elif a.cmd == "integrate-validate":
+        integrate_validate(json.loads(a.queue), a.gate, a.out)
+    elif a.cmd == "integrate-publish":
+        integrate_publish(a.manifest, a.bundle, a.gate)
     elif a.cmd == "resolve-publish":
         resolve_publish(a.dir)
     elif a.cmd == "guard":

@@ -62,6 +62,7 @@ jobs:
     outputs:
       conflicted: ${{ steps.candidate.outputs.conflicted }}
       accepted: ${{ steps.candidate.outputs.accepted }}
+      report: ${{ steps.candidate.outputs.report }}
     permissions:
       contents: read
       pull-requests: read
@@ -133,6 +134,7 @@ jobs:
     if: >-
       (needs.validate.outputs.accepted != '' && needs.validate.outputs.accepted != '[]')
       || (needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]')
+      || (needs.validate.outputs.report != '' && needs.validate.outputs.report != '[]')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
