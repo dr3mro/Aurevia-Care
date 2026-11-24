@@ -1,11 +1,10 @@
 """Only Delivery is branch-scoped; every other workflow stays concurrent.
 
-Delivery keeps one run per workflow per branch: a newer trigger cancels the
-older run, so the newest commit on a branch is the only one still building.
-Other workflows use a group unique to each run, so parallel runs, matrix
-workers and scheduled jobs never cancel or queue behind one another. GitHub
-rejects ``queue: max`` together with cancellation, so Delivery declares no
-queue; a cancelled exact SHA on main receives no verdict.
+Delivery keeps one run per workflow per branch and queues superseded runs so
+every exact SHA still receives its own verdict. Other workflows use a group
+unique to each run, so parallel runs, matrix workers and scheduled jobs never
+cancel or queue behind one another. GitHub rejects ``queue: max`` together with
+cancellation, so a queuing workflow keeps cancellation off.
 """
 import unittest
 
@@ -25,11 +24,11 @@ class WorkflowConcurrencyTest(unittest.TestCase):
     def workflows(self):
         return sorted(WORKFLOWS.glob("*.yml"))
 
-    def test_delivery_keeps_one_cancelling_run_per_branch(self):
+    def test_delivery_queues_one_run_per_branch_without_cancelling(self):
         concurrency = load(WORKFLOWS / "delivery.yml")["concurrency"]
         self.assertEqual(concurrency["group"], DELIVERY_GROUP)
-        self.assertIs(concurrency["cancel-in-progress"], True)
-        self.assertNotIn("queue", concurrency)
+        self.assertIs(concurrency["cancel-in-progress"], False)
+        self.assertEqual(concurrency["queue"], "max")
 
     def test_other_workflows_run_concurrently_per_run(self):
         for path in self.workflows():
