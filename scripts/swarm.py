@@ -2425,6 +2425,7 @@ def note_worker_outcome(task, result, directory, pr):
 # ---------------------------------------------------------------------------
 NOTES_DIR = "docs/pr/notes"
 NOTES_ARCHIVE = "docs/pr/notes/archive"
+REPORTS_DIR = "docs/pr/reports"
 DAILY_NOTE = re.compile(r"\d{4}-\d{2}-\d{2}\.md")
 NOTE_STAMP = re.compile(r"-(\d{8})-(\d{6})\.md$")
 RULES_ALLOWED = (re.compile(r"\.opencode/setup/AGENTS\.md"), re.compile(r"\.opencode/.+\.md"), re.compile(r"docs/[^/]+\.md"))
@@ -2464,7 +2465,7 @@ def referenced_notes():
     listed = git("ls-files", "*.md", check=False).split()
     names = set()
     for name in listed:
-        if name.startswith((".agent/", "docs/archive/", "docs/swarm/")):
+        if name.startswith((".agent/", "docs/pr/notes/", "docs/pr/reports/", "docs/swarm/")):
             continue
         try:
             text = Path(name).read_text(errors="replace")
@@ -2519,7 +2520,7 @@ def notes_collect(out_dir, notes_dir=NOTES_DIR, today=None, added=None, keep=Non
     return chosen
 
 
-def push_main(message, edit, paths=(NOTES_DIR, NOTES_ARCHIVE), attempts=6):
+def push_main(message, edit, paths=(NOTES_DIR, NOTES_ARCHIVE, REPORTS_DIR), attempts=6):
     """Run `edit()` in the checkout, commit only `paths` and push to main; redo it on a fresh
     main if the push races. The job's scratch folders (notes-in/, reconciled/) never go in."""
     for attempt in range(attempts):
@@ -2559,7 +2560,7 @@ def archive_day(day, names, notes_dir=NOTES_DIR, archive_dir=NOTES_ARCHIVE):
     return True
 
 
-def store_daily(day, text, notes_dir=NOTES_DIR, archive_dir=NOTES_ARCHIVE):
+def store_daily(day, text, notes_dir=NOTES_DIR, archive_dir=REPORTS_DIR):
     """Write the reconciled note of a day. Notes that arrive late (a pull request merged after
     its day was reconciled) are appended to that day's file, wherever it now lives."""
     target = Path(archive_dir) / f"{day}.md"
@@ -2607,7 +2608,7 @@ def rules_patch_ok(patch_text):
                  patch_text, re.M):
         return False
     return bool(paths) and all(a == b and any(p.fullmatch(a) for p in RULES_ALLOWED)
-                               and not a.startswith("docs/archive/") for a, b in paths)
+                               and not a.startswith("docs/pr/") for a, b in paths)
 
 
 def open_rules_pr(day, patch_path):
@@ -2637,7 +2638,7 @@ def open_rules_pr(day, patch_path):
              "--title", f"Notes {day}: instruction updates for review",
              "--body", f"{MARK}\nThe daily notes reconciliation for {day} suggests these edits to make workers "
                        "more efficient. Review them; nothing here merges by itself.\n\n"
-                       f"Reconciled notes: `{NOTES_DIR}/{day}.md`.", check=False)
+                       f"Reconciled report: `{REPORTS_DIR}/{day}.md`.", check=False)
     git("checkout", "-q", "-")
     match = re.search(r"/pull/(\d+)", out or "")
     if match:
@@ -4295,7 +4296,7 @@ def main(argv=None):
     if a.cmd == "ensure-labels":
         ensure_labels()
     elif a.cmd == "archive-todo":
-        print(f"archived {archive_todo()} finished task(s) to {ARCHIVE}")
+        print(f"archived {archive_todo()} finished task(s) to {store().ROOT}/{store().DONE}")
     elif a.cmd == "images-ready":
         images_ready_command(a.slots, parse_generations(a.generations))
     elif a.cmd == "slot-matrix":

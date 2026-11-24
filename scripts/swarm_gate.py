@@ -389,7 +389,8 @@ def main(argv=None):
     try:
         event = json.loads(Path(args.event_path).read_text())
         required = tuple(n.strip() for n in args.required_checks.split(",") if n.strip())
-        ctx = collect_context(event, args.event_name, args.root, required, args.head_root)
+        ctx = collect_context(event, args.event_name, args.root, required,
+                              head_root=args.head_root)
         result = evaluate(ctx)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Swarm gate: verification error: {error}", file=sys.stderr)
