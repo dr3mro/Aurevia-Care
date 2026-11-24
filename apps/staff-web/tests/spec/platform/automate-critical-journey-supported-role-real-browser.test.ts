@@ -86,15 +86,22 @@ const e2eSpecs = (): string[] =>
 /**
  * The exact e2e spec set committed today; a new journey must replace this pin.
  *
+ * This is the GAP tripwire's inventory half: it pins the whole committed spec
+ * set so any added or removed e2e spec forces a reviewer to re-check whether
+ * WEB-10 clause 2 evidence has landed. It intentionally lists every spec, not
+ * only the journeys recognised above, so a new per-role journey cannot slip
+ * past unnoticed. The other half of the tripwire is asserted below: no
+ * playwright workflow yet and exactly one computed-style layout check, which
+ * keeps all-role, staging-RC and light/dark theme evidence pinned as absent.
+ */
+const currentSpecs: readonly string[] = [
+  'adminflow/admin-journey.spec.ts',
+  'clinicalnote/clinicalnote-journey.spec.ts',
  * Every committed `*.spec.ts` under `e2e/` belongs here, not only the seven
  * journeys recognised above. A contributor adding a spec must add it here in
  * the same change, so a new per-role journey cannot slip past the tripwire
  * unnoticed. Order is irrelevant: the assertion compares sorted sets.
- */
-const currentSpecs: readonly string[] = [
   'accessibilityScanResponsive.spec.ts',
-  'adminflow/admin-journey.spec.ts',
-  'clinicalnote/clinicalnote-journey.spec.ts',
  * The exact e2e spec set committed today; a new or removed spec must replace
  * this pin. Keeping it exact is what makes the inventory tripwire useful: a
  * journey cannot be added or dropped without updating this list in the same
@@ -122,8 +129,9 @@ const currentSpecs: readonly string[] = [
   'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
-  'responsive-chart.spec.ts',
+  'rightToLeftResponsive.spec.ts',
   'smoke.spec.ts',
+  'responsive-chart.spec.ts',
   'responsive-patients.spec.ts',
   'softKeyboardAndForms.spec.ts',
   'therapyflow/therapy-journey.spec.ts',
@@ -184,6 +192,20 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
   });
 
   /**
+   * GAP tripwire: the clause is not fully evidenced yet. These assertions pin
+   * the current artifact shape and the exact supported-role union. They are
+   * active (not skipped) so the suite stays honest; each one fails on the day
+   * the missing evidence lands, at which point it must be replaced by a real
+   * positive assertion and the clause note updated to match. The last one is a
+   * compile-time tripwire: it is enforced by the typecheck gate in check.sh,
+   * not at runtime. The recognised visual-check vocabulary is screenshot and
+   * snapshot comparators plus theme attributes and computed-style reads.
+   *
+   * The RTL responsive spec now lands one such visual check: it reads computed
+   * styles to detect overlapping clinical text while proving Arabic layout.
+   * That is layout evidence, not the light/dark theme evidence the clause still
+   * lacks, so this half of the tripwire is pinned to that one spec instead of
+   * remaining empty. Any added or removed visual-check spec still trips it.
    * Light/dark visual evidence is now recorded; the other two clause halves
    * stay pinned by an active GAP tripwire. The inventory and workflow pins are
    * exact, so adding a spec or an e2e workflow flips them. The visual-check pin
@@ -217,6 +239,9 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
         readModule(`e2e/${path}`),
       ),
     );
+    // Pin the single computed-style visual check carried by the RTL responsive
+    // spec. Light/dark theme evidence is still absent; this is layout evidence.
+    expect(visualChecks.sort()).toEqual(['rightToLeftResponsive.spec.ts']);
     expect(visualChecks.sort()).toEqual(['darkModeResponsive.spec.ts']);
 
     expectTypeOf<Role>().toEqualTypeOf<
