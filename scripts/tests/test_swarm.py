@@ -1183,6 +1183,7 @@ class ForceSchedulingTests(unittest.TestCase):
         self.assertEqual(swarm.scheduler_room(25, 0, True), 20)
 
     def test_override_input_promises_all_scheduling_limits_are_bypassed(self):
+        import yaml
         config = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())
         override = config[True]["workflow_dispatch"]["inputs"]["ignore_red_main"]
         self.assertIn("bypass", override["description"].lower())
