@@ -1,4 +1,6 @@
-- [ ] RESP-E2E-FEATURE-DUPLICATES · Staff web end-to-end: the duplicates screens work on phone, tablet and desktop
+- [-] RESP-E2E-FEATURE-DUPLICATES · Staff web end-to-end: the duplicates screens work on phone, tablet and desktop
+  - agent: swarm-9
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/responsive-duplicates.spec.ts
   - depends: RESP-E2E-PROJECTS
