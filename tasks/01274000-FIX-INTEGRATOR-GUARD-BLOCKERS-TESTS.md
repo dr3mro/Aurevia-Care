@@ -1,7 +1,7 @@
 - [-] FIX-INTEGRATOR-GUARD-BLOCKERS-TESTS · Update integrator tests to the guard_blockers seam
   - agent: orca
   - requirements: OPS-06
-  - scope: scripts/tests/test_swarm.py, scripts/tests/test_swarm_integrator_coverage.py, scripts/tests/test_swarm_delivery_state.py, tasks/01274000-FIX-INTEGRATOR-GUARD-BLOCKERS-TESTS.md
+  - scope: scripts/swarm.py, scripts/tests/test_swarm.py, scripts/tests/test_swarm_integrator_coverage.py, scripts/tests/test_swarm_delivery_state.py, scripts/tests/test_delivery_workflow_gates.py, tasks/01274000-FIX-INTEGRATOR-GUARD-BLOCKERS-TESTS.md
   - depends: none
   - details:
     Owner said "fix all". Full Python suite on pristine origin/main at
@@ -28,7 +28,7 @@
     Tool (green): `cd scripts/tests && python3 -m unittest -q ...` on the nine
     affected tests → `Ran 9 tests ... OK`; full
     `python3 -I -m unittest discover -s scripts/tests -q` →
-    `Ran 1572 tests in 214.071s / OK`.
+    final merged tree `Ran 1579 tests in 245.816s / OK`.
     Tool: `bash scripts/python-coverage.sh` →
     `python coverage: every changed script line is covered`;
     `actionlint ... .github/workflows/*.yml` exit 0; `check-docs.py`,
@@ -40,7 +40,8 @@
     moved head keeps its reason and simple failure
     (`test_a_branch_that_moved_after_planning_is_retested_without_the_debugger`);
     already-present PR prints the notice and is closed
-    (`test_an_already_integrated_pr_is_closed_and_marked_done`); wiring prune
+    (`test_an_already_integrated_pr_is_closed_and_marked_done`, implemented
+    upstream during the merge and kept once); wiring prune
     cases still gate the exact merge tip (seven subtests of
     `test_integrator_prunes_wiring_before_gating_the_merge_commit`).
     Evidence sources: executed tool commands and GitHub Actions API reads;

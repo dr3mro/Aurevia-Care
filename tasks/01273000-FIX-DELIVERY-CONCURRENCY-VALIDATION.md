@@ -67,6 +67,6 @@
     pending behind the existing runner backlog. The later task
     01274000-FIX-INTEGRATOR-GUARD-BLOCKERS-TESTS repaired the baseline suite;
     after that fix `python3 -I -m unittest discover -s scripts/tests -q` →
-    `Ran 1572 tests in 214.071s / OK` and `bash scripts/python-coverage.sh` →
+    `Ran 1579 tests in 245.816s / OK` and `bash scripts/python-coverage.sh` →
     `python coverage: every changed script line is covered`. No gate was
     weakened in either task.

@@ -14,3 +14,19 @@
     dispatch paths, for the validator's report output and for the workflow's
     publish condition; then wire the dispatch, emit the decision report and
     include it in the publish job condition. Keep the candidate job read-only.
+  - evidence:
+    Tool (red): four new tests failed before the fix — both CLI dispatch
+    tests (`main()` exited without calling the handler), the validator report
+    test (no `report` output) and the workflow publish test (no `report`
+    output or publish condition).
+    Tool (green): same four tests → `Ran 4 tests ... OK` after wiring
+    `integrate-validate` / `integrate-publish` dispatch, emitting `report`
+    with rejected + already + conflict_details, and adding the publish
+    condition. Full `python3 -I -m unittest discover -s scripts/tests -q`
+    → `Ran 1579 tests in 245.816s / OK`.
+    Tool: `bash scripts/python-coverage.sh` →
+    `python coverage: every changed script line is covered`; actionlint on all
+    workflows and check-docs/check-constraints/check-secrets/check-names/
+    gen-opencode --check each exit 0.
+    Evidence sources: executed tool commands and read-only reviewer reports;
+    no simulated walkthrough or human participant.
