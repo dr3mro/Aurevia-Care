@@ -2,7 +2,8 @@
   - branch: main
   - requirements: OPS-06
   - scope: .agents/notes, .agents/reports, .agent, .gitignore, .github/workflows, .opencode, scripts, scripts/tests, tasks, docs
-  - details: The user moved all 990 `.agents/notes/*` files verbatim into `.agents/reports/` and deleted `docs/archive/`. Decision: raw worker notes (`<task-id>-<timestamp>.md`, fix variants and hand-off notes) live in `.agents/notes/`; reconciled daily reports (`<YYYY-MM-DD>.md`) live in `.agents/reports/`. Move the raw notes, then update every reference in notes, instruction files, skills, scripts, tests, workflows and trackers. Repair links to deleted `docs/archive/*` files without weakening checks. Verify with docs, Python tooling, coverage and workflow checks.
+  - details:
+    The user moved all 990 `.agents/notes/*` files verbatim into `.agents/reports/` and deleted `docs/archive/`. Decision: raw worker notes (`<task-id>-<timestamp>.md`, fix variants and hand-off notes) live in `.agents/notes/`; reconciled daily reports (`<YYYY-MM-DD>.md`) live in `.agents/reports/`. Move the raw notes, then update every reference in notes, instruction files, skills, scripts, tests, workflows and trackers. Repair links to deleted `docs/archive/*` files without weakening checks. Verify with docs, Python tooling, coverage and workflow checks.
 
 ## Progress
 - [x] New path and file mapping verified (byte-identical moves)

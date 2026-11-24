@@ -137,7 +137,7 @@ run_agent() {
       "$prompt" 2>&1 | strip_ansi | tee "$log" >&2 || status=$?
     if [[ $status -eq 0 ]]; then echo ok; return
     elif [[ $status -eq 124 ]]; then echo timeout; return
-    elif grep -qiE 'rate.?limit|too many requests|quota|\b429\b' "$log"; then
+    elif grep -qiE 'rate.?limit|too many requests|quota|\b429\b|free usage limit|free tier|usage (limit|exhausted)' "$log"; then
       result=rate_limited
       printf 'model-router: %s rate-limited; rotating to next verified model\n' "$model" >&2
       continue
