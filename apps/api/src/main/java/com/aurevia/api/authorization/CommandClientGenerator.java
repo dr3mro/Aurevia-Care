@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 import com.aurevia.api.contract.RequestDigest;
 
 /**
- * Deterministic generator for the X-04 command contract, typed client and checksum manifest (PRD-06).
+ * Deterministic generator for the command contract, typed client and checksum manifest (PRD-06).
  *
  * <p>The Java command catalog is the single source of truth. This generator
  * emits the OpenAPI document and the TypeScript client from that one model, so
@@ -56,7 +56,7 @@ public final class CommandClientGenerator {
         StringBuilder yaml = new StringBuilder("""
                 openapi: 3.0.3
                 info:
-                  title: Aurevia command contract (X-04)
+                  title: Aurevia command contract
                   version: 0.1.0
                   description: >-
                     Synthetic-only explicit POST commands. Every operation names the

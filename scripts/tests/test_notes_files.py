@@ -28,6 +28,17 @@ class NotesFileTests(unittest.TestCase):
         self.assertNotIn("docs/pr/notes.md", script)
         self.assertIn("publish-notes.md", script)
 
+    def test_no_notes_are_tracked_under_the_old_directory(self):
+        self.assertEqual(
+            self.tracked(".agent/pr-notes"), [],
+            ".agent/pr-notes is local scratch; worker notes live in docs/pr/notes/",
+        )
+
+    def test_worker_prompt_points_to_the_new_notes_directory(self):
+        script = (ROOT / "scripts/agent-run.sh").read_text()
+        self.assertNotIn("create the pr-notes folder", script)
+        self.assertIn("under docs/pr/notes/", script)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2565,8 +2565,11 @@ def store_daily(day, text, notes_dir=NOTES_DIR, archive_dir=REPORTS_DIR):
     """Write the reconciled note of a day. Notes that arrive late (a pull request merged after
     its day was reconciled) are appended to that day's file, wherever it now lives."""
     target = Path(archive_dir) / f"{day}.md"
-    if not target.is_file():
-        target = Path(notes_dir) / f"{day}.md"
+    legacy = Path(notes_dir) / f"{day}.md"
+    # A daily written before the notes/reports split may only exist in the old
+    # location; a fresh day belongs in the reports directory.
+    if not target.is_file() and legacy.is_file():
+        target = legacy
     if target.is_file():
         text = target.read_text().rstrip() + "\n\n## Late notes\n\n" + text.strip()
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -2899,7 +2902,7 @@ def queue_delivery_failure(pr, head, runs, dispatch=True, only_actionable=False)
     return fail(pr, reason, simple=actionable, dispatch=dispatch, evidence=evidence)
 
 
-def delivery_gate(pr, head=None, runs=None):
+def delivery_gate(pr, head=None, runs=None, report=True):
     """Apply the integrator's Delivery policy to one pull request.
 
     Returns ``merge``, ``wait``, ``fix`` or ``request``. Only ``merge`` may stage
@@ -2911,6 +2914,8 @@ def delivery_gate(pr, head=None, runs=None):
     already listed them.
     """
     verdict, state, _ = delivery_decision(pr, head, runs)
+    if not report:
+        return verdict
     if verdict == "merge" or verdict == "wait":
         return verdict
     if verdict == "fix":
@@ -3682,7 +3687,7 @@ def guard_blockers(pr, repair=False):
     return "", [], lines
 
 
-def guard(pr, repair=False):
+def guard(pr, repair=False, report=True):
     """Return the files that stop an automatic merge and label accordingly.
 
     Ordinary PRs never auto-merge workflow, agent or script changes. Watchdog
@@ -3691,6 +3696,8 @@ def guard(pr, repair=False):
     a repair never auto-merges a change to GATE_CONFIG.
     """
     kind, files, lines = guard_blockers(pr, repair)
+    if not report:
+        return kind, files, lines
     if kind == "tracker":
         fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(files[:10])
              + " and put the evidence in your notes file (the path in your prompt, never docs/pr/notes.md)", simple=True)
@@ -4014,7 +4021,12 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
         if check_delivery is None else check_delivery
     wiring_checker = _checker("check-wiring")
     for pr in queue:
-        kind, files, lines = guard_blockers(pr, is_repair(pr))
+        blocked = guard(pr, is_repair(pr), report=False)
+        if isinstance(blocked, tuple):
+            kind, files, lines = blocked
+        else:
+            kind = "protected" if blocked else ""
+            files, lines = blocked or [], 0
         if kind and kind != "override":
             result["rejected"].append({"pr": pr, "kind": kind, "files": files, "lines": lines})
             continue
@@ -4027,7 +4039,7 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
             tid = task_id_of(pr_view.get("headRefName", "") or "")
             result["already"].append({"pr": pr, "task_id": tid})
             continue
-        verdict, _, _ = delivery_decision(pr, head)
+        verdict = delivery_gate(pr, head, report=False)
         if require_evidence and verdict != "merge":
             result["rejected"].append({"pr": pr, "kind": "evidence", "verdict": verdict,
                                        "head_sha": head})
@@ -4037,13 +4049,15 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
         if sha is None:
             reason = (f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
                       "merge main into the branch and resolve it")
-            result["conflicted"].append(pr)
-            result["conflict_details"].append({"pr": pr, "reason": reason,
-                                               "tries": resolve_attempts(pr)})
+            tries = resolve_attempts(pr)
+            if tries < MAX_RESOLVE:
+                result["conflicted"].append(pr)
+            result["conflict_details"].append({"pr": pr, "reason": reason, "tries": tries})
             git("reset", "--hard", base)
             continue
         if head != sha:
-            result["rejected"].append({"pr": pr, "kind": "moved"})
+            result["rejected"].append({"pr": pr, "kind": "moved", "simple": True,
+                                       "reason": "the branch changed after planning; it will be retested"})
             git("reset", "--hard", base)
             continue
         wiring_error = refresh_wiring_baseline(wiring_checker, base)
@@ -4082,7 +4096,8 @@ def report_validation(result):
         elif kind == "already":
             close_integrated_pr(pr, item.get("task_id", ""))
         else:
-            fail(pr, item.get("reason", "validation rejected this branch"), item.get("log", ""))
+            fail(pr, item.get("reason", "validation rejected this branch"), item.get("log", ""),
+                 simple=item.get("simple", False))
     for detail in result.get("conflict_details", []):
         pr, reason, tries = detail["pr"], detail["reason"], detail["tries"]
         if tries < MAX_RESOLVE:

@@ -819,7 +819,7 @@ class PlanTests(unittest.TestCase):
 
     def test_label_editing_jobs_have_issues_write(self):
         import yaml
-        for name, job in (("swarm-integrator.yml", "integrate"), ("fix-pr-gate.yml", "handoff")):
+        for name, job in (("swarm-integrator.yml", "publish"), ("fix-pr-gate.yml", "handoff")):
             config = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
             perms = config["jobs"][job]["permissions"]
             self.assertEqual(perms.get("issues"), "write", f"{name} {job}")

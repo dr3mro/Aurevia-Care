@@ -4,7 +4,7 @@ Tested head revision: `8789ec021086730f684eb45ccf5f0939aefef011`
 
 ## Summary
 
-PR #1602 contains worker hand-off note only; no production or test file changed by this PR: `.agent/pr-notes/RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE-20261124-041530.md`. Its worker record reported
+PR #1602 contains worker hand-off note only; no production or test file changed by this PR: `docs/pr/notes/RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE-20261124-041530.md`. Its worker record reported
 local-check failure from repository-wide gate defects that have since been
 repaired on main. This note records the re-verification on the refreshed branch.
 
@@ -30,7 +30,7 @@ no new specialist review.
 
 ## Findings
 
-Historical hand-off notes remain under `.agent/pr-notes/` from the worker's
+Historical hand-off notes remain under `docs/pr/notes/` from the worker's
 original branch; the active reconciled record is this file under `docs/pr/notes/`.
 Evidence sources: executed tool commands and GitHub Actions logs. No simulated
 user walkthrough, clinician review or human participant feedback.
