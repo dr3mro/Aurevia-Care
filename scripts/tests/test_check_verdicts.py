@@ -41,6 +41,12 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(found, {"smartclinic-code-reviewer": "GO", "smartclinic-x": "NO-GO"})
         self.assertEqual(findings, ["Critical: injection in Foo"])
 
+    def test_the_word_unresolved_does_not_count_as_resolved(self):
+        section = ("Required: the false side of the CAS is unresolved\n"
+                   "Required: add a missing negative case (Resolved in abc123)\n")
+        _, findings = verdicts.verdicts_and_findings(section)
+        self.assertEqual(findings, ["Required: the false side of the CAS is unresolved"])
+
 
 class ProblemTests(unittest.TestCase):
     def test_a_clean_set_of_verdicts_passes(self):

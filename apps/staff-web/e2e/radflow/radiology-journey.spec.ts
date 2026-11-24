@@ -1,5 +1,18 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import {
+  accession,
+  accessionIssuer,
+  allowSyntheticWrites,
+  mockWorklistApi,
+  orderCode,
+  orderId,
+  patientId,
+  scheduledAt,
+  site,
+  studyInstanceUid,
+  workstationRef,
+  wrongPatientId,
+} from './synthetic-rad-api';
 
 /**
  * Browser journey for the radiology workflow (RAD-01, WEB-09).
@@ -9,166 +22,10 @@ import type { Page } from '@playwright/test';
  * mounts the exported report components through a small dev-only harness
  * because they are not routed in the portal yet. No credential, real patient
  * identifier or production endpoint appears here.
+ *
+ * The worklist helpers live in `synthetic-rad-api.ts` so the bilingual journey
+ * uses the identical state machine and refusal contract.
  */
-
-/** One synthetic worklist row in the wire shape used by the staff API client. */
-interface WorklistRow {
-  orderId: string;
-  performingSiteId: string;
-  patientId: string;
-  orderCode: string;
-  urgency: string;
-  status: string;
-  version: number;
-  scheduledAt: string | null;
-  modality: string | null;
-  accession: string | null;
-  accessionIssuer: string | null;
-  studyInstanceUid: string | null;
-}
-
-const site = 'site-rad-main';
-const orderId = 'rad-001';
-const orderCode = 'ORD-001';
-const patientId = 'synthetic-patient-001';
-const wrongPatientId = 'synthetic-patient-999';
-const accession = 'ACC-001';
-const accessionIssuer = 'SYN-ORG';
-const scheduledAt = '2026-03-09T09:00:00Z';
-const studyInstanceUid = '1.2.826.0.1.3680043.2.1.3';
-const workstationRef = 'workstation-1';
-
-/** Command names recorded by the API mock, in the order the browser sent them. */
-type CommandNames = string[];
-
-/** Move the worklist row forward for one accepted command. */
-function advanceRow(row: WorklistRow, action: string, body: Record<string, string>): WorklistRow {
-  const version = row.version + 1;
-  switch (action) {
-    case 'schedule':
-      return {
-        ...row,
-        status: 'SCHEDULED',
-        version,
-        scheduledAt: body.scheduledAt ?? null,
-        modality: body.modality ?? null,
-        accession: body.accession ?? null,
-        accessionIssuer: body.accessionIssuer ?? null,
-      };
-    case 'studies':
-      return {
-        ...row,
-        status: 'PERFORMED',
-        version,
-        studyInstanceUid: body.studyInstanceUid ?? null,
-      };
-    default:
-      return { ...row, status: 'REPORTED', version };
-  }
-}
-
-/** A study link naming another patient or accession is refused by the kernel. */
-function isMismatchedStudyLink(
-  row: WorklistRow,
-  action: string,
-  body: Record<string, string>,
-): boolean {
-  return (
-    action === 'studies' && (body.patientId !== row.patientId || body.accession !== row.accession)
-  );
-}
-
-/**
- * Install a stateful synthetic worklist API. Reads return the current row;
- * commands advance it forward exactly as the real worklist kernel does, and a
- * study link with a wrong patient or accession is refused with 409.
- */
-async function mockWorklistApi(page: Page): Promise<CommandNames> {
-  const commands: CommandNames = [];
-  let row: WorklistRow = {
-    orderId,
-    performingSiteId: site,
-    patientId,
-    orderCode,
-    urgency: 'ROUTINE',
-    status: 'RECEIVED',
-    version: 1,
-    scheduledAt: null,
-    modality: null,
-    accession: null,
-    accessionIssuer: null,
-    studyInstanceUid: null,
-  };
-
-  await page.route('**/api/v1/**', async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
-    const method = request.method();
-
-    if (method === 'GET' && url.pathname === '/api/v1/appointments') {
-      // A second performing site's order is returned by the API but must be
-      // filtered out before it is painted (defence in depth, RAD-01).
-      const otherSiteRow: WorklistRow = {
-        ...row,
-        orderId: 'rad-005',
-        orderCode: 'ORD-005',
-        performingSiteId: 'site-rad-other',
-      };
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([row, otherSiteRow]),
-      });
-      return;
-    }
-
-    const segments =
-      /^\/api\/v1\/radiology\/worklist\/orders\/([^/]+)\/(schedule|studies|report)$/.exec(
-        url.pathname,
-      );
-    if (method === 'POST' && segments?.[1] === orderId && segments[2] !== undefined) {
-      const action = segments[2];
-      const body = JSON.parse(request.postData() ?? '{}') as Record<string, string>;
-      commands.push(action);
-
-      // The production worklist kernel refuses a mismatched link with 422 and
-      // the LABEL_MISMATCH code; mirror that contract here so the mock cannot
-      // teach a future test writer the wrong failure shape.
-      if (isMismatchedStudyLink(row, action, body)) {
-        await route.fulfill({
-          status: 422,
-          contentType: 'application/json',
-          body: JSON.stringify({ code: 'LABEL_MISMATCH' }),
-        });
-        return;
-      }
-
-      row = advanceRow(row, action, body);
-
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ orderId: row.orderId, status: row.status, version: row.version }),
-      });
-      return;
-    }
-
-    await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
-  });
-
-  return commands;
-}
-
-/** Give the client a synthetic CSRF cookie so state-changing commands are sent. */
-async function allowSyntheticWrites(page: Page): Promise<void> {
-  await page.context().addCookies([
-    {
-      name: 'XSRF-TOKEN',
-      value: 'synthetic-csrf-token',
-      url: new URL(page.url()).origin,
-    },
-  ]);
-}
 
 test('clinician and radiology journey: schedule, refuse a wrong-patient link, link, hand off as reported', async ({
   page,

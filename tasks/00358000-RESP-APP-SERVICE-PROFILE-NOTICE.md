@@ -1,4 +1,5 @@
 - [x] RESP-APP-SERVICE-PROFILE-NOTICE · Patient app: tablet, landscape and large-text layout for `ServiceProfileNotice` (service-profiles)
+  - evidence: PR #657 merged to main (reconciled 2026-11-23)
   - pr: #657
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

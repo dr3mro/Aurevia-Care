@@ -40,6 +40,9 @@ rather than through `chart.record`. Baseline run on the unmodified tree:
   does not grant `APPOINTMENT_BOOK`, cannot confirm (HTTP 403) and books nothing.
 - `peerTenantCannotConfirmAnotherTenantsSuggestion` — negative proof. A user of another
   tenant cannot see or confirm the suggestion (HTTP 404) and books nothing in either tenant.
+- `invalidVersionConfirmationCreatesNoBooking` — negative proof. A confirmation carrying a
+  non-positive `If-Match` version is refused at the HTTP precondition boundary (HTTP 422,
+  `INVALID_IF_MATCH`) before the command runs, and books nothing.
 
 Entry-point-to-test trace: `POST /api/v1/follow-ups/suggest` and `POST
 /api/v1/follow-ups/{id}/confirm` -> `FollowUpController` -> `IfMatch.parse` (missing
@@ -71,19 +74,23 @@ Production classes exercised through the normal HTTP entry point:
   appointment insert and the tenant-scoped persistence of the confirmed suggestion and its
   `booking_id`.
 
-The durable suggestion and task tables are created in `db/migrations/V74__build_05.sql` with
-`ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY` and tenant isolation policies;
-`db/migrations/V8__scheduling.sql` owns the shared appointment table. All five follow-up
-routes are published in `contracts/openapi.yaml` (paths at lines 3492, 7146, 7171, 7200 and
-7229). The `/confirm` entry does not yet declare the `If-Match` parameter or the 428 and 412
-responses; that is an adjacent contract-documentation issue recorded as a separate task in
-the worker notes and does not change the runtime rule proved here.
+The follow-up schedule, override, booking and task model lives in `scheduling.followup`; its
+durable `follow_up_suggestion` and `care_team_task` tables are created in
+`db/migrations/V74__build_05.sql` with `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`
+and tenant isolation policies, while `db/migrations/V8__scheduling.sql` owns the shared
+appointment table. `chart.record` holds the CLN-03 longitudinal chart and has no booking
+behaviour. All five follow-up routes are published in `contracts/openapi.yaml` (tasks 3492,
+suggest 7146, complete 7171, confirm 7200, override 7229). The `/confirm` entry does not yet
+declare the `If-Match` parameter or the 428 and 412 responses; that is an adjacent
+contract-documentation issue recorded as a separate task in the worker notes and does not
+change the runtime rule proved here.
 
 ## Gap
 
-None. All seven tests pass against current production and the clause's booking rule is proven
+None. All eight tests pass against current production and the clause's booking rule is proven
 end to end. This note corrects two earlier inaccuracies: the stale claim that the follow-up
 routes were absent from `contracts/openapi.yaml`, and a description of task responses that
 asserted more than the test checks. It also names the migration that actually owns the
-follow-up tables. No production code, existing test, migration or contract was changed by
-this evidence task.
+follow-up tables. The invalid-version precondition case added on `main` brings the suite to
+eight tests. No production code, existing test, migration or contract was changed by this
+evidence task.

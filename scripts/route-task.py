@@ -45,9 +45,15 @@ def split(text):
 
 
 def field(body, name):
-    """Value of a `- name: value` line in the task text; empty when absent."""
-    match = re.search(rf"(?m)^\s*-?\s*{name}:[ \t]*(.*)$", body or "")
-    return match.group(1) if match else ""
+    """Read a task field from either task-file or worker-body text.
+
+    Task files use ``  - scope: a, b`` while the worker brief produced by
+    ``task_text()`` uses ``Scope (stay inside these paths): a, b``. Both must be
+    parsed or specialist routing silently receives an empty scope.
+    """
+    pattern = rf"(?mi)^\s*-?\s*{re.escape(name)}\b(?:\s*\([^)]*\))?\s*:[ \t]*(.*)$"
+    match = re.search(pattern, body or "")
+    return match.group(1).strip() if match else ""
 
 
 def pick(scope):

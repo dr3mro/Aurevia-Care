@@ -1,4 +1,5 @@
 - [x] RESP-SIGN-IN-PLACEHOLDER · Staff web: responsive `SignInPlaceholder` (app)
+  - evidence: PR #716 merged to main (reconciled 2026-11-23)
   - pr: #716
   - attempts: 1
   - requirements: WEB-07, UX-01

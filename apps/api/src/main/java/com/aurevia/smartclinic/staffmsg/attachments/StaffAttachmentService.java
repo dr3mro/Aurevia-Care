@@ -136,6 +136,32 @@ public final class StaffAttachmentService {
     }
 
     /**
+     * Validate every unsent file of a draft against the publication rules
+     * without changing any of them; used before a message row is committed.
+     *
+     * @param actor   freshly derived sender identity
+     * @param draftId conversation or mail-draft identifier
+     * @return the publishable files, or an empty list when none are bound
+     * @throws ApiException on denial or on any quarantined, unclean or foreign file
+     */
+    public List<StaffAttachment> requirePublishable(StaffActor actor, String draftId) {
+        return publishable(actor, draftId);
+    }
+
+    /**
+     * Return the unsent files of one draft that pass the publication rules.
+     *
+     * @param actor   freshly derived sender identity
+     * @param draftId conversation or mail-draft identifier
+     * @return the validated files in store order, possibly empty
+     * @throws ApiException on denial or on any quarantined, unclean or foreign file
+     */
+    public List<StaffAttachment> publishable(StaffActor actor, String draftId) {
+        String draft = StaffAttachmentInputs.key(draftId, "draftId");
+        return validate(actor, draft, pending(actor, draft));
+    }
+
+    /**
      * Explicitly send named clean files, after validating every member before any
      * member changes (MSG-03 explicit send).
      *
@@ -164,38 +190,68 @@ public final class StaffAttachmentService {
             throw invalid(actor, messageId, "EMPTY_RECIPIENTS", "at least one recipient is required");
         }
 
-        List<StaffAttachment> pending = new ArrayList<>();
+        List<StaffAttachment> candidates = new ArrayList<>();
         for (String candidate : ids) {
-            StaffAttachment current = load(actor, candidate);
-            if (current.scanState() == ScanState.QUARANTINED) {
-                String reason = failureReason(actor.organizationId(), current.id());
-                throw conflict(actor, current.id(), "QUARANTINED_FILE", "file is quarantined: " + reason);
-            }
-            if (current.scanState() != ScanState.CLEAN) {
-                throw conflict(actor, current.id(), "NOT_CLEAN", "only a clean file can be sent");
-            }
-            if (!current.uploaderSubject().equals(actor.subject())) {
-                throw deny(actor, current.id(), "NOT_UPLOADER", "only the uploader may send this file");
-            }
-            if (!draftId.equals(current.draftId())) {
-                throw deny(actor, current.id(), "WRONG_DRAFT", "the file is bound to a different draft");
-            }
-            if (current.sent()) {
-                throw conflict(actor, current.id(), "ALREADY_SENT", "the file has already been sent");
-            }
-            pending.add(current);
+            candidates.add(load(actor, candidate));
         }
+        List<StaffAttachment> validated = validate(actor, draftId, candidates);
+        return markSent(actor, messageId, validated, recipients);
+    }
 
+    /**
+     * Bind files validated by a message send's preflight to the committed message.
+     *
+     * <p>The fresh state is re-read before each write, and the store performs a
+     * conditional pending-to-sent transition: only the caller that actually bound
+     * the row records a SENT fact, so a same-key race cannot double-audit. A file
+     * that became unclean after preflight is refused rather than published (fail
+     * closed).</p>
+     *
+     * @param actor         freshly derived sender identity
+     * @param messageId     identifier returned by the message store
+     * @param attachmentIds identifiers validated before the message commit
+     * @param recipients    frozen recipient subjects
+     * @return the attachments bound by this call, possibly empty on replay
+     * @throws ApiException on denial, a changed file or a failed integrity state
+     */
+    public List<StaffAttachment> publishPrepared(StaffActor actor, String messageId,
+                                                 List<String> attachmentIds, Set<String> recipients) {
+        String message = StaffAttachmentInputs.key(messageId, "messageId");
+        authorize(actor, StaffAttachmentActions.SEND, message);
+        List<StaffAttachment> bound = new ArrayList<>();
+        for (String id : attachmentIds) {
+            StaffAttachment fresh = load(actor, id);
+            if (fresh.sent()) {
+                if (message.equals(fresh.messageId())) {
+                    continue;
+                }
+                throw conflict(actor, fresh.id(), "ALREADY_SENT", "the file has already been sent");
+            }
+            if (fresh.scanState() != ScanState.CLEAN || !fresh.uploaderSubject().equals(actor.subject())) {
+                throw conflict(actor, fresh.id(), "NOT_CLEAN", "the file changed after publication preflight");
+            }
+            StaffAttachment updated = withMessage(fresh, message);
+            // A conditional store write decides the winner. Only the caller that
+            // changed the row records SENT, so a same-key race cannot double-audit.
+            if (store.bindToMessage(updated)) {
+                audit(actor, fresh.id(), AuditType.SENT, "success", null);
+                bound.add(updated);
+            }
+        }
+        store.grantRecipients(actor.organizationId(), message, recipients);
+        return List.copyOf(bound);
+    }
+
+    private List<StaffAttachment> markSent(StaffActor actor, String messageId,
+                                           List<StaffAttachment> validated, Set<String> recipients) {
         List<StaffAttachment> sent = new ArrayList<>();
-        for (StaffAttachment current : pending) {
-            StaffAttachment updated = new StaffAttachment(current.organizationId(), current.id(),
-                    current.uploaderSubject(), current.draftId(), current.documentId(), current.fileName(),
-                    current.contentType(), current.sizeBytes(), current.checksum(), current.objectKey(),
-                    current.objectVersion(), current.scanState(), messageId, true, current.createdAt());
+        for (StaffAttachment current : validated) {
+            StaffAttachment updated = withMessage(current, messageId);
             store.putAttachment(updated);
             audit(actor, current.id(), AuditType.SENT, "success", null);
             sent.add(updated);
         }
+        store.grantRecipients(actor.organizationId(), messageId, recipients);
         return List.copyOf(sent);
     }
 
@@ -251,6 +307,39 @@ public final class StaffAttachmentService {
                 .toList();
     }
 
+    /**
+     * Apply the publication rules to every candidate before any is changed.
+     *
+     * @param actor      freshly derived sender identity
+     * @param draftId    expected owning draft
+     * @param candidates attachments already loaded in this tenant
+     * @return the validated attachments in the supplied order
+     */
+    private List<StaffAttachment> validate(StaffActor actor, String draftId,
+                                           List<StaffAttachment> candidates) {
+        List<StaffAttachment> result = new ArrayList<>();
+        for (StaffAttachment current : candidates) {
+            if (current.scanState() == ScanState.QUARANTINED) {
+                String reason = failureReason(actor.organizationId(), current.id());
+                throw conflict(actor, current.id(), "QUARANTINED_FILE", "file is quarantined: " + reason);
+            }
+            if (current.scanState() != ScanState.CLEAN) {
+                throw conflict(actor, current.id(), "NOT_CLEAN", "only a clean file can be sent");
+            }
+            if (!current.uploaderSubject().equals(actor.subject())) {
+                throw deny(actor, current.id(), "NOT_UPLOADER", "only the uploader may send this file");
+            }
+            if (!draftId.equals(current.draftId())) {
+                throw deny(actor, current.id(), "WRONG_DRAFT", "the file is bound to a different draft");
+            }
+            if (current.sent()) {
+                throw conflict(actor, current.id(), "ALREADY_SENT", "the file has already been sent");
+            }
+            result.add(current);
+        }
+        return result;
+    }
+
     private StaffAttachment load(StaffActor actor, String id) {
         String key = StaffAttachmentInputs.key(id, "id");
         return store.attachment(actor.organizationId(), key)
@@ -270,6 +359,13 @@ public final class StaffAttachmentService {
                 current.draftId(), current.documentId(), current.fileName(), current.contentType(),
                 current.sizeBytes(), current.checksum(), current.objectKey(), current.objectVersion(),
                 next, current.messageId(), current.sent(), current.createdAt());
+    }
+
+    private static StaffAttachment withMessage(StaffAttachment current, String messageId) {
+        return new StaffAttachment(current.organizationId(), current.id(), current.uploaderSubject(),
+                current.draftId(), current.documentId(), current.fileName(), current.contentType(),
+                current.sizeBytes(), current.checksum(), current.objectKey(), current.objectVersion(),
+                current.scanState(), messageId, true, current.createdAt());
     }
 
     private void authorize(StaffActor actor, String action, String resourceId) {

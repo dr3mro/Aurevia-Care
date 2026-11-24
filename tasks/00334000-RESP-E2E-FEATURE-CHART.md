@@ -1,4 +1,6 @@
-- [ ] RESP-E2E-FEATURE-CHART · Staff web end-to-end: the chart screens work on phone, tablet and desktop
+- [-] RESP-E2E-FEATURE-CHART · Staff web end-to-end: the chart screens work on phone, tablet and desktop
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/responsive-chart.spec.ts
   - depends: RESP-E2E-PROJECTS

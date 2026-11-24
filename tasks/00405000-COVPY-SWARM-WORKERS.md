@@ -1,4 +1,5 @@
 - [x] COVPY-SWARM-WORKERS · Script tests: swarm.py coverage, workers part (to 100% together with the other parts)
+  - pr: #1364
   - evidence: merged on main 352ae2ae (#906)
   - agent: swarm-9
   - attempts: 3

@@ -1,4 +1,5 @@
 - [x] RESP-UNSUPPORTED-BROWSER-PAGE · Staff web: responsive `UnsupportedBrowserPage` (features-system)
+  - evidence: PR #813 merged to main (reconciled 2026-11-23)
   - pr: #813
   - attempts: 1
   - requirements: WEB-07, UX-01

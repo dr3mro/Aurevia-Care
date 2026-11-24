@@ -1,4 +1,5 @@
 - [x] RESP-APP-ROOT-NAVIGATOR · Patient app: tablet, landscape and large-text layout for `RootNavigator` (app)
+  - evidence: PR #664 merged to main (reconciled 2026-11-23)
   - pr: #664
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

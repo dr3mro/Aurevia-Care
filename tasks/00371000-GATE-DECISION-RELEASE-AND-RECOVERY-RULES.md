@@ -1,4 +1,5 @@
 - [x] GATE-DECISION-RELEASE-AND-RECOVERY-RULES · Decision pack for a person to approve: Result release rules, sensitive information handling and identity recovery approvals
+  - evidence: PR #368 merged to main (reconciled 2026-11-23)
   - pr: #368
   - attempts: 1
   - requirements: XCH-06, IAM-05

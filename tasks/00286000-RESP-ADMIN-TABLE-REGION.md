@@ -1,4 +1,5 @@
 - [x] RESP-ADMIN-TABLE-REGION · Staff web: responsive `AdminTableRegion` (features-admin)
+  - evidence: PR #718 merged to main (reconciled 2026-11-23)
   - pr: #718
   - attempts: 1
   - requirements: WEB-07, UX-01

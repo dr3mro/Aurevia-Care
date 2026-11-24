@@ -1,4 +1,5 @@
 - [x] RESP-APP-LAYOUT-HOOK · Patient app: window-size layout hook (new files)
+  - evidence: PR #561 merged to main (reconciled 2026-11-23)
   - pr: #561
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

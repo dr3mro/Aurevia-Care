@@ -1,4 +1,5 @@
 - [x] RESP-STYLESHEET · Staff web: responsive base stylesheet with layout utility classes (new file)
+  - evidence: PR #544 merged to main (reconciled 2026-11-23)
   - pr: #544
   - attempts: 1
   - requirements: WEB-07, UX-01

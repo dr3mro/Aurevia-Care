@@ -1,4 +1,5 @@
 - [x] COVPY-GEN-OPENCODE · Script tests: reach 100% line and branch coverage of `scripts/gen-opencode.py`
+  - evidence: PR #671 merged to main (reconciled 2026-11-23)
   - pr: #671
   - attempts: 1
   - requirements: OPS-06

@@ -1,4 +1,5 @@
 - [x] RESP-APP-CONVERSATION-THREAD · Patient app: tablet, landscape and large-text layout for `ConversationThread` (conversations)
+  - evidence: PR #645 merged to main (reconciled 2026-11-23)
   - pr: #645
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

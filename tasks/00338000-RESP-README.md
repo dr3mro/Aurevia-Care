@@ -1,4 +1,6 @@
 - [x] RESP-README · Staff web README: how to test and develop responsive layouts
+  - evidence: PR #1399 merged to main (reconciled 2026-11-23)
+  - pr: #1399
   - agent: swarm-2
   - attempts: 1
   - requirements: WEB-07, UX-01
