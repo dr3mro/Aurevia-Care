@@ -45,7 +45,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_delivery_clause_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_delivery_clause_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class CommitStateAuditOutboxRecordAtomicallyApplicableTest {
@@ -59,10 +59,10 @@ class CommitStateAuditOutboxRecordAtomicallyApplicableTest {
     private static final String NAMESPACE = "partner-lab";
     private static final String DIGEST = "a".repeat(64);
     private static final String OTHER_DIGEST = "b".repeat(64);
-    private static final String DB = "orevia_delivery_clause_it";
+    private static final String DB = "aurevia_delivery_clause_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     DeliveryStore deliveryStore;
@@ -78,18 +78,18 @@ class CommitStateAuditOutboxRecordAtomicallyApplicableTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "worker-a", "worker");
             seedUser(statement, ORG_A, "operator-a", "operator");
@@ -209,7 +209,7 @@ class CommitStateAuditOutboxRecordAtomicallyApplicableTest {
     }
 
     private static int countRows(String org, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             try (ResultSet result = statement.executeQuery(sql)) {
@@ -221,7 +221,7 @@ class CommitStateAuditOutboxRecordAtomicallyApplicableTest {
 
     /* A regular trigger scoped to this dedicated database; it is dropped by the caller and by cleanUp. */
     private static void installRollbackTrigger(String marker) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("CREATE OR REPLACE FUNCTION public.fail_delivery_audit_force_rollback() "
                     + "RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog AS $fn$ "
@@ -229,7 +229,7 @@ class CommitStateAuditOutboxRecordAtomicallyApplicableTest {
                     + "RAISE EXCEPTION 'synthetic audit failure' USING ERRCODE = '23514'; "
                     + "END IF; RETURN NEW; END $fn$");
             statement.execute("GRANT EXECUTE ON FUNCTION public.fail_delivery_audit_force_rollback() "
-                    + "TO orevia_app");
+                    + "TO aurevia_app");
             statement.execute("CREATE TRIGGER delivery_audit_force_rollback "
                     + "BEFORE INSERT ON public.delivery_audit "
                     + "FOR EACH ROW EXECUTE FUNCTION public.fail_delivery_audit_force_rollback()");
@@ -237,7 +237,7 @@ class CommitStateAuditOutboxRecordAtomicallyApplicableTest {
     }
 
     private static void removeRollbackTrigger() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("DROP TRIGGER IF EXISTS delivery_audit_force_rollback ON public.delivery_audit");
             statement.execute("DROP FUNCTION IF EXISTS public.fail_delivery_audit_force_rollback()");

@@ -29,7 +29,7 @@ Senior Backend, Senior Database, Test Engineer and Physician Reviewer (bounded a
 `db/migrations/V76__build_09.sql` (reserved version V76, `Change: expand`):
 - `drug_catalog_entry.route text NOT NULL DEFAULT 'unspecified'` (additive metadata; the sentinel is deliberate, ALTER TABLE does not fire the V43 row triggers).
 - `prescription_draft.catalog_version integer` (nullable; a draft with no medication has no catalog version).
-- New append-only `public.medication_catalog_version` registry: `(organization_id, version, market, published_at, provenance)`, PK `(organization_id, version)`, ENABLE+FORCE RLS, tenant policy, GRANT SELECT/INSERT, REVOKE UPDATE/DELETE/TRUNCATE to `orevia_app`, new immutability function and triggers. V43 functions were not touched.
+- New append-only `public.medication_catalog_version` registry: `(organization_id, version, market, published_at, provenance)`, PK `(organization_id, version)`, ENABLE+FORCE RLS, tenant policy, GRANT SELECT/INSERT, REVOKE UPDATE/DELETE/TRUNCATE to `aurevia_app`, new immutability function and triggers. V43 functions were not touched.
 - No seed rows: organizations do not exist at Flyway time under forced RLS. Readers fall back to documented baseline version 1 until a version is published.
 - Rollback/forward-fix: additive expand only; no destructive DDL. Removing the columns is a separate contract migration. Lock/volume impact negligible (two metadata columns and one small append-only registry).
 

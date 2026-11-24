@@ -48,12 +48,12 @@ data-flow boundary changed.
 
 ## Review owner
 
-- `orevia-senior-react` — simulated review: **no actionable in-scope
+- `aurevia-senior-react` — simulated review: **no actionable in-scope
   findings**. Confirmed logical-only styling, `.page`/`.grid-2`/`.touch`
   behaviour, preserved exports and 100 % per-file coverage. Flagged that a real
   "no horizontal scroll at 320 px" measurement needs a Playwright project
   (out of scope, owned by the RESP-E2E stories).
-- `orevia-ux-reviewer` — simulated review: **no blocking structural or
+- `aurevia-ux-reviewer` — simulated review: **no blocking structural or
   semantic defects**. Confirmed roles/labels, single keyboard stop, BDI
   isolation, RTL mirroring, wrapping and no hidden clinical fields. Two
   optional suggestions (label the patient ID; make duplicate candidates
@@ -106,7 +106,7 @@ Commands actually run (tool evidence):
 4. Typecheck (final lines pasted as required):
    `cd apps/staff-web && npm run typecheck` →
    ```
-   > orevia-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    `TYPECHECK_EXIT=0` (no errors emitted).
@@ -208,7 +208,7 @@ Playwright/E2E work and are not claimed here.
   `./node_modules/.bin/vitest` for targeted runs.
 
 Evidence provenance: all commands above were executed with tools in this
-worker; the two specialist reviews were simulated (`orevia-senior-react`,
-`orevia-ux-reviewer`). No simulated-user walkthrough, human or clinical
+worker; the two specialist reviews were simulated (`aurevia-senior-react`,
+`aurevia-ux-reviewer`). No simulated-user walkthrough, human or clinical
 participant evidence is claimed. All data is synthetic; no patient data,
 credential or real identifier appears in the change or this note.

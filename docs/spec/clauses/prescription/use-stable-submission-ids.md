@@ -16,7 +16,7 @@ a real-PostgreSQL integration test under the `synthetic-auth` profile that drive
 entry points `POST /api/v1/prescriptions`, `/attest`, `/transmit`, `/verify-partner-status`, `/retry`,
 `/renew`, `/confirm-delivery`, `/pharmacy-response` and `/dispensing`. Every test is active (none
 disabled) and uses synthetic fixtures only. The suite recreates its own database
-(`orevia_use_stable_submission_ids_it`) from the authoritative Flyway migrations, seeds two
+(`aurevia_use_stable_submission_ids_it`) from the authoritative Flyway migrations, seeds two
 tenants with bounded roles, market/entitlement/channel policies and one synthetic patient each, and
 asserts against both the HTTP response and the persisted `rx02_submission` ledger.
 

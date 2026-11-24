@@ -29,7 +29,7 @@ Active tests:
   closes the episode; the approved summary goes to the verified referrer from the
   episode; the referrer's acknowledgment binds the exact summary revision; the
   final notes, summary, acknowledgment and `DISCHARGED` state survive a fresh
-  read. A direct `UPDATE` of a signed note as `orevia_app` is refused with
+  read. A direct `UPDATE` of a signed note as `aurevia_app` is refused with
   SQLSTATE `42501`, proving immutability at the database boundary.
 - `coordinatorCannotSignANote` — a `pt_coordinator` may send and acknowledge but
   is refused signing with 403 `FORBIDDEN`; the note stays unsigned.

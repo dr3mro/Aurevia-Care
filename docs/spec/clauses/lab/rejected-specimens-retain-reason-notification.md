@@ -20,7 +20,7 @@ fixtures as the neighbouring `com.aurevia.it.lab.AccessionListIntegrationTest` a
 state is seeded directly so each negative isolates one refusal cause; the rejection itself and the
 read-back always go through HTTP.
 
-Verification command: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RejectedSpecimensRetainReasonNotificationTest -Dgroups=integration test`
+Verification command: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RejectedSpecimensRetainReasonNotificationTest -Dgroups=integration test`
 — final Surefire line: `Tests run: 8, Failures: 0, Errors: 0, Skipped: 0` (no test disabled or skipped).
 
 - `rejectRetainsReasonAndNotification` — positive proof. A received specimen is rejected through

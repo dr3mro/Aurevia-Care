@@ -54,18 +54,18 @@ public class PdfRenderer {
         objects.add(ascii("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox " + MEDIA_BOX
                 + " /CropBox " + MEDIA_BOX + " /Rotate " + spec.rotationDegrees()
                 + " /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"));
-        objects.add(ascii("4 0 obj\n<< /Type /Font /Subtype /TrueType /BaseFont /OreviaSans "
+        objects.add(ascii("4 0 obj\n<< /Type /Font /Subtype /TrueType /BaseFont /AureviaSans "
                 + "/FirstChar 0 /LastChar 255 /Encoding /Identity-H /FontDescriptor 6 0 R >>\nendobj\n"));
         objects.add(streamObject("5 0 obj\n<< /Length " + content.length + " >>", content));
-        objects.add(ascii("6 0 obj\n<< /Type /FontDescriptor /FontName /OreviaSans /Flags 32 "
+        objects.add(ascii("6 0 obj\n<< /Type /FontDescriptor /FontName /AureviaSans /Flags 32 "
                 + "/FontBBox [0 -200 1000 900] /ItalicAngle 0 /Ascent 800 /Descent -200 "
                 + "/CapHeight 700 /StemV 80 /FontFile2 7 0 R >>\nendobj\n"));
         objects.add(streamObject("7 0 obj\n<< /Length " + font.length + " /Length1 " + font.length + " >>", font));
         objects.add(ascii("8 0 obj\n<< /Title " + hexText(spec.title())
                 + " /Author " + hexText(author)
                 + " /Subject " + hexText(provenance)
-                + " /Creator " + hexText("Orevia")
-                + " /Producer " + hexText("Orevia PDF Renderer")
+                + " /Creator " + hexText("Aurevia")
+                + " /Producer " + hexText("Aurevia PDF Renderer")
                 + " /Keywords " + hexText(keywords)
                 + " /Direction " + hexText(direction) + " >>\nendobj\n"));
 

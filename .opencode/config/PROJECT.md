@@ -1,4 +1,4 @@
-# Orevia delivery record
+# Aurevia delivery record
 
 The authoritative product requirements are in PROJECT_V1_SPEC.md. Repository discovery, baseline verification and implementation status are pending.
 
@@ -15,7 +15,7 @@ The authoritative product requirements are in PROJECT_V1_SPEC.md. Repository dis
 | Date | Requirement IDs | Decision and rationale |
 |---|---|---|
 | 2026-11-18 | IAM-01, ARC-02 | Base package `com.aurevia`; active tenant comes only from `X-Active-Organization`, validated against active membership on every request — never inferred from body, resource ID or first membership. Evidence: `TenantContextInterceptor`, `FacilityService`. |
-| 2026-11-18 | ARC-02 | Roles `orevia_migrate` (Flyway owner) and `orevia_app` (non-owner, NOBYPASSRLS). GUCs bound with `set_config(..., true)` inside `TenantGuardTransactionManager.doBegin` after `super.doBegin()`, so pooled connections cannot leak context. Evidence: V2 migration, `db/check.sh`. |
+| 2026-11-18 | ARC-02 | Roles `aurevia_migrate` (Flyway owner) and `aurevia_app` (non-owner, NOBYPASSRLS). GUCs bound with `set_config(..., true)` inside `TenantGuardTransactionManager.doBegin` after `super.doBegin()`, so pooled connections cannot leak context. Evidence: V2 migration, `db/check.sh`. |
 | 2026-11-18 | OPS-02 | Append-only `audit_event` with per-tenant sequence and core `sha256` hash chain; no pgcrypto dependency. Evidence: V3 migration, `audit_verify_chain`, `db/check.sh`. |
 | 2026-11-18 | ARC-03, OPS | Deferred from S-G0-01: idempotency keys, managed OIDC/MFA/CSRF, staff lifecycle history (S-G0-02), search/files/workers/export isolation and concurrent stress. Synthetic `X-Synthetic-Subject` is gated on the `synthetic-auth` profile and is not an authentication mechanism. |
 | 2026-11-19 | Build, OPS-06 | One supported baseline: **Java 21** bytecode (`maven.compiler.release=21`), built on CI JDK 21 (`.github/actions/java-verify`). The local JDK 27 is tolerated only because `--release 21` is used; the Mockito **subclass** maker is required for those local runs because the inline maker cannot instrument JDK 27 classes, and is harmless on JDK 21 — it is a JDK 27 workaround, not a baseline requirement. Spring Boot 4.1.2, PostgreSQL driver 42.7.14, JaCoCo 0.8.16. Evidence: `apps/api/pom.xml`, `.github/actions/java-verify/action.yml`, `src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker`. |

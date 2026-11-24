@@ -1,6 +1,6 @@
 # Service level objectives and alert thresholds (OPS-03, OPS-04, OPS-05)
 
-This page pins the operational targets from the [Orevia Cloud V1 specification](../../.opencode/config/PROJECT_V1_SPEC.md)
+This page pins the operational targets from the [Aurevia Cloud V1 specification](../../.opencode/config/PROJECT_V1_SPEC.md)
 to the signals that exist in this repository today. It is a **mapping, not a claim of
 live monitoring**: a field, log line, evaluator or runbook entry below is code or a
 declared envelope, not evidence that a production alert fired or that a person was

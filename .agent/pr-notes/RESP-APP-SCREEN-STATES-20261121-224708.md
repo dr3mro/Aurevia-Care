@@ -12,7 +12,7 @@ Routine — presentation-only styling of an existing shared component. No data, 
 
 ## Review owner
 
-`orevia-senior-mobile` and `orevia-ux-reviewer` (simulated specialist reviews, both returned; senior-mobile reported no actionable findings, UX reported one out-of-scope pre-existing text gap and three low/evidence items). No human, clinical or real-patient review; that remains a G5 gate.
+`aurevia-senior-mobile` and `aurevia-ux-reviewer` (simulated specialist reviews, both returned; senior-mobile reported no actionable findings, UX reported one out-of-scope pre-existing text gap and three low/evidence items). No human, clinical or real-patient review; that remains a G5 gate.
 
 ## Data changes
 
@@ -80,7 +80,7 @@ New/changed branches and the test that takes each side:
 
 ## Clinical and architecture review
 
-No signed data, cross-organization sharing, patient association, prescribing or critical result is touched; no clinical sign-off is required for this presentation-only change. `orevia-senior-mobile` (no actionable findings) and `orevia-ux-reviewer` (findings below) reviewed the two files against `docs/decisions/0005-patient-app-tablets.md`, `docs/design/accessibility-patterns.md` §9 and `docs/design/rtl-and-localization.md`. These are simulated reviews; real VoiceOver/TalkBack passes on device remain a G5 gate.
+No signed data, cross-organization sharing, patient association, prescribing or critical result is touched; no clinical sign-off is required for this presentation-only change. `aurevia-senior-mobile` (no actionable findings) and `aurevia-ux-reviewer` (findings below) reviewed the two files against `docs/decisions/0005-patient-app-tablets.md`, `docs/design/accessibility-patterns.md` §9 and `docs/design/rtl-and-localization.md`. These are simulated reviews; real VoiceOver/TalkBack passes on device remain a G5 gate.
 
 ## Findings
 

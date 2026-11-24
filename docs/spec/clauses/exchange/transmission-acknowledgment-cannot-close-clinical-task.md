@@ -13,11 +13,11 @@ Proven by tests
 Test class: `com.aurevia.exchange.clauses.TransmissionAcknowledgmentCannotCloseClinicalTaskTest`
 (path: `apps/api/src/test/java/com/aurevia/exchange/clauses/TransmissionAcknowledgmentCannotCloseClinicalTaskTest.java`).
 All six tests are active (none disabled) and pass against real PostgreSQL with synthetic fixtures only.
-Each mutating test seeds its own task id in the dedicated `orevia_xch02_ack_it` database.
+Each mutating test seeds its own task id in the dedicated `aurevia_xch02_ack_it` database.
 
 - `aDeliveryReceiptLeavesClinicalReviewUnreviewedAndUnbound` — positive proof. A lab collector posts
   `send` and `deliver` through `POST /api/v1/exchange-tasks/{id}/{command}`; the response and a direct
-  `orevia_app` read show transmission `delivered`, workflow `requested`, clinical review
+  `aurevia_app` read show transmission `delivered`, workflow `requested`, clinical review
   `unreviewed`, all three clinical evidence columns null, and no `clinical_review` event in the ledger.
 - `resolvingAfterOnlyADeliveryReceiptIsRefusedAndWritesNothing` — negative proof. After a delivery
   receipt, `resolve` by a clinician at the correct version returns 409 `INVALID_TRANSITION` and at a

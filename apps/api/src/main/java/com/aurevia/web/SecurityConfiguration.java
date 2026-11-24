@@ -108,10 +108,10 @@ public class SecurityConfiguration {
     SecurityFilterChain oidcSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder,
             DocsEnabled docsEnabled) throws Exception {
         if (issuerUri.isBlank()) {
-            throw new IllegalStateException("OREVIA_OIDC_ISSUER_URI must be set");
+            throw new IllegalStateException("AUREVIA_OIDC_ISSUER_URI must be set");
         }
         if (audience.isBlank()) {
-            throw new IllegalStateException("OREVIA_OIDC_AUDIENCE must be set");
+            throw new IllegalStateException("AUREVIA_OIDC_AUDIENCE must be set");
         }
         return http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.ignoringRequestMatchers(SecurityConfiguration::isBearerRequest))

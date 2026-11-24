@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public final class DocsEnabled {
 
     /** Operator switch; absent or false keeps production docs off. */
-    static final String DOCS_PROPERTY = "orevia.docs.enabled";
+    static final String DOCS_PROPERTY = "aurevia.docs.enabled";
 
     /** Local development profile that enables the page without an explicit switch. */
     static final String DEVELOPMENT_PROFILE = "development";

@@ -49,13 +49,13 @@ import com.aurevia.journey.JourneyContract.Viewer;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_journey_lab_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_journey_lab_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(600)
 class LaboratoryJourneyLoopTest {
 
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_journey_lab_it";
-    private static final String DATABASE = "orevia_journey_lab_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_journey_lab_it";
+    private static final String DATABASE = "aurevia_journey_lab_it";
     private static final String ORDER_SOURCE = "order";
     private static final String LAB_SOURCE = "lab";
     private static final String RELEASE_SOURCE = "release";

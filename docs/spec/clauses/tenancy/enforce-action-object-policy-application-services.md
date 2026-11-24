@@ -13,7 +13,7 @@ Proven by tests
 Test class `com.aurevia.tenancy.clauses.EnforceActionObjectPolicyApplicationServicesTest`
 (`apps/api/src/test/java/com/aurevia/tenancy/clauses/EnforceActionObjectPolicyApplicationServicesTest.java`),
 an HTTP-level integration test on a dedicated synthetic PostgreSQL database
-`orevia_action_object_it` with two tenants. Every caller has a valid subject,
+`aurevia_action_object_it` with two tenants. Every caller has a valid subject,
 an explicit active organization and an active membership, so a denial can only
 come from the policy under test:
 

@@ -58,12 +58,12 @@ class InstantMessagingIntegrationTest {
     private static final String ACTOR = "nurse-a";
     private static final String PEER = "nurse-b";
     private static final String BASE = "/api/v1/staff/instant";
-    private static final String DATABASE = "orevia_instant_it";
+    private static final String DATABASE = "aurevia_instant_it";
     private static final String PREFIX = "jdbc:postgresql://127.0.0.1:5432/";
-    private static final String MIGRATE = "orevia_migrate";
-    private static final String APP = "orevia_app";
+    private static final String MIGRATE = "aurevia_migrate";
+    private static final String APP = "aurevia_app";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final Instant NOW = Instant.parse("2026-11-21T10:00:00Z");
 
     private SingleConnectionDataSource dataSource;
@@ -77,10 +77,10 @@ class InstantMessagingIntegrationTest {
         try (Connection root = DriverManager.getConnection(PREFIX + "postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
         }
     }
 

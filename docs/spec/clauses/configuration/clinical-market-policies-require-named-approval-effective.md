@@ -13,7 +13,7 @@ Proven by tests
 Test class: `com.aurevia.configuration.clauses.ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest`
 (path: `apps/api/src/test/java/com/aurevia/configuration/clauses/ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest.java`).
 It is an active real-PostgreSQL acceptance test tagged `integration`, using the
-synthetic-auth profile, a dedicated `orevia_adm01_clause2_it` database and two
+synthetic-auth profile, a dedicated `aurevia_adm01_clause2_it` database and two
 synthetic tenants. All six tests are active (none disabled) and use synthetic data only.
 It follows the fixtures and database setup of
 `com.aurevia.it.ConfigurationIsolationTest` and

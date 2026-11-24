@@ -38,7 +38,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_specimen_capture_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_specimen_capture_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(600)
 class RecordSpecimenTypeSiteCollectorCollectionReceiptTest {
@@ -59,10 +59,10 @@ class RecordSpecimenTypeSiteCollectorCollectionReceiptTest {
     private static final String COLLECTED_AT = "2026-11-19T10:15:30Z";
     private static final String QUALITY = "acceptable";
     private static final String RECEIVED_AT = "2026-11-19T11:15:30Z";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_specimen_capture_it";
-    private static final String DATABASE = "orevia_specimen_capture_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_specimen_capture_it";
+    private static final String DATABASE = "aurevia_specimen_capture_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
@@ -82,17 +82,17 @@ class RecordSpecimenTypeSiteCollectorCollectionReceiptTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DATABASE + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DATABASE + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DATABASE + " OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedMember(statement, ORG_A, COLLECTOR, "lab_collector");
             seedMember(statement, ORG_A, VERIFIER, "lab_verifier");

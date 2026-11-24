@@ -34,10 +34,10 @@ class RequestMetricsFilterTest {
         assertFalse(scrape.contains("patient-999"), scrape);
         assertTrue(scrape.contains("status=\"2xx\"} 1\n"), scrape);
         // Timed requests also produce a histogram family whose +Inf bucket matches the counter.
-        assertTrue(scrape.contains("orevia_http_request_duration_seconds_bucket{"), scrape);
-        assertTrue(scrape.contains("orevia_http_request_duration_seconds_bucket{method=\"GET\","
+        assertTrue(scrape.contains("aurevia_http_request_duration_seconds_bucket{"), scrape);
+        assertTrue(scrape.contains("aurevia_http_request_duration_seconds_bucket{method=\"GET\","
                 + "route=\"/api/v1/patients/{id}\",status=\"2xx\",le=\"+Inf\"} 1\n"), scrape);
-        assertTrue(scrape.contains("orevia_http_request_duration_seconds_count{method=\"GET\","
+        assertTrue(scrape.contains("aurevia_http_request_duration_seconds_count{method=\"GET\","
                 + "route=\"/api/v1/patients/{id}\",status=\"2xx\"} 1\n"), scrape);
         assertFalse(scrape.contains("patient-999"), scrape);
     }

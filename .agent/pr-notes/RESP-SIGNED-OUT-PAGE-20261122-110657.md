@@ -24,12 +24,12 @@ Routine — contained presentation change to one staff-web page plus a new test
 
 ## Review owner
 
-- Senior React and Vite specialist (`orevia-senior-react`) for the component
+- Senior React and Vite specialist (`aurevia-senior-react`) for the component
   and view test.
-- UX reviewer (`orevia-ux-reviewer`) for the logical-property/RTL structure.
+- UX reviewer (`aurevia-ux-reviewer`) for the logical-property/RTL structure.
 
-Specialist routing: the `orevia-delivery`, `orevia-senior-react` and
-`orevia-test-engineer` SKILL.md instructions were loaded and applied
+Specialist routing: the `aurevia-delivery`, `aurevia-senior-react` and
+`aurevia-test-engineer` SKILL.md instructions were loaded and applied
 (routine, contained change). No separate delegated subagent review was awaited
 or claimed; the senior-react definition of done (full `check.sh`, typecheck
 lines recorded, no `any`/`@ts-ignore`) was satisfied directly.
@@ -73,7 +73,7 @@ Green after the change, scoped runs:
 Final lines of the mandatory typecheck (run explicitly to capture them):
 
 ```
-> orevia-staff-web@0.1.0 typecheck
+> aurevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 typecheck exit: 0
 ```

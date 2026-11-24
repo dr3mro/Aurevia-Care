@@ -42,7 +42,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_exchange_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_exchange_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(600)
 class OrderExchangeIntegrationTest {
@@ -50,9 +50,9 @@ class OrderExchangeIntegrationTest {
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String ORG_C = "33333333-3333-3333-3333-333333333333";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_exchange_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_exchange_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     static final String GRANT = "55555555-5555-5555-5555-555555555555";
     static final String EXPIRED_GRANT = "55555555-5555-5555-5555-555555555556";
 
@@ -71,17 +71,17 @@ class OrderExchangeIntegrationTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_exchange_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_exchange_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_exchange_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_exchange_it OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             for (String org : new String[] {ORG_A, ORG_B, ORG_C}) {
                 seedOrganization(statement, org);
@@ -105,7 +105,7 @@ class OrderExchangeIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_exchange_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_exchange_it WITH (FORCE)");
         }
     }
 
@@ -159,7 +159,7 @@ class OrderExchangeIntegrationTest {
     }
 
     private static String patientId(String org, String mrn) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "admin-a");
             try (Statement statement = connection.createStatement();
@@ -176,7 +176,7 @@ class OrderExchangeIntegrationTest {
     }
 
     private static String patientId(String org) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "admin-a");
             try (Statement statement = connection.createStatement();
@@ -203,7 +203,7 @@ class OrderExchangeIntegrationTest {
     }
 
     private static long scalar(String org, String subject, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (Statement statement = connection.createStatement();
@@ -217,7 +217,7 @@ class OrderExchangeIntegrationTest {
     }
 
     private static String scalarText(String org, String subject, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (Statement statement = connection.createStatement();
@@ -231,7 +231,7 @@ class OrderExchangeIntegrationTest {
     }
 
     private static void execute(String org, String subject, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (Statement statement = connection.createStatement()) {

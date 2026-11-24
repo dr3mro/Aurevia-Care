@@ -35,7 +35,7 @@ decision encoded.
 
 ## Review owner
 
-Simulated `orevia-senior-mobile` review (bounded, read-only). No human,
+Simulated `aurevia-senior-mobile` review (bounded, read-only). No human,
 clinical or real-patient evidence is claimed; that remains a G5 gate.
 
 ## Data changes

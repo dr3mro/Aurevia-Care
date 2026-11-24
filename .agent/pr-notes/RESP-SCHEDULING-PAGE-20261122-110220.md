@@ -4,7 +4,7 @@
 
 The API-backed scheduling page now uses the shared responsive page utility instead of a local inline grid. Its root renders with `className="page"`, `data-scheduling-page`, `data-breakpoint` from `useBreakpoint()` and one logical inline override (`maxInlineSize: 'none'`) so the worklist table keeps the full inline width. No data, text, API call, command behaviour or exported name changed; no dependency, stylesheet, tracker or workflow file was touched. The new jsdom contract test covers compact/medium/expanded, the seven requested widths, both directions, roles/labels/DOM keyboard order and the rejected-command banner.
 
-Evidence provenance: **tool** (commands I executed) for all test/coverage results; **simulated reviewer** (bounded `orevia-senior-react` plan and `orevia-ux-reviewer` review) for design feedback. No human, clinical or patient-participant evidence. All fixtures are synthetic (`apt-001`, `patient-001`, a long synthetic English name and a long synthetic Arabic name); no patient datum or credential appears in code, tests or notes.
+Evidence provenance: **tool** (commands I executed) for all test/coverage results; **simulated reviewer** (bounded `aurevia-senior-react` plan and `aurevia-ux-reviewer` review) for design feedback. No human, clinical or patient-participant evidence. All fixtures are synthetic (`apt-001`, `patient-001`, a long synthetic English name and a long synthetic Arabic name); no patient datum or credential appears in code, tests or notes.
 
 ## Affected requirements
 
@@ -49,7 +49,7 @@ Commands run (final lines quoted):
 - Typecheck, first pass → `tests/responsive/features-scheduling/SchedulingPage.responsive.test.tsx(118,18): error TS6133: 'patientId' is declared but its value is never read.` Fixed by removing the unused parameter (no production change).
 - Typecheck, final — `cd apps/staff-web && npm run typecheck` final lines:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   No diagnostics; `TYPECHECK_EXIT=0`.

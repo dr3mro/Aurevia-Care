@@ -82,7 +82,7 @@ public final class Hl7Writer {
      */
     public static String writeAck(Hl7Ack ack, Hl7Delimiters delimiters) {
         StringBuilder out = new StringBuilder(msh(delimiters, "ACK^R01", ack.controlId(),
-                ack.timestamp(), "OREVIA", "PARTNER"));
+                ack.timestamp(), "AUREVIA", "PARTNER"));
         out.append(line(delimiters, "MSA", List.of(escaped(ack.code(), delimiters),
                 escaped(ack.originalControlId(), delimiters), escaped(ack.reason(), delimiters))));
         if (!ack.reason().isEmpty()) {

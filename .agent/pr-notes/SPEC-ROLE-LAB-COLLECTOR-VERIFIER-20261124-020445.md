@@ -6,7 +6,7 @@ Requirements: IAM-01, LAB-02. Branch: `swarm/SPEC-ROLE-LAB-COLLECTOR-VERIFIER-13
 ## Brief assessment
 
 The brief is internally consistent except for one minor routing detail: its "Routing" line lists
-`smartclinic-senior-java-build` among the read-only specialists, but its "Skills to load" list and
+`aurevia-senior-java-build` among the read-only specialists, but its "Skills to load" list and
 plan explicitly drop it ("senior-java-build dropped: no build-file change"). I follow the explicit drop.
 No build file is changed. The two scope paths were absent and are confirmed as planned new files.
 
@@ -33,7 +33,7 @@ No production code, dependency, migration, route, contract or existing test chan
 
 ## Evidence
 
-**New test class** `apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleLabCollectorVerifierTest.java`
+**New test class** `apps/api/src/test/java/com/aurevia/aurevia/authz/clauses/RoleLabCollectorVerifierTest.java`
 (8 enabled tests, 0 skipped):
 
 - `collectorCanAccessionAndCollect` — `accessionRequisition`/`LAB_ACCESSION_CREATE` and
@@ -128,12 +128,12 @@ state). The full JaCoCo gate is owned by the integrator/Delivery; I did not run 
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (initial NO-GO with four Required gaps — all closed and re-reviewed)
-- smartclinic-senior-backend: GO
-- smartclinic-senior-spring-security: GO (initial NO-GO on denial assertions — full status+code+message triples added and re-reviewed)
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO (initial NO-GO with four Required gaps — all closed and re-reviewed)
+- aurevia-senior-backend: GO
+- aurevia-senior-spring-security: GO (initial NO-GO on denial assertions — full status+code+message triples added and re-reviewed)
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 All review findings were Critical/Required-free at final verdict. Applied fixes: full denial triples
 (status + `FORBIDDEN` code + exact message), distinct VERIFY/CORRECT DENIED audit assertions, positive

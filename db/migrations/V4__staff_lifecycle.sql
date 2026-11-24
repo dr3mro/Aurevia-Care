@@ -111,12 +111,12 @@ $$;
 REVOKE ALL ON FUNCTION public.current_membership() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.has_active_membership(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.active_roles(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.current_membership() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.has_active_membership(text) TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.active_roles(text) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.current_membership() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.has_active_membership(text) TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.active_roles(text) TO aurevia_app;
 
 -- Invite/deactivate need INSERT; UPDATE/DELETE/TRUNCATE stay impossible.
 REVOKE UPDATE, DELETE, TRUNCATE ON public.user_identity, public.membership,
-       public.role_assignment FROM orevia_app;
+       public.role_assignment FROM aurevia_app;
 GRANT INSERT ON public.user_identity, public.membership, public.role_assignment
-    TO orevia_app;
+    TO aurevia_app;

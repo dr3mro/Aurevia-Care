@@ -14,7 +14,7 @@ Test class: `com.aurevia.exchange.clauses.RevocationBlocksFutureSenderHostedRetr
 (path: `apps/api/src/test/java/com/aurevia/exchange/clauses/RevocationBlocksFutureSenderHostedRetrievalRecordsTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, uses the
 `synthetic-auth` profile and a dedicated database
-`orevia_xch03_revoke_clause_it` created from the production Flyway
+`aurevia_xch03_revoke_clause_it` created from the production Flyway
 migrations, and seeds two synthetic tenants with their own subjects, patient
 record and orders. All four tests are active (none are disabled) and use
 synthetic data only.

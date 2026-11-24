@@ -51,7 +51,7 @@ and `com.aurevia.tenant.TenantContext`, with tenant RLS and FORCE RLS
 supplied by the Flyway migrations under `db/migrations`. These routes are listed
 in `contracts/openapi.yaml` (pre-existing, out of this story's scope).
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=DeliveryPatientReleaseDoSatisfyClinicianAcknowledgmentTest test`
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=DeliveryPatientReleaseDoSatisfyClinicianAcknowledgmentTest test`
 — `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0`.
 
 ## Gap

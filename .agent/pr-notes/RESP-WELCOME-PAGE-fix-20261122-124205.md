@@ -22,9 +22,9 @@ a pull request touching it is never auto-merged. The exact reproduction and
 bounded maintainer fix are handed off below.
 
 All evidence in this pass came from executed tool commands by the primary
-agent, one simulated `orevia-senior-react` reviewer (static read only, no
+agent, one simulated `aurevia-senior-react` reviewer (static read only, no
 shell, no actionable findings), and previously recorded simulated
-`orevia-ux-reviewer` review (no actionable findings). No simulated-user or
+`aurevia-ux-reviewer` review (no actionable findings). No simulated-user or
 human/clinical participant supplied evidence. No patient data or credentials
 appear in this note.
 
@@ -48,12 +48,12 @@ hand-off blocker is delivery tooling, not a change in this story.
 
 ## Review owner
 
-Primary agent (tool-verified). Bounded simulated `orevia-senior-react`
+Primary agent (tool-verified). Bounded simulated `aurevia-senior-react`
 review of the two scoped files: no actionable findings; it confirmed the shared
 `page`/`EmptyState`/`useBreakpoint` conventions, logical-properties-only styles,
 complete band/width/locale/RTL assertions and no reason to change either file.
 That reviewer had no shell and relied on static reading plus the primary
-agent's evidence. An earlier simulated `orevia-ux-reviewer` review also
+agent's evidence. An earlier simulated `aurevia-ux-reviewer` review also
 returned no actionable findings. No new public contract, migration or clinical
 data is involved in this pass, so no new cross-boundary or clinical review is
 required.

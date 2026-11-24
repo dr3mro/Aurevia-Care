@@ -13,8 +13,8 @@ Partly proven
 Active proof at the domain-service plus JDBC-store boundary, against a fresh PostgreSQL database
 migrated from `db/migrations`, with synthetic fixtures and two tenants sharing local identifiers.
 Reproduction requires a loopback PostgreSQL on port 5432 with trust authentication for the local
-`orevia_migrate`/`orevia_app` roles and an admin name supplied through the
-`OREVIA_PG_ADMIN` environment variable (default: the OS user name):
+`aurevia_migrate`/`aurevia_app` roles and an admin name supplied through the
+`AUREVIA_PG_ADMIN` environment variable (default: the OS user name):
 
 - Test class: `com.aurevia.therapy.clauses.VersionOutcomeScalesStoreUnitsTest`
   (path: `apps/api/src/test/java/com/aurevia/therapy/clauses/VersionOutcomeScalesStoreUnitsTest.java`).

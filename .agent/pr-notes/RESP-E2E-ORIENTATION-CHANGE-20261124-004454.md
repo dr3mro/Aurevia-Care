@@ -16,7 +16,7 @@ Routine. Test-only addition: no production behavior, contract, migration, permis
 
 ## Review owner
 
-smartclinic-senior-react (staff web), smartclinic-senior-typescript (strict TS), smartclinic-test-engineer (assertions), smartclinic-plan-reviewer, smartclinic-code-reviewer, smartclinic-coverage-auditor, smartclinic-devsecops. All are read-only reviewers; the primary agent owns the edit and the commit.
+aurevia-senior-react (staff web), aurevia-senior-typescript (strict TS), aurevia-test-engineer (assertions), aurevia-plan-reviewer, aurevia-code-reviewer, aurevia-coverage-auditor, aurevia-devsecops. All are read-only reviewers; the primary agent owns the edit and the commit.
 
 ## Data changes
 
@@ -61,7 +61,7 @@ The canonical frontend gate is now green on local evidence.
 
 Entry point → test trace: `page.goto(route)` → Vite dev server started by `webServer` in `e2e/playwright.config.ts` → `src/main.tsx` (client-support check and `resize`/`orientationchange` re-render) → `App` → `AppShell`/`RouterProvider` → the registered route component. The spec then asserts shell rendering (`main#main`, `#active-organization`), the exact unsupported heading is absent, the focused element id (`document.activeElement`), the pathname from `page.url()`, and both unsaved form values, before and after `page.setViewportSize(target)`.
 
-Reviewer evidence is read-only: `smartclinic-plan-reviewer` reviewed the plan twice (first NO-GO with two Required gaps, both fixed, then GO), and `smartclinic-code-reviewer`, `smartclinic-coverage-auditor` and `smartclinic-devsecops` reviewed the finished file. No human, clinical or patient evidence was used.
+Reviewer evidence is read-only: `aurevia-plan-reviewer` reviewed the plan twice (first NO-GO with two Required gaps, both fixed, then GO), and `aurevia-code-reviewer`, `aurevia-coverage-auditor` and `aurevia-devsecops` reviewed the finished file. No human, clinical or patient evidence was used.
 
 ## Coverage
 
@@ -112,10 +112,10 @@ Not required. No signed data, cross-organization sharing, patient association, p
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

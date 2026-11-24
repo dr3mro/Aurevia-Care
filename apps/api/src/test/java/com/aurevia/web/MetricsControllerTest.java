@@ -31,8 +31,8 @@ class MetricsControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(MediaType.TEXT_PLAIN, response.getHeaders().getContentType());
         assertEquals(metrics.scrape(), response.getBody());
-        assertTrue(response.getBody().contains("# TYPE orevia_http_request_duration_seconds histogram"));
-        assertTrue(response.getBody().contains("orevia_http_request_duration_seconds_bucket{"));
+        assertTrue(response.getBody().contains("# TYPE aurevia_http_request_duration_seconds histogram"));
+        assertTrue(response.getBody().contains("aurevia_http_request_duration_seconds_bucket{"));
     }
 
     @Test

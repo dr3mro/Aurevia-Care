@@ -179,15 +179,15 @@ BEGIN
 END $$;
 
 -- Every write is made by an authorized workflow through the runtime role.
-GRANT SELECT, INSERT ON public.service_profile TO orevia_app;
-GRANT SELECT, INSERT ON public.service_profile_work_item TO orevia_app;
-GRANT SELECT, INSERT ON public.service_profile_audit TO orevia_app;
-GRANT SELECT, INSERT ON public.service_profile_unit_assignment TO orevia_app;
+GRANT SELECT, INSERT ON public.service_profile TO aurevia_app;
+GRANT SELECT, INSERT ON public.service_profile_work_item TO aurevia_app;
+GRANT SELECT, INSERT ON public.service_profile_audit TO aurevia_app;
+GRANT SELECT, INSERT ON public.service_profile_unit_assignment TO aurevia_app;
 
 GRANT UPDATE (status, approved_by, approved_at, approval_note)
-    ON public.service_profile TO orevia_app;
+    ON public.service_profile TO aurevia_app;
 
-REVOKE UPDATE, DELETE, TRUNCATE ON public.service_profile_work_item FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.service_profile_audit FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.service_profile_unit_assignment FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.service_profile FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.service_profile_work_item FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.service_profile_audit FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.service_profile_unit_assignment FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.service_profile FROM aurevia_app;

@@ -37,7 +37,7 @@ None. Test-only change.
 Commands executed in `apps/staff-web` (tool evidence; final lines quoted):
 
 - `npm run typecheck` — final lines:
-  `> smartclinic-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json` (exit 0; tsc prints nothing on success).
+  `> aurevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json` (exit 0; tsc prints nothing on success).
 - `npx tsc --noEmit -p tsconfig.lint.json` — `TSC_LINT_EXIT=0` (needed because `tsconfig.json` excludes `e2e`; this config includes it).
 - `npx eslint e2e/accessibilityScanResponsive.spec.ts --max-warnings 0` — `ESLINT_EXIT=0`.
 - `python3 -I scripts/check-constraints.py` (from repo root) — `CONSTRAINTS_EXIT=0`.
@@ -103,13 +103,13 @@ The "true"/"included" sides of the substitute-heading guard and the serious/crit
 
 ## Review verdicts
 
-- smartclinic-devsecops: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-test-engineer: GO
-- smartclinic-plan-reviewer: NO-GO
-- smartclinic-code-reviewer: GO
+- aurevia-devsecops: GO
+- aurevia-coverage-auditor: GO
+- aurevia-test-engineer: GO
+- aurevia-plan-reviewer: NO-GO
+- aurevia-code-reviewer: GO
 
-**Repair pass 2 (reviewer + tool evidence).** The prior NO-GO verdicts were based solely on the out-of-scope `currentSpecs` pin that kept `check.sh` red; repair pass 1 fixed that pin. The read-only smartclinic-code-reviewer was re-run against the final committed diff (`git diff 29467f47...HEAD`) and answered `VERDICT: GO`: the 15-spec pin is complete, the 30-route inventory is accurate, the 14-reachable/16-denied split matches AppShell's access logic, breakpoint/i18n/state-screen guards hold, synthetic fixtures carry no PHI, and no gate, contract or production rule is broken. No unresolved Critical or Required findings. Its one Optional finding — a misleading doc comment on `COMPACT_MAX_WIDTH` — was applied as a comment-only change and the reviewer re-confirmed `VERDICT: GO`. All three post-code reviewers required by `scripts/check-verdicts.py` now stand at GO. The historical `smartclinic-plan-reviewer: NO-GO` above shared the same pin-based cause and is a pre-code review, not one of the three gated post-code reviewers.
+**Repair pass 2 (reviewer + tool evidence).** The prior NO-GO verdicts were based solely on the out-of-scope `currentSpecs` pin that kept `check.sh` red; repair pass 1 fixed that pin. The read-only aurevia-code-reviewer was re-run against the final committed diff (`git diff 29467f47...HEAD`) and answered `VERDICT: GO`: the 15-spec pin is complete, the 30-route inventory is accurate, the 14-reachable/16-denied split matches AppShell's access logic, breakpoint/i18n/state-screen guards hold, synthetic fixtures carry no PHI, and no gate, contract or production rule is broken. No unresolved Critical or Required findings. Its one Optional finding — a misleading doc comment on `COMPACT_MAX_WIDTH` — was applied as a comment-only change and the reviewer re-confirmed `VERDICT: GO`. All three post-code reviewers required by `scripts/check-verdicts.py` now stand at GO. The historical `aurevia-plan-reviewer: NO-GO` above shared the same pin-based cause and is a pre-code review, not one of the three gated post-code reviewers.
 
 ## Findings
 

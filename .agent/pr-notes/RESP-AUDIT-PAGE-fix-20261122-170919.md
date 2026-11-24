@@ -35,7 +35,7 @@ Routine (contained staff-web presentation change). No clinical data, authorizati
 
 ## Review owner
 
-Senior React and Vite specialist; UX reviewer for the LTR/RTL layout contract. This pass used `orevia-delivery`, `orevia-senior-react`, `orevia-senior-typescript`, `orevia-plan-reviewer`, `orevia-code-reviewer`, `orevia-coverage-auditor` and `orevia-devsecops`. Evidence here comes from executed tool commands and executed Vitest/Vite/TypeScript tooling plus read-only specialist reviews — no human, clinician or patient participant evidence. Earlier-run simulated UX findings are carried forward under Findings as review activity only.
+Senior React and Vite specialist; UX reviewer for the LTR/RTL layout contract. This pass used `aurevia-delivery`, `aurevia-senior-react`, `aurevia-senior-typescript`, `aurevia-plan-reviewer`, `aurevia-code-reviewer`, `aurevia-coverage-auditor` and `aurevia-devsecops`. Evidence here comes from executed tool commands and executed Vitest/Vite/TypeScript tooling plus read-only specialist reviews — no human, clinician or patient participant evidence. Earlier-run simulated UX findings are carried forward under Findings as review activity only.
 
 ## Data changes
 
@@ -55,7 +55,7 @@ All commands executed from branch `swarm/RESP-AUDIT-PAGE-997`, HEAD `fe844c6cd64
 
 1. `cd apps/staff-web && npm run typecheck` — exit 0. Final lines (mandatory typecheck evidence):
    ```
-   > orevia-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    No `error TS…` lines. The same typecheck also ran inside step 3 and passed.
@@ -96,10 +96,10 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 
@@ -114,7 +114,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 - A re-dispatched worker can find the task's code already merged in HEAD. Verify the scope in isolation (targeted Vitest, `npm run typecheck`, a `--coverage.reportOnFailure` probe) and then run the module gate; distinguish already-resolved module-gate failures from ones you cause by checking whether the failing files are in your scope and by re-running the gate on the current base.
 - `bash apps/staff-web/check.sh` writes expected jsdom console errors (`Not implemented: navigation`, provider-outside-provider throws) while still exiting 0 — judge the green by the `Test Files`/`Tests` summary and exit status, not by console noise.
 - `vitest run --coverage` on a two-file subset always fails the global per-file threshold because `vite.config.ts` sets `include: ['src/**/*']` with `perFile: true`; pass `--coverage.reportOnFailure`, read the touched file's row from `coverage/coverage-summary.json`, and treat the full module gate as authoritative.
-- `scripts/check-verdicts.py` matches `- orevia-<name>: GO`, not a bare `VERDICT: GO` line, in `## Review verdicts`; write the three lines in that exact form.
+- `scripts/check-verdicts.py` matches `- aurevia-<name>: GO`, not a bare `VERDICT: GO` line, in `## Review verdicts`; write the three lines in that exact form.
 - `responsive.css` wraps `.app-shell > *`, `.cluster > *`, `.stack > *`, `.grid-2 > *` and `.card-list > *`, but has no `.page > *` rule and no `.audit-filters`/`.audit-events` class. Do not edit the stylesheet from a page story; wrap children in `stack`/`cluster`/`grid-2` and record the missing rule for a stylesheet story. `Form` switches to two columns only above six fields, so a `grid-2` div supplies phone stacking / medium two columns for the five-field audit form.
 - Reuse the `matchMedia` stub pattern with one state object per query so `useBreakpoint` listeners can be fired deterministically inside `act()`; in a Vitest jsdom module `import.meta.url` is not a `file:` URL, so use `dirname(fileURLToPath(import.meta.url))` + `join` to read the stylesheet.
 

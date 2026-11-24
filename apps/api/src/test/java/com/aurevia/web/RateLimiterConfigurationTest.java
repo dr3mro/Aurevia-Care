@@ -45,7 +45,7 @@ class RateLimiterConfigurationTest {
         context = new AnnotationConfigApplicationContext();
         MockEnvironment environment = new MockEnvironment();
         if (configuredPerMinute != null) {
-            environment.setProperty("orevia.rate-limit.per-minute", configuredPerMinute);
+            environment.setProperty("aurevia.rate-limit.per-minute", configuredPerMinute);
         }
         context.setEnvironment(environment);
         context.register(FixedClockConfiguration.class, RateLimiterConfiguration.class);

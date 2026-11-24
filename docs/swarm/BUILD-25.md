@@ -20,9 +20,9 @@ threshold was changed in this pass; its deliverable is the completed evidence an
 
 - Worker: `swarm-6`; branch `swarm/BUILD-25-418`; base HEAD `206fc2f`.
   Evidence sources: **tool** (every command and its final line is quoted below), plus the earlier
-  run's note (tool + simulated reviewer evidence). Skills loaded: `orevia-delivery`,
-  `orevia-senior-backend`, `orevia-senior-database`, `orevia-senior-java-build`,
-  `orevia-test-engineer`. **No simulated user, clinical reviewer or human participant was
+  run's note (tool + simulated reviewer evidence). Skills loaded: `aurevia-delivery`,
+  `aurevia-senior-backend`, `aurevia-senior-database`, `aurevia-senior-java-build`,
+  `aurevia-test-engineer`. **No simulated user, clinical reviewer or human participant was
   exercised in this pass; no clinical or real-patient acceptance is claimed. All fixtures are
   synthetic.**
 
@@ -64,7 +64,7 @@ replay identity is asserted in `receiptsReplayAndLinksAreDurable`, tenant isolat
 | ID | How the delivered change serves it |
 |---|---|
 | ARC-05 | Durable outbox; immutable event ids and per-aggregate version; sender/type-namespaced deduplication; bounded retry with next-attempt instant; restricted dead-letter and reviewed replay; outbox + audit + idempotency key committed atomically in `publishAtomically`. |
-| ARC-02 | Every statement runs in the tenant-guarded `TransactionTemplate` that binds `app.current_org`, `app.actor`, `app.purpose` and `app.correlation_id` transaction-locally; forced RLS on all six V55 tables confines reads and writes; non-owner `orevia_app` has `NOBYPASSRLS`; two tenants with identical local ids stay isolated. |
+| ARC-02 | Every statement runs in the tenant-guarded `TransactionTemplate` that binds `app.current_org`, `app.actor`, `app.purpose` and `app.correlation_id` transaction-locally; forced RLS on all six V55 tables confines reads and writes; non-owner `aurevia_app` has `NOBYPASSRLS`; two tenants with identical local ids stay isolated. |
 
 Supporting IDs recorded by the original implementation: ARC-01, ARC-03, OPS-02.
 
@@ -79,7 +79,7 @@ the adapter; not safety-critical in the clinical sense. No real-patient approval
 Senior Java and Spring Boot (adapter and bean wiring), Senior PostgreSQL/Flyway (V55 RLS, grants,
 triggers), Senior Java Build and Test Tooling (JaCoCo, SpotBugs, Javadoc), Test Engineer (coverage
 mapping), QA (two-tenant isolation evidence). The original implementation recorded a bounded
-simulated `orevia-senior-database` read-only review with three findings (dispositions in
+simulated `aurevia-senior-database` read-only review with three findings (dispositions in
 Findings below). All reviewer evidence is simulated/tool-based; no independent human reviewer was
 available.
 
@@ -108,18 +108,18 @@ V55 already exists with `Change: expand`, so this is a pure code replacement wit
 data step. The production bean change takes effect on redeploy: the JDBC adapter reads the same
 authoritative membership fold, so no dual-write is required. `InMemoryDeliveryStore` remains a
 test fixture only. The integration test creates and drops its own
-`orevia_delivery_store_it` database.
+`aurevia_delivery_store_it` database.
 
 ## Test evidence
 
 All commands run from the repository root on `swarm/BUILD-25-418`, Java 21.0.13.1 (CI baseline),
-Maven 3.10.0, PostgreSQL 18.6 on 127.0.0.1:5432, `OREVIA_PG_ADMIN=postgres`. Evidence source:
+Maven 3.10.0, PostgreSQL 18.6 on 127.0.0.1:5432, `AUREVIA_PG_ADMIN=postgres`. Evidence source:
 executed tool commands; no human or patient feedback.
 
 | Command | Exit | Result / final line |
 |---|---|---|
-| `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcDeliveryStoreBranchTest,JdbcDeliveryStoreIntegrationTest test` | 0 | Flyway `Successfully applied 32 migrations ... now at version v61`; Tomcat started; HTTP 201/200/404 logged as expected |
-| `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcDeliveryStoreBranchTest,DurableEventServiceTest,DeliveryDomainTest,JdbcDeliveryStoreIntegrationTest test` | 0 | all four classes green (counts below) |
+| `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcDeliveryStoreBranchTest,JdbcDeliveryStoreIntegrationTest test` | 0 | Flyway `Successfully applied 32 migrations ... now at version v61`; Tomcat started; HTTP 201/200/404 logged as expected |
+| `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcDeliveryStoreBranchTest,DurableEventServiceTest,DeliveryDomainTest,JdbcDeliveryStoreIntegrationTest test` | 0 | all four classes green (counts below) |
 | — `JdbcDeliveryStoreBranchTest` | — | `Tests run: 5, Failures: 0, Errors: 0, Skipped: 0` |
 | — `DurableEventServiceTest` | — | `Tests run: 25, Failures: 0, Errors: 0, Skipped: 0` |
 | — `DeliveryDomainTest` | — | `Tests run: 12, Failures: 0, Errors: 0, Skipped: 0` |

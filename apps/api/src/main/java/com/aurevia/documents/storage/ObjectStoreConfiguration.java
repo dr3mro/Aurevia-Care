@@ -31,33 +31,33 @@ public class ObjectStoreConfiguration {
     /**
      * Create the private S3 adapter, failing closed on an incomplete or insecure configuration.
      *
-     * @param endpoint S3-compatible endpoint, read from {@code OREVIA_S3_ENDPOINT}
-     * @param bucket   private bucket name, read from {@code OREVIA_S3_BUCKET}
-     * @param region   AWS region, read from {@code OREVIA_S3_REGION}
+     * @param endpoint S3-compatible endpoint, read from {@code AUREVIA_S3_ENDPOINT}
+     * @param bucket   private bucket name, read from {@code AUREVIA_S3_BUCKET}
+     * @param region   AWS region, read from {@code AUREVIA_S3_REGION}
      * @return the managed object-store adapter, also usable as a signed-access port
      * @throws IllegalStateException when a setting is missing or the endpoint is not HTTPS
      */
     @Bean
     @Profile("production")
     S3ObjectStore s3ObjectStore(
-            @Value("${OREVIA_S3_ENDPOINT:}") String endpoint,
-            @Value("${OREVIA_S3_BUCKET:}") String bucket,
-            @Value("${OREVIA_S3_REGION:}") String region) {
+            @Value("${AUREVIA_S3_ENDPOINT:}") String endpoint,
+            @Value("${AUREVIA_S3_BUCKET:}") String bucket,
+            @Value("${AUREVIA_S3_REGION:}") String region) {
         List<String> missing = new ArrayList<>();
         if (endpoint.isBlank()) {
-            missing.add("OREVIA_S3_ENDPOINT");
+            missing.add("AUREVIA_S3_ENDPOINT");
         }
         if (bucket.isBlank()) {
-            missing.add("OREVIA_S3_BUCKET");
+            missing.add("AUREVIA_S3_BUCKET");
         }
         if (region.isBlank()) {
-            missing.add("OREVIA_S3_REGION");
+            missing.add("AUREVIA_S3_REGION");
         }
         if (!missing.isEmpty()) {
             throw new IllegalStateException("Missing S3 object-store settings: " + String.join(", ", missing));
         }
         if (!endpoint.startsWith("https://")) {
-            throw new IllegalStateException("OREVIA_S3_ENDPOINT must use https");
+            throw new IllegalStateException("AUREVIA_S3_ENDPOINT must use https");
         }
         Region awsRegion = Region.of(region);
         URI endpointUri = URI.create(endpoint);

@@ -59,7 +59,7 @@ jobs:
       FIX_COMMENT: ${{ fromJSON(inputs.task).fix }}
       PR_NUMBER: ${{ fromJSON(inputs.task).number }}
       CHECK_SCRIPT: scripts/worker-check.sh
-      OREVIA_PG_ADMIN: postgres
+      AUREVIA_PG_ADMIN: postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

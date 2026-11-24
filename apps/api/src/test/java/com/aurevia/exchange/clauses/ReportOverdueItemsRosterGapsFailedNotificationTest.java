@@ -58,16 +58,16 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_xch05_report_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_xch05_report_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ReportOverdueItemsRosterGapsFailedNotificationTest {
 
     private static final String ORG_D = "44444444-4444-4444-4444-444444444444";
     private static final String ORG_E = "55555555-5555-5555-5555-555555555555";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_xch05_report_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_xch05_report_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String PRIMARY = "SECURE_MESSAGE";
     private static final String BACKUP = "ONCALL_PHONE";
 
@@ -88,18 +88,18 @@ class ReportOverdueItemsRosterGapsFailedNotificationTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_xch05_report_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_xch05_report_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_xch05_report_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_xch05_report_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             for (String org : new String[] {ORG_D, ORG_E}) {
                 seedOrganization(statement, org);
@@ -131,7 +131,7 @@ class ReportOverdueItemsRosterGapsFailedNotificationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_xch05_report_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_xch05_report_it WITH (FORCE)");
         }
     }
 
@@ -294,7 +294,7 @@ class ReportOverdueItemsRosterGapsFailedNotificationTest {
      */
     private static String seedOverdueSentinel(String org) throws Exception {
         String id = "aaaaaaaa-0000-4000-8000-000000000001";
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "lab_verifier-" + suffix(org));
             try (Statement statement = connection.createStatement()) {
@@ -373,7 +373,7 @@ class ReportOverdueItemsRosterGapsFailedNotificationTest {
     }
 
     private static String patientId(String org) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "lab_verifier-" + suffix(org));
             try (Statement statement = connection.createStatement();
@@ -400,7 +400,7 @@ class ReportOverdueItemsRosterGapsFailedNotificationTest {
     }
 
     private static void execute(String org, String subject, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (Statement statement = connection.createStatement()) {

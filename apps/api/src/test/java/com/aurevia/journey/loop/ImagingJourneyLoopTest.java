@@ -42,13 +42,13 @@ import com.aurevia.journey.JourneyContract.Viewer;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_journey_imaging_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_journey_imaging_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(600)
 class ImagingJourneyLoopTest {
 
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_journey_imaging_it";
-    private static final String DATABASE = "orevia_journey_imaging_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_journey_imaging_it";
+    private static final String DATABASE = "aurevia_journey_imaging_it";
     private static final String WORKLIST_SOURCE = "imaging";
     private static final String REPORT_SOURCE = "radiology";
     private static final String AT = "2026-11-21T11:00:00Z";

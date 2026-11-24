@@ -17,7 +17,7 @@ Routine (one test-timing confirmation plus one ESLint config resolution fix). No
 
 ## Review owner
 
-Integrator / orchestrator. Read-only reviewers consulted this run: `orevia-plan-reviewer` (pre-code and again after the config edit), `orevia-test-engineer`, `orevia-senior-react`, `orevia-senior-mobile`, then `orevia-code-reviewer`, `orevia-coverage-auditor` and `orevia-devsecops`.
+Integrator / orchestrator. Read-only reviewers consulted this run: `aurevia-plan-reviewer` (pre-code and again after the config edit), `aurevia-test-engineer`, `aurevia-senior-react`, `aurevia-senior-mobile`, then `aurevia-code-reviewer`, `aurevia-coverage-auditor` and `aurevia-devsecops`.
 
 ## Data changes
 
@@ -42,7 +42,7 @@ Honest red-first note: the race failure is CI-load-dependent (earlier full-suite
 Commands and final lines (all run this pass):
 
 - Focused, repeated 6× in `apps/staff-web`: `npx vitest run tests/responsive/features-admin/FacilitiesPage.responsive.test.tsx --reporter=dot` → `Test Files  1 passed (1)` / `Tests  17 passed (17)` on every run (durations 1.02–1.22 s).
-- `bash apps/staff-web/check.sh` → exit **1**, failing at stage 1: `> orevia-staff-web@0.1.0 gen:api:check`, `✨ openapi-typescript 7.13.0`, `✘  Generated types are not up-to-date!`.
+- `bash apps/staff-web/check.sh` → exit **1**, failing at stage 1: `> aurevia-staff-web@0.1.0 gen:api:check`, `✨ openapi-typescript 7.13.0`, `✘  Generated types are not up-to-date!`.
 - Remaining staff-web stages run individually: `npm run typecheck` → exit 0 (`> tsc --noEmit -p tsconfig.json`, no diagnostics); `npm run lint` → exit 0 (`> eslint . --max-warnings 0`, no output); `npm run build` → exit 0 (`✓ built in 510ms`); `node scripts/check-bundle-size.mjs` → exit 0 (all chunks `ok`).
 - `npm run test:coverage` in `apps/staff-web` → exit **1**: `Test Files  213 passed (213)`, `Tests  2613 passed (2613)`, but 19 unchanged source files below the 100% threshold (46 `ERROR: Coverage for … does not meet global threshold (100%)` lines). The Facilities responsive test is not among them.
 - `bash apps/patient-mobile/check.sh` BEFORE the config edit → exit 1, `> patient-mobile@0.1.0 lint`, `> eslint .`, `✖ 520 problems (516 errors, 4 warnings)`, representative line `Parse errors in imported module '../../api/reauthentication': Cannot find module '@typescript-eslint/parser'` under `import/namespace`. Typecheck itself was clean.
@@ -69,13 +69,13 @@ Not required. No signed data, cross-organization sharing, patient association, p
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO (pure remap; no rule, threshold, suppression or dependency changed; Optional comment nit resolved)
-- orevia-coverage-auditor: GO (no production source or test changed; config is outside Jest collectCoverageFrom; no excluded/lowered threshold)
-- orevia-devsecops: GO (no findings; absolute path resolves pinned sub-dependency, no new package, no weakened gate, no PHI/secret)
-- orevia-test-engineer: GO (honest red-first; deferred-transport case covers the two-commit race)
-- orevia-senior-react: GO (staff-web TSX test correctness)
-- orevia-senior-mobile: GO (updated config, second fix)
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO (pure remap; no rule, threshold, suppression or dependency changed; Optional comment nit resolved)
+- aurevia-coverage-auditor: GO (no production source or test changed; config is outside Jest collectCoverageFrom; no excluded/lowered threshold)
+- aurevia-devsecops: GO (no findings; absolute path resolves pinned sub-dependency, no new package, no weakened gate, no PHI/secret)
+- aurevia-test-engineer: GO (honest red-first; deferred-transport case covers the two-commit race)
+- aurevia-senior-react: GO (staff-web TSX test correctness)
+- aurevia-senior-mobile: GO (updated config, second fix)
 
 ## Findings
 

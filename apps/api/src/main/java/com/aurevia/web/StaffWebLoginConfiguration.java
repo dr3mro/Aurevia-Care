@@ -37,7 +37,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * secure session cookie, keeps CSRF enabled with a readable {@code XSRF-TOKEN}
  * cookie, and ends the session on the server on logout.</p>
  *
- * <p>All OIDC values come from {@code OREVIA_OIDC_*} environment
+ * <p>All OIDC values come from {@code AUREVIA_OIDC_*} environment
  * variables through the environment-backed properties. Startup fails closed
  * when any value is missing outside {@code synthetic-auth}; no credential is
  * ever stored in the repository. The identity provider must publish the
@@ -61,7 +61,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class StaffWebLoginConfiguration {
 
     /** Registration identifier used by the staff web client. */
-    static final String REGISTRATION_ID = "orevia";
+    static final String REGISTRATION_ID = "aurevia";
 
     /** Absolute session ceiling; the idle ceiling is set by server.servlet.session.timeout. */
     private static final Duration ABSOLUTE_SESSION_LIFETIME = Duration.ofHours(12);
@@ -74,14 +74,14 @@ public class StaffWebLoginConfiguration {
     /**
      * Bind the OIDC client settings and the session cookie name from the environment.
      *
-     * @param clientId         client id from {@code OREVIA_OIDC_CLIENT_ID}
-     * @param clientSecret     client secret from {@code OREVIA_OIDC_CLIENT_SECRET}
-     * @param issuerUri        issuer from {@code OREVIA_OIDC_ISSUER_URI}
+     * @param clientId         client id from {@code AUREVIA_OIDC_CLIENT_ID}
+     * @param clientSecret     client secret from {@code AUREVIA_OIDC_CLIENT_SECRET}
+     * @param issuerUri        issuer from {@code AUREVIA_OIDC_ISSUER_URI}
      * @param sessionCookieName configured session cookie name
      */
     public StaffWebLoginConfiguration(
-            @Value("${orevia.oidc.client-id:}") String clientId,
-            @Value("${orevia.oidc.client-secret:}") String clientSecret,
+            @Value("${aurevia.oidc.client-id:}") String clientId,
+            @Value("${aurevia.oidc.client-secret:}") String clientSecret,
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri,
             @Value("${server.servlet.session.cookie.name:JSESSIONID}") String sessionCookieName) {
         this.clientId = clientId;
@@ -100,8 +100,8 @@ public class StaffWebLoginConfiguration {
     ClientRegistrationRepository staffClientRegistrationRepository() {
         if (Stream.of(clientId, clientSecret, issuerUri).anyMatch(String::isBlank)) {
             throw new IllegalStateException(
-                    "OREVIA_OIDC_CLIENT_ID, OREVIA_OIDC_CLIENT_SECRET and "
-                            + "OREVIA_OIDC_ISSUER_URI must be set");
+                    "AUREVIA_OIDC_CLIENT_ID, AUREVIA_OIDC_CLIENT_SECRET and "
+                            + "AUREVIA_OIDC_ISSUER_URI must be set");
         }
         ClientRegistration registration = ClientRegistration.withRegistrationId(REGISTRATION_ID)
                 .clientId(clientId)
@@ -113,7 +113,7 @@ public class StaffWebLoginConfiguration {
                 .userInfoUri(issuerUri + "/userinfo")
                 .userNameAttributeName("sub")
                 .scope("openid", "profile")
-                .clientName("Orevia")
+                .clientName("Aurevia")
                 .build();
         return new InMemoryClientRegistrationRepository(registration);
     }

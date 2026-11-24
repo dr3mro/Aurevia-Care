@@ -20,7 +20,7 @@ IAM-02 (primary). Supporting: ARC-01 (opaque tenant-owned keys), ARC-02 (forced 
 
 ## Risk class
 
-Safety-critical (identity/permission lifecycle). Static specialist review from `orevia-senior-backend` and `orevia-senior-database` (simulated reviewers; their findings were applied: DB-side admin guard on issue/revoke, column-scoped UPDATE, composite FKs, same-outcome concealment, secure grantor GUC, distinct-role trigger, generic failure for unusable tokens). No clinical, human or patient-participant evidence is claimed.
+Safety-critical (identity/permission lifecycle). Static specialist review from `aurevia-senior-backend` and `aurevia-senior-database` (simulated reviewers; their findings were applied: DB-side admin guard on issue/revoke, column-scoped UPDATE, composite FKs, same-outcome concealment, secure grantor GUC, distinct-role trigger, generic failure for unusable tokens). No clinical, human or patient-participant evidence is claimed.
 
 ## Review owner
 

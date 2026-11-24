@@ -76,7 +76,7 @@ sub-route; referrals only through the `CommandCatalog` entry above.
 Verified locally:
 
 ```
-OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=ResourceFamiliesIncludePatientsAppointmentsEncountersOrdersTest test
 Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 ```

@@ -73,7 +73,7 @@ routing), `com.aurevia.exchange.result.ResultModel` (`ResultIdentifiers`,
 `com.aurevia.api.ApiErrorHandler` (403 rendering) and
 `com.aurevia.tenant.TenantContext` (actor and organization boundary).
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=MatchPatientSourceAccessionDestinationOrderIdentifiersTest
 test` — `tests="9" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim that

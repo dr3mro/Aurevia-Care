@@ -25,7 +25,7 @@ No existing test was weakened; the three PHARM-04 test classes were adapted only
 
 ## Review owner
 
-Primary integrator + Delivery. Simulated `orevia-senior-backend`, `orevia-senior-database`, `orevia-senior-spring-security`, `orevia-senior-java-build` and `orevia-test-engineer` skills were loaded and applied. No human clinical or patient-participant evidence is claimed.
+Primary integrator + Delivery. Simulated `aurevia-senior-backend`, `aurevia-senior-database`, `aurevia-senior-spring-security`, `aurevia-senior-java-build` and `aurevia-test-engineer` skills were loaded and applied. No human clinical or patient-participant evidence is claimed.
 
 ## Data changes
 
@@ -45,7 +45,7 @@ Expand-only. The four existing `/api/v1/pharmacy/substitutions/**` routes are un
 
 Evidence provenance: **executed tool commands** (Maven/Surefire/JaCoCo, Flyway/PostgreSQL, SpotBugs, policy scripts) plus **simulated specialist skills**. No human, clinical, simulated-user or patient-participant evidence.
 
-Red first: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=SubstitutionPersistenceIntegrationTest test` before production changes → 5 errors/404s and a 403 (`missing pharmacy substitution permission`); the proposal was never persisted and the draft was never changed. The final regression is 6 HTTP/PostgreSQL tests.
+Red first: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=SubstitutionPersistenceIntegrationTest test` before production changes → 5 errors/404s and a 403 (`missing pharmacy substitution permission`); the proposal was never persisted and the draft was never changed. The final regression is 6 HTTP/PostgreSQL tests.
 
 Green (final run): `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='SubstitutionServiceTest,SubstitutionControllerHttpTest,JdbcSubstitutionStoreTest,JdbcSubstitutionDecisionStoreTest,SubstitutionContractTest,SubstitutionInputsTest,SubstitutionRulesTest,PrescriptionSubstitutionServiceTest,SubstitutionPersistenceIntegrationTest' test` → `BUILD SUCCESS` (9 suites, 75 tests, 0 failures/errors/skipped). Final lines:
 - `SubstitutionServiceTest` — `Tests run: 30, Failures: 0, Errors: 0, Skipped: 0`

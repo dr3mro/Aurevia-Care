@@ -38,10 +38,10 @@ PROCESS_SECTIONS = ("Common rationalizations", "Red flags", "Verification")
 # Skills that play a simulated user or plan and track work have no engineering process to
 # check; every other skill must carry the process sections.
 NO_PROCESS_SECTIONS = {
-    "orevia-clinic-assistant", "orevia-laboratory-user", "orevia-patient-user",
-    "orevia-pharmacy-user", "orevia-physical-therapy-user", "orevia-radiology-user",
-    "orevia-product-manager", "orevia-product-owner", "orevia-scrum-master",
-    "orevia-system-designer", "orevia-memory-manager", "orevia-context-optimizer",
+    "aurevia-clinic-assistant", "aurevia-laboratory-user", "aurevia-patient-user",
+    "aurevia-pharmacy-user", "aurevia-physical-therapy-user", "aurevia-radiology-user",
+    "aurevia-product-manager", "aurevia-product-owner", "aurevia-scrum-master",
+    "aurevia-system-designer", "aurevia-memory-manager", "aurevia-context-optimizer",
 }
 
 
@@ -125,7 +125,7 @@ def check(root=ROOT):
             errors.append(f"agent {name}: description is required")
         if not NAME.fullmatch(name):
             errors.append(f"agent {name}: name must be kebab-case")
-        loaded = set(re.findall(r"Load (?:the )?`?(orevia-[a-z0-9-]+)`?", text))
+        loaded = set(re.findall(r"Load (?:the )?`?(aurevia-[a-z0-9-]+)`?", text))
         if not loaded or not loaded <= set(skills):
             errors.append(
                 f"agent .opencode/agents/{name}.md must load an existing skill "
@@ -167,10 +167,10 @@ def check(root=ROOT):
             if not re.search(rf"(?mi)^##\s+{re.escape(heading)}\s*$", text):
                 errors.append(f"skill {name}: missing the section \"## {heading}\"")
     # Agent files are short names; each specialist loads the skill of the same
-    # name with the orevia- prefix, and the primary loads the delivery skill.
-    expected_skills = {f"orevia-{name}" for name in specialists} | {"orevia-delivery"}
+    # name with the aurevia- prefix, and the primary loads the delivery skill.
+    expected_skills = {f"aurevia-{name}" for name in specialists} | {"aurevia-delivery"}
     if expected_skills != set(skills):
-        errors.append("skills differ from specialists plus orevia-delivery: "
+        errors.append("skills differ from specialists plus aurevia-delivery: "
                       f"{sorted(expected_skills ^ set(skills))}")
 
     workflow = root / "docs/WORKFLOW.md"

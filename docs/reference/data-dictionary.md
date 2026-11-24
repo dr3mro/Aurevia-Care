@@ -133,7 +133,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 | effective_to | timestamptz | End of the window; required for `REVOKE`. |
 
 **Keys/constraints.** PK `(organization_id, id)`; CHECKs `effective_to >= effective_from`, REVOKE requires `effective_to`, non-empty subject and role key; index on `(organization_id, subject, effective_from DESC, id DESC)`.
-**Isolation / writes.** Forced RLS declared here; append-only for every role. The runtime role has `SELECT` only; only the trigger function (granted to `orevia_migrate`) can append.
+**Isolation / writes.** Forced RLS declared here; append-only for every role. The runtime role has `SELECT` only; only the trigger function (granted to `aurevia_migrate`) can append.
 **Migration.** Created V71__build_02.sql (IAM-02, ARC-02, OPS-02).
 
 ### `staff_invitation`
@@ -2796,7 +2796,7 @@ All four tables below were created by V45__finance.sql (FIN-01, ARC-01, ARC-02, 
 ### Requirement mapping
 
 - **ARC-01 (domain keys).** Every tenant-owned table keys on `(organization_id, id)` or a domain-specific composite key that always begins with `organization_id`. Issuer-scoped uniqueness appears in `patient_record` (MRN), `lab_accession` (accession), `flow_policy` (locale/platform) and the XCH-04 lineage keys. The two-party `exchange_work_item` projection still carries `organization_id` in its key.
-- **ARC-02 (isolation).** Forced RLS with a `tenant_isolation` policy is declared on every tenant table, including each new table added after V2 (later migrations cannot rely on V2's static list). The runtime role `orevia_app` is a non-owner without `BYPASSRLS`; append-only facts are additionally protected by triggers that bind the migration owner. `exchange_work_item` is the single bounded cross-tenant exception, with sender/destination policies.
+- **ARC-02 (isolation).** Forced RLS with a `tenant_isolation` policy is declared on every tenant table, including each new table added after V2 (later migrations cannot rely on V2's static list). The runtime role `aurevia_app` is a non-owner without `BYPASSRLS`; append-only facts are additionally protected by triggers that bind the migration owner. `exchange_work_item` is the single bounded cross-tenant exception, with sender/destination policies.
 - **OPS-06 (migration change safety).** `scripts/check-migrations.py` enforces unique versions, expand/contract headers and prior-expand references. All migrations present are `Change: expand` (or unlabelled baseline files); there is no `contract` migration in this coverage range. Gaps in version numbers (V13–V14, V16, V18, V27–V32, etc.) are expected: workers own reserved versions and merge independently, and Flyway applies by numeric version.
 
 ### Consolidated `UNCLEAR:` register

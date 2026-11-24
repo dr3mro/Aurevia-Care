@@ -1,6 +1,6 @@
 # JAVA-PACKAGE-RENAME — interactive maintainer run
 
-**Goal (user directive 2026-11-23):** remove the legacy `orevia` segment so every
+**Goal (user directive 2026-11-23):** remove the legacy `aurevia` segment so every
 Java package root is `com.aurevia.*`. Evidence source: executed
 `find`/`grep`/`mvn`/`python3` commands and file reads (tool evidence). No reviewer,
 simulated user or human participant evidence in this run.
@@ -10,8 +10,8 @@ simulated user or human participant evidence in this run.
 - All 1529 Java files under `apps/api/src` (750 main, 779 test): dot-form
   `com.aurevia` -> `com.aurevia`, path-form `com/aurevia` -> `com/aurevia`.
 - Moved all `com/aurevia/**` directories up one level to `com/aurevia/**` in both
-  main and test. No `orevia` or legacy package directory remains. Spring entry point
-  is now `com.aurevia.OreviaApiApplication`; default component scan of `com.aurevia.**`
+  main and test. No `aurevia` or legacy package directory remains. Spring entry point
+  is now `com.aurevia.AureviaApiApplication`; default component scan of `com.aurevia.**`
   still covers every bean.
 - Functional references updated: `apps/api/pom.xml` pitest targets,
   `apps/api/spotbugs-exclude.xml`, `CommandClientGenerator.GENERATOR` and the regenerated
@@ -23,8 +23,8 @@ simulated user or human participant evidence in this run.
   diff is a pure old-path -> new-path relocation (counts unchanged: 1/3/3/2/1/13).
 - `.opencode/config/MEMORY.md`: durable package-root decision recorded.
 
-Deliberately unchanged: class names (`OreviaApiApplication`), Maven artifact `orevia-api`,
-service name, generated contract extension keys (`x-orevia-*`), historical evidence logs
+Deliberately unchanged: class names (`AureviaApiApplication`), Maven artifact `aurevia-api`,
+service name, generated contract extension keys (`x-aurevia-*`), historical evidence logs
 (`.agent/pr-notes/`, `tasks/`, `docs/swarm/`, `docs/archive/`, `build/logs/`) and protected
 agent/script files that mention the old path only as an example (`scripts/agent-run.sh`,
 `scripts/check-names.py` LEGACY allowlist, two Python test fixtures).
@@ -35,7 +35,7 @@ agent/script files that mention the old path only as an example (`scripts/agent-
 |---|---|
 | `mvn -f apps/api/pom.xml -B compile` | BUILD SUCCESS, 750 sources compiled |
 | `mvn -f apps/api/pom.xml -B -DskipTests test-compile` | BUILD SUCCESS, 779 sources compiled |
-| `mvn -f apps/api/pom.xml -B -Dtest=OreviaApiApplicationTest,ExchangeResponseNamingTest,CommandClientGeneratorTest,CommandAuthorizationTest test` | Tests run: 31, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS |
+| `mvn -f apps/api/pom.xml -B -Dtest=AureviaApiApplicationTest,ExchangeResponseNamingTest,CommandClientGeneratorTest,CommandAuthorizationTest test` | Tests run: 31, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS |
 | `java -cp "$CP" com.aurevia.api.authorization.CommandClientGenerator contracts/openapi/generated` | regenerated artifacts, no error |
 | `java -cp "$CP" ... --check contracts/openapi/generated` | exit 0 |
 | `python3 -I contracts/openapi/check.py` | x-04 drift check OK: 24 commands, contract and client match manifest |
@@ -66,11 +66,11 @@ evidence. No threshold, exclusion, suppression or test skip was added or changed
 
 ## Findings
 
-- The working tree already contained an uncommitted legacy -> orevia rename (old files
+- The working tree already contained an uncommitted legacy -> aurevia rename (old files
   deleted, new tree untracked) plus many unrelated modifications. All were preserved; only
   package names, paths and their references were touched.
 - The generated OpenAPI artifacts were stale before this change; regenerating them also
-  updated the `x-orevia-*` extension keys and title emitted by the generator. Those keys are
+  updated the `x-aurevia-*` extension keys and title emitted by the generator. Those keys are
   branding in a generated contract, not Java package names, so they were left as the
   generator emits them.
 - A backup of the pre-change Java tree and functional files was written to
@@ -101,7 +101,7 @@ new root everywhere, including trackers and evidence logs:
   caused a one-off stale-bytecode test failure until cleared.
 
 Zero remaining text references to the old layout. Evidence (tool):
-`grep -rlE 'com[./]aurevia[./]orevia' .` -> 0 files; `python3 -I scripts/check-names.py` exit 0;
+`grep -rlE 'com[./]aurevia[./]aurevia' .` -> 0 files; `python3 -I scripts/check-names.py` exit 0;
 `python3 -I scripts/check-docs.py` exit 0; java-conventions tests 2/2 OK; check-names tests 6/6
 OK; `python3 -I scripts/check-wiring.py` exit 0; `bash scripts/python-coverage.sh` exit 0
 ("every changed script line is covered"); `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test`

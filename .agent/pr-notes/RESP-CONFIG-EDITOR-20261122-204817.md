@@ -22,9 +22,9 @@ database, tenant, authorization or clinical-data boundary is touched.
 
 ## Review owner
 
-Primary agent; read-only reviews by orevia-plan-reviewer (pre-code, GO) and
-orevia-code-reviewer, orevia-coverage-auditor, orevia-devsecops
-(post-code). Context bounded by orevia-context-optimizer (GO).
+Primary agent; read-only reviews by aurevia-plan-reviewer (pre-code, GO) and
+aurevia-code-reviewer, aurevia-coverage-auditor, aurevia-devsecops
+(post-code). Context bounded by aurevia-context-optimizer (GO).
 
 ## Data changes
 
@@ -57,7 +57,7 @@ participant.
   - `Statements   : 100% ( 4061/4061 )`, `Branches     : 100% ( 2071/2071 )`, `Functions    : 100% ( 1346/1346 )`, `Lines        : 100% ( 3878/3878 )`
   - The React `useTheme must be used inside ThemeProvider` stack traces in the log are the expected output of the pre-existing negative test `tests/theme/ThemeProvider.test.tsx`; the run is green.
 - Typecheck recorded separately (`tsc --noEmit` prints nothing on success) — `cd apps/staff-web && npm run typecheck` →
-  - `> orevia-staff-web@0.1.0 typecheck`
+  - `> aurevia-staff-web@0.1.0 typecheck`
   - `> tsc --noEmit -p tsconfig.json`
   - `TYPECHECK_EXIT=0` (no `error TS…`).
 - Final re-run after the coverage reviewer's optional inline-size assertion — `bash apps/staff-web/check.sh` → `CHECK_EXIT=0`, `Test Files 207 passed (207)`, `Tests 2555 passed (2555)`, coverage unchanged at 100% on all four metrics; `13 passed (13)` for the new test alone.
@@ -81,11 +81,11 @@ New/changed branches in the two in-scope files and their tests:
 
 ## Review verdicts
 
-- orevia-context-optimizer: GO
-- orevia-plan-reviewer: GO
-- orevia-devsecops: GO
-- orevia-coverage-auditor: GO
-- orevia-code-reviewer: GO
+- aurevia-context-optimizer: GO
+- aurevia-plan-reviewer: GO
+- aurevia-devsecops: GO
+- aurevia-coverage-auditor: GO
+- aurevia-code-reviewer: GO
 
 All three post-code reviewers ended with `VERDICT: GO` and no Critical or Required
 finding. DevSecOps recorded no tenant/PHI/auth concern: the seams carry only a

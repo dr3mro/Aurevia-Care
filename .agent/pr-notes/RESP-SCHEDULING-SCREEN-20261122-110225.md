@@ -46,7 +46,7 @@ Evidence provenance: executed tool commands unless explicitly labelled **simulat
 5. Typecheck final lines (`npm run typecheck`, exit 0):
 
    ```
-   > orevia-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
 

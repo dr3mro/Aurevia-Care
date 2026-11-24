@@ -70,7 +70,7 @@ Production classes exercised through those entry points:
   the owner, due-date, status and outcome columns, per-tenant `ENABLE` and
   `FORCE ROW LEVEL SECURITY`, the tenant isolation policy and the runtime grants.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dgroups=integration -Dtest=CareTeamActionTasksTrackOwnerDueTest test`
 — `tests="5" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 

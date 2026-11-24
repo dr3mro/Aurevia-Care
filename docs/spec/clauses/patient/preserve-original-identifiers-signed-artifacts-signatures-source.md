@@ -55,7 +55,7 @@ Production classes and files exercised by the request path:
 Verified locally with the command and final line from the surefire report:
 
 ```
-OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=PreserveOriginalIdentifiersSignedArtifactsSignaturesSourceTest test
 Tests run: 4, Failures: 0, Errors: 0, Skipped: 1
 ```

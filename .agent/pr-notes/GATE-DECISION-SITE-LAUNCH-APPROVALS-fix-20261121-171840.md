@@ -51,7 +51,7 @@ human gates.
 ## Review owner
 
 Product owner with clinical safety lead, privacy lead and integration lead as the
-section-10 accountable roles. An independent bounded simulated `orevia-qa-reviewer`
+section-10 accountable roles. An independent bounded simulated `aurevia-qa-reviewer`
 review of this decision pack was run for this fix pass (session
 `ses_e00dfc690ffeP6VQu8q4Q3y4vo`); its verdict, **PASS with no blocking, major or
 minor acceptance defects**, is recorded under Findings. No human, clinical or

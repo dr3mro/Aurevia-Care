@@ -29,8 +29,8 @@ class CommandClientGeneratorTest {
         assertEquals(yaml, generator.openApiYaml());
         for (CommandDefinition definition : catalog.commands()) {
             assertTrue(yaml.contains("operationId: " + definition.id()));
-            assertTrue(yaml.contains("x-orevia-action: " + definition.action()));
-            assertTrue(yaml.contains("x-orevia-policy: " + definition.policy()));
+            assertTrue(yaml.contains("x-aurevia-action: " + definition.action()));
+            assertTrue(yaml.contains("x-aurevia-policy: " + definition.policy()));
             assertTrue(yaml.contains("  " + definition.path() + ":"));
             assertTrue(client.contains("export function " + definition.id() + "("));
             if (CommandClientGenerator.pathParameters(definition.path()).isEmpty()) {

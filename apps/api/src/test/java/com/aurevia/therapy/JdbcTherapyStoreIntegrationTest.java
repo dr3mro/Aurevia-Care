@@ -59,7 +59,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_therapy_store_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_therapy_store_it")
 @ActiveProfiles("synthetic-auth")
 class JdbcTherapyStoreIntegrationTest {
 
@@ -67,9 +67,9 @@ class JdbcTherapyStoreIntegrationTest {
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     private static final String SUBJECT = "pt-shared";
     private static final String PATIENT = "33333333-3333-3333-3333-333333333333";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_therapy_store_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_therapy_store_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     JdbcTherapyStore store;
@@ -90,18 +90,18 @@ class JdbcTherapyStoreIntegrationTest {
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_therapy_store_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_therapy_store_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_therapy_store_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_therapy_store_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A);
             seedTenant(statement, ORG_B);
@@ -114,7 +114,7 @@ class JdbcTherapyStoreIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_therapy_store_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_therapy_store_it WITH (FORCE)");
         }
     }
 
@@ -237,7 +237,7 @@ class JdbcTherapyStoreIntegrationTest {
             return null;
         }));
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             SQLException failure = assertThrows(SQLException.class, () -> statement.executeUpdate(

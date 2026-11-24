@@ -16,7 +16,7 @@
         "id": "rec-synthetic-1",
         "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "provenance": {
-          "source_system": "orevia",
+          "source_system": "aurevia",
           "source_id": "src-synthetic-1",
           "version": 3
         },

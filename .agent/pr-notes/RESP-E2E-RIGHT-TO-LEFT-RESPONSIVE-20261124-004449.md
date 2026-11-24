@@ -141,10 +141,10 @@ clinical review remains a separate launch gate (UX-01).
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (second pass, after the real defect was reproduced; first-pass Required gaps on heading scope, gate execution and the fixme premise were resolved)
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO (second pass, after the real defect was reproduced; first-pass Required gaps on heading scope, gate execution and the fixme premise were resolved)
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

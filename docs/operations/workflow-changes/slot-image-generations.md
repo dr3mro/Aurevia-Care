@@ -416,7 +416,7 @@ person performs this rollback.
 Most evidence in this document came from executed tool commands and direct file
 reads: `git apply --check`, `yaml.safe_load`, `bash -n`, `shellcheck`, synthetic
 stub Docker/gh dry-runs and the real `scripts/swarm.py` helper. A bounded
-`orevia-github-workflow` specialist review (file reads only, no commands)
+`aurevia-github-workflow` specialist review (file reads only, no commands)
 identified four issues — the artifact extraction path, status-only run
 selection, the first-publish restore gap and a log line written only to
 `$GITHUB_OUTPUT` — all addressed in the current diff and text above. No

@@ -40,7 +40,7 @@ Routine — documentation only (`docs/WORKFLOW.md`). No code, configuration, API
 
 ## Review owner
 
-Product (record owner per the story; status Proposed). The earlier run recorded a simulated `orevia-ux-reviewer` review that found no blocking defect. This pass re-checked the record directly against the TODO/task acceptance items (tool/file-read evidence, not a new independent reviewer). No human, clinical or patient evidence.
+Product (record owner per the story; status Proposed). The earlier run recorded a simulated `aurevia-ux-reviewer` review that found no blocking defect. This pass re-checked the record directly against the TODO/task acceptance items (tool/file-read evidence, not a new independent reviewer). No human, clinical or patient evidence.
 
 ## Data changes
 
@@ -65,7 +65,7 @@ Commands run from the repository root unless stated, with their final lines:
 - Explicit typecheck final lines, as requested in the task prompt:
   `cd apps/staff-web && npm run typecheck` →
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   typecheck EXIT=0

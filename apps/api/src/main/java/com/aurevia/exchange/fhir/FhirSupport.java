@@ -22,37 +22,37 @@ public final class FhirSupport {
     public static final JsonNodeFactory JSON = JsonNodeFactory.instance;
 
     /** Synthetic code system used until a partner profile supplies its own. */
-    public static final String CODE_SYSTEM = "urn:orevia:fhir:code";
+    public static final String CODE_SYSTEM = "urn:aurevia:fhir:code";
 
     /** Synthetic identifier system for the issuer-scoped order identifier. */
-    public static final String ORDER_IDENTIFIER_SYSTEM = "urn:orevia:fhir:identifier:order";
+    public static final String ORDER_IDENTIFIER_SYSTEM = "urn:aurevia:fhir:identifier:order";
 
     /** Synthetic identifier system for the disclosure authorization. */
-    public static final String AUTHORIZATION_IDENTIFIER_SYSTEM = "urn:orevia:fhir:identifier:authorization";
+    public static final String AUTHORIZATION_IDENTIFIER_SYSTEM = "urn:aurevia:fhir:identifier:authorization";
 
     /** UCUM system used by FHIR Quantity values. */
     public static final String UCUM_SYSTEM = "http://unitsofmeasure.org";
 
     /** Synthetic identifier system for the DICOM Study Instance UID (RAD-01). */
-    public static final String STUDY_UID_IDENTIFIER_SYSTEM = "urn:orevia:fhir:identifier:study-instance-uid";
+    public static final String STUDY_UID_IDENTIFIER_SYSTEM = "urn:aurevia:fhir:identifier:study-instance-uid";
 
     /** Synthetic identifier system for an issuer-scoped imaging accession (RAD-01). */
-    public static final String ACCESSION_IDENTIFIER_SYSTEM = "urn:orevia:fhir:identifier:accession";
+    public static final String ACCESSION_IDENTIFIER_SYSTEM = "urn:aurevia:fhir:identifier:accession";
 
     /** Synthetic identifier system for a retained document identifier (CLN-07). */
-    public static final String DOCUMENT_IDENTIFIER_SYSTEM = "urn:orevia:fhir:identifier:document";
+    public static final String DOCUMENT_IDENTIFIER_SYSTEM = "urn:aurevia:fhir:identifier:document";
 
     /** Synthetic code system for DICOM imaging modality codes (RAD-01). */
-    public static final String DICOM_MODALITY_SYSTEM = "urn:orevia:fhir:dicom:modality";
+    public static final String DICOM_MODALITY_SYSTEM = "urn:aurevia:fhir:dicom:modality";
 
     /** Extension carrying the recorded void reason of a document (CLN-07). */
-    public static final String VOID_REASON_EXTENSION = "urn:orevia:fhir:void-reason";
+    public static final String VOID_REASON_EXTENSION = "urn:aurevia:fhir:void-reason";
 
     /** Extension carrying the instant a document was voided (CLN-07). */
-    public static final String VOIDED_AT_EXTENSION = "urn:orevia:fhir:voided-at";
+    public static final String VOIDED_AT_EXTENSION = "urn:aurevia:fhir:voided-at";
 
     /** Extension carrying the intended pharmacy destination of a medication request (RX-01). */
-    public static final String DESTINATION_EXTENSION = "urn:orevia:fhir:medication-destination";
+    public static final String DESTINATION_EXTENSION = "urn:aurevia:fhir:medication-destination";
 
     private FhirSupport() {
     }

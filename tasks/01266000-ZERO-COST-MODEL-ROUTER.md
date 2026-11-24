@@ -39,7 +39,7 @@
 - Green: `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1555 tests ... OK`.
 - `bash scripts/quick-check.sh` → `quick check: policy, compile and unit tests passed`.
 - `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`.
-- `python3 -I scripts/gen-opencode.py --check` → exit 0 after regenerating the pre-existing stale `.github/opencode.ci.json` (`orca` → `orevia-orchestrator`, 2 lines; local `opencode.json` was already current).
+- `python3 -I scripts/gen-opencode.py --check` → exit 0 after regenerating the pre-existing stale `.github/opencode.ci.json` (`orca` → `aurevia-orchestrator`, 2 lines; local `opencode.json` was already current).
 - `shellcheck scripts/agent-run.sh` → exit 0. `actionlint .github/workflows/*.yml` → exit 1 only for the pre-existing, repo-wide `queue: max` key unsupported by the installed actionlint; no other finding.
 - Targeted router/wrapper suites: `test_agent_run.py` 93 tests OK, `test_model_router.py` 34 tests OK.
 
@@ -52,6 +52,6 @@
 `swarm.yml` hourly plan → `scripts/swarm.py plan-workers` (matrix carries `slot` only) → `swarm-worker.yml` env (`SWARM_MODEL`/`SWARM_FORCE_MODEL` only) → `scripts/agent-run.sh run_agent` → `scripts/model-router.py resolve` → `.github/swarm/model-pricing.json` → `opencode run --model`. Asserted by `test_swarm.ModelOverrideTests`, `LaunchTaskTests.test_planned_worker_has_no_pinned_model`, `test_swarm_cli_coverage` slot-config tests, `test_gen_opencode_coverage`/`test_opencode_profile` registry tests and `test_agent_run.DeterministicRoutingE2ETests`.
 
 ## Findings
-- Bounded design reviews: `orevia-senior-python` GO, `orevia-github-workflow` GO (conditional on companion edits, all applied), `orevia-senior-shell` NO-GO on story scope (its Critical Python blockers were fixed; shell scope needed comment-only corrections, applied).
+- Bounded design reviews: `aurevia-senior-python` GO, `aurevia-github-workflow` GO (conditional on companion edits, all applied), `aurevia-senior-shell` NO-GO on story scope (its Critical Python blockers were fixed; shell scope needed comment-only corrections, applied).
 - Pre-existing stale generated `.github/opencode.ci.json` from commit `b70e8969` blocked the pack gate; regenerated in this change (2 lines).
 - Evidence source: executed local commands and read-only specialist agents; no human or clinical evidence.

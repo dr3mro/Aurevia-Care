@@ -61,8 +61,8 @@ final class LoopSupport {
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String GRANT_A = "55555555-5555-5555-5555-555555555551";
     static final String GRANT_B = "55555555-5555-5555-5555-555555555552";
-    static final String MIGRATE = "orevia_migrate";
-    static final String ADMIN = System.getenv().getOrDefault("OREVIA_PG_ADMIN", "postgres");
+    static final String MIGRATE = "aurevia_migrate";
+    static final String ADMIN = System.getenv().getOrDefault("AUREVIA_PG_ADMIN", "postgres");
 
     static final Instant EVALUATED_AT = Instant.parse("2026-11-21T12:00:00Z");
     static final Instant ORG_A_BASE = EVALUATED_AT.minusSeconds(600);
@@ -81,12 +81,12 @@ final class LoopSupport {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + databaseName + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + databaseName + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + databaseName + " OWNER aurevia_migrate");
         }
         Flyway.configure().dataSource(databaseUrl, MIGRATE, "")
                 .locations("filesystem:../../db/migrations").load().migrate();

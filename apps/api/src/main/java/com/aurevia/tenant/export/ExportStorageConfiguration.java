@@ -30,7 +30,7 @@ public class ExportStorageConfiguration {
     @Bean
     @ConditionalOnMissingBean(ObjectStorePort.class)
     ObjectStorePort exportObjectStore(
-            @Value("${orevia.export.storage-path:${java.io.tmpdir}/orevia-exports}")
+            @Value("${aurevia.export.storage-path:${java.io.tmpdir}/aurevia-exports}")
             String storagePath) {
         return new FileSystemObjectStore(Path.of(storagePath));
     }

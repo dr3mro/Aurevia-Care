@@ -58,7 +58,7 @@ Exact commands and final lines (tool evidence). The red run was captured before 
   `git show HEAD:opencode.json` shows the committed local profile. No regeneration, no further
   diagnosis and no protected-file edit.
 - Java integration (non-vacuous groups, never `-Pfast`):
-  `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=OpenApiRouteParityTest test`
+  `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=OpenApiRouteParityTest test`
   → exit 0; Surefire `Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`.
 - Java unit: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=OpenApiRouteCoverageTest test`
   → exit 0; Surefire `Tests run: 16, Failures: 0, Errors: 0, Skipped: 0`.
@@ -164,13 +164,13 @@ The integrator's full `verify` remains the bundle-level gate.
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO (re-review after all Required plan gaps were addressed)
-- orevia-code-reviewer: GO (re-review after the hardening deltas)
-- orevia-coverage-auditor: GO (re-audit after the hardening deltas)
-- orevia-devsecops: GO (re-review after the hardening deltas)
+- aurevia-plan-reviewer: GO (re-review after all Required plan gaps were addressed)
+- aurevia-code-reviewer: GO (re-review after the hardening deltas)
+- aurevia-coverage-auditor: GO (re-audit after the hardening deltas)
+- aurevia-devsecops: GO (re-review after the hardening deltas)
 
-`orevia-context-optimizer` supplied the authoritative base-ref and route-evidence map.
-`orevia-test-engineer` reviewed the planned test matrix before coding and raised nine
+`aurevia-context-optimizer` supplied the authoritative base-ref and route-evidence map.
+`aurevia-test-engineer` reviewed the planned test matrix before coding and raised nine
 Required gaps; all were addressed in the RED suite or recorded in Findings. Where it asked
 for an injectable Java baseline path, the change uses a shared package-visible
 `OpenApiRouteCoverage.evaluate` seam instead, exercised by six synthetic tests.

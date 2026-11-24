@@ -23,7 +23,7 @@ BEGIN
        OR NOT EXISTS (
               SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                WHERE n.nspname = 'public' AND p.proname = 'app_org')
-       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'orevia_app') THEN
+       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'aurevia_app') THEN
         RAISE NOTICE 'V43 prescription drafts deferred: prerequisites not installed yet';
         RETURN;
     END IF;
@@ -319,16 +319,16 @@ BEGIN
         BEFORE UPDATE ON public.prescription_draft
         FOR EACH ROW EXECUTE FUNCTION public.guard_rx_draft_update()$ddl$;
 
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.drug_catalog_entry TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.drug_catalog_entry FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.patient_allergy_status TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.patient_allergy_status FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.patient_allergy TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.patient_allergy FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.prescription_draft TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.prescription_draft FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.prescription_override TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.prescription_override FROM orevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.drug_catalog_entry TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.drug_catalog_entry FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.patient_allergy_status TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.patient_allergy_status FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.patient_allergy TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.patient_allergy FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.prescription_draft TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.prescription_draft FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.prescription_override TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.prescription_override FROM aurevia_app$ddl$;
 
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.reject_rx_immutable_mutation() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_rx_catalog_recorder_from_actor() FROM PUBLIC$ddl$;
@@ -337,11 +337,11 @@ BEGIN
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_rx_draft_author_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_rx_override_author_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_rx_draft_update() FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.reject_rx_immutable_mutation() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_catalog_recorder_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_allergy_status_recorder_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_allergy_recorder_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_draft_author_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_override_author_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_rx_draft_update() TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.reject_rx_immutable_mutation() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_catalog_recorder_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_allergy_status_recorder_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_allergy_recorder_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_draft_author_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx_override_author_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_rx_draft_update() TO aurevia_app$ddl$;
 END $rx$;

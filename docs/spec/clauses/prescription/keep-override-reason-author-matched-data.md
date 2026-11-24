@@ -66,7 +66,7 @@ Corroborating suites already on `main` (not re-tested here):
 and snapshot through the same entry points; `immutableLedgerAndDatabaseVersionGuardHold`
 asserts the same append-only behavior).
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security
 -Dtest=KeepOverrideReasonAuthorMatchedDataTest test` — `tests="6" errors="0" skipped="0"
 failures="0"` in the Surefire XML report. "Proven by tests" is limited to the clause
 behavior above; it does not claim that these routes are published in the committed

@@ -53,8 +53,8 @@ Added one cross-cutting Playwright spec, `apps/staff-web/e2e/reflowAndZoom.spec.
 
 ## Affected requirements
 
-- **WEB-07** — supported clients and responsive device matrix (`SMARTCLINIC_V1_SPEC.md:155`).
-- **UX-01** — accessibility, RTL and responsive evidence (`SMARTCLINIC_V1_SPEC.md:90`).
+- **WEB-07** — supported clients and responsive device matrix (`AUREVIA_V1_SPEC.md:155`).
+- **UX-01** — accessibility, RTL and responsive evidence (`AUREVIA_V1_SPEC.md:90`).
 - `docs/design/responsive-layout.md` §12 (lines 393–419) and §13 rule R12 (line 458).
 
 Acceptance mapping:
@@ -77,7 +77,7 @@ Routine. One test-harness-only file; no production behaviour, contract, data pat
 
 ## Review owner
 
-`smartclinic-senior-react` with `smartclinic-senior-typescript` for strict TypeScript. `smartclinic-plan-reviewer` reviewed the plan before coding (GO after two Required rounds). Post-code verdicts are under **Review verdicts**.
+`aurevia-senior-react` with `aurevia-senior-typescript` for strict TypeScript. `aurevia-plan-reviewer` reviewed the plan before coding (GO after two Required rounds). Post-code verdicts are under **Review verdicts**.
 
 ## Data changes
 
@@ -103,7 +103,7 @@ All commands were run by me in this cloud worker; evidence is from executed tool
 6. `... --project=chromium --reporter=line` (all screens) → `40 passed, 31 skipped` (skipped are documented fixmes).
 7. `... -g design-preview --retries=0 --reporter=line` (all 16 projects) → `61 passed, 51 skipped`, exit 0.
 8. Full 16-project matrix with the final spec → `Total: 1152 tests in 1 file` (72 cases × 16 projects), `637 passed`, `515 skipped`, `0 failed`, exit 0. All skips are the documented fixmes above.
-9. `bash apps/staff-web/check.sh` → **exit 1** at the last stage only. Earlier stages were green: `gen:api: generated client matches the contract`; typecheck final lines `> smartclinic-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`; `✓ built in 152ms`; bundle-size gate passed. The Vitest stage failed one pre-existing tripwire: `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` pins the exact e2e spec set (9 names) but `main` already contains five sibling-worker specs that are not pinned (`adminflow/admin-journey.spec.ts`, `financeflow/finance-journey.spec.ts`, `pharmacyflow/pharmacy-bilingual-journey.spec.ts`, `radflow/radiology-bilingual-journey.spec.ts`, `therapyflow/therapy-journey.spec.ts`); this spec is the sixth. `Test Files 1 failed | 267 passed`, `Tests 1 failed | 3044 passed`. That file is outside this task's scope (`apps/staff-web/e2e/reflowAndZoom.spec.ts`) and the test is intentionally a GAP tripwire, so I did not edit it; a task-request is filed below.
+9. `bash apps/staff-web/check.sh` → **exit 1** at the last stage only. Earlier stages were green: `gen:api: generated client matches the contract`; typecheck final lines `> aurevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`; `✓ built in 152ms`; bundle-size gate passed. The Vitest stage failed one pre-existing tripwire: `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` pins the exact e2e spec set (9 names) but `main` already contains five sibling-worker specs that are not pinned (`adminflow/admin-journey.spec.ts`, `financeflow/finance-journey.spec.ts`, `pharmacyflow/pharmacy-bilingual-journey.spec.ts`, `radflow/radiology-bilingual-journey.spec.ts`, `therapyflow/therapy-journey.spec.ts`); this spec is the sixth. `Test Files 1 failed | 267 passed`, `Tests 1 failed | 3044 passed`. That file is outside this task's scope (`apps/staff-web/e2e/reflowAndZoom.spec.ts`) and the test is intentionally a GAP tripwire, so I did not edit it; a task-request is filed below.
 10. Diagnostic coverage confirmation (no config, test or threshold changed; only the one stale tripwire file excluded from the CLI invocation): `npx vitest run --coverage --exclude 'e2e/**' --exclude 'tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts'` → exit 0, `267 files fully covered`, `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`, `No files with missing coverage.` This is a diagnostic, not a substitute for the blocked full gate.
 11. `python3 -I scripts/check-constraints.py --require-base` exit 0; `python3 -I scripts/check-secrets.py` exit 0; no conflict markers in the two new files.
 
@@ -142,10 +142,10 @@ Each new branch and the case that takes it:
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-devsecops: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-code-reviewer: GO (initial Critical withdrawn after tool evidence; both Required fixes verified in the file)
+- aurevia-plan-reviewer: GO
+- aurevia-devsecops: GO
+- aurevia-coverage-auditor: GO
+- aurevia-code-reviewer: GO (initial Critical withdrawn after tool evidence; both Required fixes verified in the file)
 
 ## Findings
 
@@ -156,7 +156,7 @@ Each new branch and the case that takes it:
 5. **axe crashes Firefox headless in this worker.** `frame.evaluate: Page crashed` inside `expectNoBlockingViolations` on the three Firefox projects; Chromium and WebKit axe scans pass. Scoped as fixme with the exact error; the integrator's fuller tooling should re-run it.
 6. **Auth-gated screens are not rendered by a standalone harness.** With the default synthetic `reception` role, clinician/admin/operator routes render `ForbiddenPage`. Dev harness HTML pages exist but several require synthetic API stubs owned by journey specs (e.g. clinicalnote, lab, radiology show an error state when opened standalone). Those route cases are fixme with an explicit reason; their real-screen coverage is owned by the sibling tasks `RESP-E2E-FEATURE-PATIENTS/-SCHEDULING/-CHART/-ADMIN/-SYSTEM/-DUPLICATES` already in `tasks/`, so no task-request is filed.
 7. **No `.skip`, `.only`, lowered threshold, new exclusion, `any` or `@ts-ignore` was added.** `test.fixme` is the only annotation used and every instance names route and project.
-8. **Review disposition (reviewer evidence).** `smartclinic-code-reviewer` first attributed the RTL overflow to the harness zoom probe. Tool evidence (a standalone run with no probe element, which isolated `a.skip-link` at `-9999…10767`, and `responsive.css:179-192` using logical `inset-inline-start`) refuted that; the reviewer withdrew the Critical. Its two genuine Required findings were fixed: `/radiology` is now enumerated, and `runRtlEvidencePass` executes the real toggle, direction/language and Arabic spacing assertions before the single document-reflow fixme. `smartclinic-coverage-auditor` and `smartclinic-devsecops` returned GO with only Optional findings.
+8. **Review disposition (reviewer evidence).** `aurevia-code-reviewer` first attributed the RTL overflow to the harness zoom probe. Tool evidence (a standalone run with no probe element, which isolated `a.skip-link` at `-9999…10767`, and `responsive.css:179-192` using logical `inset-inline-start`) refuted that; the reviewer withdrew the Critical. Its two genuine Required findings were fixed: `/radiology` is now enumerated, and `runRtlEvidencePass` executes the real toggle, direction/language and Arabic spacing assertions before the single document-reflow fixme. `aurevia-coverage-auditor` and `aurevia-devsecops` returned GO with only Optional findings.
 
 Evidence sources for this note: executed tool commands (browser probes and Playwright runs), the plan reviewer's GO verdict, and read-only post-code reviewer verdicts recorded above. No simulated user or human participant produced evidence.
 

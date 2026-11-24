@@ -124,8 +124,8 @@ $$;
 
 REVOKE ALL ON FUNCTION public.next_config_version(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.effective_config(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.next_config_version(text) TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.effective_config(text) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.next_config_version(text) TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.effective_config(text) TO aurevia_app;
 
-GRANT SELECT, INSERT ON public.config_entry, public.config_approval TO orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.config_entry, public.config_approval FROM orevia_app;
+GRANT SELECT, INSERT ON public.config_entry, public.config_approval TO aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.config_entry, public.config_approval FROM aurevia_app;

@@ -167,16 +167,16 @@ jobs:
       - name: Build and smoke-test the image
         env:
           VERSION: ${{ steps.version.outputs.value }}
-          OREVIA_SKIP_CHECKS: '1'
+          AUREVIA_SKIP_CHECKS: '1'
         run: scripts/verify.sh "$VERSION"
       - name: Save smoke-tested image for a release
         if: github.ref_type == 'tag'
-        run: docker save orevia:test -o orevia-image.tar
+        run: docker save aurevia:test -o aurevia-image.tar
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: github.ref_type == 'tag'
         with:
           name: smoke-tested-image-${{ matrix.arch }}
-          path: orevia-image.tar
+          path: aurevia-image.tar
 
   release:
     name: Publish tagged test image and release
@@ -212,16 +212,16 @@ jobs:
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           refs=()
           for arch in amd64 arm64; do
-            docker load -i "smoke-tested-image-$arch/orevia-image.tar"
-            test "$(docker image inspect orevia:test --format '{{.Architecture}}')" = "$arch"
-            test "$(docker image inspect orevia:test --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
-            test "$(docker image inspect orevia:test --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$VERSION"
+            docker load -i "smoke-tested-image-$arch/aurevia-image.tar"
+            test "$(docker image inspect aurevia:test --format '{{.Architecture}}')" = "$arch"
+            test "$(docker image inspect aurevia:test --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
+            test "$(docker image inspect aurevia:test --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$VERSION"
             child="$image-$arch"
             if docker buildx imagetools inspect "$child" >/dev/null 2>&1; then
               docker pull --platform "linux/$arch" "$child"
-              test "$(docker image inspect "$child" --format '{{.Id}}')" = "$(docker image inspect orevia:test --format '{{.Id}}')"
+              test "$(docker image inspect "$child" --format '{{.Id}}')" = "$(docker image inspect aurevia:test --format '{{.Id}}')"
             else
-              docker tag orevia:test "$child"
+              docker tag aurevia:test "$child"
               docker push "$child"
             fi
             refs+=("$(docker image inspect "$child" --format '{{index .RepoDigests 0}}')")

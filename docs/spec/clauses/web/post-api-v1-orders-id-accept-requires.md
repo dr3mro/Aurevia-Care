@@ -13,7 +13,7 @@ Partly proven
 Test class: `com.aurevia.web.clauses.PostApiV1OrdersIdAcceptRequiresTest`
 (path: `apps/api/src/test/java/com/aurevia/web/clauses/PostApiV1OrdersIdAcceptRequiresTest.java`).
 All five tests are active (none are disabled) and use synthetic data on a dedicated PostgreSQL
-database (`orevia_arc04_accept_requires_it`) recreated from the authoritative Flyway migrations
+database (`aurevia_arc04_accept_requires_it`) recreated from the authoritative Flyway migrations
 with forced row-level security. They drive the real Spring HTTP wiring under the `synthetic-auth`
 profile with the same two-tenant fixture and style as the neighbouring clause suites. Two tenants
 share identical local order codes, so forced RLS is the only separator, and each test owns a distinct

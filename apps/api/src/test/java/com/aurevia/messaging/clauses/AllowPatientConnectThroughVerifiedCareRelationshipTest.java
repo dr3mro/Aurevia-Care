@@ -53,7 +53,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_care_unit_connect_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_care_unit_connect_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class AllowPatientConnectThroughVerifiedCareRelationshipTest {
@@ -68,10 +68,10 @@ class AllowPatientConnectThroughVerifiedCareRelationshipTest {
     private static final String OTHER_SUBJECT = "patient-b";
     private static final String STAFF_SUBJECT = "staff-a";
     private static final String UNVERIFIED_SUBJECT = "unverified-a";
-    private static final String DB = "orevia_care_unit_connect_it";
+    private static final String DB = "aurevia_care_unit_connect_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Instant NOW = Instant.parse("2026-11-22T12:00:00Z");
 
@@ -87,15 +87,15 @@ class AllowPatientConnectThroughVerifiedCareRelationshipTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
         seedOwnerTenant();
@@ -119,7 +119,7 @@ class AllowPatientConnectThroughVerifiedCareRelationshipTest {
     }
 
     private static void seedOwnerTenant() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             setTenant(statement, ORG, SUBJECT);
             statement.execute("INSERT INTO public.organization (organization_id, display_name) VALUES ('"
@@ -177,7 +177,7 @@ class AllowPatientConnectThroughVerifiedCareRelationshipTest {
     }
 
     private static void seedForeignTenant() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             setTenant(statement, OTHER_ORG, OTHER_SUBJECT);
             statement.execute("INSERT INTO public.organization (organization_id, display_name) VALUES ('"
@@ -290,7 +290,7 @@ class AllowPatientConnectThroughVerifiedCareRelationshipTest {
 
     /** Count the connections a reference has produced in one tenant, RLS-bound. */
     private static int connectionCount(String org, String reference) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             setTenant(statement, org, SUBJECT);
             try (ResultSet rows = statement.executeQuery(
@@ -304,7 +304,7 @@ class AllowPatientConnectThroughVerifiedCareRelationshipTest {
 
     /** Read the single-use flag of a relationship inside its owning tenant. */
     private static boolean isConsumed(String relationshipId) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             setTenant(statement, ORG, SUBJECT);
             try (ResultSet rows = statement.executeQuery(

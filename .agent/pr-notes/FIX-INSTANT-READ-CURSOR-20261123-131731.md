@@ -17,23 +17,23 @@
 ## Plan (pre-code, reordered for test-first per plan-reviewer)
 
 1. Riskiest part first: add V96 RLS table `public.staff_message_read_cursor` keyed by `(organization_id, conversation_id, participant_subject)`, with monotonic upsert/clamp left to SQL. Prove with `bash db/check.sh`.
-2. Write the red tests before touching the store: new mocked `JdbcInstantConversationStoreTest` plus five scenarios in `InstantMessagingIntegrationTest` (fresh-store/fresh-MVC assertions make stale/repeat, isolation and HTTP cases genuinely red against the current `ConcurrentHashMap`). Prove with `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest -Dgroups=integration -DfailIfNoTests=false test` and the unit `-Dtest=...` suite; record the assertion-mismatch final line (a missing-relation error would not be a valid red).
+2. Write the red tests before touching the store: new mocked `JdbcInstantConversationStoreTest` plus five scenarios in `InstantMessagingIntegrationTest` (fresh-store/fresh-MVC assertions make stale/repeat, isolation and HTTP cases genuinely red against the current `ConcurrentHashMap`). Prove with `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest -Dgroups=integration -DfailIfNoTests=false test` and the unit `-Dtest=...` suite; record the assertion-mismatch final line (a missing-relation error would not be a valid red).
 3. Implement green: `JdbcInstantConversationStore` drops `ConcurrentHashMap`/`cursorKey` and persists both cursor methods inside the tenant-guarded `TransactionTemplate`; `InstantConversationStore` gets a Javadoc-only edit; service/controller unchanged (negative guard and unread logic already correct). Prove with the same two targeted Maven commands plus per-class JaCoCo.
 4. Gates and reviews: `python3 -I scripts/check-wiring.py`, `bash db/check.sh`, `python3 -I -m unittest discover -s scripts/tests`, SpotBugs on its own, reviewers. No full `mvn verify` worker-side.
 
-Baseline (tool, before changes): `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest -Dgroups=integration -DfailIfNoTests=false test` → `Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`; Flyway applied 58 migrations up to v95.
+Baseline (tool, before changes): `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest -Dgroups=integration -DfailIfNoTests=false test` → `Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`; Flyway applied 58 migrations up to v95.
 
 ## Test evidence
 
 All commands run from the repository root; evidence is tool output unless marked reviewer.
 
-- Baseline before changes (tool): `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest -Dgroups=integration -DfailIfNoTests=false test` → `Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`.
-- Migration gate (tool): `OREVIA_PG_ADMIN=postgres bash db/check.sh` → `db: migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified` (exit 0, run before and after the store change).
+- Baseline before changes (tool): `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest -Dgroups=integration -DfailIfNoTests=false test` → `Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`.
+- Migration gate (tool): `AUREVIA_PG_ADMIN=postgres bash db/check.sh` → `db: migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified` (exit 0, run before and after the store change).
 - RED integration (tool, V96 present but store still in-memory): same command → `Tests run: 15, Failures: 6, Errors: 0, Skipped: 0`, `BUILD FAILURE`; failures were value assertions only (`expected: <2> but was: <0>`, `expected: <1> but was: <9223372036854775807>`, `JSON path "$[0].unreadCount" expected:<0> but was:<2>`), no missing-relation error.
 - RED unit (tool): `mvn -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcInstantConversationStoreTest test` → `Tests run: 3, Failures: 2`; `Wanted but not invoked: namedParameterJdbcTemplate.update(...)` and `expected: <7> but was: <0>`.
 - GREEN integration (tool): same integration command → `Tests run: 17, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`; Flyway log `Successfully applied 59 migrations to schema "public", now at version v96`.
 - GREEN unit (tool): `mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingServiceTest,InstantMessagingControllerTest,JdbcInstantConversationStoreTest test` → `Tests run: 42, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`.
-- Combined targeted run with coverage (tool): `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest,InstantMessagingServiceTest,InstantMessagingControllerTest,JdbcInstantConversationStoreTest -DfailIfNoTests=false test jacoco:report` → `Tests run: 59, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`, `Analyzed bundle 'Orevia API' with 1307 classes`. JaCoCo `JdbcInstantConversationStore`: INSTRUCTION 0 missed/570 covered, BRANCH 0/4, LINE 0/95, METHOD 0/36, CLASS 0/1.
+- Combined targeted run with coverage (tool): `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest,InstantMessagingServiceTest,InstantMessagingControllerTest,JdbcInstantConversationStoreTest -DfailIfNoTests=false test jacoco:report` → `Tests run: 59, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`, `Analyzed bundle 'Aurevia API' with 1307 classes`. JaCoCo `JdbcInstantConversationStore`: INSTRUCTION 0 missed/570 covered, BRANCH 0/4, LINE 0/95, METHOD 0/36, CLASS 0/1.
 - Wiring (tool): `python3 -I scripts/check-wiring.py` → no output, exit 0 (no new violations, no baseline write).
 - Migration structure (tool): `python3 -I scripts/check-migrations.py --require-baseline` → no output, exit 0.
 - Java conventions / tooling tests (tool): `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1307 tests`, `FAILED (failures=6)`. All six are `test_check_pack.py` failures with `opencode.json is stale: run scripts/gen-opencode.py` (OPS-CW-003-01, `git ls-files -v opencode.json` = `S`). Per AGENTS.md this is a cloud-worker image artifact; `git show HEAD:opencode.json` is the committed local profile. Not regenerated or committed. No other tooling test failed.
@@ -65,13 +65,13 @@ No suppression, exclusion, `@Disabled`, `.skip`, pragma or threshold change was 
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO (after both Required plan gaps were closed; pre-code and re-review)
-- orevia-senior-database: GO (V96 keys, FKs, RLS/FORCE/policy/grants, clamp subquery, no renumbering)
-- orevia-senior-backend: GO (after the `java.util.Objects` import and Javadoc fix)
-- orevia-senior-spring-security: GO (identity stays in the service; no app.actor trigger)
-- orevia-code-reviewer: GO
-- orevia-devsecops: GO
-- orevia-coverage-auditor: GO (after adding `aHigherReadAcknowledgementRaisesTheCursor` for the GREATEST raise side)
+- aurevia-plan-reviewer: GO (after both Required plan gaps were closed; pre-code and re-review)
+- aurevia-senior-database: GO (V96 keys, FKs, RLS/FORCE/policy/grants, clamp subquery, no renumbering)
+- aurevia-senior-backend: GO (after the `java.util.Objects` import and Javadoc fix)
+- aurevia-senior-spring-security: GO (identity stays in the service; no app.actor trigger)
+- aurevia-code-reviewer: GO
+- aurevia-devsecops: GO
+- aurevia-coverage-auditor: GO (after adding `aHigherReadAcknowledgementRaisesTheCursor` for the GREATEST raise side)
 
 ## Findings
 
@@ -99,11 +99,11 @@ SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.prepare:138
   "config_approval_organization_id_entry_id_key"
 ```
 
-- Reproduced in isolation (tool): `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest -DfailIfNoTests=false test` → `EXIT=1`, `initializationError` at the same line during `@BeforeAll`.
+- Reproduced in isolation (tool): `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest -DfailIfNoTests=false test` → `EXIT=1`, `initializationError` at the same line during `@BeforeAll`.
 - Root cause (tool, `git log`/`git blame`): `origin/main` carries two overlapping seeds of the same two `config_entry` policies for ORG_A. Commit `0fdc9ae3` added inline seeding inside `seedOwningTenant` (version 1 + approval), and the later commit `7e6f5933` added a second `seedApprovedChannelPolicy` helper called from `prepare()`. That helper inserts a version-2 `config_entry` but hard-codes the approval `SELECT ... WHERE version = 1`, approving the already-approved version-1 entry → duplicate `(organization_id, entry_id)`.
 - Fix (test fixture only): removed the redundant `seedApprovedChannelPolicy` helper and its two calls in `prepare()` from `apps/api/src/test/java/com/aurevia/messaging/clauses/SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.java`. This restores the file to its pre-duplicate blob `8b10ee69`, keeping the single inline seed from `seedOwningTenant` that the positive publish/snapshot path relies on. No production code, migration, contract or threshold changed.
 - Green re-run (tool): the exact isolated command above → `EXIT=0`; surefire `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0`; request log shows publish `201`, approve `200`, snapshot `200`, then `403`/`404`/`404` and no `UNAPPROVED_CHANNEL`.
-- Re-confirmed task coverage (tool): `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest,InstantMessagingServiceTest,InstantMessagingControllerTest,JdbcInstantConversationStoreTest -DfailIfNoTests=false test jacoco:report` → `MVN_EXIT=0`; totals `17 + 29 + 10 + 3` tests, all green. JaCoCo `jacoco.xml`: `JdbcInstantConversationStore` LINE 0/95, BRANCH 0/4, METHOD 0/36, CLASS 0/1; `InstantMessagingService` LINE 0/158, BRANCH 0/50; `InstantMessagingController` LINE 0/12. V96 applied (`now at version v96`).
+- Re-confirmed task coverage (tool): `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest,InstantMessagingServiceTest,InstantMessagingControllerTest,JdbcInstantConversationStoreTest -DfailIfNoTests=false test jacoco:report` → `MVN_EXIT=0`; totals `17 + 29 + 10 + 3` tests, all green. JaCoCo `jacoco.xml`: `JdbcInstantConversationStore` LINE 0/95, BRANCH 0/4, METHOD 0/36, CLASS 0/1; `InstantMessagingService` LINE 0/158, BRANCH 0/50; `InstantMessagingController` LINE 0/12. V96 applied (`now at version v96`).
 - Gates (tool): `python3 -I -m unittest discover -s scripts/tests -p test_java_conventions.py` → `Ran 2`, `OK`; `python3 -I scripts/check-constraints.py --base origin/main --require-base` → exit 0; `python3 -I scripts/check-verdicts.py .agent/pr-notes/FIX-INSTANT-READ-CURSOR-20261123-131731.md --base origin/main` → exit 0; `git diff --check` → exit 0.
 
 ### Branch-to-test list (unchanged — repair added no production branch)

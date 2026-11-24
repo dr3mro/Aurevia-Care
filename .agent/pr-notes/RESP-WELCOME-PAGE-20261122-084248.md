@@ -22,8 +22,8 @@ safety-critical contract). Classified per `docs/WORKFLOW.md`.
 
 ## Review owner
 
-Primary agent. Simulated reviews: `orevia-senior-react` (no actionable
-findings) and `orevia-ux-reviewer` (no actionable findings); both were
+Primary agent. Simulated reviews: `aurevia-senior-react` (no actionable
+findings) and `aurevia-ux-reviewer` (no actionable findings); both were
 static reviews that relied on the primary agent's tool evidence because those
 subagents had no shell. No human or clinical participant.
 
@@ -104,8 +104,8 @@ association, prescribing, critical results or cross-organization sharing.
 - This placeholder route has no inputs and no interactive controls, so the 16 px input-text and 44 × 44 coarse-pointer target rules are not applicable here; they are owned by the shared `Form`/`FormField` and `Button` components. The keyboard-order test asserts no forced `tabindex` and the heading-before-status DOM order.
 - Pre-existing, outside scope and not touched: committed `origin/main` contains literal conflict markers in three `apps/api/src/main/java/com/aurevia/exchange/hl7/` Java files (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). The merge with `origin/main` reported "Already up to date"; no marker exists in either scoped file.
 - `scripts/check.sh` cannot complete in this cloud worker: verified `git ls-files -v opencode.json` → `S` (skip-worktree), `opencode.json` is byte-identical to `.github/opencode.ci.json`, and `opencode.json` is absent from my diff. `check-pack.py` therefore judges the CI profile rather than the HEAD/local profile and reports it stale. Per AGENTS.md/TODO rule 8 the protected file was not regenerated, edited or committed; the canonical module gate `bash apps/staff-web/check.sh` passed in full instead. Integrator/Delivery own the repository-wide gate.
-- Simulated `orevia-senior-react` review: no actionable findings; confirmed the change is presentational, follows the established `data-breakpoint` convention, uses logical properties only, and that no behaviour/text/export changed. It could not re-run checks (no shell) and relied on primary-agent evidence.
-- Simulated `orevia-ux-reviewer` review: no actionable findings; confirmed RTL mirroring with no local direction override, wrapping, no hidden content, DOM/keyboard order and safe-area via `page`. Its non-blocking observation — outer `.page` nesting the `EmptyState` `StatePanel` also uses `.page` and applies safe-area padding twice — is an existing shared pattern (`Form.tsx`, `ApiPage.tsx`) outside this scope, not introduced here.
+- Simulated `aurevia-senior-react` review: no actionable findings; confirmed the change is presentational, follows the established `data-breakpoint` convention, uses logical properties only, and that no behaviour/text/export changed. It could not re-run checks (no shell) and relied on primary-agent evidence.
+- Simulated `aurevia-ux-reviewer` review: no actionable findings; confirmed RTL mirroring with no local direction override, wrapping, no hidden content, DOM/keyboard order and safe-area via `page`. Its non-blocking observation — outer `.page` nesting the `EmptyState` `StatePanel` also uses `.page` and applies safe-area padding twice — is an existing shared pattern (`Form.tsx`, `ApiPage.tsx`) outside this scope, not introduced here.
 
 ## Lessons for workers
 

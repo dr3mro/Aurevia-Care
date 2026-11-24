@@ -14,7 +14,7 @@ Test class: `com.aurevia.tenancy.clauses.JobsExportsSearchAttachmentsIntegration
 (path: `apps/api/src/test/java/com/aurevia/tenancy/clauses/JobsExportsSearchAttachmentsIntegrationsApplySameTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, using the `synthetic-auth`
 profile, the same fixtures and database setup as the neighbouring `tenancy.clauses`
-tests, and a dedicated disposable database `orevia_arc02_c05_it` so parallel
+tests, and a dedicated disposable database `aurevia_arc02_c05_it` so parallel
 workers do not collide. All five tests are enabled and pass with synthetic data only.
 
 Test methods (one positive rule proof and four negative refusals):

@@ -45,7 +45,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_xch02_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_xch02_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ExchangeTaskIsolationTest {
@@ -63,9 +63,9 @@ class ExchangeTaskIsolationTest {
     private static final String REVOKED_TASK = "00000009-0000-0000-0000-000000000000";
     private static final String MUTATE = "0000000a-0000-0000-0000-000000000000";
     private static final String PEER = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_xch02_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_xch02_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final Instant FIXED = Instant.parse("2026-11-19T12:00:00Z");
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -97,16 +97,16 @@ class ExchangeTaskIsolationTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_xch02_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_xch02_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_xch02_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_xch02_it OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A);
             seedTenant(statement, ORG_B);
@@ -136,7 +136,7 @@ class ExchangeTaskIsolationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_xch02_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_xch02_it WITH (FORCE)");
         }
     }
 
@@ -222,7 +222,7 @@ class ExchangeTaskIsolationTest {
         assertEquals("EXCHANGE_CREATE", view.get("history").get(0).get("action").asText());
         assertEquals("workflow", view.get("history").get(0).get("channel").asText());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");
@@ -248,7 +248,7 @@ class ExchangeTaskIsolationTest {
         // The owner keeps UPDATE privilege but FORCE RLS still binds it to the
         // active tenant, so this exercises reject_immutable_mutation() itself
         // rather than the runtime role's missing privilege.
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             assertThrows(java.sql.SQLException.class, () -> statement.execute(
@@ -317,7 +317,7 @@ class ExchangeTaskIsolationTest {
         assertEquals("unreviewed", get(FAILED, "clinician-a", ORG_A)
                 .get("task").get("clinicalReviewState").asText());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");
@@ -344,7 +344,7 @@ class ExchangeTaskIsolationTest {
         assertEquals(FIXED.toString(), task.get("reviewedAt").asText());
         assertEquals(1, task.get("reviewedRevision").asInt());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");
@@ -422,7 +422,7 @@ class ExchangeTaskIsolationTest {
 
     @Test
     void storageCannotForgeAReviewedTaskOrMoveTwoChannels() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");
@@ -462,7 +462,7 @@ class ExchangeTaskIsolationTest {
 
     @Test
     void revokedMembershipDeniesTheNextProtectedRequest() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("INSERT INTO public.membership (organization_id, user_id, status) "
@@ -479,7 +479,7 @@ class ExchangeTaskIsolationTest {
 
         // The database authority also fails closed for a deactivated actor: it
         // cannot attribute a ledger or review event to a revoked clinician.
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'revoke-a'");
@@ -493,7 +493,7 @@ class ExchangeTaskIsolationTest {
     }
 
     private static String actorId(String org, String subject) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             statement.execute("SET app.actor = '" + subject + "'");

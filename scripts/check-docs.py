@@ -23,7 +23,7 @@ SKIP = {".git", "build", "node_modules", ".opencode", "plan"}
 # former root paths are not broken links to a file the repo still uses.
 MOVED_DOCS = {"TODO.md", "AGENTS.md", "CODING_STYLE.md", "CONSTRAINTS.md",
               "README-SETUP.md", "STARTER_PROMPT.md", "MEMORY.md", "WORKSPACE.md",
-              "BUGS.md", "PROJECT.md", "OREVIA_V1_SPEC.md",
+              "BUGS.md", "PROJECT.md", "AUREVIA_V1_SPEC.md",
               "PROJECT_V1_SPEC.md"}
 
 # Structural rules for generated Markdown. The token pattern carries a

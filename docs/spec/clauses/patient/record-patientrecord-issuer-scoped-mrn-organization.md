@@ -15,7 +15,7 @@ Test class: `com.aurevia.patient.clauses.RecordPatientrecordIssuerScopedMrnOrgan
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic tenants with identical local identifiers, following the
 fixtures and database setup of the neighbouring `PatientRegistrationTest` and the
-`authz/clauses` acceptance tests. A dedicated database (`orevia_iam03_clause1_it`)
+`authz/clauses` acceptance tests. A dedicated database (`aurevia_iam03_clause1_it`)
 is migrated from `db/migrations` so the durable rows are read back under forced
 row-level security.
 

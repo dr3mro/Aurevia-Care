@@ -4,7 +4,7 @@ This is the product-level companion to the WEB-level [evidence register](evidenc
 The [readiness register](README.md) and the [launch checklist](launch-checklist.md)
 cover the WEB readiness outcomes (WEB-01 to WEB-13) and the owner-gated launch
 items; neither gives the G5 reviewer a view of the six product outcomes in
-section 1 of the [SmartClinic Cloud V1 specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
+section 1 of the [Aurevia Cloud V1 specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 This table supplies that view. Paths are relative to the repository root.
 
 A test is named only when it exists in this checkout and asserts behavior; a

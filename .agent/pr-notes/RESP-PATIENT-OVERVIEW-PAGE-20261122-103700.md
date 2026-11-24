@@ -93,7 +93,7 @@ specialist. Red was observed before the production change.
    `tests/theme/ThemeProvider.test.tsx`, which deliberately renders a consumer
    without a provider to assert that error; they are not test failures.
 4. Typecheck final lines (required by the story):
-   `> orevia-staff-web@0.1.0 typecheck`
+   `> aurevia-staff-web@0.1.0 typecheck`
    `> tsc --noEmit -p tsconfig.json`
    No `error TS…` output; `TYPECHECK_EXIT=0`.
 5. Per-file coverage for the touched production file, read from

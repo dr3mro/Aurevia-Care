@@ -49,7 +49,7 @@ class SwaggerUiHttpTest {
     private static final String AUDIENCE_PROPERTY = "spring.security.oauth2.resourceserver.jwt.audiences";
     private static final String ISSUER = "https://issuer.example.test";
     private static final String AUDIENCE = "synthetic-api";
-    private static final String DOCS_PROPERTY = "orevia.docs.enabled";
+    private static final String DOCS_PROPERTY = "aurevia.docs.enabled";
     private static final String SWAGGER_PATH = "/swagger-ui/";
     private static final String EXACT_SWAGGER_PATH = "/swagger-ui";
     private static final String INDEX_PATH = "/swagger-ui/index.html";
@@ -380,8 +380,8 @@ class SwaggerUiHttpTest {
                         OpenApiContractController.class)
                 .withPropertyValues(ISSUER_PROPERTY + "=" + ISSUER,
                         AUDIENCE_PROPERTY + "=" + AUDIENCE,
-                        "orevia.oidc.client-id=synthetic-client",
-                        "orevia.oidc.client-secret=synthetic-secret");
+                        "aurevia.oidc.client-id=synthetic-client",
+                        "aurevia.oidc.client-secret=synthetic-secret");
         if (profiles != null) {
             String active = profiles;
             runner = runner.withInitializer(context -> context.getEnvironment().setActiveProfiles(active));

@@ -17,7 +17,7 @@ already committed before this pass:
 
 No earlier fix needed to be undone. I rehydrated the governing context (AGENTS.md,
 CODING_STYLE.md, PROJECT.md, WORKSPACE.md, MEMORY.md, the story task file, decision
-`0005-patient-app-tablets.md`, the orevia-delivery / orevia-senior-mobile skills,
+`0005-patient-app-tablets.md`, the aurevia-delivery / aurevia-senior-mobile skills,
 both scoped files, `reports/types.ts`, `useWindowClass.ts` and the newest daily note's
 lessons) and surveyed the `features/reports` and `app/layout` source tree to confirm reuse
 of the existing `windowClassFor` classifier, `patientDesign` tokens and report types.
@@ -57,10 +57,10 @@ migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) is the domain owner; its
+Senior React Native and Expo (`aurevia-senior-mobile`) is the domain owner; its
 mandatory definition of done was executed and met this pass (module `check.sh` green,
 typecheck final lines and coverage summary below, zero `error TS…`). Senior TypeScript
-(`orevia-senior-typescript`) owns the strict `exactOptionalPropertyTypes` rule that
+(`aurevia-senior-typescript`) owns the strict `exactOptionalPropertyTypes` rule that
 produced TS2375; the root strict typecheck and the exact failing gate
 `scripts/frontend-check.sh` are green. A prior bounded mobile-specialist advisory review
 confirmed the fix is correct and complete. No new code was added this pass, so no new

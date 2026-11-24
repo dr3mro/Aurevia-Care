@@ -82,13 +82,13 @@ isolation is proven by the tests named above.
 ## Reproduction
 
 ```
-OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test
+AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test
 python3 -I scripts/check-docs.py
 python3 -I -m unittest discover -s scripts/tests -q
 bash scripts/quick-check.sh
 ```
 
-The first command drops and recreates the disposable database `orevia_isolation_surfaces_it`,
+The first command drops and recreates the disposable database `aurevia_isolation_surfaces_it`,
 applies all Flyway migrations, runs the seven tests and drops the database again. The existing
 surfaces are exercised through their real HTTP entry points; the worker surface additionally
 reads the JDBC store with a bound tenant context. Results are recorded in

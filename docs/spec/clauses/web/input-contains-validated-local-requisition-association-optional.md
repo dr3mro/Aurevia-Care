@@ -79,7 +79,7 @@ service (no production file was changed by this proof-only task):
   the order and ledger tables.
 
 Verified locally with
-`OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=InputContainsValidatedLocalRequisitionAssociationOptionalTest test`
+`AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=InputContainsValidatedLocalRequisitionAssociationOptionalTest test`
 — `Tests run: 9, Failures: 0, Errors: 0, Skipped: 0`; the Surefire XML for the
 class reports `tests="9"` with no failures, errors or skipped cases. This is a
 test-only change: no production line or branch was added, so there is no new

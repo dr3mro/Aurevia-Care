@@ -49,7 +49,7 @@ import org.springframework.web.client.RestClient;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_expired_retry_key_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_expired_retry_key_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ExpiredRetryKeysStillRespectDurableBusinessTest {
@@ -61,10 +61,10 @@ class ExpiredRetryKeysStillRespectDurableBusinessTest {
     private static final String DRUG_ORIGINAL = "drug-original-expired-key-it";
     private static final String DRUG_ALTERNATIVE = "drug-alternative-expired-key-it";
     private static final String ATTESTATION = "synthetic prescriber attestation";
-    private static final String DB = "orevia_expired_retry_key_it";
+    private static final String DB = "aurevia_expired_retry_key_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String[] PRESCRIPTIONS = {
             "a3333333-3333-3333-3333-333333333331",
             "a3333333-3333-3333-3333-333333333332",
@@ -89,18 +89,18 @@ class ExpiredRetryKeysStillRespectDurableBusinessTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seed(statement, ORG);
             seed(statement, OTHER_ORG);
@@ -261,7 +261,7 @@ class ExpiredRetryKeysStillRespectDurableBusinessTest {
     }
 
     private static int count(String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG + "'");
             try (ResultSet result = statement.executeQuery(sql)) {
@@ -276,7 +276,7 @@ class ExpiredRetryKeysStillRespectDurableBusinessTest {
        never touched, so the second decision can only be stopped by the durable
        business backstop. The trigger is restored in a finally block. */
     private static void evictClaim(String proposalId) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG + "'");
             statement.execute("ALTER TABLE public.pharmacy_substitution_decision "

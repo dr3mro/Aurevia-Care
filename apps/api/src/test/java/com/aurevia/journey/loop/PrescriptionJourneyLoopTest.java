@@ -49,13 +49,13 @@ import tools.jackson.databind.JsonNode;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_journey_rx_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_journey_rx_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(600)
 class PrescriptionJourneyLoopTest {
 
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_journey_rx_it";
-    private static final String DATABASE = "orevia_journey_rx_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_journey_rx_it";
+    private static final String DATABASE = "aurevia_journey_rx_it";
     private static final String SOURCE = "prescription";
 
     private LoopSupport.Client client;

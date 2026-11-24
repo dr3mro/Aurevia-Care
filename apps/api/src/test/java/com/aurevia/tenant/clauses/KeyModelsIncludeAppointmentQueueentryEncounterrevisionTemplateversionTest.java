@@ -42,16 +42,16 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_arc01_keymodels_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_arc01_keymodels_it")
 @ActiveProfiles("synthetic-auth")
 class KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest {
 
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String SHARED_LOCAL_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_arc01_keymodels_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_arc01_keymodels_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     /**
      * Every relation that implements a named key model with an organization id
@@ -93,19 +93,19 @@ class KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest 
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc01_keymodels_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_arc01_keymodels_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_arc01_keymodels_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_arc01_keymodels_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             // The organization table is itself RLS-protected, so each tenant
             // must be inserted under its own transaction-local context.
@@ -136,7 +136,7 @@ class KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest 
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc01_keymodels_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_arc01_keymodels_it WITH (FORCE)");
         }
     }
 
@@ -145,7 +145,7 @@ class KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest 
      * relation or column does not exist. Uses read-only metadata only.
      */
     private static String columnType(String relation, String column) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              PreparedStatement query = connection.prepareStatement(
                      "SELECT data_type FROM information_schema.columns "
                      + "WHERE table_schema = 'public' AND table_name = ? AND column_name = ?")) {
@@ -159,7 +159,7 @@ class KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest 
 
     /** Return whether a tenant relation exists at all in the migrated schema. */
     private static boolean relationExists(String relation) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              PreparedStatement query = connection.prepareStatement(
                      "SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                      + "WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname = ?")) {
@@ -172,7 +172,7 @@ class KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest 
 
     /** Return whether both row-level security and FORCE ROW LEVEL SECURITY are on. */
     private static boolean hasForcedRls(String relation) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              PreparedStatement query = connection.prepareStatement(
                      "SELECT c.relrowsecurity AND c.relforcerowsecurity FROM pg_class c "
                      + "JOIN pg_namespace n ON n.oid = c.relnamespace "
@@ -203,7 +203,7 @@ class KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest 
      * A {@code null} organization means no context is set, which must fail closed.
      */
     private static List<String> visibleCareUnitOrgs(String organization) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             if (organization == null) {
                 statement.execute("RESET app.current_org");

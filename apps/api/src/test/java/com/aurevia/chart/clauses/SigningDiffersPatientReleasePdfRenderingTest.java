@@ -46,7 +46,7 @@ import org.springframework.web.client.RestClient;
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.datasource.url="
-                + "jdbc:postgresql://127.0.0.1:5432/orevia_cln05_signing_diff_it")
+                + "jdbc:postgresql://127.0.0.1:5432/aurevia_cln05_signing_diff_it")
 @ActiveProfiles("synthetic-auth")
 class SigningDiffersPatientReleasePdfRenderingTest {
 
@@ -54,9 +54,9 @@ class SigningDiffersPatientReleasePdfRenderingTest {
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     private static final String PATIENT = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_cln05_signing_diff_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_cln05_signing_diff_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     RestClient rest;
 
@@ -72,19 +72,19 @@ class SigningDiffersPatientReleasePdfRenderingTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_cln05_signing_diff_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_cln05_signing_diff_it "
-                    + "OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_cln05_signing_diff_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_cln05_signing_diff_it "
+                    + "OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "clinician-a", "clinician");
             seedUser(statement, ORG_A, "assistant-a", "clinical_assistant");
@@ -111,7 +111,7 @@ class SigningDiffersPatientReleasePdfRenderingTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_cln05_signing_diff_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_cln05_signing_diff_it WITH (FORCE)");
         }
     }
 
@@ -206,7 +206,7 @@ class SigningDiffersPatientReleasePdfRenderingTest {
 
     /** Count tenant-scoped rows in a release or rendering ledger after signing. */
     private static long count(String table) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             // The migration owner is subject to FORCE RLS too, so bind the tenant.
             statement.execute("SET app.current_org = '" + ORG_A + "'");

@@ -28,7 +28,7 @@ section 9 (target size, text scaling, RTL) and `docs/design/rtl-and-localization
 ## Risk class
 
 Routine. Presentation only — no clinical decision, authorization, data, contract or release change.
-Specialist routing: bounded advisory plan from `orevia-senior-mobile` (report only, no edits);
+Specialist routing: bounded advisory plan from `aurevia-senior-mobile` (report only, no edits);
 QA/integration gate remains with the integrator. No clinical or human participant evidence.
 
 ## Review owner

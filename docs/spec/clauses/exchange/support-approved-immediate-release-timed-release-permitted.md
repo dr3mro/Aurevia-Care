@@ -10,7 +10,7 @@ Proven by tests
 
 All links are relative to this file; the repository root is four levels up. Every assertion below was executed against a throwaway PostgreSQL database migrated with the production Flyway scripts, using synthetic tenants, staff and patients only. No human, clinical or real-patient evidence is claimed.
 
-**Proof class.** [SupportApprovedImmediateReleaseTimedReleasePermittedTest.java](../../../../apps/api/src/test/java/com/aurevia/exchange/clauses/SupportApprovedImmediateReleaseTimedReleasePermittedTest.java) is a `@Tag("integration")` HTTP test on `synthetic-auth` with a per-class `DROP DATABASE ... WITH (FORCE)` setup, `filesystem:../../db/migrations` Flyway location and the `orevia_migrate` / `orevia_app` roles. It enters through `POST /api/v1/releases` and `POST /api/v1/releases/{id}/lift-hold` and observes the patient view through `GET /api/v1/patients/{patientId}/released-revisions`.
+**Proof class.** [SupportApprovedImmediateReleaseTimedReleasePermittedTest.java](../../../../apps/api/src/test/java/com/aurevia/exchange/clauses/SupportApprovedImmediateReleaseTimedReleasePermittedTest.java) is a `@Tag("integration")` HTTP test on `synthetic-auth` with a per-class `DROP DATABASE ... WITH (FORCE)` setup, `filesystem:../../db/migrations` Flyway location and the `aurevia_migrate` / `aurevia_app` roles. It enters through `POST /api/v1/releases` and `POST /api/v1/releases/{id}/lift-hold` and observes the patient view through `GET /api/v1/patients/{patientId}/released-revisions`.
 
 | Test method | Behaviour proved |
 |---|---|
@@ -26,7 +26,7 @@ All links are relative to this file; the repository root is four levels up. Ever
 
 **Companion proof already in the repository.** [ReleaseServiceTest.java](../../../../apps/api/src/test/java/com/aurevia/it/exchangerelease/ReleaseServiceTest.java) covers the deterministic validation and compare-and-set branches, [ReleasePolicyTest.java](../../../../apps/api/src/test/java/com/aurevia/it/exchangerelease/ReleasePolicyTest.java) the policy matrix, and [PatientReleaseIsolationTest.java](../../../../apps/api/src/test/java/com/aurevia/it/exchangerelease/PatientReleaseIsolationTest.java) the cross-tenant and correction/withdrawal flows. The new class adds the hold-reason/expiry error codes, the audited lift success, the lift stale-version path and the lift forbidden-state path at the HTTP boundary.
 
-Command and result: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=SupportApprovedImmediateReleaseTimedReleasePermittedTest -Dgroups=integration test` → `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`.
+Command and result: `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=SupportApprovedImmediateReleaseTimedReleasePermittedTest -Dgroups=integration test` → `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`.
 
 ## Gap
 

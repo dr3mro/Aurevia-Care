@@ -57,8 +57,8 @@ Routine (contained presentation change to one patient-app component, per
 
 ## Review owner
 
-orevia-senior-mobile (bounded review returned **no blocking defects** and
-no unmet acceptance criterion); orevia-ux-reviewer skill loaded for the
+aurevia-senior-mobile (bounded review returned **no blocking defects** and
+no unmet acceptance criterion); aurevia-ux-reviewer skill loaded for the
 UX-01 accessibility/RTL criteria. The reviewer verified the production safe-area
 path is valid: React Navigation's `SafeAreaProviderCompat` wraps screens, so
 `useWindowClass` has insets when the panel is mounted in a real screen. One

@@ -30,8 +30,8 @@ migration or API boundary changed.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`); UX/accessibility
-(`orevia-ux-reviewer`). Both reviews are simulated specialist review, not
+Senior React Native and Expo (`aurevia-senior-mobile`); UX/accessibility
+(`aurevia-ux-reviewer`). Both reviews are simulated specialist review, not
 human or patient evidence.
 
 ## Data changes
@@ -137,7 +137,7 @@ the real component with 100% on every metric.
   (outside scope), so the component resolves the hook once at module load with
   a neutral-inset fallback. This keeps existing tests green and is covered on
   both sides. Touching the shared Jest setup or the existing test was avoided.
-- Simulated `orevia-senior-mobile` review: only two Low, non-blocking
+- Simulated `aurevia-senior-mobile` review: only two Low, non-blocking
   findings — (a) the module-load safe-area fallback is test-shim debt that
   should be deleted when `jest.setup.ts` is fixed in a separate story, and
   (b) `useFlowHomeLayout` duplicates the small body of `useWindowClass` because
@@ -145,7 +145,7 @@ the real component with 100% on every metric.
   future refactor. Confirmed: hooks rules, both sides of the feature-detect
   branch, responsive values, no clipping props, unchanged roles/labels/order
   and exported API, no new dependency or cache.
-- Simulated `orevia-ux-reviewer` review: one Medium finding — physical
+- Simulated `aurevia-ux-reviewer` review: one Medium finding — physical
   left/right padding does not mirror consistently on iOS and Android
   (`docs/design/rtl-and-localization.md` §9.2 / line 40). **Fixed in scope** by
   switching to logical `paddingStart`/`paddingEnd` with direction-aware inset

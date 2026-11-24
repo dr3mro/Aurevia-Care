@@ -214,7 +214,7 @@ async function startPreviewServer(workerIndex: number): Promise<PreviewServer> {
     try {
       const response = await fetch(url);
       // A 200 from a different local process must not be mistaken for the app.
-      if (response.ok && (await response.text()).includes('SmartClinic Staff Portal')) {
+      if (response.ok && (await response.text()).includes('Aurevia Staff Portal')) {
         return { url, stop: (): void => { child.kill('SIGTERM'); } };
       }
     } catch {

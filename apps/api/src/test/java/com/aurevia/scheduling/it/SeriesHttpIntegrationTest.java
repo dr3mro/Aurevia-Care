@@ -37,17 +37,17 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_series_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_series_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class SeriesHttpIntegrationTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    private static final String DB = "orevia_series_it";
+    private static final String DB = "aurevia_series_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String RECEPTION = "reception-1111";
     private static final String PEER = "reception-2222";
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -76,16 +76,16 @@ class SeriesHttpIntegrationTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedOrganization(statement, ORG_A, "America/New_York");
             seedOrganization(statement, ORG_B, "America/New_York");
@@ -150,7 +150,7 @@ class SeriesHttpIntegrationTest {
     }
 
     private static String patientId(String org, String subject) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             try (PreparedStatement bind = connection.prepareStatement(
                     "SELECT set_config('app.current_org', CAST(? AS text), true), "
@@ -212,7 +212,7 @@ class SeriesHttpIntegrationTest {
     }
 
     private static long appointmentCount(String org, String patient) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             try (PreparedStatement bind = connection.prepareStatement(
                     "SELECT set_config('app.current_org', CAST(? AS text), true)")) {
@@ -233,7 +233,7 @@ class SeriesHttpIntegrationTest {
     }
 
     private static void seedBusySlot(String start, String end) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = '" + RECEPTION + "'");
@@ -324,7 +324,7 @@ class SeriesHttpIntegrationTest {
         assertEquals("rescheduled", history.get(1).get("action").asText());
         assertEquals(END_FIRST, history.get(1).get("previousStartsAt").asText());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             try (PreparedStatement bind = connection.prepareStatement(
                     "SELECT set_config('app.current_org', CAST(? AS text), true)")) {

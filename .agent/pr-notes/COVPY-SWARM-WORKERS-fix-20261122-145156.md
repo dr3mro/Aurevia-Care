@@ -36,8 +36,8 @@ code, contract, migration, deployment or patient-facing change (docs/WORKFLOW.md
 
 ## Review owner
 
-Senior Python Tooling (`orevia-senior-python`) and Test Engineer
-(`orevia-test-engineer`). Evidence in this notes file comes from executed
+Senior Python Tooling (`aurevia-senior-python`) and Test Engineer
+(`aurevia-test-engineer`). Evidence in this notes file comes from executed
 tool commands (primary), from the read-only specialist reviewers listed under
 `## Review verdicts` (simulated review), and from no simulated user or human
 participant. No clinical or real-patient evidence is claimed.
@@ -148,9 +148,9 @@ information, tenant boundary or downtime behavior is touched.
 
 ## Review verdicts
 
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

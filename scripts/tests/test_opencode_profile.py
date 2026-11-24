@@ -68,11 +68,11 @@ class RuntimeProfileTests(unittest.TestCase):
         self.assertTrue(any(missing in v and "instruction" in v for v in found), found)
 
     def test_editing_agent_without_bash_list_is_reported(self):
-        self.profile["agents"]["orevia-editor"] = {
+        self.profile["agents"]["aurevia-editor"] = {
             "permissions": [{"action": "read", "resource": "*", "effect": "allow"}]
         }
         found = self.violations()
-        self.assertTrue(any("orevia-editor" in v and "bash" in v for v in found), found)
+        self.assertTrue(any("aurevia-editor" in v and "bash" in v for v in found), found)
 
     def test_reviewer_with_edit_permission_is_reported(self):
         self.agent("qa-reviewer")["permissions"].append(
@@ -92,14 +92,14 @@ class RuntimeProfileTests(unittest.TestCase):
             (".opencode/agents/example.md", ".opencode/"),
         ):
             with self.subTest(resource=resource):
-                self.profile["agents"]["orevia-editor"] = {
+                self.profile["agents"]["aurevia-editor"] = {
                     "permissions": [
                         {"action": "shell", "resource": "*", "effect": "allow"},
                         {"action": "write", "resource": resource, "effect": "allow"},
                     ]
                 }
                 found = self.violations()
-                self.assertTrue(any("orevia-editor" in v and protected in v for v in found),
+                self.assertTrue(any("aurevia-editor" in v and protected in v for v in found),
                                 found)
 
     def test_disallowed_agent_model_is_reported(self):
@@ -139,11 +139,11 @@ class RuntimeProfileTests(unittest.TestCase):
 
     def test_check_runtime_flag_reports_violations_and_fails(self):
         err = io.StringIO()
-        with patch.object(gen, "check_runtime", return_value=["agent orevia-editor: bad"]):
+        with patch.object(gen, "check_runtime", return_value=["agent aurevia-editor: bad"]):
             with redirect_stderr(err):
                 status = gen.main(["--check-runtime"])
         self.assertEqual(status, 1)
-        self.assertIn("orevia-editor", err.getvalue())
+        self.assertIn("aurevia-editor", err.getvalue())
 
     def test_generate_mode_writes_both_configs(self):
         """Cover the existing generation path in the file this change modifies."""

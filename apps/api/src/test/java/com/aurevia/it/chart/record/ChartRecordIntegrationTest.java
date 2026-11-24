@@ -39,16 +39,16 @@ import com.aurevia.chart.record.ChartRepository;
 /** S-G1-03 acceptance: CLN-03 provenance, versioned verification and tenant isolation. */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_chart_record_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_chart_record_it")
 @ActiveProfiles("synthetic-auth")
 class ChartRecordIntegrationTest {
 
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String PATIENT = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_chart_record_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_chart_record_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     ChartRepository repository;
@@ -64,20 +64,20 @@ class ChartRecordIntegrationTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_chart_record_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_chart_record_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_chart_record_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_chart_record_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 // Only the production migrations are applied: chart_entry must be
                 // created by the same schema that production Flyway runs.
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "clinician-a", "clinician");
             seedUser(statement, ORG_A, "assistant-a", "clinical_assistant");
@@ -97,7 +97,7 @@ class ChartRecordIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_chart_record_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_chart_record_it WITH (FORCE)");
         }
     }
 
@@ -257,7 +257,7 @@ class ChartRecordIntegrationTest {
         assertEquals(HttpStatus.OK, one.getStatusCode(), one.getBody());
         assertEquals(id, field(one.getBody(), "id"));
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             // audit_event has FORCE RLS: the migration owner still needs the
             // transaction-local tenant context to see any rows at all. A direct
@@ -339,7 +339,7 @@ class ChartRecordIntegrationTest {
         assertEquals(HttpStatus.OK, bList.getStatusCode());
         assertFalse(bList.getBody().contains("tenant-scoped"));
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");
@@ -444,7 +444,7 @@ class ChartRecordIntegrationTest {
                 "", "clinician-a", ORG_A, "chart-ddl-probe");
         assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             try (ResultSet result = statement.executeQuery(
                     "SELECT relrowsecurity, relforcerowsecurity FROM pg_class "
@@ -454,7 +454,7 @@ class ChartRecordIntegrationTest {
                 assertTrue(result.getBoolean("relforcerowsecurity"), "chart_entry must force row level security");
             }
         }
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_B + "'");
             statement.execute("SET app.actor = 'clinician-b'");
@@ -491,7 +491,7 @@ class ChartRecordIntegrationTest {
         assertNotEquals(field(verified.getBody(), "dataEntryActor"),
                 field(verified.getBody(), "clinicalAuthor"));
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(

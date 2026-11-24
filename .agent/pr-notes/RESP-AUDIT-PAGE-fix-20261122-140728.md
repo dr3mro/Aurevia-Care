@@ -31,7 +31,7 @@ jsdom cannot paint pixels or evaluate media queries; box sizes, 200% zoom reflow
 
 ## Risk class
 
-Routine (contained staff-web presentation change). Reviewed earlier by a simulated senior React/Vite implementation specialist and a simulated UX reviewer; this fix pass used `orevia-delivery`, `orevia-senior-react` and `orevia-senior-typescript` skills plus the layout contract. No clinical data, authorization or server behaviour touched.
+Routine (contained staff-web presentation change). Reviewed earlier by a simulated senior React/Vite implementation specialist and a simulated UX reviewer; this fix pass used `aurevia-delivery`, `aurevia-senior-react` and `aurevia-senior-typescript` skills plus the layout contract. No clinical data, authorization or server behaviour touched.
 
 ## Review owner
 
@@ -55,7 +55,7 @@ Branch `swarm/RESP-AUDIT-PAGE-997`, HEAD `39ccb7ae76cee1c0b424c11d525423872c9fa6
 
 1. `cd apps/staff-web && npm ci --no-audit --no-fund` — exit 0. Final lines: `added 486 packages in 7s` (plus two `npm warn deprecated` notices for transitive `whatwg-encoding` and `eslint`). No lockfile change.
 2. `cd apps/staff-web && npm run typecheck` — exit 0. Final lines:
-   `> orevia-staff-web@0.1.0 typecheck`
+   `> aurevia-staff-web@0.1.0 typecheck`
    `> tsc --noEmit -p tsconfig.json`
    No `error TS…` lines. (This is the mandatory TypeScript gate; clean.)
 3. `cd apps/staff-web && ./node_modules/.bin/vitest run src/features/admin/AuditPage.test.tsx tests/responsive/features-admin/AuditPage.responsive.test.tsx` — exit 0:

@@ -9,8 +9,8 @@ in my prompt and the newest hand-off note
 docs (`AGENTS.md`, `CODING_STYLE.md`, `WORKSPACE.md`, `MEMORY.md`, `PROJECT.md`,
 `TODO.md`, `docs/WORKFLOW.md`, `docs/decisions/0005-patient-app-tablets.md`,
 `apps/patient-mobile/src/app/layout/useWindowClass.ts`) and the story task file,
-and loaded the `orevia-delivery`, `orevia-senior-mobile` and
-`orevia-senior-typescript` skills. I ran `git merge --no-edit origin/main`
+and loaded the `aurevia-delivery`, `aurevia-senior-mobile` and
+`aurevia-senior-typescript` skills. I ran `git merge --no-edit origin/main`
 at the start (`Already up to date.`; no conflict markers in the scoped
 `apps/patient-mobile/src/features/reports/` path) and then independently
 re-ran every gate for the touched area with fresh tool commands.
@@ -63,8 +63,8 @@ authorization, patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) and Senior TypeScript
-(`orevia-senior-typescript`) guidance loaded and applied. Both skills'
+Senior React Native and Expo (`aurevia-senior-mobile`) and Senior TypeScript
+(`aurevia-senior-typescript`) guidance loaded and applied. Both skills'
 definition-of-done was satisfied: `bash apps/patient-mobile/check.sh` green,
 typecheck final lines pasted below, every `error TS…` resolved, no `any` or
 `@ts-ignore`. No named clinician/patient review was available and none is

@@ -34,7 +34,7 @@ The decisions it prepares remain human G5 gates.
 ## Review owner
 
 Product owner with clinical safety lead, privacy lead and integration lead as the
-section-10 accountable roles. One bounded simulated `orevia-product-owner`
+section-10 accountable roles. One bounded simulated `aurevia-product-owner`
 review was run against the acceptance criteria (session
 `ses_e014465b9ffeNEzLKAO5cowNOL`); it **passed with no actionable findings** and
 made no file edits. No human, clinical or real site review was performed.

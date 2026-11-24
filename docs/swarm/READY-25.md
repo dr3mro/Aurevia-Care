@@ -101,7 +101,7 @@ Commands executed, with final lines:
   `Functions    : 100% ( 507/507 )`, `Lines        : 100% ( 1486/1486 )`.
 - `npm run typecheck` (`tsc --noEmit -p tsconfig.json`) final lines:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   Exit 0; no `error TS…`.

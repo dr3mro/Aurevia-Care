@@ -91,7 +91,7 @@ by `InstructionContract.FactType`. That trail has no first-view or
 acknowledgment fact and its in-memory store is not durable, so it is not the
 durable four-fact store this clause is about; it is exercised by its own suite.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=RecordMessagePublicationNotificationDispatchFirstAppTest test`
 — `tests="7" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim

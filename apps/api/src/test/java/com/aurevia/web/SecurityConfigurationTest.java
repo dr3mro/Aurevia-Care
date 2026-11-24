@@ -24,8 +24,8 @@ class SecurityConfigurationTest {
     private static final String AUDIENCE_PROPERTY = "spring.security.oauth2.resourceserver.jwt.audiences";
     private static final String ISSUER = "https://issuer.example.test";
     private static final String AUDIENCE = "synthetic-api";
-    private static final String FAILURE_MESSAGE = "OREVIA_OIDC_ISSUER_URI must be set";
-    private static final String AUDIENCE_FAILURE_MESSAGE = "OREVIA_OIDC_AUDIENCE must be set";
+    private static final String FAILURE_MESSAGE = "AUREVIA_OIDC_ISSUER_URI must be set";
+    private static final String AUDIENCE_FAILURE_MESSAGE = "AUREVIA_OIDC_AUDIENCE must be set";
 
     /** Stops the issuer-based decoder from performing discovery during tests. */
     @TestConfiguration

@@ -45,7 +45,7 @@ import org.springframework.web.client.RestClient;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_instruction_facts_clause_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_instruction_facts_clause_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class RecordMessagePublicationNotificationDispatchFirstAppTest {
@@ -63,9 +63,9 @@ class RecordMessagePublicationNotificationDispatchFirstAppTest {
     private static final String CONTENT_REF = "synthetic-content-ref-DO-NOT-LEAK";
     private static final String DUE_AT = "2026-12-31T00:00:00Z";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_instruction_facts_clause_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_instruction_facts_clause_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @LocalServerPort
     int port;
@@ -84,19 +84,19 @@ class RecordMessagePublicationNotificationDispatchFirstAppTest {
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_instruction_facts_clause_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_instruction_facts_clause_it "
-                    + "OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_instruction_facts_clause_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_instruction_facts_clause_it "
+                    + "OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A, STAFF_A, "clinician");
             seedTenant(statement, ORG_B, STAFF_B, "clinician");
@@ -120,7 +120,7 @@ class RecordMessagePublicationNotificationDispatchFirstAppTest {
         try (Connection root = DriverManager.getConnection(
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_instruction_facts_clause_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_instruction_facts_clause_it WITH (FORCE)");
         }
     }
 
@@ -317,7 +317,7 @@ class RecordMessagePublicationNotificationDispatchFirstAppTest {
     }
 
     private int countRows(String org, String table, String where) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             try (ResultSet result = statement.executeQuery(

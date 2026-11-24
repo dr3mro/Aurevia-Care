@@ -21,7 +21,7 @@ spring:
     timeout-per-shutdown-phase: 30s
   datasource:
     hikari:
-      maximum-pool-size: ${OREVIA_DB_POOL:20}
+      maximum-pool-size: ${AUREVIA_DB_POOL:20}
       connection-timeout: 5000
       max-lifetime: 1500000
       leak-detection-threshold: 20000

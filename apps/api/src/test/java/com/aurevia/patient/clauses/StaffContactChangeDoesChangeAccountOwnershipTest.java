@@ -42,7 +42,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_iam05_clause4_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_iam05_clause4_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class StaffContactChangeDoesChangeAccountOwnershipTest {
@@ -53,9 +53,9 @@ class StaffContactChangeDoesChangeAccountOwnershipTest {
     private static final String FACTS = "site-verified-facts";
     private static final String NEW_CONTACT = "new-site-verified-contact";
     private static final String BASE = "/api/v1/patient/access";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_iam05_clause4_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_iam05_clause4_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     private static final String RECEPTION = "reception-clause4";
     private static final String RECEPTION_B = "reception-clause4-b";
@@ -71,7 +71,7 @@ class StaffContactChangeDoesChangeAccountOwnershipTest {
      *
      * <p>Roles and the database are created in one method: JUnit does not order
      * separate {@code @BeforeAll} methods, so a later role creation would leave
-     * {@code CREATE DATABASE ... OWNER orevia_migrate} without its owner.</p>
+     * {@code CREATE DATABASE ... OWNER aurevia_migrate} without its owner.</p>
      */
     @BeforeAll
     static void prepare() throws Exception {
@@ -79,18 +79,18 @@ class StaffContactChangeDoesChangeAccountOwnershipTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_iam05_clause4_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_iam05_clause4_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_iam05_clause4_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_iam05_clause4_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A, "MRN-IAM05-C4-A");
             seedTenant(statement, ORG_B, "MRN-IAM05-C4-B");
@@ -106,7 +106,7 @@ class StaffContactChangeDoesChangeAccountOwnershipTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_iam05_clause4_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_iam05_clause4_it WITH (FORCE)");
         }
     }
 
@@ -161,7 +161,7 @@ class StaffContactChangeDoesChangeAccountOwnershipTest {
 
     /** Seed a fresh patient identity with an active patient role in one tenant. */
     private static void seedPatient(String org, String subject) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedMember(statement, org, subject, "patient");
         }
@@ -224,7 +224,7 @@ class StaffContactChangeDoesChangeAccountOwnershipTest {
     }
 
     private static int count(String org, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             statement.execute("SET app.actor = 'synthetic-seeder'");
@@ -236,7 +236,7 @@ class StaffContactChangeDoesChangeAccountOwnershipTest {
     }
 
     private static String scalar(String org, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             statement.execute("SET app.actor = 'synthetic-seeder'");

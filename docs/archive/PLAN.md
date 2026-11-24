@@ -1,4 +1,4 @@
-# Orevia V1 delivery plan
+# Aurevia V1 delivery plan
 
 This is the canonical index of all planned stories, grouped by delivery gate. `TODO.md` owns the single WIP-one story; `PROGRESS.md` owns chronological evidence; `BUGS.md` owns observed defects; `PROJECT_V1_SPEC.md` is authoritative for requirements.
 

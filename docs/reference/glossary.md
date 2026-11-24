@@ -1,6 +1,6 @@
 # Bilingual glossary of clinical and product terms
 
-This glossary maps the clinical and product words used in Orevia V1 to the Arabic strings the interfaces actually show, to a plain-language meaning, and to the code name where one exists. It supports UX-01 (English and Arabic, RTL and mixed-script text) and PRD-01 (one longitudinal chart per patient per organization).
+This glossary maps the clinical and product words used in Aurevia V1 to the Arabic strings the interfaces actually show, to a plain-language meaning, and to the code name where one exists. It supports UX-01 (English and Arabic, RTL and mixed-script text) and PRD-01 (one longitudinal chart per patient per organization).
 
 The Arabic column is copied **verbatim** from the message files; no Arabic term here was invented. The source bundles are `apps/staff-web/src/i18n/messages.ts`, `apps/staff-web/src/components/stateViewMessages.ts`, and the `messages.ts` under `apps/staff-web/src/features/` (`patients`, `admin`, `system`, `duplicates`, `chart`, `scheduling`), plus `apps/patient-mobile/src/app/messages.ts` and `apps/patient-mobile/src/features/attachments/messages.ts`. A code name is the Java class or the database table that owns the idea; the same idea can have both. A value that is a message key such as `{name}` is shown as it appears in the bundle.
 

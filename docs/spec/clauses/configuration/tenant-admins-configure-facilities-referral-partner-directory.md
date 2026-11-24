@@ -13,7 +13,7 @@ Partly proven
 Test class: `com.aurevia.configuration.clauses.TenantAdminsConfigureFacilitiesReferralPartnerDirectoryTest`
 (`apps/api/src/test/java/com/aurevia/configuration/clauses/TenantAdminsConfigureFacilitiesReferralPartnerDirectoryTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, using the `synthetic-auth`
-profile, a dedicated throwaway database `orevia_admin_configuration_it`, Flyway
+profile, a dedicated throwaway database `aurevia_admin_configuration_it`, Flyway
 `filesystem:../../db/migrations`, two synthetic tenants and three synthetic subjects
 (`admin-a`, `admin-b`, `reception-a`). All names and values are synthetic.
 

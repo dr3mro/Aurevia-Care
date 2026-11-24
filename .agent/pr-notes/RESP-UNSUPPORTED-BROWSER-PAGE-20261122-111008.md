@@ -42,8 +42,8 @@ authorization, no state machine, no API and no shared component changed.
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) with Senior TypeScript
-(`orevia-senior-typescript`) for the strict-typecheck gate. Both skills were
+Senior React and Vite (`aurevia-senior-react`) with Senior TypeScript
+(`aurevia-senior-typescript`) for the strict-typecheck gate. Both skills were
 loaded. No cross-boundary or safety-critical review required.
 
 ## Data changes
@@ -88,12 +88,12 @@ Mandatory frontend gate:
 
 Typecheck final lines (paste as required by the frontend definition of done):
 - `npm run typecheck` →
-  `> orevia-staff-web@0.1.0 typecheck`
+  `> aurevia-staff-web@0.1.0 typecheck`
   `> tsc --noEmit -p tsconfig.json`
   (no `error TS…` output; exit 0).
 - `bash scripts/frontend-typecheck-check.sh` →
-  `> orevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`
-  then `> orevia-staff-web@0.1.0 lint` / `> eslint . --max-warnings 0`,
+  `> aurevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`
+  then `> aurevia-staff-web@0.1.0 lint` / `> eslint . --max-warnings 0`,
   final line `frontend typecheck: passed (or no frontend files changed)` (exit 0).
 - `npm run gen:api:check` → final line `gen:api: generated client matches the contract`.
 

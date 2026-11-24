@@ -44,7 +44,7 @@ Production classes exercised through the real HTTP entry point
   fold functions.
 
 Verified locally:
-`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=MoveChartVisibilityThroughVersionedAssociationSurvivingTest test`
+`AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=MoveChartVisibilityThroughVersionedAssociationSurvivingTest test`
 — 3 tests, 0 failures, 0 errors.
 
 Discovery found no other production implementation of this clause: the chart

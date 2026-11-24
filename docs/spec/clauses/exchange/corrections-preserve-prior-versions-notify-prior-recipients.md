@@ -73,7 +73,7 @@ Corroborating suites already on `main` (not re-tested here):
 `com.aurevia.exchange.conformance.PartnerConformanceFixturesTest`
 (`correctionPreservesThePriorRevisionAndReopensReview`).
 
-Verified locally with `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally with `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest test`
 — Surefire XML: `tests="6" errors="0" skipped="0" failures="0"`, matching the six
 `@Test` methods. "Proven by tests" is limited to the clause behaviour above; it

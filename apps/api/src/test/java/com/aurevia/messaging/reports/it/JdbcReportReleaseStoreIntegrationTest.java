@@ -55,7 +55,7 @@ import com.aurevia.web.TenantContextInterceptor;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_report_release_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_report_release_it")
 @ActiveProfiles("synthetic-auth")
 class JdbcReportReleaseStoreIntegrationTest {
 
@@ -63,9 +63,9 @@ class JdbcReportReleaseStoreIntegrationTest {
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String SUBJECT = "patient-shared";
     static final String PATIENT = "patient-shared";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_report_release_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_report_release_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     static final Instant DECIDED = Instant.parse("2026-06-15T12:00:00Z");
 
     @Autowired
@@ -83,18 +83,18 @@ class JdbcReportReleaseStoreIntegrationTest {
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_report_release_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_report_release_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_report_release_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_report_release_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A);
             seedTenant(statement, ORG_B);
@@ -107,7 +107,7 @@ class JdbcReportReleaseStoreIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_report_release_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_report_release_it WITH (FORCE)");
         }
     }
 
@@ -302,7 +302,7 @@ class JdbcReportReleaseStoreIntegrationTest {
     void releaseHistoryIsAppendOnlyForEveryRole() throws Exception {
         String reportId = "report-immutable";
         linkAndRelease(ORG_B, reportId, "document-b");
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             // FORCE RLS hides rows without the GUC. Bind the tenant so a mutation
             // actually matches a row and the append-only trigger must fire.
@@ -320,7 +320,7 @@ class JdbcReportReleaseStoreIntegrationTest {
     void revisionIdentityIsImmutableButAccessStateCanAdvance() throws Exception {
         String reportId = "report-identity";
         linkAndRelease(ORG_A, reportId, "document-a");
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             assertTrue(rowCount(statement, "report_release_revision", ORG_A) > 0);
@@ -384,7 +384,7 @@ class JdbcReportReleaseStoreIntegrationTest {
                 .andExpect(status().isGone());
         assertEquals(2, as(ORG_A, () -> store.releaseHistory(ORG_A, reportId, 1)).size());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             assertRejectedWithState("23514", statement,

@@ -18,7 +18,7 @@ reusing the same tenant-local facility code `MAIN`. Each organization has one
 `tenant_admin` subject with an active membership; a third subject has an active
 membership event followed by a later, explicitly dated revoked event, so the
 current-membership fold resolves to revoked. The suite creates and drops its own
-database `orevia_derive_tenant_ctx_it`.
+database `aurevia_derive_tenant_ctx_it`.
 
 - `authenticatedSubjectWithActiveMembershipDerivesItsOwnTenant` — an authenticated
   subject with an active membership in its selected organization gets HTTP 200 and

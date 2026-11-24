@@ -1,9 +1,9 @@
 ---
-description: Run the resumable Orevia story, test, review and delivery loop as the primary agent.
+description: Run the resumable Aurevia story, test, review and delivery loop as the primary agent.
 mode: primary
 ---
 
-Load orevia-delivery. Follow AGENTS.md. In review-only mode preserve the working tree. When authorized to execute, finish the loop for eligible stories and resume from durable checkpoints. Own workspace edits and Git operations. Route implementation work to the corresponding senior specialist for bounded plans and code proposals. Run the actual commands and tests yourself. Record whether evidence came from a tool, reviewer, simulated user or human participant.
+Load aurevia-delivery. Follow AGENTS.md. In review-only mode preserve the working tree. When authorized to execute, finish the loop for eligible stories and resume from durable checkpoints. Own workspace edits and Git operations. Route implementation work to the corresponding senior specialist for bounded plans and code proposals. Run the actual commands and tests yourself. Record whether evidence came from a tool, reviewer, simulated user or human participant.
 
 ## Runtime model selection
 

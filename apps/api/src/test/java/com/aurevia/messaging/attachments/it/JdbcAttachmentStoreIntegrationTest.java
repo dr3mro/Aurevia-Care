@@ -49,7 +49,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_attachment_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_attachment_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class JdbcAttachmentStoreIntegrationTest {
@@ -62,9 +62,9 @@ class JdbcAttachmentStoreIntegrationTest {
     static final String OTHER_UNIT = "unit-2";
     static final String PATIENT = "pat-shared";
     static final String CHECKSUM = "a".repeat(64);
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_attachment_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_attachment_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     AttachmentStore attachmentStore;
@@ -82,18 +82,18 @@ class JdbcAttachmentStoreIntegrationTest {
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_attachment_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_attachment_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_attachment_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_attachment_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("INSERT INTO public.organization (organization_id, display_name) VALUES ('"
@@ -110,7 +110,7 @@ class JdbcAttachmentStoreIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_attachment_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_attachment_it WITH (FORCE)");
         }
     }
 
@@ -175,7 +175,7 @@ class JdbcAttachmentStoreIntegrationTest {
     @Test
     void databaseTriggerRejectsRebindingForTheMigrationOwnerToo() throws Exception {
         String id = "33333333-3333-3333-3333-333333333333";
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("INSERT INTO public.attachment (organization_id, id, version, uploader_subject, "
@@ -193,7 +193,7 @@ class JdbcAttachmentStoreIntegrationTest {
     @Test
     void factLedgerRejectsMutationForEveryRoleIncludingTheOwner() throws Exception {
         String eventId = "44444444-4444-4444-4444-444444444444";
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("INSERT INTO public.attachment_event (organization_id, id, attachment_id, "

@@ -40,7 +40,7 @@ new test file. A simulated UX review is in scope because RTL/WCAG is involved
 
 ## Review owner
 
-`orevia-senior-react` and `orevia-ux-reviewer` — the advisory
+`aurevia-senior-react` and `aurevia-ux-reviewer` — the advisory
 subagent verdicts recorded on PR #708 found **no blocking defects**. Evidence is
 simulated/reviewer only; no human, clinical or patient participant. The two
 skills were reloaded this pass; no new review was commissioned because the diff
@@ -83,7 +83,7 @@ as `S` (CI profile under `skip-worktree`).
    is green.
 3. **Typecheck final lines (frontend definition of done, explicit re-run):**
    `cd apps/staff-web && npm run typecheck` →
-   `> orevia-staff-web@0.1.0 typecheck` /
+   `> aurevia-staff-web@0.1.0 typecheck` /
    `> tsc --noEmit -p tsconfig.json`, exit 0, **no `error TS…`**.
 4. Coverage gate: `bash scripts/coverage-check.sh origin/main` → `coverage check: passed` (exit 0).
 5. Frontend policy: `bash scripts/frontend-check.sh` → `frontend standards: policy and tool commands passed`, 1 test passed (exit 0).

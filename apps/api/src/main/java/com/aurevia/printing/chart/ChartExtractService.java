@@ -43,7 +43,7 @@ import com.aurevia.printing.chart.ChartExtractContract.SectionSelection;
  */
 public final class ChartExtractService {
 
-    private static final String SOURCE_SYSTEM = "OREVIA-CHART";
+    private static final String SOURCE_SYSTEM = "AUREVIA-CHART";
 
     private final HandoutService handoutService;
     private final Clock clock;

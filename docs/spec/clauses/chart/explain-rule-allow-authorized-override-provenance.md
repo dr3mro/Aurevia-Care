@@ -78,7 +78,7 @@ reception-actor and peer-tenant outcomes at the same entry points. This test is
 new in its clinician override denial, the direct persisted `override_*` column
 assertion, and the two terminal-state override refusals.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=ExplainRuleAllowAuthorizedOverrideProvenanceTest test` —
 `tests="6" errors="0" skipped="0" failures="0"` in
 `apps/api/target/surefire-reports/TEST-com.aurevia.chart.clauses.ExplainRuleAllowAuthorizedOverrideProvenanceTest.xml`,

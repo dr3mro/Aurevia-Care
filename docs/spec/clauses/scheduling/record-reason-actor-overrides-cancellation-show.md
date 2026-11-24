@@ -71,7 +71,7 @@ Production classes exercised through the HTTP entry point
 - `com.aurevia.authz.ActionPolicy` and `com.aurevia.tenant.TenantContext`
   — action and tenant authorization re-checked inside the guarded transaction.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecordReasonActorOverridesCancellationShowTest test`
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecordReasonActorOverridesCancellationShowTest test`
 — `Tests run: 11, Failures: 0, Errors: 0, Skipped: 0` (see the story notes for the
 captured final lines).
 

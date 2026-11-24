@@ -59,7 +59,7 @@ entry point here is the domain service behind the production JDBC store; that
 is a separate gap from this clause and is recorded in the task notes.
 
 Verified locally:
-`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=ProvideVersionedSoapOperativeObGynPerinatalTest test`
+`AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=ProvideVersionedSoapOperativeObGynPerinatalTest test`
 — `Tests run: 6, Failures: 0, Errors: 0, Skipped: 0`.
 
 ## Gap

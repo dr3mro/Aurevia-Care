@@ -184,22 +184,22 @@ BEGIN
 END $$;
 
 -- Every write is made by an authorized workflow through the runtime role.
-GRANT SELECT, INSERT ON public.instruction_fact_instruction TO orevia_app;
-GRANT SELECT, INSERT ON public.instruction_fact_publication TO orevia_app;
-GRANT SELECT, INSERT ON public.instruction_fact_dispatch TO orevia_app;
-GRANT SELECT, INSERT ON public.instruction_fact_first_view TO orevia_app;
-GRANT SELECT, INSERT ON public.instruction_fact_acknowledgment TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.instruction_fact_follow_up TO orevia_app;
-GRANT SELECT, INSERT ON public.instruction_fact_client_digest TO orevia_app;
-GRANT SELECT, INSERT ON public.instruction_fact_audit TO orevia_app;
-GRANT SELECT, INSERT ON public.instruction_fact_unit_assignment TO orevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_instruction TO aurevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_publication TO aurevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_dispatch TO aurevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_first_view TO aurevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_acknowledgment TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.instruction_fact_follow_up TO aurevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_client_digest TO aurevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_audit TO aurevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_unit_assignment TO aurevia_app;
 
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_instruction FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_publication FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_dispatch FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_first_view FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_acknowledgment FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.instruction_fact_follow_up FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_client_digest FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_audit FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_unit_assignment FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_instruction FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_publication FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_dispatch FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_first_view FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_acknowledgment FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.instruction_fact_follow_up FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_client_digest FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_audit FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_unit_assignment FROM aurevia_app;

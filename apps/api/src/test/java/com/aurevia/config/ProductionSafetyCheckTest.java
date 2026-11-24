@@ -23,15 +23,15 @@ class ProductionSafetyCheckTest {
     private static final String PASSWORD = "synthetic-db-password-not-a-secret"; // synthetic-ok: fixed fixture, not a credential
     // Synthetic driver scheme: the guard inspects the TLS token, not the driver,
     // and a literal PostgreSQL URL would misclassify this unit test as a DB test.
-    private static final String REQUIRE_URL = "jdbc:synthetic://db.example.test:5432/orevia?sslmode=require";
+    private static final String REQUIRE_URL = "jdbc:synthetic://db.example.test:5432/aurevia?sslmode=require";
     private static final String VERIFY_FULL_URL =
-            "jdbc:synthetic://db.example.test:5432/orevia?sslmode=verify-full";
-    private static final String INSECURE_URL = "jdbc:synthetic://127.0.0.1:5432/orevia";
+            "jdbc:synthetic://db.example.test:5432/aurevia?sslmode=verify-full";
+    private static final String INSECURE_URL = "jdbc:synthetic://127.0.0.1:5432/aurevia";
 
     private static final String SYNTHETIC_MESSAGE =
             "The production profile must not be combined with the synthetic-auth profile";
     private static final String PASSWORD_MESSAGE =
-            "OREVIA_DB_PASSWORD must be set in the production profile";
+            "AUREVIA_DB_PASSWORD must be set in the production profile";
     private static final String TLS_MESSAGE =
             "spring.datasource.url must require TLS (sslmode=require or verify-full) in the production profile";
 
@@ -41,7 +41,7 @@ class ProductionSafetyCheckTest {
                 .withPropertyValues(
                         "spring.profiles.active=" + profiles,
                         "spring.datasource.url=" + url,
-                        "OREVIA_DB_PASSWORD=" + password);
+                        "AUREVIA_DB_PASSWORD=" + password);
     }
 
     @Test
@@ -114,7 +114,7 @@ class ProductionSafetyCheckTest {
         assertEquals("30s", source.getProperty("spring.lifecycle.timeout-per-shutdown-phase"));
         assertEquals("10s", source.getProperty("server.tomcat.connection-timeout"));
         assertEquals("2MB", source.getProperty("server.tomcat.max-swallow-size"));
-        assertEquals("${OREVIA_DB_POOL:20}",
+        assertEquals("${AUREVIA_DB_POOL:20}",
                 source.getProperty("spring.datasource.hikari.maximum-pool-size"));
         assertEquals("5000", String.valueOf(source.getProperty("spring.datasource.hikari.connection-timeout")));
         assertEquals("1500000", String.valueOf(source.getProperty("spring.datasource.hikari.max-lifetime")));

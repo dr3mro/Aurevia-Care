@@ -116,7 +116,7 @@ class AudienceValidationHttpTest {
         newRunner("   ").run(context -> {
             Throwable failure = context.getStartupFailure();
             assertNotNull(failure);
-            assertTrue(messageChain(failure).contains("OREVIA_OIDC_AUDIENCE must be set"),
+            assertTrue(messageChain(failure).contains("AUREVIA_OIDC_AUDIENCE must be set"),
                     () -> "expected the audience fail-closed message, got: " + messageChain(failure));
         });
     }

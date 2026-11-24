@@ -53,7 +53,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_patient_access_http_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_patient_access_http_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class PatientAccessHttpIntegrationTest {
@@ -63,9 +63,9 @@ class PatientAccessHttpIntegrationTest {
     private static final String CHART = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     private static final String FACTS = "site-verified-facts";
     private static final String BASE = "/api/v1/patient/access";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_patient_access_http_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_patient_access_http_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     private static final String RECEPTION = "reception-http";
     private static final String PRIVACY = "privacy-http";
@@ -86,18 +86,18 @@ class PatientAccessHttpIntegrationTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_patient_access_http_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_patient_access_http_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_patient_access_http_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_patient_access_http_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A, "MRN-PA-HTTP-A");
             seedTenant(statement, ORG_B, "MRN-PA-HTTP-B");
@@ -119,7 +119,7 @@ class PatientAccessHttpIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_patient_access_http_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_patient_access_http_it WITH (FORCE)");
         }
     }
 
@@ -161,7 +161,7 @@ class PatientAccessHttpIntegrationTest {
 
     /** Seed a fresh patient identity with an active patient role in one tenant. */
     private static void seedPatient(String org, String subject) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedMember(statement, org, subject, "patient");
         }
@@ -225,7 +225,7 @@ class PatientAccessHttpIntegrationTest {
     }
 
     private static int count(String org, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             statement.execute("SET app.actor = 'synthetic-seeder'");
@@ -374,7 +374,7 @@ class PatientAccessHttpIntegrationTest {
     }
 
     private static String scalar(String org, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             statement.execute("SET app.actor = 'synthetic-seeder'");

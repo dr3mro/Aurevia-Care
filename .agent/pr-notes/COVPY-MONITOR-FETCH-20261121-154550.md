@@ -25,7 +25,7 @@ Routine — test-only addition; no runtime behavior, contract or data path chang
 
 ## Review owner
 
-Senior Python Tooling (`orevia-senior-python`) — bounded read-only review completed:
+Senior Python Tooling (`aurevia-senior-python`) — bounded read-only review completed:
 **APPROVE, no must-fix items** (evidence source: reviewer report; the reviewer did not re-run
 commands — all commands were executed by this worker and are listed below). Non-blocking
 suggestions were applied: a third module load with `AUTOSTART=7` so the line-5 ternary assertion

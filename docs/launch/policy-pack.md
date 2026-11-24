@@ -153,7 +153,7 @@ synthetic OPS-06 declaration at
 [infra/delivery-safety/delivery-safety-policy.json](../../infra/delivery-safety/delivery-safety-policy.json),
 which is not a market pack.
 
-- [Orevia V1 specification](../../.opencode/config/PROJECT_V1_SPEC.md) — section 8 (OPS-01),
+- [Aurevia V1 specification](../../.opencode/config/PROJECT_V1_SPEC.md) — section 8 (OPS-01),
   section 9 (G5 row) and section 10 (decision owners and evidence). Proves what must be
   decided; decides nothing.
 - [Production readiness evidence register](../../docs/operations/production-readiness/README.md)

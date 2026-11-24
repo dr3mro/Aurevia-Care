@@ -94,15 +94,15 @@ class MetricsHttpTest {
             String body = mvc.perform(get("/health/metrics"))
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
-            assertTrue(body.contains("orevia_http_requests_total"), body);
-            assertTrue(body.contains("# TYPE orevia_http_request_duration_seconds histogram"), body);
+            assertTrue(body.contains("aurevia_http_requests_total"), body);
+            assertTrue(body.contains("# TYPE aurevia_http_request_duration_seconds histogram"), body);
 
             // The filter records after the response is written, so the first scrape
             // has only metadata; a second scrape exposes its bucket samples.
             String secondBody = mvc.perform(get("/health/metrics"))
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
-            assertTrue(secondBody.contains("orevia_http_request_duration_seconds_bucket{"), secondBody);
+            assertTrue(secondBody.contains("aurevia_http_request_duration_seconds_bucket{"), secondBody);
 
             String deniedBody = mvc.perform(get("/health/metrics")
                             .with(request -> {
@@ -139,10 +139,10 @@ class MetricsHttpTest {
 
             // Timed requests increment cumulative buckets with +Inf equal to the counter,
             // and no raw id reaches any bucket line.
-            assertTrue(body.contains("orevia_http_request_duration_seconds_bucket{"), body);
-            assertTrue(body.contains("orevia_http_request_duration_seconds_bucket{method=\"GET\","
+            assertTrue(body.contains("aurevia_http_request_duration_seconds_bucket{"), body);
+            assertTrue(body.contains("aurevia_http_request_duration_seconds_bucket{method=\"GET\","
                     + "route=\"/api/v1/patients/{id}\",status=\"2xx\",le=\"+Inf\"} 2\n"), body);
-            assertTrue(body.contains("orevia_http_request_duration_seconds_count{method=\"GET\","
+            assertTrue(body.contains("aurevia_http_request_duration_seconds_count{method=\"GET\","
                     + "route=\"/api/v1/patients/{id}\",status=\"2xx\"} 2\n"), body);
             assertFalse(body.contains("patient-777"), body);
             assertFalse(body.contains("patient-888"), body);
@@ -155,8 +155,8 @@ class MetricsHttpTest {
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,
                         AUDIENCE_PROPERTY + "=synthetic-api",
-                        "orevia.oidc.client-id=synthetic-client",
-                        "orevia.oidc.client-secret=synthetic-secret");
+                        "aurevia.oidc.client-id=synthetic-client",
+                        "aurevia.oidc.client-secret=synthetic-secret");
     }
 
     private static WebApplicationContextRunner newSyntheticRunner() {

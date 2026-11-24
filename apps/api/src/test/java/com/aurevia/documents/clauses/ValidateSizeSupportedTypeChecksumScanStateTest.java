@@ -45,17 +45,17 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_doc_clause1_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_doc_clause1_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ValidateSizeSupportedTypeChecksumScanStateTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    private static final String DB = "orevia_doc_clause1_it";
+    private static final String DB = "aurevia_doc_clause1_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String CONTEXT = "ctx-doc-clause1";
     private static final String PATIENT = "pat-doc-clause1";
     private static final String CHECKSUM = "a".repeat(64);
@@ -81,16 +81,16 @@ class ValidateSizeSupportedTypeChecksumScanStateTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedStaff(statement, ORG_A, "uploader", "reception");
             seedStaff(statement, ORG_A, "scanner", "security_scanner");
@@ -142,7 +142,7 @@ class ValidateSizeSupportedTypeChecksumScanStateTest {
     }
 
     private static void seedObject(String objectKey, int objectVersion, long sizeBytes) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement();
              PreparedStatement insert = connection.prepareStatement(
                      "INSERT INTO public.document_verified_object "
@@ -164,7 +164,7 @@ class ValidateSizeSupportedTypeChecksumScanStateTest {
      * would be vacuously zero.
      */
     private static long artifactCount(String org) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             try (ResultSet rows = statement.executeQuery(

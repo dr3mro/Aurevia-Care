@@ -65,7 +65,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_patient_access_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_patient_access_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class JdbcPatientAccessStoreIntegrationTest {
@@ -74,9 +74,9 @@ class JdbcPatientAccessStoreIntegrationTest {
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String CHART = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     static final String FACTS = "site-verified-facts";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_patient_access_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_patient_access_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     PatientAccessStore store;
@@ -91,7 +91,7 @@ class JdbcPatientAccessStoreIntegrationTest {
      * method that creates the database owned by that role. JUnit does not guarantee the
      * relative order of several {@code @BeforeAll} methods in one class, so a separate
      * role-creation method can run after {@code prepare()} and leave the
-     * {@code CREATE DATABASE ... OWNER orevia_migrate} statement with no role to
+     * {@code CREATE DATABASE ... OWNER aurevia_migrate} statement with no role to
      * own it.</p>
      */
 
@@ -104,18 +104,18 @@ class JdbcPatientAccessStoreIntegrationTest {
             // @BeforeAll: JUnit does not guarantee the order of multiple @BeforeAll
             // methods, so a separate roles() method could run after prepare().
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_patient_access_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_patient_access_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_patient_access_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_patient_access_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A, "MRN-PA-A");
             seedTenant(statement, ORG_B, "MRN-PA-B");
@@ -128,7 +128,7 @@ class JdbcPatientAccessStoreIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_patient_access_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_patient_access_it WITH (FORCE)");
         }
     }
 
@@ -180,7 +180,7 @@ class JdbcPatientAccessStoreIntegrationTest {
     }
 
     private static int accountCount(String org, String subject) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             var rows = statement.executeQuery("SELECT count(*) FROM public.patient_access_account "

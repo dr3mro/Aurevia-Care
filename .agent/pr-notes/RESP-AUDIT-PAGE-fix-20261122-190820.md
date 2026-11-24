@@ -20,7 +20,7 @@ Routine. Comment-only source hygiene plus a new test; no clinical data, authoriz
 
 ## Review owner
 
-Senior Java and Spring Boot / Senior Java Build and Test Tooling for the hygiene fix and test; Senior React and Vite for the unchanged story scope. This pass used `orevia-delivery`, `orevia-plan-reviewer`, `orevia-code-reviewer`, `orevia-coverage-auditor` and `orevia-devsecops` (all read-only reviewers). Evidence below comes from executed tool commands and reviewer verdicts — no human, clinician, patient or simulated-user participant evidence.
+Senior Java and Spring Boot / Senior Java Build and Test Tooling for the hygiene fix and test; Senior React and Vite for the unchanged story scope. This pass used `aurevia-delivery`, `aurevia-plan-reviewer`, `aurevia-code-reviewer`, `aurevia-coverage-auditor` and `aurevia-devsecops` (all read-only reviewers). Evidence below comes from executed tool commands and reviewer verdicts — no human, clinician, patient or simulated-user participant evidence.
 
 ## Data changes
 
@@ -46,7 +46,7 @@ All commands executed from branch `swarm/RESP-AUDIT-PAGE-997`, HEAD `47770b00c4c
 6. `python3 -I scripts/check-names.py` → exit 0. `python3 -I scripts/check-wiring.py` → exit 0 (only pre-existing notes that baseline entries are fixed and should be deleted by a scripts owner; baseline shrinks are not a worker change).
 7. **Mandatory frontend gate.** `bash apps/staff-web/check.sh` (run from repo root) → exit 0. Typecheck final lines (mandatory evidence):
    ```
-   > orevia-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    No `error TS…` line. Stages green: `gen:api generated client matches the contract`, typecheck, `eslint . --max-warnings 0`, `vite build`, bundle-size gate, `vitest run --coverage --exclude 'e2e/**'` → `Test Files  206 passed (206)` / `Tests  2542 passed (2542)` / `No files with missing coverage.` / `213 files fully covered. 4 empty files skipped.` The `useTheme must be used inside ThemeProvider` and similar console lines are expected jsdom negative-path noise from provider tests; the run ends green.
@@ -78,10 +78,10 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 
@@ -98,7 +98,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 - When a re-dispatched fix worker finds the story's code already merged, verify the scope in isolation (targeted tests + module `check.sh`) and distinguish already-resolved module failures from ones you cause, instead of re-implementing the story.
 - A comment-only production edit leaves bytecode and JaCoCo untouched; a targeted `-Dtest=... test jacoco:report` plus the CSV rows is sufficient local proof under the no-full-verify worker rule.
 - `bash apps/staff-web/check.sh` prints expected jsdom console errors while exiting 0; judge green by exit status and the `Test Files`/`Tests` summary, not console noise.
-- `scripts/check-verdicts.py` matches `- orevia-<name>: GO`, not a bare `VERDICT: GO` line; write the lines in that exact form.
+- `scripts/check-verdicts.py` matches `- aurevia-<name>: GO`, not a bare `VERDICT: GO` line; write the lines in that exact form.
 - The source-file locate helper duplicates an existing test pattern (`OpenApiContractDriftTest.locateContract`); a shared test utility owned by a separate scripts/test task would remove the fifth copy.
 
 ```task-requests

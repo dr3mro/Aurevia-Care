@@ -22,7 +22,7 @@ notes, which become the pull request description.
 Evidence source: executed tool commands run by me in this cloud worker, plus
 the first worker's committed tool-run notes for the strict-typecheck rationale.
 No reviewer, simulated user or human participant produced new evidence in this
-pass. The earlier bounded `orevia-senior-react` review was simulated and
+pass. The earlier bounded `aurevia-senior-react` review was simulated and
 advisory (it edited no files).
 
 ## Affected requirements
@@ -49,7 +49,7 @@ production file was changed in this fix pass either.
 
 ## Review owner
 
-`orevia-senior-react` (bounded, advisory review recorded by the first
+`aurevia-senior-react` (bounded, advisory review recorded by the first
 worker). Strict TypeScript rules were applied with a focused `tsc` and ESLint
 on the config because the module `tsconfig.json` excludes `e2e/`. No specialist
 edited any file.
@@ -86,7 +86,7 @@ worker; evidence is from executed tool commands, not a reviewer or human.
    - `gen:api: generated client matches the contract`
    - typecheck final lines (mandatory paste, no `error TS…`):
      ```
-     > orevia-staff-web@0.1.0 typecheck
+     > aurevia-staff-web@0.1.0 typecheck
      > tsc --noEmit -p tsconfig.json
      ```
    - `> eslint . --max-warnings 0` (no warnings)

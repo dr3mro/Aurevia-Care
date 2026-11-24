@@ -25,13 +25,13 @@ keyboard order, empty state, breakpoint transitions, long strings and RTL.
 ## Risk class
 
 Routine (contained UI presentation change, no data, authorization or contract
-change). One bounded advisory review was routed to `orevia-senior-react`;
+change). One bounded advisory review was routed to `aurevia-senior-react`;
 its three findings (single DOM table, two `if (compact)` blocks, `.card-list` on
 tbody) were adopted. Simulated reviewer only; no human or clinical review.
 
 ## Review owner
 
-`orevia-senior-react` (advisory plan, no blocking findings). Strict
+`aurevia-senior-react` (advisory plan, no blocking findings). Strict
 TypeScript/lint/build checks are recorded below.
 
 ## Data changes
@@ -71,7 +71,7 @@ Evidence source: executed tool commands unless labelled *simulated reviewer*.
   existing provider error-path tests and are not failures.)
 - Typecheck final lines (requested by the story):
   `cd apps/staff-web && npm run typecheck` →
-  `> orevia-staff-web@0.1.0 typecheck`
+  `> aurevia-staff-web@0.1.0 typecheck`
   `> tsc --noEmit -p tsconfig.json`
   then exit code 0 with no `error TS…` output.
 - `git merge --no-edit origin/main` → `Already up to date.` (run at start, after implementation and before finishing); no conflict markers in the two scoped files.

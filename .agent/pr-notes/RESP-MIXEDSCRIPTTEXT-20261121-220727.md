@@ -33,7 +33,7 @@ Routine (contained shared-component presentation change). No authorization, data
 
 ## Review owner
 
-Senior React and Vite (bounded review completed). The simulated `orevia-senior-react` specialist reviewed both files plus `useBreakpoint.ts`, `breakpoints.ts`, `responsive.css`, the baseline test and the design docs and returned **no blocking findings**: bidi isolation is correct (`<bdi dir="auto" lang>`), logical inline wrapping matches the design recipe, the component adds no tab stop or direction override, exported names/behaviour are unchanged, `data-breakpoint` follows the existing `StateViews` precedent, and the tests are meaningful. Its three non-blocking observations were informational (no CSS consumer for `data-breakpoint` — explicitly required by the task; `LONG_ARABIC` wrapping assertion; inert `min-inline-size` on an inline box). I addressed the test observation by asserting `whiteSpace`/`overflowWrap` on the long Arabic run in the breakpoint-change test. The reviewer had read-only tools and did not re-run the gates; all pass claims below are from executed tool commands. No clinical/QA sign-off required for presentation-only work; no human or patient-participant evidence is claimed.
+Senior React and Vite (bounded review completed). The simulated `aurevia-senior-react` specialist reviewed both files plus `useBreakpoint.ts`, `breakpoints.ts`, `responsive.css`, the baseline test and the design docs and returned **no blocking findings**: bidi isolation is correct (`<bdi dir="auto" lang>`), logical inline wrapping matches the design recipe, the component adds no tab stop or direction override, exported names/behaviour are unchanged, `data-breakpoint` follows the existing `StateViews` precedent, and the tests are meaningful. Its three non-blocking observations were informational (no CSS consumer for `data-breakpoint` — explicitly required by the task; `LONG_ARABIC` wrapping assertion; inert `min-inline-size` on an inline box). I addressed the test observation by asserting `whiteSpace`/`overflowWrap` on the long Arabic run in the breakpoint-change test. The reviewer had read-only tools and did not re-run the gates; all pass claims below are from executed tool commands. No clinical/QA sign-off required for presentation-only work; no human or patient-participant evidence is claimed.
 
 ## Data changes
 
@@ -61,13 +61,13 @@ Mandatory frontend gate — `bash apps/staff-web/check.sh` exits at its first st
 
 - `npm run typecheck` → exit 0. Final lines:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   No `error TS…`.
 - `npm run lint` → exit 0. Final lines:
   ```
-  > orevia-staff-web@0.1.0 lint
+  > aurevia-staff-web@0.1.0 lint
   > eslint . --max-warnings 0
   ```
 - `npm run build` → exit 0 (`✓ built in 168ms`).

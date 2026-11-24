@@ -17,7 +17,7 @@ Routine — contained UI presentation change in one staff-web component plus a n
 
 ## Review owner
 
-`orevia-senior-react` (bounded review, simulated) and `orevia-ux-reviewer` (bounded review, simulated). Both were advisory subagent reviews; no code was edited by them. No human or clinical-participant review was available or claimed.
+`aurevia-senior-react` (bounded review, simulated) and `aurevia-ux-reviewer` (bounded review, simulated). Both were advisory subagent reviews; no code was edited by them. No human or clinical-participant review was available or claimed.
 
 ## Data changes
 
@@ -43,18 +43,18 @@ Green stage, targeted regression:
 Final mandatory frontend definition of done (exit 0), `bash apps/staff-web/check.sh` — exact final lines:
 
 ```
-> orevia-staff-web@0.1.0 gen:api:check
+> aurevia-staff-web@0.1.0 gen:api:check
 > bash scripts/gen-api-types.sh --check
 ✨ openapi-typescript 7.4.2
 gen:api: generated client matches the contract
 
-> orevia-staff-web@0.1.0 typecheck
+> aurevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 
-> orevia-staff-web@0.1.0 lint
+> aurevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 
-> orevia-staff-web@0.1.0 build
+> aurevia-staff-web@0.1.0 build
 > tsc --noEmit -p tsconfig.json && vite build
 ✓ built in 167ms
 

@@ -40,9 +40,9 @@ result, contract, migration or deployment is touched.
 
 ## Review owner
 
-Senior Python Tooling (`orevia-senior-python`) for the change; read-only
-`orevia-plan-reviewer`, `orevia-code-reviewer`, `orevia-coverage-auditor` and
-`orevia-devsecops` for the quality loop. All reviewers were read-only and simulated;
+Senior Python Tooling (`aurevia-senior-python`) for the change; read-only
+`aurevia-plan-reviewer`, `aurevia-code-reviewer`, `aurevia-coverage-auditor` and
+`aurevia-devsecops` for the quality loop. All reviewers were read-only and simulated;
 no real clinical or unit participant was involved.
 
 ## Data changes
@@ -136,10 +136,10 @@ tenant boundary is touched. OPS-06 is operational tooling only.
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 All four were run in this fix pass on the committed change. No Critical, Required or
 Optional finding was left unresolved. The code reviewer confirmed `classify_failure`

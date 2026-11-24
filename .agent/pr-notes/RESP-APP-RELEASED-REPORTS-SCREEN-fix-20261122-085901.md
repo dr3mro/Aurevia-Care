@@ -11,8 +11,8 @@ I rehydrated the governing context as instructed: `.agent/context-files.txt`,
 `AGENTS.md`, `CODING_STYLE.md`, `PROJECT.md`, `WORKSPACE.md`, `MEMORY.md`, `TODO.md`
 ("Instructions for every agent" + this story's entry), `docs/WORKFLOW.md`, BUGS-relevant
 history, the `0005-patient-app-tablets.md` decision, the product clause for
-verified-adult self-access, and the `orevia-delivery`, `orevia-senior-mobile`
-and `orevia-senior-typescript` skills. I surveyed `features/reports` and
+verified-adult self-access, and the `aurevia-delivery`, `aurevia-senior-mobile`
+and `aurevia-senior-typescript` skills. I surveyed `features/reports` and
 `app/layout` and confirmed reuse of the existing `windowClassFor` classifier,
 `patientDesign` tokens and `ReleasedReport` type.
 
@@ -61,10 +61,10 @@ contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) is the domain owner; its
+Senior React Native and Expo (`aurevia-senior-mobile`) is the domain owner; its
 mandatory definition of done was executed and met this pass (module `check.sh` green,
 typecheck final lines and coverage summary below, zero `error TS…`). Senior
-TypeScript (`orevia-senior-typescript`) owns the strict
+TypeScript (`aurevia-senior-typescript`) owns the strict
 `exactOptionalPropertyTypes` rule that produced TS2375; the root strict typecheck,
 the exact failing gate `scripts/frontend-check.sh` and `scripts/frontend-typecheck-check.sh`
 are green. A prior bounded mobile-specialist advisory review confirmed the fix is

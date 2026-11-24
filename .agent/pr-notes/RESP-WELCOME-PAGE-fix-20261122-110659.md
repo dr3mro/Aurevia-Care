@@ -44,7 +44,7 @@ blocker is delivery tooling, not a change in this story.
 ## Review owner
 
 Primary agent (tool-verified). Earlier passes recorded simulated
-`orevia-senior-react` and `orevia-ux-reviewer` reviews, both with no
+`aurevia-senior-react` and `aurevia-ux-reviewer` reviews, both with no
 actionable findings; those subagents had no shell and relied on primary-agent
 evidence. This pass changes no code, so no new public contract, migration or
 clinical data is involved and no new cross-boundary or clinical review is required.
@@ -73,7 +73,7 @@ Exact commands run in this pass and their final lines:
   `apps/api/.../hl7/` Java files (see Findings).
 - `bash apps/staff-web/check.sh` → **exit 0**. Final lines of each stage:
   - `gen:api: generated client matches the contract`
-  - typecheck: `> orevia-staff-web@0.1.0 typecheck` then
+  - typecheck: `> aurevia-staff-web@0.1.0 typecheck` then
     `> tsc --noEmit -p tsconfig.json` — **no `error TS…`, exit 0**
   - lint: `> eslint . --max-warnings 0` — no warnings, exit 0
   - build: `> tsc --noEmit -p tsconfig.json && vite build`, `✓ built in 137ms`,

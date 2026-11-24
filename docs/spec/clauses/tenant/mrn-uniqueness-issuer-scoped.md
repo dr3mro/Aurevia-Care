@@ -16,7 +16,7 @@ It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic
 profile and two synthetic tenants, following the fixtures and database setup of
 `apps/api/src/test/java/com/aurevia/patient/clauses/RecordPatientrecordIssuerScopedMrnOrganizationTest.java`
 (the IAM-03 clause 1 proof, which exercises the same rule). A dedicated database
-(`orevia_arc01_clause3_it`) is migrated from `db/migrations` so the durable
+(`aurevia_arc01_clause3_it`) is migrated from `db/migrations` so the durable
 rows are read back under forced row-level security.
 
 Test methods (one positive rule proof and two negative refusals):

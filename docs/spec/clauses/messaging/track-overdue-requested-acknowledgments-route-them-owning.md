@@ -13,7 +13,7 @@ Proven by tests
 Test class: `com.aurevia.messaging.clauses.TrackOverdueRequestedAcknowledgmentsRouteThemOwningTest`
 (path: `apps/api/src/test/java/com/aurevia/messaging/clauses/TrackOverdueRequestedAcknowledgmentsRouteThemOwningTest.java`).
 All seven tests are active (none disabled). The suite recreates its own PostgreSQL
-database (`orevia_overdue_followups_it`) from the authoritative Flyway migrations,
+database (`aurevia_overdue_followups_it`) from the authoritative Flyway migrations,
 seeds two isolated tenants with synthetic memberships, roles, a verified patient chart,
 an active patient-unit connection and owning-unit staff assignments, and drives the real
 HTTP entry point under the `synthetic-auth` profile with `X-Synthetic-Subject` and

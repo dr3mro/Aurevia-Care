@@ -1,9 +1,9 @@
 {
-  "name": "orevia-staff-web",
+  "name": "aurevia-staff-web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Orevia staff web visual foundation (synthetic data only).",
+  "description": "Aurevia staff web visual foundation (synthetic data only).",
   "engines": {
     "node": ">=22.12.0"
   },

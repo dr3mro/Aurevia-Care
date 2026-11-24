@@ -19,7 +19,7 @@ Routine — one new synthetic test file, no runtime, contract, schema or gate ch
 
 ## Review owner
 
-orevia-senior-python and orevia-test-engineer (advisory; no production change).
+aurevia-senior-python and aurevia-test-engineer (advisory; no production change).
 
 ## Data changes
 

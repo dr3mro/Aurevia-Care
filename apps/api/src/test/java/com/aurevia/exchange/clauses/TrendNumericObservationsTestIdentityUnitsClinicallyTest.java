@@ -45,16 +45,16 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_trend_identity_units_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_trend_identity_units_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class TrendNumericObservationsTestIdentityUnitsClinicallyTest {
 
     private static final String ORG_A = "41111111-1111-1111-1111-111111111111";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_trend_identity_units_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_trend_identity_units_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /* Each scenario has its own patient and test code. A comparability rule is
@@ -84,18 +84,18 @@ class TrendNumericObservationsTestIdentityUnitsClinicallyTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_trend_identity_units_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_trend_identity_units_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_trend_identity_units_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_trend_identity_units_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedMember(statement, "clinician-a", "clinician");
             seedMember(statement, "admin-a", "tenant_admin");
@@ -107,7 +107,7 @@ class TrendNumericObservationsTestIdentityUnitsClinicallyTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_trend_identity_units_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_trend_identity_units_it WITH (FORCE)");
         }
     }
 
@@ -137,7 +137,7 @@ class TrendNumericObservationsTestIdentityUnitsClinicallyTest {
      * @throws Exception when the fixture cannot be inserted
      */
     private static String createPatient(String mrn) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");

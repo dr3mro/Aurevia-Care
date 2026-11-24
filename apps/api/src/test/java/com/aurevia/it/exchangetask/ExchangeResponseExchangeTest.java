@@ -40,14 +40,14 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_xch03_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_xch03_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class ExchangeResponseExchangeTest {
 
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_xch03_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_xch03_it";
     static final String CHECKSUM = "a".repeat(64);
     static final String NEXT_CHECKSUM = "b".repeat(64);
     static final int ORDER_COUNT = 7;
@@ -59,7 +59,7 @@ class ExchangeResponseExchangeTest {
     static final int IDX_PRECOND = 6;
     static final int IDX_CHANGE_REJECT = 7;
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -76,19 +76,19 @@ class ExchangeResponseExchangeTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_xch03_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_xch03_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_xch03_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_xch03_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A);
             seedTenant(statement, ORG_B);
@@ -100,7 +100,7 @@ class ExchangeResponseExchangeTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_xch03_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_xch03_it WITH (FORCE)");
         }
     }
 
@@ -164,7 +164,7 @@ class ExchangeResponseExchangeTest {
     }
 
     private static String patientId(String org) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "admin");
             try (Statement statement = connection.createStatement();
@@ -182,7 +182,7 @@ class ExchangeResponseExchangeTest {
 
     /** The opaque identity id that the actor trigger writes into the ledgers. */
     private static String identityId(String org, String subject) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "admin");
             try (PreparedStatement statement = connection.prepareStatement(
@@ -214,7 +214,7 @@ class ExchangeResponseExchangeTest {
     }
 
     private static long scalar(String org, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "admin");
             try (Statement statement = connection.createStatement();
@@ -491,7 +491,7 @@ class ExchangeResponseExchangeTest {
                 "an authorization denial must be audited with the order id");
 
         // Append-only ledgers reject a mutation even by the migration owner.
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, ORG_A, "admin");
             boolean refused = false;
@@ -507,7 +507,7 @@ class ExchangeResponseExchangeTest {
     }
 
     private static long auditCount(String organization, String action, String id) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, organization, "admin");
             try (PreparedStatement statement = connection.prepareStatement(

@@ -13,7 +13,7 @@ Partly proven
 Test class: `com.aurevia.exchange.clauses.ApplyLawPolicyRecipientRetentionTest`
 (path: `apps/api/src/test/java/com/aurevia/exchange/clauses/ApplyLawPolicyRecipientRetentionTest.java`).
 All seven tests are active (none are disabled) and use synthetic data on a dedicated PostgreSQL
-database (`orevia_xch03_retention_it`) migrated from `db/migrations` with forced row-level
+database (`aurevia_xch03_retention_it`) migrated from `db/migrations` with forced row-level
 security. They drive the real HTTP entry point with the synthetic-auth profile, the same fixtures
 and the same style as the neighbouring `com.aurevia.it.exchangetask.ExchangeResponseExchangeTest`.
 

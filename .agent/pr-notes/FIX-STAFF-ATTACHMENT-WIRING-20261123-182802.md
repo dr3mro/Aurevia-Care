@@ -60,7 +60,7 @@ Simulated/static specialist review only (plan, code, coverage, devsecops). No ph
 
 ## Plan and review stage
 
-`orevia-plan-reviewer` reviewed the plan before coding: first NO-GO (preflight before commit, per-thread audience, tests-first, context-wiring proof, named coverage commands), revised plan **GO** with no Required gaps. `orevia-test-engineer` designed the red matrix. Segment 2's atomic-bind fix was re-reviewed by all three post-code reviewers; all final verdicts are copied under `## Review verdicts`.
+`aurevia-plan-reviewer` reviewed the plan before coding: first NO-GO (preflight before commit, per-thread audience, tests-first, context-wiring proof, named coverage commands), revised plan **GO** with no Required gaps. `aurevia-test-engineer` designed the red matrix. Segment 2's atomic-bind fix was re-reviewed by all three post-code reviewers; all final verdicts are copied under `## Review verdicts`.
 
 ## Test evidence
 
@@ -74,7 +74,7 @@ Evidence in this section came from commands executed in this checkout (tool evid
 
 **Real-PostgreSQL audience check** — `mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=StaffAttachmentAudienceIntegrationTest test` → `IT_EXIT=0`. Flyway applied 59 migrations to v96; the test proves two disjoint frozen mail audiences, departed-participant denial and cross-tenant denial with forced RLS. A stale failure XML from an earlier run at 19:15 (RLS `organization` insert) was superseded by this passing run; it was not caused by the committed change.
 
-**Frontend definition of done** — `bash apps/staff-web/check.sh` → `STAFFWEB_EXIT=0`. Typecheck final lines: `> orevia-staff-web@0.1.0 typecheck`, `> tsc --noEmit -p tsconfig.json`, `> tsc --noEmit -p tsconfig.json && vite build`; no `error TS` in the log. Vitest: `Test Files 252 passed (252)`, `Tests 2977 passed (2977)`; coverage `No files with missing coverage.`, `267 files fully covered.`, `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`.
+**Frontend definition of done** — `bash apps/staff-web/check.sh` → `STAFFWEB_EXIT=0`. Typecheck final lines: `> aurevia-staff-web@0.1.0 typecheck`, `> tsc --noEmit -p tsconfig.json`, `> tsc --noEmit -p tsconfig.json && vite build`; no `error TS` in the log. Vitest: `Test Files 252 passed (252)`, `Tests 2977 passed (2977)`; coverage `No files with missing coverage.`, `267 files fully covered.`, `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`.
 
 **Other gates (tool evidence)** — `python3 -I scripts/check-wiring.py` → 0; `python3 -I scripts/check-names.py` → 0; `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py'` → `Ran 2 tests … OK`; `python3 -I scripts/check-constraints.py --base origin/main --require-base` → 0; `python3 -I scripts/check-docs.py` → 0; `(cd apps/staff-web && npm run gen:api:check)` → `generated client matches the contract`; `git diff --exit-code -- contracts/openapi.yaml apps/staff-web/src/api/generated/openapi.d.ts` → 0. `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check` → `SPOTBUGS_EXIT=0` (compile before check; no new finding). `bash scripts/quality-gate.sh origin/main .agent/pr-notes/FIX-STAFF-ATTACHMENT-WIRING-20261123-182802.md` → `QUALITY_GATE_EXIT=0`. The first quality-gate run failed because the new JDBC test added a `@SuppressWarnings("unchecked")`; that annotation was removed and the mapper cast changed to the reifiable `RowMapper<?>` form, after which the gate passed with no suppression added.
 
@@ -127,9 +127,9 @@ Branch-to-test map for every new or changed branch:
 
 ## Review verdicts
 
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

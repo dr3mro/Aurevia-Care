@@ -23,7 +23,7 @@ Routine (contained presentation change in one patient screen; safety-critical cl
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`); independent UX review remains a separate launch gate. A bounded senior-mobile **simulated review** completed (static file reads only; the reviewer ran no commands). It found one acceptance gap — RN's built-in `SafeAreaView` is iOS-only — which was fixed by using the installed cross-platform library view and proving the rendered native node type in the test.
+Senior React Native and Expo (`aurevia-senior-mobile`); independent UX review remains a separate launch gate. A bounded senior-mobile **simulated review** completed (static file reads only; the reviewer ran no commands). It found one acceptance gap — RN's built-in `SafeAreaView` is iOS-only — which was fixed by using the installed cross-platform library view and proving the rendered native node type in the test.
 
 ## Data changes
 

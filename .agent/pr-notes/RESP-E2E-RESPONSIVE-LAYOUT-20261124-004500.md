@@ -12,7 +12,7 @@ Routine — one new end-to-end test file, no production or contract change. The 
 
 ## Review owner
 
-Primary agent. Read-only reviewers: smartclinic-plan-reviewer, smartclinic-senior-react, smartclinic-senior-typescript, smartclinic-code-reviewer, smartclinic-coverage-auditor, smartclinic-devsecops.
+Primary agent. Read-only reviewers: aurevia-plan-reviewer, aurevia-senior-react, aurevia-senior-typescript, aurevia-code-reviewer, aurevia-coverage-auditor, aurevia-devsecops.
 
 ## Data changes
 
@@ -97,10 +97,10 @@ Not required: the change makes no clinical decision, signs or releases no data, 
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (after both Required gaps were addressed; first pass was NO-GO)
-- smartclinic-code-reviewer: GO (after both Required findings were fixed; first pass was NO-GO)
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO (after both Required gaps were addressed; first pass was NO-GO)
+- aurevia-code-reviewer: GO (after both Required findings were fixed; first pass was NO-GO)
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

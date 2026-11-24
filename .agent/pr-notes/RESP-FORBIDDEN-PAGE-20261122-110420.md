@@ -19,7 +19,7 @@ Routine (docs/WORKFLOW.md): a contained staff-web presentation change to one pag
 
 ## Review owner
 
-Senior React and Vite specialist (skills `orevia-senior-react`, `orevia-senior-typescript` and `orevia-ux-reviewer` were loaded; a bounded review-only pass was requested from the senior-react specialist). The primary worker owns the edits and history.
+Senior React and Vite specialist (skills `aurevia-senior-react`, `aurevia-senior-typescript` and `aurevia-ux-reviewer` were loaded; a bounded review-only pass was requested from the senior-react specialist). The primary worker owns the edits and history.
 
 ## Data changes
 
@@ -46,7 +46,7 @@ Evidence source: **tool** (commands executed locally). Simulated specialist revi
 - `scripts/check.sh` was deliberately **not** run: it invokes `apps/api/check.sh` (full `mvn verify`, OWASP and SpotBugs) and `db/check.sh`, which the task instruction forbids running in a worker (over ten minutes; the integrator and Delivery run it). Its frontend portion was covered by `scripts/frontend-check.sh` above and the doc/secret/name checks.
 - Typecheck final lines (required by the frontend definition of done), command `npm run typecheck` in `apps/staff-web`:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   typecheck exit: 0
@@ -78,7 +78,7 @@ No threshold, exclusion, ignore comment or skipped test was added or changed.
 
 ## Clinical and architecture review
 
-Not required: no signed data, cross-organization sharing, patient association, prescribing or critical result is involved. Simulated UX review (skill `orevia-ux-reviewer`, applied to the change) confirmed the page keeps a single named action, preserves DOM focus order under RTL, wraps long English and Arabic strings and hides no text; a real Arabic-speaking clinician pass remains a separate launch gate and is not claimed here. A bounded, review-only `orevia-senior-react` specialist pass (evidence source: **simulated reviewer**, no gates run by the reviewer) returned "no blocking findings" for wrapping, logical properties, behaviour/text/export parity, ternary coverage, lint/types and accessibility; its two low-severity notes were applied (see Findings).
+Not required: no signed data, cross-organization sharing, patient association, prescribing or critical result is involved. Simulated UX review (skill `aurevia-ux-reviewer`, applied to the change) confirmed the page keeps a single named action, preserves DOM focus order under RTL, wraps long English and Arabic strings and hides no text; a real Arabic-speaking clinician pass remains a separate launch gate and is not claimed here. A bounded, review-only `aurevia-senior-react` specialist pass (evidence source: **simulated reviewer**, no gates run by the reviewer) returned "no blocking findings" for wrapping, logical properties, behaviour/text/export parity, ternary coverage, lint/types and accessibility; its two low-severity notes were applied (see Findings).
 
 ## Findings
 

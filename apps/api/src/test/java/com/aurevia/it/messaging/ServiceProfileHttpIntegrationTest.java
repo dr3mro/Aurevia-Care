@@ -45,7 +45,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_service_profile_http_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_service_profile_http_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ServiceProfileHttpIntegrationTest {
@@ -57,9 +57,9 @@ class ServiceProfileHttpIntegrationTest {
     private static final String CHART_UNCONNECTED = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
     private static final String UNKNOWN = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_service_profile_http_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_service_profile_http_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String SEEDER = "seeder-http";
     private static final String PUBLISHER = "publisher-http";
     private static final String APPROVER = "approver-http";
@@ -84,18 +84,18 @@ class ServiceProfileHttpIntegrationTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_service_profile_http_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_service_profile_http_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_service_profile_http_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_service_profile_http_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A, "MRN-SP-HTTP-A", true);
             seedTenant(statement, ORG_B, "MRN-SP-HTTP-B", false);
@@ -107,7 +107,7 @@ class ServiceProfileHttpIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_service_profile_http_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_service_profile_http_it WITH (FORCE)");
         }
     }
 
@@ -370,7 +370,7 @@ class ServiceProfileHttpIntegrationTest {
     }
 
     private static int countProfiles(String org) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             bindGuc(statement, org);
             try (ResultSet rows = statement.executeQuery(
@@ -382,7 +382,7 @@ class ServiceProfileHttpIntegrationTest {
     }
 
     private static void executeRaw(String org, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             bindGuc(statement, org);
             statement.execute(sql);

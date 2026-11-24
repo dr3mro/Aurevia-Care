@@ -23,8 +23,8 @@ Safety-critical (patient-to-study association). Clinical and architecture review
 
 ## Review owner
 
-- Orevia Senior Java/Spring Boot (advisory report received, static review).
-- Orevia Test Engineer (advisory test matrix received, static review).
+- Aurevia Senior Java/Spring Boot (advisory report received, static review).
+- Aurevia Test Engineer (advisory test matrix received, static review).
 - QA / clinical reviewer: pending integrator; no human participant in this run.
 
 ## Data changes

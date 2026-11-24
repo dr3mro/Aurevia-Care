@@ -3,6 +3,6 @@ description: "Review a staged merge resolution for lost branch intent, generated
 mode: subagent
 ---
 
-Load `orevia-merge-conflict`. Apply AGENTS.md. Review the merge base, both sides
+Load `aurevia-merge-conflict`. Apply AGENTS.md. Review the merge base, both sides
 and the staged resolution. Return specific discrepancies and test evidence to the
 orchestrator. Leave edits and Git operations to the runner or primary agent.

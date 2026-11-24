@@ -16,7 +16,7 @@ Cross-boundary (patient-app UI plus authenticated command boundary), with defens
 
 ## Review owner
 
-orevia-senior-mobile (implementation), orevia-plan-reviewer (plan), orevia-code-reviewer, orevia-coverage-auditor, orevia-devsecops (independent read-only stages).
+aurevia-senior-mobile (implementation), aurevia-plan-reviewer (plan), aurevia-code-reviewer, aurevia-coverage-auditor, aurevia-devsecops (independent read-only stages).
 
 ## Data changes
 
@@ -103,10 +103,10 @@ Not required for this slice: no signed data, cross-organization sharing, patient
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO (first pass NO-GO on ScreenStack and the double-press test; both closed, and the ScreenStack waiver was accepted on the shared-component/push-API evidence)
-- orevia-devsecops: GO (no Critical or Required finding; one Optional dev-loopback-IP note, not adopted because the strict localhost rule is deliberately fail-closed; OWASP/SpotBugs not applicable to this frontend-only change)
-- orevia-code-reviewer: GO (reachability gap documented with the exact next step and task-requests; dead key removed; scoped-input invariant documented)
-- orevia-coverage-auditor: GO (all branch arms now named with asserting tests; unreachable optional chain removed; no suppression, skip or threshold change)
+- aurevia-plan-reviewer: GO (first pass NO-GO on ScreenStack and the double-press test; both closed, and the ScreenStack waiver was accepted on the shared-component/push-API evidence)
+- aurevia-devsecops: GO (no Critical or Required finding; one Optional dev-loopback-IP note, not adopted because the strict localhost rule is deliberately fail-closed; OWASP/SpotBugs not applicable to this frontend-only change)
+- aurevia-code-reviewer: GO (reachability gap documented with the exact next step and task-requests; dead key removed; scoped-input invariant documented)
+- aurevia-coverage-auditor: GO (all branch arms now named with asserting tests; unreachable optional chain removed; no suppression, skip or threshold change)
 
 ## Why this is not finished
 

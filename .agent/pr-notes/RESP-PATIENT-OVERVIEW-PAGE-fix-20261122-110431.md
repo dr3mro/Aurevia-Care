@@ -110,7 +110,7 @@ production change (14 failed / 3 passed on the untouched wrapper).
    `tests/theme/ThemeProvider.test.tsx`, which deliberately renders a consumer
    without a provider; not a test failure.
 2. Typecheck final lines (required by the story):
-   `> orevia-staff-web@0.1.0 typecheck`
+   `> aurevia-staff-web@0.1.0 typecheck`
    `> tsc --noEmit -p tsconfig.json`
    No `error TS…` output; `CHECK_EXIT=0` (typecheck of zero errors also runs
    again inside `npm run build`).

@@ -45,11 +45,11 @@ No API, data, authorization, contract or deployment boundary changed
 
 ## Review owner
 
-`orevia-senior-react` — one bounded read-only review of the current scoped
+`aurevia-senior-react` — one bounded read-only review of the current scoped
 change (simulated subagent, this pass) returned **"No blocking finding exists"**;
 its verdict was based on file reads of the two scoped files plus
 `src/theme/breakpoints.ts`, `responsive.css`, `vite.config.ts`, `tests/setup.ts`,
-`admin-screen.test.tsx` and a usage grep. `orevia-ux-reviewer` and a senior-
+`admin-screen.test.tsx` and a usage grep. `aurevia-ux-reviewer` and a senior-
 React review were also recorded by the implementation worker. No reviewer
 edited code or ran builds/tests. No human, clinician or participant review was
 available or claimed.
@@ -102,18 +102,18 @@ run; `grep -c 'error TS'` returned 0; the typecheck and build `tsc --noEmit`
 steps produced empty output):
 
 ```
-> orevia-staff-web@0.1.0 gen:api:check
+> aurevia-staff-web@0.1.0 gen:api:check
 > bash scripts/gen-api-types.sh --check
 ✨ openapi-typescript 7.4.2
 gen:api: generated client matches the contract
 
-> orevia-staff-web@0.1.0 typecheck
+> aurevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 
-> orevia-staff-web@0.1.0 lint
+> aurevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 
-> orevia-staff-web@0.1.0 build
+> aurevia-staff-web@0.1.0 build
 > tsc --noEmit -p tsconfig.json && vite build
 ✓ built in 134ms
 ```

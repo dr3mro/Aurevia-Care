@@ -91,11 +91,11 @@ Not required. No signed data, cross-organization sharing, patient association, p
 
 ## Review verdicts
 
-- smartclinic-code-reviewer: GO (initial review GO with four Optional notes; re-review after hardening GO with five Optional notes; final re-review after the route fix GO with two harmless Optional notes. The `//signed-out` navigation bug was fixed, not suppressed.)
-- smartclinic-plan-reviewer: GO (initial review NO-GO with four Required gaps: built bundle, observer thresholds, real red step, serialised build. Re-review after implementation confirmed all four closed in the single scoped file.)
-- smartclinic-devsecops: GO (initial review: Optional `test.fixme` capability gate and loopback readiness flakiness, both bounded and documented. Re-review after hardening: no Critical, Required or Optional findings; no secret/PHI in diagnostics, no external network, no untrusted-code execution, no new dependency.)
-- smartclinic-test-engineer: GO (initial review GO; final re-review confirmed `new URL(route, baseUrl)` reaches both real routes and the CLS read fails closed. Thresholds and the negative-control test are unchanged. INP cannot pass without a real interaction; red proof exercised the real budget assertion and was restored.)
-- smartclinic-coverage-auditor: GO (Optional: defensive test-infrastructure branches not individually named; the branch map below was extended to name them. e2e is outside Vitest coverage and no threshold or exclusion changed.)
+- aurevia-code-reviewer: GO (initial review GO with four Optional notes; re-review after hardening GO with five Optional notes; final re-review after the route fix GO with two harmless Optional notes. The `//signed-out` navigation bug was fixed, not suppressed.)
+- aurevia-plan-reviewer: GO (initial review NO-GO with four Required gaps: built bundle, observer thresholds, real red step, serialised build. Re-review after implementation confirmed all four closed in the single scoped file.)
+- aurevia-devsecops: GO (initial review: Optional `test.fixme` capability gate and loopback readiness flakiness, both bounded and documented. Re-review after hardening: no Critical, Required or Optional findings; no secret/PHI in diagnostics, no external network, no untrusted-code execution, no new dependency.)
+- aurevia-test-engineer: GO (initial review GO; final re-review confirmed `new URL(route, baseUrl)` reaches both real routes and the CLS read fails closed. Thresholds and the negative-control test are unchanged. INP cannot pass without a real interaction; red proof exercised the real budget assertion and was restored.)
+- aurevia-coverage-auditor: GO (Optional: defensive test-infrastructure branches not individually named; the branch map below was extended to name them. e2e is outside Vitest coverage and no threshold or exclusion changed.)
 
 ## Findings
 

@@ -40,10 +40,10 @@ Routine — contained presentational change to one presentational component plus
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) — bounded read-only plan review completed;
+Senior React and Vite (`aurevia-senior-react`) — bounded read-only plan review completed;
 recommendations (drop redundant inline `gap`, avoid `useTheme` without a provider, static class,
-zero new branches) were applied. Senior TypeScript (`orevia-senior-typescript`) and UX
-(`orevia-ux-reviewer`) skills loaded. UX review is **simulated**, not a human/synthetic-user
+zero new branches) were applied. Senior TypeScript (`aurevia-senior-typescript`) and UX
+(`aurevia-ux-reviewer`) skills loaded. UX review is **simulated**, not a human/synthetic-user
 walkthrough.
 
 ## Data changes
@@ -82,7 +82,7 @@ simulated-user participation in this task.
 
    Typecheck final lines (from `npm run typecheck`, exit 0 — no `error TS…`):
    ```
-   > orevia-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    The build step re-ran `tsc --noEmit -p tsconfig.json && vite build` and succeeded.

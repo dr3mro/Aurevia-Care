@@ -220,25 +220,25 @@ END $rls$;
 -- Runtime role permissions. The message ledger is insert/select only; the
 -- mutable projections may be updated but never deleted or truncated by the
 -- application. Triggers bind the migration owner as well as the app role.
-GRANT SELECT, INSERT, UPDATE ON public.staff_conversation TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.staff_participant TO orevia_app;
-GRANT SELECT, INSERT ON public.staff_message TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.staff_mail_metadata TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.staff_mail_folder TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.staff_attachment_link TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.staff_conversation TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.staff_participant TO aurevia_app;
+GRANT SELECT, INSERT ON public.staff_message TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.staff_mail_metadata TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.staff_mail_folder TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.staff_attachment_link TO aurevia_app;
 
-REVOKE DELETE, TRUNCATE ON public.staff_conversation FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.staff_participant FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.staff_message FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.staff_mail_metadata FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.staff_mail_folder FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.staff_attachment_link FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.staff_conversation FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.staff_participant FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.staff_message FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.staff_mail_metadata FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.staff_mail_folder FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.staff_attachment_link FROM aurevia_app;
 
 REVOKE ALL ON FUNCTION public.next_staff_message_sequence(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.assign_staff_message_sequence() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_staff_actor_subject() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_staff_conversation_creator() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.next_staff_message_sequence(uuid, uuid) TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.assign_staff_message_sequence() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.set_staff_actor_subject() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.set_staff_conversation_creator() TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.next_staff_message_sequence(uuid, uuid) TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.assign_staff_message_sequence() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.set_staff_actor_subject() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.set_staff_conversation_creator() TO aurevia_app;

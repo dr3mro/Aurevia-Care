@@ -20,7 +20,7 @@ Routine — test-only addition inside the finance domain. No production line cha
 
 ## Review owner
 
-`orevia-senior-backend` and `orevia-test-engineer` skills loaded; one bounded, read-only specialist review of the new test file was completed. It confirmed criteria 1–4 were genuinely asserted and raised four gaps (F1 one-currency, F2 reason-for-reversal, F3 immutability, F4 add-overflow); all four were fixed in this commit and re-verified green. The reviewer made no edits and ran no checks, so its findings are simulated-review evidence, not tool evidence. No human clinician or finance owner involved.
+`aurevia-senior-backend` and `aurevia-test-engineer` skills loaded; one bounded, read-only specialist review of the new test file was completed. It confirmed criteria 1–4 were genuinely asserted and raised four gaps (F1 one-currency, F2 reason-for-reversal, F3 immutability, F4 add-overflow); all four were fixed in this commit and re-verified green. The reviewer made no edits and ran no checks, so its findings are simulated-review evidence, not tool evidence. No human clinician or finance owner involved.
 
 ## Data changes
 
@@ -42,7 +42,7 @@ All commands run from the repository root on branch `swarm/BUILD-13-417` (HEAD `
    `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='FinanceLedgerTest' test`
    Final line: `EXIT:0`; Surefire XML: `tests="10" errors="0" skipped="0" failures="0"`.
 2. Full finance set, unit + PostgreSQL integration (all green):
-   `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='FinanceLedgerTest,InvoiceListServiceTest,InvoiceListControllerTest,FinanceContractTest,FinanceServiceTest,FinanceFlowTest,FinanceHttpSecurityTest,InvoiceListIntegrationTest' test`
+   `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='FinanceLedgerTest,InvoiceListServiceTest,InvoiceListControllerTest,FinanceContractTest,FinanceServiceTest,FinanceFlowTest,FinanceHttpSecurityTest,InvoiceListIntegrationTest' test`
    Final line: `EXIT:0`.
 3. Final gate (policy + Python tooling + compile + all unit tests): `bash scripts/quick-check.sh`
    Final lines: `quick check: policy, compile and unit tests passed` / `EXIT:0`.

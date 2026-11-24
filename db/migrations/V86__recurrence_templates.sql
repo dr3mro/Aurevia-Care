@@ -108,6 +108,6 @@ BEGIN
 END $$;
 
 GRANT SELECT, INSERT ON public.recurrence_template, public.appointment_series,
-                        public.series_occurrence TO orevia_app;
+                        public.series_occurrence TO aurevia_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON public.recurrence_template, public.appointment_series,
-       public.series_occurrence FROM orevia_app;
+       public.series_occurrence FROM aurevia_app;

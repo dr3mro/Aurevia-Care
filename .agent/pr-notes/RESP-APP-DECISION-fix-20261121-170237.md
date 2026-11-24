@@ -50,7 +50,7 @@ schema, dependency or delivery change.
 ## Review owner
 
 Product (record owner per the story). The earlier run recorded a simulated
-`orevia-senior-mobile` and `orevia-ux-reviewer` review of the record that
+`aurevia-senior-mobile` and `aurevia-ux-reviewer` review of the record that
 found no missing decision; this fix pass re-checked the record directly against
 the TODO.md acceptance criteria (tool/file-read evidence, not a new independent
 reviewer). No human, clinical or patient reviewer evidence.

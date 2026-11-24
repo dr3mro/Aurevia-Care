@@ -79,7 +79,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_platform_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_platform_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class PlatformAcceptanceTest {
@@ -95,9 +95,9 @@ class PlatformAcceptanceTest {
     private static final String DIGEST = "a".repeat(64);
     private static final byte[] ORIGINAL = "%PDF-1.4 synthetic original".getBytes(StandardCharsets.UTF_8);
     private static final String ENCODED = Base64.getEncoder().encodeToString(ORIGINAL);
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_platform_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_platform_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     DeliveryStore deliveryStore;
@@ -130,18 +130,18 @@ class PlatformAcceptanceTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_platform_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_platform_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_platform_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_platform_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A);
             seedTenant(statement, ORG_B);
@@ -154,7 +154,7 @@ class PlatformAcceptanceTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_platform_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_platform_it WITH (FORCE)");
         }
     }
 
@@ -276,7 +276,7 @@ class PlatformAcceptanceTest {
 
     /** Execute tenant-scoped SQL as the migration owner for fixture setup and assertions. */
     private static void execute(String organization, String subject, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, organization, subject);
             try (Statement statement = connection.createStatement()) {
@@ -288,7 +288,7 @@ class PlatformAcceptanceTest {
 
     /** Read one scalar with a bound tenant context, rolling back the read transaction. */
     private static String scalar(String organization, String subject, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, organization, subject);
             try (Statement statement = connection.createStatement();

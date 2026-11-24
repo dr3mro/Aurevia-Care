@@ -76,7 +76,7 @@ Production classes and files exercised by the service/store path:
 Verified locally with the command and Surefire report:
 
 ```
-OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dgroups=integration -Dtest=PreserveOriginalsChecksumsProvenanceTest test
 <testsuite ... tests="5" errors="0" skipped="0" failures="0" flakes="0">
 ```

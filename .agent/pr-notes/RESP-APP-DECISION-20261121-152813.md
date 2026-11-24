@@ -34,7 +34,7 @@ change (docs/WORKFLOW.md).
 ## Review owner
 
 Product (record owner per the story). Simulated review using the
-`orevia-senior-mobile` and `orevia-ux-reviewer` perspectives found no
+`aurevia-senior-mobile` and `aurevia-ux-reviewer` perspectives found no
 missing decision. No human, clinical or patient reviewer evidence.
 
 ## Data changes

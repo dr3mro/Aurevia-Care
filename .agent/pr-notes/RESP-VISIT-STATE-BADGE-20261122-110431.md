@@ -36,7 +36,7 @@ Routine (contained UI primitive presentation change). Routed per `docs/WORKFLOW.
 
 ## Review owner
 
-Primary implementation: this worker. Bounded plan from the `orevia-senior-react` specialist (report received; it had read-only tools and ran no checks). UX/RTL review applied by the primary via the `orevia-ux-reviewer` and `orevia-senior-typescript` skills. This is synthetic/simulated review, not clinical or human acceptance.
+Primary implementation: this worker. Bounded plan from the `aurevia-senior-react` specialist (report received; it had read-only tools and ran no checks). UX/RTL review applied by the primary via the `aurevia-ux-reviewer` and `aurevia-senior-typescript` skills. This is synthetic/simulated review, not clinical or human acceptance.
 
 ## Data changes
 
@@ -71,7 +71,7 @@ Commands run (exit codes and final lines quoted; evidence source = executed tool
 
 - Typecheck final lines (required paste — no `error TS…` emitted):
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
 

@@ -1,6 +1,6 @@
 # Starting and steering the swarm
 
-The Orevia V1 delivery loop runs as the agent swarm. Setup is in [docs/SWARM.md](docs/SWARM.md#setup); the earlier `/oc` issue loop has been retired.
+The Aurevia V1 delivery loop runs as the agent swarm. Setup is in [docs/SWARM.md](docs/SWARM.md#setup); the earlier `/oc` issue loop has been retired.
 
 ## Start
 

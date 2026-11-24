@@ -25,7 +25,7 @@ BEGIN
        OR NOT EXISTS (
               SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                WHERE n.nspname = 'public' AND p.proname = 'reject_immutable_mutation')
-       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'orevia_app') THEN
+       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'aurevia_app') THEN
         RAISE NOTICE 'V46 specialty attestation deferred: prerequisites not installed yet';
         RETURN;
     END IF;
@@ -93,9 +93,9 @@ BEGIN
         BEFORE INSERT ON public.specialty_attestation
         FOR EACH ROW EXECUTE FUNCTION public.set_specialty_attestation_actor_from_actor()$ddl$;
 
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.specialty_attestation TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.specialty_attestation FROM orevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.specialty_attestation TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.specialty_attestation FROM aurevia_app$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_specialty_attestation_actor_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_specialty_attestation_actor_from_actor()
-        TO orevia_app$ddl$;
+        TO aurevia_app$ddl$;
 END $specialty_attestation$;

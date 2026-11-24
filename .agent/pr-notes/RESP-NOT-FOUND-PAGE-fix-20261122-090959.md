@@ -41,8 +41,8 @@ migration or clinical-policy surface was touched.
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) and UX reviewer
-(`orevia-ux-reviewer`), both simulated bounded reviews recorded in the
+Senior React and Vite (`aurevia-senior-react`) and UX reviewer
+(`aurevia-ux-reviewer`), both simulated bounded reviews recorded in the
 prior worker's notes and addressed there. No simulated-user or human-participant
 evidence is claimed for this pass.
 

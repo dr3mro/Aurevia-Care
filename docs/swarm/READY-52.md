@@ -34,8 +34,8 @@ contract change. Full-chain correlation interaction is recorded under **Findings
 
 ## Review owner and evidence sources
 
-`orevia-senior-backend` (bounded, review-only) plus `orevia-senior-java-build`
-and `orevia-test-engineer` skills. Evidence sources: executed tool commands (tool
+`aurevia-senior-backend` (bounded, review-only) plus `aurevia-senior-java-build`
+and `aurevia-test-engineer` skills. Evidence sources: executed tool commands (tool
 evidence) and a simulated specialist review. No reviewer ran commands; no simulated user,
 clinician or human participant evidence in this story.
 
@@ -149,7 +149,7 @@ critical-result logic. No human clinical acceptance is claimed.
 ## Findings
 
 1. **Full-chain correlation divergence (review finding, not changed).** A bounded
-   `orevia-senior-backend` review observed that the pre-existing
+   `aurevia-senior-backend` review observed that the pre-existing
    `web/TenantContextInterceptor` (registered on `/api/v1/**`, `preHandle`) reads and
    overwrites `X-Correlation-Id` with its own value using a *looser* allowlist
    (`[A-Za-z0-9._-]{1,128}`, no UUID requirement) and binds that value into

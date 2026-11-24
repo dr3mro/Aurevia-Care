@@ -13,7 +13,7 @@ Routine — contained presentation change to one data-free staff-web view. No au
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react` skill loaded and applied). UX evidence is simulated jsdom structure against the responsive-layout contract; no real clinician or human participant review was performed. Cross-client TypeScript tooling was checked by `apps/staff-web/check.sh`.
+Senior React and Vite (`aurevia-senior-react` skill loaded and applied). UX evidence is simulated jsdom structure against the responsive-layout contract; no real clinician or human participant review was performed. Cross-client TypeScript tooling was checked by `apps/staff-web/check.sh`.
 
 ## Data changes
 
@@ -37,7 +37,7 @@ Commands actually run (final lines quoted):
 - RED before the component change — `./node_modules/.bin/vitest run tests/responsive/features-system/NotFoundPage.responsive.test.tsx` → `Test Files 1 failed (1)`, `Tests 4 failed | 4 passed (8)`; failure `Error: not-found notice is not inside a responsive page wrapper`. The four behaviour/label/keyboard tests already passed, confirming no behaviour change was needed.
 - GREEN after the change — `./node_modules/.bin/vitest run tests/responsive/features-system/NotFoundPage.responsive.test.tsx tests/features/system/systemPages.test.tsx` → `Test Files 2 passed (2)`, `Tests 37 passed (37)` (existing system page tests still green).
 - `bash apps/staff-web/check.sh` → `gen:api: generated client matches the contract`; typecheck and lint exited clean; `✓ built in 132ms`; bundle budget all `ok`; `Test Files 159 passed (159)`; `Tests 1899 passed (1899)`.
-  - Typecheck final lines (mandatory paste): `> orevia-staff-web@0.1.0 typecheck` then `> tsc --noEmit -p tsconfig.json` — exit 0, no `error TS…` diagnostics. Build typecheck `> tsc --noEmit -p tsconfig.json && vite build` also exited clean.
+  - Typecheck final lines (mandatory paste): `> aurevia-staff-web@0.1.0 typecheck` then `> tsc --noEmit -p tsconfig.json` — exit 0, no `error TS…` diagnostics. Build typecheck `> tsc --noEmit -p tsconfig.json && vite build` also exited clean.
 - Fast repository policy stages run individually (everything in `scripts/check.sh` except its module full gates): shell `bash -n`/`shellcheck`, `project-name.py`, `check-pack.py`, `check-docs.py`, `check-secrets.py`, `check-names.py`, `check-wiring.py`, `check-migrations.py --require-baseline`, `bash scripts/python-coverage.sh`, `bash scripts/frontend-check.sh` → all passed; `frontend standards: policy and tool commands passed` (patient app Jest 79 suites / 1127 tests, root Vitest 1 test).
 
 Deliberate omission: full `scripts/check.sh` was not run because it invokes `apps/api/check.sh` → `mvn -q -B verify`, which this worker prompt forbids (runs every Java integration test, >10 minutes). Every one of its policy/tooling stages was run individually above; the integrator and Delivery run the full gate. Evidence source: executed tool commands and file reads (no reviewer, simulated user or human participant evidence).

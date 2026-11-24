@@ -25,8 +25,8 @@ database, tenant, authorization or clinical-data boundary is touched.
 
 ## Review owner
 
-Primary agent; read-only reviews by orevia-plan-reviewer (pre-code), and
-orevia-code-reviewer, orevia-coverage-auditor and orevia-devsecops
+Primary agent; read-only reviews by aurevia-plan-reviewer (pre-code), and
+aurevia-code-reviewer, aurevia-coverage-auditor and aurevia-devsecops
 (post-code). Verdicts are listed under `## Review verdicts`.
 
 ## Data changes
@@ -60,7 +60,7 @@ run from the repository root unless noted.
   - `Statements : 100% ( 4061/4061 )`, `Branches : 100% ( 2071/2071 )`, `Functions : 100% ( 1346/1346 )`, `Lines : 100% ( 3878/3878 )`
   - Stack traces mentioning `useTheme must be used inside ThemeProvider` are the expected output of the pre-existing negative test `tests/theme/ThemeProvider.test.tsx`; the run is green.
 - Explicit typecheck (senior-react / senior-typescript definition of done) — `cd apps/staff-web && npm run typecheck` → `TYPECHECK_EXIT=0`; output:
-  - `> orevia-staff-web@0.1.0 typecheck`
+  - `> aurevia-staff-web@0.1.0 typecheck`
   - `> tsc --noEmit -p tsconfig.json`
   - No `error TS…`.
 - Repo-wide `scripts/check.sh` was intentionally not run: AGENTS.md ("Known worker-environment false positives") says it delegates to `apps/api/check.sh` (full `mvn verify`, 10+ minutes) and that a swarm worker must leave the full gate to the integrator. This is a staff-web-only change, so `bash apps/staff-web/check.sh` is the canonical module gate and was run to green; constraint check `python3 -I scripts/check-constraints.py --base $(git rev-parse d7f386cc^) --require-base` → exit 0.
@@ -85,10 +85,10 @@ New/changed branches in the two in-scope files and the test that covers each:
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Clinical and architecture review
 

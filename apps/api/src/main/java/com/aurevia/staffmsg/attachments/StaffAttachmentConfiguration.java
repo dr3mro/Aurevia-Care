@@ -29,7 +29,7 @@ public class StaffAttachmentConfiguration {
      */
     @Bean
     public ObjectStorePort staffAttachmentObjectStore(
-            @Value("${orevia.attachments.root:${java.io.tmpdir}/orevia-staff-attachments}") String root) {
+            @Value("${aurevia.attachments.root:${java.io.tmpdir}/aurevia-staff-attachments}") String root) {
         return new FileSystemObjectStore(Path.of(root));
     }
 

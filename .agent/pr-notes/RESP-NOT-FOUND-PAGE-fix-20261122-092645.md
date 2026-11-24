@@ -51,8 +51,8 @@ migration or clinical-policy surface was touched.
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) and UX reviewer
-(`orevia-ux-reviewer`), both bounded **simulated** reviews. Earlier workers'
+Senior React and Vite (`aurevia-senior-react`) and UX reviewer
+(`aurevia-ux-reviewer`), both bounded **simulated** reviews. Earlier workers'
 findings were addressed in the original notes; this pass re-ran both reviews at
 the current branch head. No human or real-clinical evidence is claimed.
 
@@ -95,7 +95,7 @@ stated):
   `./node_modules/.bin/vitest run tests/responsive/app/NotFoundPage.responsive.test.tsx --reporter=dot`
   -> `Test Files  1 passed (1)` / `Tests  32 passed (32)`.
 - Explicit `npm run typecheck` in `apps/staff-web` -> final lines
-  `> orevia-staff-web@0.1.0 typecheck` and
+  `> aurevia-staff-web@0.1.0 typecheck` and
   `> tsc --noEmit -p tsconfig.json`, `TYPECHECK_EXIT=0`, no `error TS`.
 - `bash scripts/coverage-check.sh` -> final line `coverage check: passed`,
   `COV_EXIT=0`.

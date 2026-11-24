@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-state=$(mktemp -d /tmp/orevia.XXXXXXXX)
+state=$(mktemp -d /tmp/aurevia.XXXXXXXX)
 pg_pid=
 web_pid=
 # The cleanup function is invoked indirectly through the EXIT trap; newer
@@ -22,8 +22,8 @@ for ((attempt=0; attempt<30; attempt++)); do
     kill -0 "$pg_pid"
     sleep 1
 done
-createdb -h 127.0.0.1 -U postgres orevia_test
-nginx -c /opt/orevia/nginx.conf -g 'daemon off;' &
+createdb -h 127.0.0.1 -U postgres aurevia_test
+nginx -c /opt/aurevia/nginx.conf -g 'daemon off;' &
 web_pid=$!
 wait -n "$pg_pid" "$web_pid"
 exit 1

@@ -1,4 +1,4 @@
-# Orevia coding style and test policy
+# Aurevia coding style and test policy
 
 - Give each module, class, function and component one clear responsibility. Prefer existing abstractions and simple composition. Extract shared behavior after a stable common contract emerges. Avoid duplicated rules across web, mobile and server.
 - Use precise domain names and small APIs. Validate at trust boundaries, enforce core invariants in domain services and the database, and keep side effects explicit. Prefer transaction-safe commands and structured errors.

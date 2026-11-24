@@ -14,7 +14,7 @@ The clause is a scope boundary, not a feature with a dedicated implementation. T
 
 Source of the clause:
 
-- Section 1 describes Orevia Cloud as a "hosted ambulatory electronic medical record, reporting and care coordination platform"; the PRD-01 row sets the boundary "Ambulatory care only" and the PRD-06 row excludes "inpatient workflows": [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md).
+- Section 1 describes Aurevia Cloud as a "hosted ambulatory electronic medical record, reporting and care coordination platform"; the PRD-01 row sets the boundary "Ambulatory care only" and the PRD-06 row excludes "inpatient workflows": [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md).
 - The delivery record keeps the same boundary ("V1 workflow | Clinic, lab and patient access pilot first…"): [PROJECT.md](../../../../.opencode/config/PROJECT.md).
 
 Ambulatory workflow implementation that gives the clause positive content (all synthetic/test-driven, no real patient data):

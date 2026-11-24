@@ -18,7 +18,7 @@ test, migration or contract was changed by this evidence task.
   (path: `apps/api/src/test/java/com/aurevia/chart/clauses/SuggestFollowUpDateUsingConfiguredVisitTest.java`).
   It follows the database setup and fixture style of the neighbouring
   `chart.clauses` tests: roles created if absent, a fresh database owned by
-  `orevia_migrate`, Flyway migration from `filesystem:../../db/migrations`, a
+  `aurevia_migrate`, Flyway migration from `filesystem:../../db/migrations`, a
   synthetic tenant with a `MAIN` facility in `America/New_York`, `NEW` / `FOLLOW` /
   `NOCONF` visit types, approved interval configuration and two synthetic patients.
 - `suggestsFollowUpDateFromConfiguredVisitTypeInterval` — positive proof. `POST

@@ -16,7 +16,7 @@ Routine (docs/WORKFLOW.md): a contained, presentation-only change to one shared 
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) — bounded static review returned no blocking findings; its one non-blocking hygiene finding (RTL test leaking `dir`/`lang`) was fixed before the final gate. Orchestrator owns edits and checks. No clinical/human reviewer involved; evidence below is tool and simulated-review only.
+Senior React and Vite (`aurevia-senior-react`) — bounded static review returned no blocking findings; its one non-blocking hygiene finding (RTL test leaking `dir`/`lang`) was fixed before the final gate. Orchestrator owns edits and checks. No clinical/human reviewer involved; evidence below is tool and simulated-review only.
 
 ## Data changes
 
@@ -40,13 +40,13 @@ Commands run (executed by the orchestrator; tool evidence):
 - Same command after implementation — GREEN: `Test Files  1 passed (1)`, `Tests  12 passed (12)`.
 - `npm run typecheck` — clean; final lines:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   (no `error TS…` output, exit 0)
 - `npm run lint` — clean; final lines:
   ```
-  > orevia-staff-web@0.1.0 lint
+  > aurevia-staff-web@0.1.0 lint
   > eslint . --max-warnings 0
   ```
   (no warnings, exit 0)

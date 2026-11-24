@@ -17,7 +17,7 @@ Up to 20 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 **Continuous loop.** Start it once (run **Agent swarm**, or push a change to `tasks/`). It then repeats wave, publish, integrate, next wave until every task is `[x]`. A task a worker has taken 5 times without finishing keeps `attempts: 5`; the daily issue monitor gives it one more round, at most twice, before it waits for a person. The monthly minute cap in `budget-gate` still applies to private repositories.
 
-**Merge conflicts.** Fix workers and the integrator resolver use the [merge conflict skill](../.opencode/skills/orevia-merge-conflict/SKILL.md). The runner reads it from the fetched base so older branches can resolve incoming changes without already containing the skill.
+**Merge conflicts.** Fix workers and the integrator resolver use the [merge conflict skill](../.opencode/skills/aurevia-merge-conflict/SKILL.md). The runner reads it from the fetched base so older branches can resolve incoming changes without already containing the skill.
 
 **Repair gate.** While main is red the full gate fails every pull request on classes other repair tasks still have to fix, so repairs (`FIX-` and `DLV-` PRs) merge through `scripts/repair-gate.sh` instead: the quick gate, the PostgreSQL integration tier judged by `scripts/worker_gate.py` on the classes the task names (PostgreSQL is mandatory there), `db/check.sh` and the developer reference. OWASP, SpotBugs and JaCoCo run in Delivery right after the merge; a red result becomes the next repair task. Ordinary PRs keep the full gate.
 

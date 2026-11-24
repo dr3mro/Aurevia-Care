@@ -1,6 +1,6 @@
 # Production readiness evidence
 
-This checklist turns section 8.1 ("Production platform and web delivery") of the [Orevia Cloud V1 specification](../../../.opencode/config/PROJECT_V1_SPEC.md) into evidence that a named owner can produce, record and sign before G5. Each row states, in our own words, the verification the specification asks for; a row is complete only when its evidence link is supplied and its owner signs it. Nothing here is asserted as done.
+This checklist turns section 8.1 ("Production platform and web delivery") of the [Aurevia Cloud V1 specification](../../../.opencode/config/PROJECT_V1_SPEC.md) into evidence that a named owner can produce, record and sign before G5. Each row states, in our own words, the verification the specification asks for; a row is complete only when its evidence link is supplied and its owner signs it. Nothing here is asserted as done.
 
 The product-level companion for PRD-01 to PRD-06 is
 [requirement traceability](requirement-traceability.md); this register covers WEB-01
@@ -28,16 +28,16 @@ Status: draft, owners to complete
 
 `GET /health/metrics` publishes three per-route families in Prometheus text format, all labelled `method`, `route` and `status` (status as a class such as `2xx`/`5xx`):
 
-- `orevia_http_requests_total{method,route,status}` — completed request counter.
-- `orevia_http_request_seconds_sum{method,route,status}` — accumulated latency in seconds.
-- `orevia_http_request_duration_seconds_bucket{method,route,status,le}`, `..._sum` and `..._count` — a latency histogram. Buckets are cumulative and their `le` bounds, in seconds, are `0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0, 2.5, 5.0, 10.0`, followed by `+Inf`. The `0.5` and `0.9` bounds straddle the OPS-03 read and command targets so the p95 estimate has a sample on each side of both thresholds. `..._count` equals the request counter for the same labels and `le="+Inf"` equals `..._count`; families are regenerated from the same key and the existing escaping rules, so no raw identifier can enter a bucket label. The first two counter families are unchanged and byte-compatible with earlier scrapes.
+- `aurevia_http_requests_total{method,route,status}` — completed request counter.
+- `aurevia_http_request_seconds_sum{method,route,status}` — accumulated latency in seconds.
+- `aurevia_http_request_duration_seconds_bucket{method,route,status,le}`, `..._sum` and `..._count` — a latency histogram. Buckets are cumulative and their `le` bounds, in seconds, are `0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0, 2.5, 5.0, 10.0`, followed by `+Inf`. The `0.5` and `0.9` bounds straddle the OPS-03 read and command targets so the p95 estimate has a sample on each side of both thresholds. `..._count` equals the request counter for the same labels and `le="+Inf"` equals `..._count`; families are regenerated from the same key and the existing escaping rules, so no raw identifier can enter a bucket label. The first two counter families are unchanged and byte-compatible with earlier scrapes.
 
-The endpoint requires no login but is answered only from loopback or a network in the comma-separated CIDR list `OREVIA_METRICS_ALLOW` (loopback by default); any other source receives a bare 404. Route labels are the matched Spring route pattern, never a raw path that could carry an id.
+The endpoint requires no login but is answered only from loopback or a network in the comma-separated CIDR list `AUREVIA_METRICS_ALLOW` (loopback by default); any other source receives a bare 404. Route labels are the matched Spring route pattern, never a raw path that could carry an id.
 
 Server-side p95 for a class of routes is estimated from the histogram with:
 
 ```
-histogram_quantile(0.95, sum by (le, method, route, status) (rate(orevia_http_request_duration_seconds_bucket[5m])))
+histogram_quantile(0.95, sum by (le, method, route, status) (rate(aurevia_http_request_duration_seconds_bucket[5m])))
 ```
 
 Alert on `... > 0.5` for routine reads and `... > 0.9` for routine commands (OPS-03). Restrict each expression to an explicit allowlist of successful (`status="2xx"`) route patterns belonging to that class: `read` and `command` classification is declared in [the SLO target-to-signal map](../slo.md) and [the capacity decision D3](../capacity/README.md), which also require at least one route of each class. The histogram supplies the distribution only; runtime p95 aggregation and route-class classification remain the separate follow-up named in the SLO map. Alerting must also cover 99.9% monthly core availability (OPS-03), the OPS-05 error-rate, saturation and queue-age signals, error-budget burn and failed external uptime probes from outside the network; logs and metrics are retained for the period the approved policy pack sets.

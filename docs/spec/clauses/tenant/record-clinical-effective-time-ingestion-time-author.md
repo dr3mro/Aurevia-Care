@@ -87,7 +87,7 @@ one owner covers all six fields):
   behind `documents/DocumentRepository`. None of these is the clinical-note
   create route, so this class does not re-test them.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
 -Pno-security -Dgroups=integration -Dtest=RecordClinicalEffectiveTimeIngestionTimeAuthorTest test`
 — `tests="6" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Partly proven" is limited to the clause behaviour above; it does not claim that

@@ -48,7 +48,7 @@ story directs — no painted-layout claim is made here.
 
 ## Review owner
 
-`orevia-senior-react` and `orevia-ux-reviewer` — earlier advisory
+`aurevia-senior-react` and `aurevia-ux-reviewer` — earlier advisory
 subagent reviews, simulated/synthetic evidence only; no human or clinical
 participant. Senior React verdict: no blocking defects. UX verdict: no blocking
 defect after the measurement-isolation fix. This fix pass re-verified by executed
@@ -91,7 +91,7 @@ npm 10.9.9, Vitest 5.1.1 (installed from the pinned lockfile via `npm ci`).
    `tests/i18n/I18nProvider.test.tsx` and `tests/theme/ThemeProvider.test.tsx`; the run is green.
 4. Typecheck final lines (explicit re-run, required by the frontend definition of done):
    `cd apps/staff-web && npm run typecheck` →
-   `> orevia-staff-web@0.1.0 typecheck` /
+   `> aurevia-staff-web@0.1.0 typecheck` /
    `> tsc --noEmit -p tsconfig.json`, exit 0, **no `error TS…`**.
 5. Lint: `cd apps/staff-web && npx eslint . --max-warnings=0` → exit 0, no output.
 6. Formatting: `cd apps/staff-web && npx prettier --check src/app/DesignPreview.tsx tests/responsive/app/DesignPreview.responsive.test.tsx`

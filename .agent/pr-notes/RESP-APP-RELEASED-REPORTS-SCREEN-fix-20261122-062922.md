@@ -27,7 +27,7 @@ must take over the integrator defect because the earlier three debugger/fix
 rounds have elapsed. I did not add another "all green" code round.
 
 Evidence source: **tool** evidence (commands I executed and observed this run).
-I also carried forward the earlier advisory `orevia-senior-mobile` review as
+I also carried forward the earlier advisory `aurevia-senior-mobile` review as
 reviewer evidence. No new reviewer, simulated-user or human-participant evidence
 was collected; no clinical or patient acceptance is claimed.
 
@@ -61,7 +61,7 @@ patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) definition of done
+Senior React Native and Expo (`aurevia-senior-mobile`) definition of done
 met. The advisory senior-mobile review recorded in earlier hand-off notes found
 no material gap; its two non-blocking observations (no `rowGap` on wrapped
 panes; RTL test uses `toContain` while exact order is asserted by the matrix)

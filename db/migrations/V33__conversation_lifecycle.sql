@@ -31,7 +31,7 @@ BEGIN
        OR NOT EXISTS (
               SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                WHERE n.nspname = 'public' AND p.proname = 'reject_immutable_mutation')
-       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'orevia_app') THEN
+       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'aurevia_app') THEN
         RAISE NOTICE 'V33 conversation lifecycle deferred: prerequisites not installed yet';
         RETURN;
     END IF;
@@ -65,7 +65,7 @@ BEGIN
                AND l.active)
     $fn$$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.patient_link_active(text, uuid) FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.patient_link_active(text, uuid) TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.patient_link_active(text, uuid) TO aurevia_app$ddl$;
 
     EXECUTE $ddl$CREATE TABLE public.conversation (
         organization_id          uuid NOT NULL REFERENCES public.organization(organization_id),
@@ -262,20 +262,20 @@ BEGIN
         BEFORE UPDATE ON public.conversation
         FOR EACH ROW EXECUTE FUNCTION public.guard_conversation_update()$ddl$;
 
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.patient_link TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.patient_link FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.conversation TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.conversation FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.conversation_message TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.conversation_message FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.work_item_event TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.work_item_event FROM orevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.patient_link TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.patient_link FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.conversation TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.conversation FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.conversation_message TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.conversation_message FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.work_item_event TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.work_item_event FROM aurevia_app$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_conversation_insert() FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_conversation_insert() TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_conversation_insert() TO aurevia_app$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_conversation_created_by_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_message_sender_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_conversation_update() FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_conversation_created_by_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_message_sender_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_conversation_update() TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_conversation_created_by_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_message_sender_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_conversation_update() TO aurevia_app$ddl$;
 END $conversation_lifecycle$;

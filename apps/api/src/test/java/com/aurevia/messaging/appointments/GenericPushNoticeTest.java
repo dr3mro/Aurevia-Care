@@ -33,7 +33,7 @@ class GenericPushNoticeTest {
         GenericPushNotice notice = GenericPushNotice.appointmentUpdate();
         assertTrue(notice.reveals(GenericPushNotice.GENERIC_TITLE));
         assertTrue(notice.reveals(GenericPushNotice.GENERIC_BODY));
-        assertTrue(notice.reveals("orevia"));
+        assertTrue(notice.reveals("aurevia"));
     }
 
     @Test

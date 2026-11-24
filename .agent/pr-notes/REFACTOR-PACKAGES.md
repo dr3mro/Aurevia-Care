@@ -40,10 +40,10 @@ Story titles were read from `TODO.md` and `.agent/pr-notes/X-03.md` / `X-04.md`.
 
 | Old test package | New test package |
 |---|---|
-| `…orevia.api.x_01` | `…orevia.api.contract` |
-| `…orevia.api.x_02` | `…orevia.events` |
-| `…orevia.api.x_03` | `…orevia.documents` |
-| `…orevia.api.x_04` | `…orevia.api.authorization` |
+| `…aurevia.api.x_01` | `…aurevia.api.contract` |
+| `…aurevia.api.x_02` | `…aurevia.events` |
+| `…aurevia.api.x_03` | `…aurevia.documents` |
+| `…aurevia.api.x_04` | `…aurevia.api.authorization` |
 
 Totals: 28 main files + 7 test files = 35 moved with `git mv`, plus package/import edits.
 
@@ -82,10 +82,10 @@ All other names (`Cursor`, `PageRequest`, `DocumentStore`, `DocumentContract`, `
 | `contracts/x_02/README.md:4` | `…/api/x_02` path | `com.aurevia.events` | Same rule-5 block. |
 | `apps/api/src/test/java/com/aurevia/it/patientchart/ChartEntryIntegrationTest.java:76` | Flyway location `filesystem:src/test/java/com/aurevia/it/s_g1_03/migrations` | `…/it/patientchart/migrations` | Leftover from the earlier refactor: the SQL file now lives at `it/patientchart/migrations/V13__longitudinal_chart.sql` and `db/migrations` has no V13, so the current location resolves to nothing. Correcting it changes which migrations apply — a behavior change that must be verified against PostgreSQL. |
 | `apps/api/src/main/java/com/aurevia/radiology/Interpretation.java:89` | comment `the g1.s_g1_05 SHA-256 utility` | `the clinical.notes SHA-256 utility` | Comment only. |
-| `apps/api/src/test/java/com/aurevia/it/schedulingcheckin/CheckInWorklistIntegrationTest.java:57,64,88,89,114` | database `orevia_s_g1_02_it` | `orevia_checkin_it` | Optional: a database name, not a package/folder/class. Test-only. |
+| `apps/api/src/test/java/com/aurevia/it/schedulingcheckin/CheckInWorklistIntegrationTest.java:57,64,88,89,114` | database `aurevia_s_g1_02_it` | `aurevia_checkin_it` | Optional: a database name, not a package/folder/class. Test-only. |
 
 No Spring component scan, `@Import`, `@Bean`, `application*.yml`, `pom.xml` or `scripts/`
-reference names these packages: `grep -rn 'com\.aurevia\.orevia\.api\.x_0' apps/api/src`
+reference names these packages: `grep -rn 'com\.aurevia\.aurevia\.api\.x_0' apps/api/src`
 returns only files inside the four packages themselves, and the app relies on the default
 `@SpringBootApplication` scan of `com.aurevia.**`, so a package move cannot
 un-register `@RestController DeliveryController`, `@Service DurableEventService` or
@@ -125,4 +125,4 @@ un-register `@RestController DeliveryController`, `@Service DurableEventService`
 3. **Stale Flyway location** in `ChartEntryIntegrationTest`: fix the path (changes which
    migrations apply, needs a PostgreSQL run to prove no behavior change) or report it as a
    defect and leave it.
-4. **Database name** `orevia_s_g1_02_it`: rename or leave.
+4. **Database name** `aurevia_s_g1_02_it`: rename or leave.

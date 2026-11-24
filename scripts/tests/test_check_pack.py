@@ -21,9 +21,9 @@ class PackTests(unittest.TestCase):
     def test_missing_skill_is_reported(self):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
-        shutil.rmtree(tmp / ".opencode/skills/orevia-debugger")
+        shutil.rmtree(tmp / ".opencode/skills/aurevia-debugger")
         errors = pack.check(tmp)
-        self.assertTrue(any("orevia-debugger" in e for e in errors))
+        self.assertTrue(any("aurevia-debugger" in e for e in errors))
 
     def test_wrong_mode_and_stale_config_are_reported(self):
         tmp = copy_pack()
@@ -44,11 +44,11 @@ class PackTests(unittest.TestCase):
     def test_agent_file_not_in_opencode_is_reported(self):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
-        (tmp / ".opencode/agents/orevia-ghost.md").write_text(
+        (tmp / ".opencode/agents/aurevia-ghost.md").write_text(
             '---\ndescription: "ghost"\nmode: subagent\n---\n\n'
-            "Load orevia-delivery. Behave.\n")
+            "Load aurevia-delivery. Behave.\n")
         errors = pack.check(tmp)
-        self.assertTrue(any("orevia-ghost.md" in e and "not in opencode.json" in e
+        self.assertTrue(any("aurevia-ghost.md" in e and "not in opencode.json" in e
                             for e in errors), errors)
 
     def test_configured_agent_with_no_file_is_reported(self):
@@ -62,7 +62,7 @@ class PackTests(unittest.TestCase):
     def test_missing_skill_reference_names_agent_file(self):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
-        shutil.rmtree(tmp / ".opencode/skills/orevia-debugger")
+        shutil.rmtree(tmp / ".opencode/skills/aurevia-debugger")
         errors = pack.check(tmp)
         self.assertTrue(any("debugger.md" in e and "skill" in e
                             for e in errors), errors)
@@ -70,9 +70,9 @@ class PackTests(unittest.TestCase):
     def test_skill_without_skill_md_is_reported(self):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
-        (tmp / ".opencode/skills/orevia-debugger/SKILL.md").unlink()
+        (tmp / ".opencode/skills/aurevia-debugger/SKILL.md").unlink()
         errors = pack.check(tmp)
-        self.assertTrue(any("orevia-debugger/SKILL.md is missing" in e
+        self.assertTrue(any("aurevia-debugger/SKILL.md is missing" in e
                             for e in errors), errors)
 
     def test_duplicate_agent_name_is_reported(self):
@@ -126,7 +126,7 @@ class PackTests(unittest.TestCase):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
         source = (tmp / ".opencode/agents/debugger.md").read_text()
-        (tmp / ".opencode/agents/orevia-Bad.md").write_text(source)
+        (tmp / ".opencode/agents/aurevia-Bad.md").write_text(source)
         errors = pack.check(tmp)
         self.assertTrue(any("name must be kebab-case" in e for e in errors), errors)
 
@@ -156,19 +156,19 @@ class PackTests(unittest.TestCase):
     def test_skill_bad_directory_name_is_reported(self):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
-        bad = tmp / ".opencode/skills/orevia-Bad"
+        bad = tmp / ".opencode/skills/aurevia-Bad"
         bad.mkdir()
         (bad / "SKILL.md").write_text(
-            '---\nname: orevia-Bad\ndescription: "x"\n---\n')
+            '---\nname: aurevia-Bad\ndescription: "x"\n---\n')
         errors = pack.check(tmp)
         self.assertTrue(any("directory must be kebab-case" in e for e in errors), errors)
 
     def test_skill_with_bad_frontmatter_is_reported(self):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
-        path = tmp / ".opencode/skills/orevia-debugger/SKILL.md"
+        path = tmp / ".opencode/skills/aurevia-debugger/SKILL.md"
         path.write_text("\n".join(
-            "name: orevia-other" if line.startswith("name:") else line
+            "name: aurevia-other" if line.startswith("name:") else line
             for line in path.read_text().splitlines()) + "\n")
         errors = pack.check(tmp)
         self.assertTrue(any("frontmatter needs matching name" in e for e in errors), errors)
@@ -182,26 +182,26 @@ class PackTests(unittest.TestCase):
         return pack.check(tmp)
 
     def test_skill_description_without_use_when_is_reported(self):
-        errors = self.edit_skill("orevia-debugger", lambda t: t.replace("Use when", "Needed if", 1))
+        errors = self.edit_skill("aurevia-debugger", lambda t: t.replace("Use when", "Needed if", 1))
         self.assertTrue(any("must say when to use it" in e for e in errors), errors)
 
     def test_skill_description_over_the_limit_is_reported(self):
-        errors = self.edit_skill("orevia-debugger", lambda t: t.replace(
+        errors = self.edit_skill("aurevia-debugger", lambda t: t.replace(
             "Use when", "x" * pack.SKILL_DESCRIPTION_LIMIT + " Use when", 1))
         self.assertTrue(any("over 1024 characters" in e for e in errors), errors)
 
     def test_process_skill_without_each_section_is_reported(self):
         for heading in pack.PROCESS_SECTIONS:
             with self.subTest(heading=heading):
-                errors = self.edit_skill("orevia-test-engineer",
+                errors = self.edit_skill("aurevia-test-engineer",
                                          lambda t: t.replace(f"## {heading}", "### " + heading))
                 self.assertTrue(any(f'missing the section "## {heading}"' in e for e in errors), errors)
 
     def test_simulated_user_skills_need_no_process_sections(self):
-        errors = self.edit_skill("orevia-patient-user",
+        errors = self.edit_skill("aurevia-patient-user",
                                  lambda t: t.split("##")[0].rstrip() + "\n")
         self.assertEqual(errors, [])
-        self.assertIn("orevia-patient-user", pack.NO_PROCESS_SECTIONS)
+        self.assertIn("aurevia-patient-user", pack.NO_PROCESS_SECTIONS)
 
     def test_every_skill_is_either_exempt_or_has_the_sections(self):
         skills = {p.parent.name for p in (ROOT / ".opencode/skills").glob("*/SKILL.md")}
@@ -226,7 +226,7 @@ class GeneratorTests(unittest.TestCase):
         ]
         for ci in (False, True):
             config = gen.build(
-                ["orca", "orevia-qa-reviewer"], ci=ci)
+                ["orca", "aurevia-qa-reviewer"], ci=ci)
             rules = config["agents"]["orca"]["permissions"]
             for pattern in patterns:
                 self.assertIn(

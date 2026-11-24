@@ -48,7 +48,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_messaging_store_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_messaging_store_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class JdbcMessagingStoreIntegrationTest {
@@ -65,9 +65,9 @@ class JdbcMessagingStoreIntegrationTest {
     static final String SUBJECT_A = "patient-1111";
     static final String SUBJECT_B = "patient-2222";
     static final String INACTIVE_A = "inactive-1111";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_messaging_store_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_messaging_store_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     MessagingStore messagingStore;
@@ -81,18 +81,18 @@ class JdbcMessagingStoreIntegrationTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_messaging_store_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_messaging_store_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_messaging_store_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_messaging_store_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A, SUBJECT_A, "ref-A", "MRN-MSG-A", false);
             seedTenant(statement, ORG_B, SUBJECT_B, "ref-B", "MRN-MSG-B", true);
@@ -104,7 +104,7 @@ class JdbcMessagingStoreIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_messaging_store_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_messaging_store_it WITH (FORCE)");
         }
     }
 
@@ -375,7 +375,7 @@ class JdbcMessagingStoreIntegrationTest {
 
         // The append-only trigger rejects an UPDATE for every role, including the
         // migration owner; a GRANT alone would not cover the owner.
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             assertThrows(java.sql.SQLException.class, () -> statement.executeUpdate(

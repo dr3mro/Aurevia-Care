@@ -55,8 +55,8 @@ CREATE TRIGGER therapy_evaluation_problem_no_truncate
     BEFORE TRUNCATE ON public.therapy_evaluation_problem
     FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation();
 
-GRANT SELECT, INSERT ON public.therapy_evaluation_problem TO orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.therapy_evaluation_problem FROM orevia_app;
+GRANT SELECT, INSERT ON public.therapy_evaluation_problem TO aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.therapy_evaluation_problem FROM aurevia_app;
 
-GRANT SELECT, INSERT, UPDATE ON public.therapy_scale_sequence TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.therapy_scale_sequence FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.therapy_scale_sequence TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.therapy_scale_sequence FROM aurevia_app;

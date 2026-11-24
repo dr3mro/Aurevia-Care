@@ -26,7 +26,7 @@ I re-proved that conclusion with fresh tool runs this pass:
 
 Evidence provenance: **tool** evidence for every command below (I executed and
 observed each run). **Reviewer** evidence is the earlier advisory
-`orevia-senior-mobile` review carried forward; no new delegation was made
+`aurevia-senior-mobile` review carried forward; no new delegation was made
 because there is no code delta to review. No simulated-user or human-participant
 evidence was collected this pass and no clinical or patient acceptance is
 claimed. No patient data, credential or raw log appears in this note.
@@ -63,7 +63,7 @@ patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) definition of done
+Senior React Native and Expo (`aurevia-senior-mobile`) definition of done
 met. The advisory senior-mobile review recorded in earlier hand-off notes found
 no material gap; its two non-blocking observations (no `rowGap` on wrapped
 panes; RTL test uses `toContain` while exact order is asserted by the matrix)

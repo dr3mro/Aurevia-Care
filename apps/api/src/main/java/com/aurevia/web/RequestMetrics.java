@@ -22,9 +22,9 @@ import org.springframework.stereotype.Component;
 @Component
 public final class RequestMetrics {
 
-    private static final String REQUESTS_METRIC = "orevia_http_requests_total";
-    private static final String SECONDS_METRIC = "orevia_http_request_seconds_sum";
-    private static final String DURATION_METRIC = "orevia_http_request_duration_seconds";
+    private static final String REQUESTS_METRIC = "aurevia_http_requests_total";
+    private static final String SECONDS_METRIC = "aurevia_http_request_seconds_sum";
+    private static final String DURATION_METRIC = "aurevia_http_request_duration_seconds";
     private static final double NANOS_PER_SECOND = 1_000_000_000.0;
 
     /**

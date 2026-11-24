@@ -46,9 +46,9 @@ with no contract, data, migration or authorization boundary change.
 
 ## Review owner
 
-smartclinic-senior-react, smartclinic-senior-typescript, smartclinic-test-engineer;
-read-only gates by smartclinic-plan-reviewer, smartclinic-code-reviewer,
-smartclinic-coverage-auditor and smartclinic-devsecops.
+aurevia-senior-react, aurevia-senior-typescript, aurevia-test-engineer;
+read-only gates by aurevia-plan-reviewer, aurevia-code-reviewer,
+aurevia-coverage-auditor and aurevia-devsecops.
 
 ## Data changes
 
@@ -189,13 +189,13 @@ identifiers only.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-test-engineer: GO
-- smartclinic-senior-react: GO (first pass NO-GO only for the out-of-scope stale `check.sh` tripwire and pending verdict lines; final pass confirms no in-scope Critical or Required defect)
-- smartclinic-senior-typescript: GO
-- smartclinic-code-reviewer: GO (re-confirmed after the `origin/main` merge)
-- smartclinic-coverage-auditor: GO (re-confirmed after the merge; optional path correction applied)
-- smartclinic-devsecops: GO (re-confirmed after the merge)
+- aurevia-plan-reviewer: GO
+- aurevia-test-engineer: GO
+- aurevia-senior-react: GO (first pass NO-GO only for the out-of-scope stale `check.sh` tripwire and pending verdict lines; final pass confirms no in-scope Critical or Required defect)
+- aurevia-senior-typescript: GO
+- aurevia-code-reviewer: GO (re-confirmed after the `origin/main` merge)
+- aurevia-coverage-auditor: GO (re-confirmed after the merge; optional path correction applied)
+- aurevia-devsecops: GO (re-confirmed after the merge)
 
 ## Findings
 

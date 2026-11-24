@@ -31,7 +31,7 @@ CREATE POLICY tenant_isolation ON public.membership_facility
     WITH CHECK (organization_id = public.app_org());
 
 REVOKE ALL ON public.membership_facility FROM PUBLIC;
-GRANT SELECT, INSERT ON public.membership_facility TO orevia_app;
+GRANT SELECT, INSERT ON public.membership_facility TO aurevia_app;
 
 -- The association is append-only for every role, including the migration owner.
 CREATE TRIGGER membership_facility_no_update_delete
@@ -106,7 +106,7 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION public.accept_staff_invitation(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.accept_staff_invitation(text) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.accept_staff_invitation(text) TO aurevia_app;
 
 -- A single authorization primitive answers one question: may the subject touch
 -- this facility of the active organization? It fails closed when a subject has
@@ -135,4 +135,4 @@ AS $$
 $$;
 
 REVOKE ALL ON FUNCTION public.is_facility_out_of_scope(text, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.is_facility_out_of_scope(text, text) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.is_facility_out_of_scope(text, text) TO aurevia_app;

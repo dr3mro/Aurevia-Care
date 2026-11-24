@@ -1,4 +1,4 @@
-# Orevia Cloud V1
+# Aurevia Cloud V1
 ## Product, clinical safety and engineering specification
 
 **Version 1.0, revision 1 · November 18, 2026 · Implementation baseline**
@@ -7,7 +7,7 @@
 
 ## 1. Product and boundaries
 
-Orevia Cloud is a hosted ambulatory electronic medical record, reporting and care coordination platform. Staff use an authenticated web portal. Patients use an iOS or Android app. Clinics deliver and document care, independent laboratories and radiology practices fulfill orders, physical therapy practices fulfill referrals, and pharmacies coordinate supported prescription events. Organizations may combine service lines across multiple facilities. The platform records which organization is responsible for each clinical action and retains the provenance of shared data.
+Aurevia Cloud is a hosted ambulatory electronic medical record, reporting and care coordination platform. Staff use an authenticated web portal. Patients use an iOS or Android app. Clinics deliver and document care, independent laboratories and radiology practices fulfill orders, physical therapy practices fulfill referrals, and pharmacies coordinate supported prescription events. Organizations may combine service lines across multiple facilities. The platform records which organization is responsible for each clinical action and retains the provenance of shared data.
 
 | ID | V1 outcome | Boundary |
 |---|---|---|

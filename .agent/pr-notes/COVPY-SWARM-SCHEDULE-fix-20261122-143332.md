@@ -31,8 +31,8 @@ Routine — one new synthetic test file; no runtime, contract, schema or gate ch
 
 ## Review owner
 
-orevia-senior-python (bounded review requested for this fix pass) and
-orevia-test-engineer. Advisory only; no production change.
+aurevia-senior-python (bounded review requested for this fix pass) and
+aurevia-test-engineer. Advisory only; no production change.
 
 ## Data changes
 
@@ -150,7 +150,7 @@ prescribing or critical results.
   `>>>>>>> origin/swarm/BUILD-37-469`. They predate this change and are outside
   this task's `scope`; left untouched for the integrator. A `git grep` check
   confirms these are the only markers and they are identical in `origin/main`.
-- A bounded `orevia-senior-python` review found one weak assertion:
+- A bounded `aurevia-senior-python` review found one weak assertion:
   `test_a_reset_leaves_every_other_task_alone` seeded the "other" task `CW-002`
   with `attempts: 0` and asserted it stayed `"0"`, which passes even if a reset
   wrongly rewrote every task. Fixed in this pass by seeding `CW-002` with

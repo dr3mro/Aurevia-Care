@@ -1,6 +1,6 @@
 # Partner integration guide — exchange API
 
-Audience: an engineer connecting a laboratory or imaging partner to Orevia to
+Audience: an engineer connecting a laboratory or imaging partner to Aurevia to
 receive orders and return results. This guide describes what the service does
 today. Every path, state, header and error code below is taken from the committed
 contract or the running application code; links point at the exact source.

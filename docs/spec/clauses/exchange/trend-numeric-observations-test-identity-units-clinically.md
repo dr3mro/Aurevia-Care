@@ -15,7 +15,7 @@ Test class: `com.aurevia.exchange.clauses.TrendNumericObservationsTestIdentityUn
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the HTTP
 entry points `POST /api/v1/trends/comparability`, `POST /api/v1/trends/observations` and
 `GET /api/v1/trends/{patientId}?testCode=...` with synthetic fixtures. It uses its own database
-`orevia_trend_identity_units_it` with Flyway migrations applied from `db/migrations`, seeds
+`aurevia_trend_identity_units_it` with Flyway migrations applied from `db/migrations`, seeds
 one organization with a `clinician` and a `tenant_admin`, and gives each scenario a distinct test
 code and a unique patient MRN so the shared database cannot make one scenario's policy change
 another's expected rule version.

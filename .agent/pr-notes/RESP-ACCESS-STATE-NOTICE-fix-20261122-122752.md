@@ -27,7 +27,7 @@ Routine (docs/WORKFLOW.md): one contained staff-web presentation change with an 
 
 ## Review owner
 
-`orevia-senior-react` (staff React/Vite), supported by `orevia-senior-typescript` (strict TS) and `orevia-ux-reviewer` (RTL/keyboard). A bounded `orevia-senior-react` review and a bounded UX review were routed in earlier passes (source: **reviewer, simulated**); both found no blocking findings. No new implementation work exists in this notes-only pass, so no further specialist routing was required.
+`aurevia-senior-react` (staff React/Vite), supported by `aurevia-senior-typescript` (strict TS) and `aurevia-ux-reviewer` (RTL/keyboard). A bounded `aurevia-senior-react` review and a bounded UX review were routed in earlier passes (source: **reviewer, simulated**); both found no blocking findings. No new implementation work exists in this notes-only pass, so no further specialist routing was required.
 
 ## Data changes
 
@@ -71,7 +71,7 @@ Evidence source: **executed tool commands** (git, npm, Vitest, tsc, Python unitt
   The `useTheme must be used inside ThemeProvider` stack traces printed during the run come from the existing intentional fail-closed tests in `tests/theme/ThemeProvider.test.tsx` (and the analogous `I18nProvider` tests); the suite and coverage gate passed.
 - TYPECHECK (mandatory, standalone) — `cd apps/staff-web && npm run typecheck`, final lines (no `error TS…`):
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   TYPECHECK_EXIT:0

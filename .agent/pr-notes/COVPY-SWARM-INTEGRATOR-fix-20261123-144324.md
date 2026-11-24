@@ -31,10 +31,10 @@ workflow is touched.
 
 ## Review owner
 
-`orevia-senior-python` is the area routing for Python tooling. A bounded design proposal was
+`aurevia-senior-python` is the area routing for Python tooling. A bounded design proposal was
 taken from it before coding. Read-only reviewers were run (all simulated/static subagents):
-`orevia-plan-reviewer` (before coding and again after fixing its Required gaps), then
-`orevia-code-reviewer`, `orevia-coverage-auditor` and `orevia-devsecops` after the
+`aurevia-plan-reviewer` (before coding and again after fixing its Required gaps), then
+`aurevia-code-reviewer`, `aurevia-coverage-auditor` and `aurevia-devsecops` after the
 code and tests. Their final verdicts are copied under `## Review verdicts`.
 
 ## Data changes
@@ -139,10 +139,10 @@ sharing, patient association, prescribing or critical result is involved.
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

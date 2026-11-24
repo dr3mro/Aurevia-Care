@@ -65,7 +65,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_cln04_obgyn_c03_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_cln04_obgyn_c03_it")
 @ActiveProfiles("synthetic-auth")
 class ObGynCapturesLmpStructuredObstetricHistoryTest {
 
@@ -75,9 +75,9 @@ class ObGynCapturesLmpStructuredObstetricHistoryTest {
     private static final List<String> SITE_CODES = List.of("G0P0", "G1P0", "G2P0", "G3P0", "G4P0");
     private static final String PATIENT_REF = "PAT-SYNTHETIC-OBGYN";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_cln04_obgyn_c03_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_cln04_obgyn_c03_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Autowired
@@ -101,18 +101,18 @@ class ObGynCapturesLmpStructuredObstetricHistoryTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_cln04_obgyn_c03_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_cln04_obgyn_c03_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_cln04_obgyn_c03_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_cln04_obgyn_c03_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "admin-a", TemplateService.TENANT_ADMIN);
             seedUser(statement, ORG_A, "gov-a", TemplateService.CLINICAL_GOVERNANCE);
@@ -134,7 +134,7 @@ class ObGynCapturesLmpStructuredObstetricHistoryTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_cln04_obgyn_c03_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_cln04_obgyn_c03_it WITH (FORCE)");
         }
     }
 
@@ -250,7 +250,7 @@ class ObGynCapturesLmpStructuredObstetricHistoryTest {
      * @throws Exception when the database cannot be read
      */
     private static int countRows(String noteId) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
@@ -292,7 +292,7 @@ class ObGynCapturesLmpStructuredObstetricHistoryTest {
         assertEquals(DICTIONARY_KEY, history.dictionaryKey());
         assertEquals(SITE_CODES, saved.dictionaries().get(DICTIONARY_KEY));
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(

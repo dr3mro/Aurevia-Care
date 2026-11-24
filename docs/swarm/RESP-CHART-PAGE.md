@@ -109,7 +109,7 @@ Commands (run from the repository root unless shown):
   **159 test files passed, 1901 tests passed**; coverage summary below.
 - Typecheck final lines (explicit, required by the frontend definition of done):
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   Exit code **0**, no `error TS…` (`cd apps/staff-web && npm run typecheck`).

@@ -31,7 +31,7 @@ BEGIN
        OR NOT EXISTS (
               SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                WHERE n.nspname = 'public' AND p.proname = 'reject_immutable_mutation')
-       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'orevia_app') THEN
+       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'aurevia_app') THEN
         RAISE NOTICE 'V45 finance deferred: prerequisites not installed yet';
         RETURN;
     END IF;
@@ -302,14 +302,14 @@ BEGIN
         BEFORE UPDATE ON public.finance_invoice
         FOR EACH ROW EXECUTE FUNCTION public.guard_finance_invoice_update()$ddl$;
 
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.finance_invoice TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.finance_invoice FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.finance_invoice_item TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.finance_invoice_item FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.finance_ledger_entry TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.finance_ledger_entry FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.finance_receipt_counter TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.finance_receipt_counter FROM orevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.finance_invoice TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.finance_invoice FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.finance_invoice_item TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.finance_invoice_item FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.finance_ledger_entry TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.finance_ledger_entry FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.finance_receipt_counter TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.finance_receipt_counter FROM aurevia_app$ddl$;
 
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_finance_invoice_created_by_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_finance_item_created_by_from_actor() FROM PUBLIC$ddl$;
@@ -317,10 +317,10 @@ BEGIN
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_finance_invoice_update() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_finance_entry_currency() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_finance_invoice_issue_items() FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_invoice_created_by_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_item_created_by_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_entry_actor_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_invoice_update() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_entry_currency() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_invoice_issue_items() TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_invoice_created_by_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_item_created_by_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_entry_actor_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_invoice_update() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_entry_currency() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_invoice_issue_items() TO aurevia_app$ddl$;
 END $finance$;

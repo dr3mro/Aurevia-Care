@@ -68,7 +68,7 @@ visibility-only fold. The implementation lives in the
 packages and the three migrations above.
 
 Verified locally:
-`OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=PreservePatientAttributionIndependentlyMergeAliasesTest test`
+`AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=PreservePatientAttributionIndependentlyMergeAliasesTest test`
 — 4 tests, 0 failures, 0 errors, 0 skipped.
 
 ## Gap
@@ -108,7 +108,7 @@ void clinicalRecordPatientIdCannotBeRewrittenToSurvivor() throws Exception {
     // When enabling this test, assert the reject-mutation trigger's SQLState/message
     // rather than any failure: an unrelated connection or RLS error must not pass.
     assertThrows(Exception.class, () -> {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("UPDATE public.chart_entry SET patient_id = CAST('" + pair[0]

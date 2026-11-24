@@ -22,14 +22,14 @@ class StaffWebLoginConfigurationTest {
     private static final String CLIENT_SECRET = "synthetic-secret";
     private static final String ISSUER = "https://issuer.example.test";
     private static final String FAILURE_MESSAGE =
-            "OREVIA_OIDC_CLIENT_ID, OREVIA_OIDC_CLIENT_SECRET and OREVIA_OIDC_ISSUER_URI must be set";
+            "AUREVIA_OIDC_CLIENT_ID, AUREVIA_OIDC_CLIENT_SECRET and AUREVIA_OIDC_ISSUER_URI must be set";
 
     @Test
     void blankClientIdFailsStartupClosed() {
         IllegalStateException failure = assertThrows(IllegalStateException.class,
                 () -> new StaffWebLoginConfiguration("", CLIENT_SECRET, ISSUER, "JSESSIONID")
                         .staffClientRegistrationRepository());
-        assertTrue(failure.getMessage().contains("OREVIA_OIDC_CLIENT_ID"));
+        assertTrue(failure.getMessage().contains("AUREVIA_OIDC_CLIENT_ID"));
         assertEquals(FAILURE_MESSAGE, failure.getMessage());
     }
 
@@ -38,7 +38,7 @@ class StaffWebLoginConfigurationTest {
         IllegalStateException failure = assertThrows(IllegalStateException.class,
                 () -> new StaffWebLoginConfiguration(CLIENT_ID, "", ISSUER, "JSESSIONID")
                         .staffClientRegistrationRepository());
-        assertTrue(failure.getMessage().contains("OREVIA_OIDC_CLIENT_SECRET"));
+        assertTrue(failure.getMessage().contains("AUREVIA_OIDC_CLIENT_SECRET"));
     }
 
     @Test
@@ -46,7 +46,7 @@ class StaffWebLoginConfigurationTest {
         IllegalStateException failure = assertThrows(IllegalStateException.class,
                 () -> new StaffWebLoginConfiguration(CLIENT_ID, CLIENT_SECRET, "", "JSESSIONID")
                         .staffClientRegistrationRepository());
-        assertTrue(failure.getMessage().contains("OREVIA_OIDC_ISSUER_URI"));
+        assertTrue(failure.getMessage().contains("AUREVIA_OIDC_ISSUER_URI"));
     }
 
     @Test
@@ -55,8 +55,8 @@ class StaffWebLoginConfigurationTest {
                 new StaffWebLoginConfiguration(CLIENT_ID, CLIENT_SECRET, ISSUER, "JSESSIONID")
                         .staffClientRegistrationRepository();
 
-        ClientRegistration registration = repository.findByRegistrationId("orevia");
-        assertEquals("orevia", registration.getRegistrationId());
+        ClientRegistration registration = repository.findByRegistrationId("aurevia");
+        assertEquals("aurevia", registration.getRegistrationId());
         assertEquals(CLIENT_ID, registration.getClientId());
         assertEquals(CLIENT_SECRET, registration.getClientSecret());
         assertEquals(AuthorizationGrantType.AUTHORIZATION_CODE, registration.getAuthorizationGrantType());

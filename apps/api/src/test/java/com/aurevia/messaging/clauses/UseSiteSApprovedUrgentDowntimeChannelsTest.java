@@ -41,15 +41,15 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_urgent_channels_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_urgent_channels_it")
 @ActiveProfiles("synthetic-auth")
 class UseSiteSApprovedUrgentDowntimeChannelsTest {
 
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_urgent_channels_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_urgent_channels_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String SEEDER = "seeder-channels";
     private static final String PUBLISHER = "publisher-channels";
     private static final String APPROVER = "approver-channels";
@@ -85,18 +85,18 @@ class UseSiteSApprovedUrgentDowntimeChannelsTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_urgent_channels_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_urgent_channels_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_urgent_channels_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_urgent_channels_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement);
         }
@@ -108,7 +108,7 @@ class UseSiteSApprovedUrgentDowntimeChannelsTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_urgent_channels_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_urgent_channels_it WITH (FORCE)");
         }
     }
 
@@ -306,7 +306,7 @@ class UseSiteSApprovedUrgentDowntimeChannelsTest {
 
     /** Count durable profiles of one synthetic unit. */
     private static int countProfiles(String unit) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             bindActor(statement, SEEDER);
             try (ResultSet rows = statement.executeQuery("SELECT count(*) FROM public.service_profile "
@@ -318,7 +318,7 @@ class UseSiteSApprovedUrgentDowntimeChannelsTest {
 
     /** Read one stored channel column of the effective profile of a unit. */
     private static String channelColumn(String unit, String column) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             bindActor(statement, SEEDER);
             try (ResultSet rows = statement.executeQuery("SELECT " + column
@@ -330,7 +330,7 @@ class UseSiteSApprovedUrgentDowntimeChannelsTest {
 
     /** Count audit rows for one action and outcome of a synthetic unit. */
     private static int countAudit(String unit, String action, String outcome) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             bindActor(statement, SEEDER);
             try (ResultSet rows = statement.executeQuery("SELECT count(*) FROM public.service_profile_audit "

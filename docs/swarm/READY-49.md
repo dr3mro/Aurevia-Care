@@ -94,7 +94,7 @@ database, and the `headers(...)`/`send(...)` request pattern copied from
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=CriticalResultControllerHttpTest,ResultControllerHttpTest,PatientReleaseControllerHttpTest,PatientReleasedRevisionsControllerHttpTest test` | 75 tests, 0 failures, 0 errors, 0 skipped (first run: 1 failure, corrected by using a domain-invalid body — see Defects) |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration test` (whole integration tier) | exit 0; surefire aggregate 205 suites / 2331 tests, 0 failures, 0 errors, 0 skipped |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` (unit tier) | exit 0 |
-| `OREVIA_PG_ADMIN=postgres bash db/check.sh` | exit 0 — migrations, forced RLS, role separation, isolation, audit, append-only staff history, versioned config verified |
+| `AUREVIA_PG_ADMIN=postgres bash db/check.sh` | exit 0 — migrations, forced RLS, role separation, isolation, audit, append-only staff history, versioned config verified |
 | `bash apps/api/check.sh -Pno-security` (JaCoCo gate; `no-security` skips OWASP/SpotBugs only) | exit 0 — full `verify` with build-failing JaCoCo rules |
 | `bash scripts/worker-check.sh` | blocked at `check-pack.py`: "opencode.json is stale" — documented cloud-worker false positive OPS-CW-003-01; all later gates run directly (rows above) |
 | `python3 -I scripts/check-docs.py`, `check-secrets.py`, `check-names.py`, `check-migrations.py --require-baseline`, `project-name.py`, `bash -n` and `shellcheck` over shell scripts | all exit 0 |

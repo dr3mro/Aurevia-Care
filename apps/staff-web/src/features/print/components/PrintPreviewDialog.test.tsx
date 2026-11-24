@@ -71,7 +71,7 @@ describe('print preview dialog states', () => {
 
   it('injects the A4 browser print stylesheet', () => {
     renderDialog(readyState);
-    const style = document.querySelector('style#orevia-print-preview-styles');
+    const style = document.querySelector('style#aurevia-print-preview-styles');
     expect(style).toBeTruthy();
     expect(style?.textContent).toBe(printStylesheet);
   });

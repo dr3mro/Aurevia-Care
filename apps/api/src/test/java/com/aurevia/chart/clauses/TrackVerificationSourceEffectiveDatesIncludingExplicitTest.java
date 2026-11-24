@@ -46,15 +46,15 @@ import org.flywaydb.core.Flyway;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_chart_provenance_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_chart_provenance_it")
 @ActiveProfiles("synthetic-auth")
 class TrackVerificationSourceEffectiveDatesIncludingExplicitTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String PATIENT = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_chart_provenance_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_chart_provenance_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final Instant EFFECTIVE_FROM = Instant.parse("2026-01-01T00:00:00Z");
     private static final Instant EFFECTIVE_TO = Instant.parse("2026-06-30T23:59:59Z");
 
@@ -69,18 +69,18 @@ class TrackVerificationSourceEffectiveDatesIncludingExplicitTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_chart_provenance_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_chart_provenance_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_chart_provenance_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_chart_provenance_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, "clinician-a", "clinician");
             seedUser(statement, "reception-a", "reception");
@@ -98,7 +98,7 @@ class TrackVerificationSourceEffectiveDatesIncludingExplicitTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_chart_provenance_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_chart_provenance_it WITH (FORCE)");
         }
     }
 
@@ -170,7 +170,7 @@ class TrackVerificationSourceEffectiveDatesIncludingExplicitTest {
         assertEquals("CLINICIAN_OBSERVED", field(reread.getBody(), "source"));
         assertEquals("ABSENT", field(reread.getBody(), "presence"));
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(

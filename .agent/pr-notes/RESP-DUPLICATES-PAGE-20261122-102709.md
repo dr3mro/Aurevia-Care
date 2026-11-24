@@ -46,8 +46,8 @@ owned by an already-merged or sibling story; this slice changes none of them.
 
 ## Review owner
 
-Senior React and Vite specialist (bounded plan review, `orevia-senior-react`,
-advisory) and UX reviewer (`orevia-ux-reviewer` skill loaded). No clinical,
+Senior React and Vite specialist (bounded plan review, `aurevia-senior-react`,
+advisory) and UX reviewer (`aurevia-ux-reviewer` skill loaded). No clinical,
 human or real-patient review was performed; this is a simulated structural
 review. Pixel accuracy, 200% zoom reflow and painted RTL are deferred to the
 Playwright responsive tasks as the story directs.
@@ -103,7 +103,7 @@ Typecheck final lines (from `bash apps/staff-web/check.sh`, then re-run alone
 with explicit exit status):
 
 ```
-> orevia-staff-web@0.1.0 typecheck
+> aurevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 ```
 

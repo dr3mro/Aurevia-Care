@@ -72,7 +72,7 @@ This evidence task added only one test class and this document. It changed no pr
 Commands run from the repository root with synthetic fixtures only:
 
 ```text
-OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest test
+AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest test
 python3 -I scripts/check-docs.py
 python3 -I -m unittest discover -s scripts/tests
 bash scripts/worker-check.sh

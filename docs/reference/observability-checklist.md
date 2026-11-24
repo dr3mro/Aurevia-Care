@@ -1,7 +1,7 @@
 # Observability checklist
 
 Quick reference for instrumenting new critical paths in `apps/api` and the workers.
-Use alongside `orevia-devsecops` and the operations runbooks. Telemetry without a
+Use alongside `aurevia-devsecops` and the operations runbooks. Telemetry without a
 question is noise: before adding a signal, write down the on-call questions it answers.
 
 ## On-call questions

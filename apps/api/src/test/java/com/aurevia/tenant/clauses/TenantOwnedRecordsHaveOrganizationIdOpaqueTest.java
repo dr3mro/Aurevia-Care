@@ -52,16 +52,16 @@ import com.aurevia.tenant.TenantGuardTransactionManager;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_arc01_clause1_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_arc01_clause1_it")
 @ActiveProfiles("synthetic-auth")
 class TenantOwnedRecordsHaveOrganizationIdOpaqueTest {
 
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_arc01_clause1_it";
-    static final String MIGRATE = "orevia_migrate";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_arc01_clause1_it";
+    static final String MIGRATE = "aurevia_migrate";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     static final String CODE = "ARC01-CLAUSE1";
     static final List<String> TENANT_OWNED_TABLES = List.of(
             "user_identity", "facility", "membership", "audit_event");
@@ -89,12 +89,12 @@ class TenantOwnedRecordsHaveOrganizationIdOpaqueTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc01_clause1_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_arc01_clause1_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_arc01_clause1_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_arc01_clause1_it OWNER aurevia_migrate");
         }
         Flyway.configure()
                 .dataSource(URL, MIGRATE, "")
@@ -117,7 +117,7 @@ class TenantOwnedRecordsHaveOrganizationIdOpaqueTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc01_clause1_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_arc01_clause1_it WITH (FORCE)");
         }
     }
 

@@ -13,7 +13,7 @@ Proven by tests
 Test class: `com.aurevia.tenant.clauses.InternalForeignKeysIncludeOrganizationIdTest`
 (`apps/api/src/test/java/com/aurevia/tenant/clauses/InternalForeignKeysIncludeOrganizationIdTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` that migrates a
-dedicated database (`orevia_arc01_clause2_it`) from `db/migrations` with a
+dedicated database (`aurevia_arc01_clause2_it`) from `db/migrations` with a
 NOBYPASSRLS runtime role, seeds two synthetic tenants with `app.current_org` and
 `app.actor` bound, and drops the database afterwards. No HTTP route belongs to a
 schema-key rule, so the test drives the authoritative schema directly.

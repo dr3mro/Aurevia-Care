@@ -51,7 +51,7 @@ class DiagnosticReportMapperTest {
 
         JsonNode resource = DiagnosticReportMapper.toFhir(source);
         JsonNode link = resource.path("extension").path(1);
-        assertEquals("urn:orevia:fhir:supersedes", link.path("url").asString());
+        assertEquals("urn:aurevia:fhir:supersedes", link.path("url").asString());
         assertEquals("DiagnosticReport/" + FhirFixtures.REPORT + "/_history/1",
                 link.path("valueReference").path("reference").asString());
         assertEquals("corrected", resource.path("status").asString());

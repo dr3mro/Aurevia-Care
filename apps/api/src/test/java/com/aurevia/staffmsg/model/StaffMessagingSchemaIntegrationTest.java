@@ -34,10 +34,10 @@ class StaffMessagingSchemaIntegrationTest {
     private static final String USER_A = "nurse-a";
     private static final String USER_B = "nurse-b";
     private static final String PREFIX = "jdbc:postgresql://127.0.0.1:5432/";
-    private static final String MIGRATE = "orevia_migrate";
-    private static final String APP = "orevia_app";
+    private static final String MIGRATE = "aurevia_migrate";
+    private static final String APP = "aurevia_app";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final List<String> TABLES = List.of(
             "staff_conversation", "staff_participant", "staff_message",
             "staff_mail_metadata", "staff_mail_folder", "staff_attachment_link");
@@ -47,7 +47,7 @@ class StaffMessagingSchemaIntegrationTest {
 
     @Test
     void migrationCreatesForcedRlsTenantTablesOnAnEmptyDatabase() throws Exception {
-        String database = "orevia_staffmsg_empty";
+        String database = "aurevia_staffmsg_empty";
         String url = freshDatabase(database, null);
         try (Connection connection = connect(url, MIGRATE);
              Statement statement = connection.createStatement()) {
@@ -78,7 +78,7 @@ class StaffMessagingSchemaIntegrationTest {
 
     @Test
     void tenantColumnIsEnforcedForEveryStaffTable() throws Exception {
-        String database = "orevia_staffmsg_tenant";
+        String database = "aurevia_staffmsg_tenant";
         String url = freshDatabase(database, null);
         try {
             try (Connection seed = connect(url, MIGRATE)) {
@@ -109,7 +109,7 @@ class StaffMessagingSchemaIntegrationTest {
 
     @Test
     void messageContentCannotBeEditedInPlace() throws Exception {
-        String database = "orevia_staffmsg_immutable";
+        String database = "aurevia_staffmsg_immutable";
         String url = freshDatabase(database, null);
         try {
             try (Connection seed = connect(url, MIGRATE)) {
@@ -151,7 +151,7 @@ class StaffMessagingSchemaIntegrationTest {
 
     @Test
     void sequencesAreGapFreePerConversationAndRetriesAreDeduplicated() throws Exception {
-        String database = "orevia_staffmsg_sequence";
+        String database = "aurevia_staffmsg_sequence";
         String url = freshDatabase(database, null);
         try {
             try (Connection seed = connect(url, MIGRATE)) {
@@ -199,7 +199,7 @@ class StaffMessagingSchemaIntegrationTest {
 
     @Test
     void migrationRunsOnAPopulatedDatabaseWithoutLosingExistingRows() throws Exception {
-        String database = "orevia_staffmsg_populated";
+        String database = "aurevia_staffmsg_populated";
         String url = freshDatabase(database, "90");
         try (Connection connection = connect(url, MIGRATE);
              Statement statement = connection.createStatement()) {
@@ -249,10 +249,10 @@ class StaffMessagingSchemaIntegrationTest {
         try (Connection root = DriverManager.getConnection(PREFIX + "postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
         }
     }
 

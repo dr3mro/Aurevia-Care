@@ -123,8 +123,8 @@ class HealthChainHttpTest {
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,
                         AUDIENCE_PROPERTY + "=synthetic-api",
-                        "orevia.oidc.client-id=synthetic-client",
-                        "orevia.oidc.client-secret=synthetic-secret");
+                        "aurevia.oidc.client-id=synthetic-client",
+                        "aurevia.oidc.client-secret=synthetic-secret");
     }
 
     private MockMvc mvc(ApplicationContext context) {

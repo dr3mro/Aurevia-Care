@@ -53,9 +53,9 @@ specialist area (React/TypeScript) and targeted tool evidence.
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react` skill loaded); strict typing
-checked with `orevia-senior-typescript`; loop followed with
-`orevia-delivery`. A bounded React-specialist review was dispatched and
+Senior React and Vite (`aurevia-senior-react` skill loaded); strict typing
+checked with `aurevia-senior-typescript`; loop followed with
+`aurevia-delivery`. A bounded React-specialist review was dispatched and
 returned **no correctness findings**; its only note was a minor test-isolation
 nit (RTL document attributes not restored in the new test's own `afterEach`),
 which was fixed. The reviewer ran no commands, so its verdict is an advisory
@@ -96,7 +96,7 @@ review. No simulated user or human participant for this presentation-only story.
 - Typecheck final lines (mandatory frontend gate):
   `cd apps/staff-web && npm run typecheck`
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   TYPECHECK_EXIT=0

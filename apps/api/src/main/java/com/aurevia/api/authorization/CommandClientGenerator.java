@@ -56,7 +56,7 @@ public final class CommandClientGenerator {
         StringBuilder yaml = new StringBuilder("""
                 openapi: 3.0.3
                 info:
-                  title: Orevia command contract (X-04)
+                  title: Aurevia command contract (X-04)
                   version: 0.1.0
                   description: >-
                     Synthetic-only explicit POST commands. Every operation names the
@@ -75,8 +75,8 @@ public final class CommandClientGenerator {
                     .append("        Authorized by action ").append(definition.action())
                     .append(" in the active organization.\n")
                     .append("        Client-supplied authority is never consulted.\n")
-                    .append("      x-orevia-action: ").append(definition.action()).append('\n')
-                    .append("      x-orevia-policy: ").append(definition.policy()).append('\n')
+                    .append("      x-aurevia-action: ").append(definition.action()).append('\n')
+                    .append("      x-aurevia-policy: ").append(definition.policy()).append('\n')
                     .append("      parameters:\n")
                     .append("        - $ref: '#/components/parameters/ActiveOrganization'\n")
                     .append("        - $ref: '#/components/parameters/SyntheticSubject'\n")

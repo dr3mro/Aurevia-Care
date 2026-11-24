@@ -69,7 +69,7 @@ Production classes and artifacts exercised:
   synthetic site codes `G0P0`…`G4P0`. It is a global reference catalog, not a tenant
   seed; tenant dictionaries and approvals are created through `TemplateService`.
 
-Verified locally with `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally with `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=ObGynCapturesLmpStructuredObstetricHistoryTest test`: the Surefire
 report shows `tests="5" errors="0" skipped="0" failures="0"`.
 

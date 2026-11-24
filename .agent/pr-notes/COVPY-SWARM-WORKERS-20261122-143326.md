@@ -22,8 +22,8 @@ contract, migration or deployment change.
 
 ## Review owner
 
-Senior Python Tooling (`orevia-senior-python`) and Test Engineer
-(`orevia-test-engineer`). Evidence is from executed tool commands, not a
+Senior Python Tooling (`aurevia-senior-python`) and Test Engineer
+(`aurevia-test-engineer`). Evidence is from executed tool commands, not a
 reviewer, simulated user or human participant.
 
 ## Data changes

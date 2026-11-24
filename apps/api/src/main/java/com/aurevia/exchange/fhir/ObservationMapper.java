@@ -25,8 +25,8 @@ public final class ObservationMapper {
 
     private static final String RESOURCE_TYPE = "Observation";
     private static final String ERROR_CODE = "INVALID_OBSERVATION";
-    private static final String INSTRUMENT_EXTENSION = "urn:orevia:fhir:instrument";
-    private static final String VERIFIER_EXTENSION = "urn:orevia:fhir:verifier";
+    private static final String INSTRUMENT_EXTENSION = "urn:aurevia:fhir:instrument";
+    private static final String VERIFIER_EXTENSION = "urn:aurevia:fhir:verifier";
 
     private ObservationMapper() {
     }

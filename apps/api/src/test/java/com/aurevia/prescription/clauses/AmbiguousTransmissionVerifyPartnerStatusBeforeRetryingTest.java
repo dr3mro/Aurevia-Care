@@ -51,7 +51,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_rx02_verify_retry_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_rx02_verify_retry_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
@@ -62,9 +62,9 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
     private static final String OTHER_PRESCRIBER = "other-1111";
     private static final String FOREIGN_PRESCRIBER = "clinician-2222";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_rx02_verify_retry_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_rx02_verify_retry_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @LocalServerPort
@@ -84,18 +84,18 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_rx02_verify_retry_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_rx02_verify_retry_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_rx02_verify_retry_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_rx02_verify_retry_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedOrganization(statement, ORG_A);
             seedOrganization(statement, ORG_B);
@@ -119,7 +119,7 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_rx02_verify_retry_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_rx02_verify_retry_it WITH (FORCE)");
         }
     }
 
@@ -377,7 +377,7 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
     }
 
     private static String patientId(String org) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, PRESCRIBER);
             try (Statement statement = connection.createStatement();
@@ -404,7 +404,7 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
     }
 
     private static int count(String org, String sql) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, PRESCRIBER);
             try (Statement statement = connection.createStatement();

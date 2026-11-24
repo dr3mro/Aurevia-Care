@@ -28,7 +28,7 @@ Routine (test-only change; no runtime behaviour, contract, migration or dependen
 
 ## Review owner
 
-`orevia-senior-python` and `orevia-test-engineer` skills were loaded and applied. No live
+`aurevia-senior-python` and `aurevia-test-engineer` skills were loaded and applied. No live
 reviewer, simulated user or human participant evidence — all evidence below is executed tool output.
 
 ## Data changes

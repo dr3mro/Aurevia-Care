@@ -26,7 +26,7 @@ change itself is documentation only and enables no traffic.
 ## Review owner
 
 Integration lead and partner owner (section 10) are the accountable decision
-makers. `orevia-senior-integrations` provided a bounded, simulated advisory
+makers. `aurevia-senior-integrations` provided a bounded, simulated advisory
 review; no human, clinical or partner evidence was used or claimed.
 
 ## Data changes
@@ -80,7 +80,7 @@ applicable documentation gate and passed (see Test evidence).
 ## Clinical and architecture review
 
 No clinical or architecture approval is recorded: this pack is the input to
-such a decision. A bounded simulated `orevia-senior-integrations` review
+such a decision. A bounded simulated `aurevia-senior-integrations` review
 (tool: subagent, session `ses_e014483c1ffe7e4GA1zUF0qcoP`, read-only) returned
 **MET** for all four acceptance criteria (per-partner five artifacts, exact
 headings and structures, chooses/invents nothing with status `Not approved`,

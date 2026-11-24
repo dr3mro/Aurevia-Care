@@ -49,7 +49,7 @@ class S3ObjectStoreTest {
 
     private static final String TENANT = "tenant-north";
     private static final String OBJECT = "export-42";
-    private static final String BUCKET = "orevia-private";
+    private static final String BUCKET = "aurevia-private";
     private static final String ETAG = "\"synthetic-etag\"";
     private static final byte[] PAYLOAD = "clean clinical payload".getBytes(StandardCharsets.UTF_8);
     private static final String CHECKSUM = FileSystemObjectStore.checksum("SHA-256", PAYLOAD);

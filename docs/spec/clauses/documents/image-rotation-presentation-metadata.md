@@ -84,7 +84,7 @@ before/after invariance of the source original, and the refusal of an
 unsupported rotation on both the link and render paths.
 
 Verified locally:
-`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=ImageRotationPresentationMetadataTest test`
+`AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=ImageRotationPresentationMetadataTest test`
 — `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0` (see the story notes for the
 captured final line).
 

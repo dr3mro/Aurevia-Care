@@ -21,4 +21,4 @@ AS $$
 $$;
 
 REVOKE ALL ON FUNCTION public.effective_catalog_family(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.effective_catalog_family(text) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.effective_catalog_family(text) TO aurevia_app;

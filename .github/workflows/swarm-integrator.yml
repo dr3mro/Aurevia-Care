@@ -77,7 +77,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
       GH_ISSUES_TOKEN: ${{ github.token }}
-      OREVIA_PG_ADMIN: postgres
+      AUREVIA_PG_ADMIN: postgres
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

@@ -61,8 +61,8 @@ it.
    frontend, Java/DB, docs and per-architecture smoke jobs and requires them on
    the exact SHA (`Delivery gate`). A failed or skipped gate means the artifact
    was not verified for that commit.
-5. **Check configuration drift.** Blank `OREVIA_OIDC_ISSUER_URI` fails
-   startup outside the synthetic profile; a wrong `OREVIA_DB_PASSWORD`
+5. **Check configuration drift.** Blank `AUREVIA_OIDC_ISSUER_URI` fails
+   startup outside the synthetic profile; a wrong `AUREVIA_DB_PASSWORD`
    makes readiness fail. These are runtime inputs, not code changes.
 
 `NOT YET IN PLACE:` a metrics exporter, dashboard, alert or external uptime

@@ -16,7 +16,7 @@ Routine (test-only coverage addition; no production behaviour change). docs/WORK
 
 ## Review owner
 
-orevia-senior-python (Python tooling); integrator verifies the full gate.
+aurevia-senior-python (Python tooling); integrator verifies the full gate.
 
 ## Data changes
 

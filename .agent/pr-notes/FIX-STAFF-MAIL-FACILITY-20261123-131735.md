@@ -226,12 +226,12 @@ line and branch still has its named test from the `## Coverage` section above):
   lowered threshold was added.
 
 ## Review verdicts
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
-- orevia-senior-spring-security: GO
-- orevia-senior-backend: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
+- aurevia-senior-spring-security: GO
+- aurevia-senior-backend: GO
 Plan review needed one revision, which closed all seven Required gaps. Coverage and code review
 needed one re-check each because they read a stale notes snapshot before `## Test evidence` and
 `## Coverage` were written; both returned GO against the completed file.

@@ -76,7 +76,7 @@ Not applicable: this pass added no production line, branch, method, class, scrip
 
 ## Clinical and architecture review
 
-Not claimed. The pack was prepared for the privacy lead and clinical safety lead and attests to no clinical or human acceptance. The original run recorded a bounded independent `orevia-qa-reviewer` review (simulated reviewer evidence) with "no findings" covering the "decides nothing" constraints, link/heading accuracy and requirement-ID validity; this pass independently re-verified those points with tool evidence and reached the same conclusion. No human clinical or privacy feedback was supplied or claimed.
+Not claimed. The pack was prepared for the privacy lead and clinical safety lead and attests to no clinical or human acceptance. The original run recorded a bounded independent `aurevia-qa-reviewer` review (simulated reviewer evidence) with "no findings" covering the "decides nothing" constraints, link/heading accuracy and requirement-ID validity; this pass independently re-verified those points with tool evidence and reached the same conclusion. No human clinical or privacy feedback was supplied or claimed.
 
 ## Findings
 

@@ -36,7 +36,7 @@ Entry point to test trace:
 
 Commands and final lines (all executed on this branch against base `ceda1551`):
 
-- `timeout 280 mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RoleReceptionTest test` → exit 0. Surefire `TEST-com.aurevia.smartclinic.authz.clauses.RoleReceptionTest.xml`: `tests="11" errors="0" skipped="0" failures="0" flakes="0"`. No `@Tag("integration")`, so the non-integration form is used and the Surefire count is confirmed.
+- `timeout 280 mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RoleReceptionTest test` → exit 0. Surefire `TEST-com.aurevia.aurevia.authz.clauses.RoleReceptionTest.xml`: `tests="11" errors="0" skipped="0" failures="0" flakes="0"`. No `@Tag("integration")`, so the non-integration form is used and the Surefire count is confirmed.
 - `python3 -I scripts/check-docs.py` → exit 0 (no output).
 - `mvn -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check` → `BUILD SUCCESS`, `[INFO] BugInstance size is 0`. (Compile precedes the check; a bare check is vacuously green.)
 - `bash scripts/worker-check.sh` → exit 1, final line `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. This is the documented cloud-worker artifact OPS-CW-003-01, not a change defect: `git ls-files -v opencode.json` prints `S`; `git show HEAD:opencode.json | sha256sum` = `1ec420cfae8f40600bf90ed7c62e585863cc6e0e6057f999154d60bba1b66f58`, worktree `sha256sum opencode.json` = `b19e90436f0b416ad6b986dbbd5db110749f156010213f485602102e6df5f52d`. The committed profile is generated correctly; the worktree file is the CI profile copied under skip-worktree. Protected file not edited or regenerated. Remaining gate stages were run individually.
@@ -56,10 +56,10 @@ No production file was added or changed, so there are no new production lines, b
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (after one NO-GO round; all Required gaps fixed and re-reviewed)
-- smartclinic-code-reviewer: GO (no Critical or Required findings; Optional wording fixes applied)
-- smartclinic-coverage-auditor: GO (11 active tests, no skipped or assertion-free test; Optional notes/doc fixes applied)
-- smartclinic-devsecops: GO (no Critical or Required findings; synthetic fixtures, honest partial status)
+- aurevia-plan-reviewer: GO (after one NO-GO round; all Required gaps fixed and re-reviewed)
+- aurevia-code-reviewer: GO (no Critical or Required findings; Optional wording fixes applied)
+- aurevia-coverage-auditor: GO (11 active tests, no skipped or assertion-free test; Optional notes/doc fixes applied)
+- aurevia-devsecops: GO (no Critical or Required findings; synthetic fixtures, honest partial status)
 
 All three post-code reviewers were consulted after the code and tests were complete; their Optional findings were fixed and checks rerun green.
 
@@ -89,7 +89,7 @@ Not required for a test-only change: no signed data, cross-organization sharing,
   {
     "title": "Enforce demographic and scheduling field scope for reception",
     "details": "IAM-01 Reception row: add a validated demographic/scheduling field allowlist at patient registration and staff contact change; refuse clinical or out-of-scope fields for reception with a stable error code and a DENIED audit row. Enable the would-prove test sketched in docs/spec/clauses/authz/role-reception.md ## Gap and add the contact-change rejection test. Reception's assigned-facility scope is already enforced; only the field half is missing. Synthetic fixtures only.",
-    "scope": ["apps/api/src/main/java/com/aurevia/smartclinic/patient/", "apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/", "apps/api/src/test/java/com/aurevia/smartclinic/patient/", "apps/api/src/test/java/com/aurevia/smartclinic/messaging/enrollment/", "contracts/openapi.yaml"],
+    "scope": ["apps/api/src/main/java/com/aurevia/aurevia/patient/", "apps/api/src/main/java/com/aurevia/aurevia/messaging/enrollment/", "apps/api/src/test/java/com/aurevia/aurevia/patient/", "apps/api/src/test/java/com/aurevia/aurevia/messaging/enrollment/", "contracts/openapi.yaml"],
     "depends": ["00772000"]
   }
 ]

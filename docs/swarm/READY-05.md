@@ -33,8 +33,8 @@ logic. No data, migration or OpenAPI contract change.
 
 ## Review owner
 
-`orevia-senior-backend` (bounded, review-only) plus the `orevia-senior-spring-security`,
-`orevia-test-engineer` and `orevia-senior-java-build` skills. Evidence sources:
+`aurevia-senior-backend` (bounded, review-only) plus the `aurevia-senior-spring-security`,
+`aurevia-test-engineer` and `aurevia-senior-java-build` skills. Evidence sources:
 executed tool commands (tool evidence) and a bounded simulated specialist review (static
 read of the four scoped files plus `CorrelationIdFilter`, `RequestLogFormatter` and
 `ApiErrorHandler`). No reviewer ran commands; no simulated user, clinician or human

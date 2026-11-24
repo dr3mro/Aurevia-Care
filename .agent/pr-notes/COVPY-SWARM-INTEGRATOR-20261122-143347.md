@@ -28,7 +28,7 @@ Routine (test-only change to a CI script's coverage; no runtime behaviour change
 
 ## Review owner
 
-`orevia-senior-python` (bounded read-only review of the new test file, routed per
+`aurevia-senior-python` (bounded read-only review of the new test file, routed per
 AGENTS.md and TODO.md "Instructions for every agent", step 2). The review returned one
 substantive defect and four hardening findings; all five were addressed in a second tested
 commit. Evidence source: specialist (simulated/static) review; the reviewer explicitly did

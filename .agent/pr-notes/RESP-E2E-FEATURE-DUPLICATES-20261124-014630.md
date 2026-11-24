@@ -13,9 +13,9 @@ without creating any file, recorded the missing prerequisites below as
 
 All six named specialists were consulted. They were unanimous that no in-scope
 mount exists and that stopping is the compliant outcome:
-`smartclinic-context-optimizer`, `smartclinic-plan-reviewer`,
-`smartclinic-senior-react`, `smartclinic-code-reviewer`,
-`smartclinic-coverage-auditor`, `smartclinic-devsecops`.
+`aurevia-context-optimizer`, `aurevia-plan-reviewer`,
+`aurevia-senior-react`, `aurevia-code-reviewer`,
+`aurevia-coverage-auditor`, `aurevia-devsecops`.
 
 No file was created, modified or committed. Working tree is clean at
 `398824281e61748a12ce4b030325e9bd76a608c1`, equal to `origin/main` (divergence
@@ -36,11 +36,11 @@ infrastructure reachability, not a clinical or tenant-policy change.
 
 ## Review owner
 
-`smartclinic-senior-react` (staff web). Supporting read-only reviews from
-`smartclinic-senior-typescript`, `smartclinic-test-engineer`,
-`smartclinic-context-optimizer`, `smartclinic-plan-reviewer`,
-`smartclinic-code-reviewer`, `smartclinic-coverage-auditor` and
-`smartclinic-devsecops`.
+`aurevia-senior-react` (staff web). Supporting read-only reviews from
+`aurevia-senior-typescript`, `aurevia-test-engineer`,
+`aurevia-context-optimizer`, `aurevia-plan-reviewer`,
+`aurevia-code-reviewer`, `aurevia-coverage-auditor` and
+`aurevia-devsecops`.
 
 ## Data changes
 
@@ -109,7 +109,7 @@ Commands executed in this run (all tool evidence):
 4. `npm run typecheck` (in `apps/staff-web`) — PASS, exit 0. Final lines (tool):
 
    ```
-   > smartclinic-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    TYPECHECK_EXIT=0
    ```
@@ -146,12 +146,12 @@ by DevSecOps as synthetic-only, with no PHI or secrets.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
-Additionally, `smartclinic-senior-react` returned **NO-GO on task achievability**
+Additionally, `aurevia-senior-react` returned **NO-GO on task achievability**
 (not a review of a change): the single-file scope cannot mount the page, and an
 inline-module `page.addScriptTag` mount is not technically viable — Vite does
 not rewrite bare specifiers in a Playwright-injected script, and using hashed
@@ -225,7 +225,7 @@ The task cannot be completed inside its declared scope.
   one-file scope has no page to navigate to.
 - **What I tried:** verified route registration, harness directory, git
   history, the provider-mount pattern in sibling specs, and the Vite dev
-  server wiring; consulted all six named specialists. `smartclinic-senior-react`
+  server wiring; consulted all six named specialists. `aurevia-senior-react`
   specifically tested the inline-module escape hatch and rejected it as both
   technically brittle and a rule violation. No assertion was weakened, no
   `test.fixme` or skip was added, and no out-of-scope file was created.

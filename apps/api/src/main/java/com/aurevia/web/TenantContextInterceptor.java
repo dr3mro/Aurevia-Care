@@ -58,7 +58,7 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
      */
     public TenantContextInterceptor(Environment environment) {
         this(environment, new RateLimiter(Clock.systemUTC(),
-                environment.getProperty("orevia.rate-limit.per-minute", Integer.class, 600)));
+                environment.getProperty("aurevia.rate-limit.per-minute", Integer.class, 600)));
     }
 
     /**

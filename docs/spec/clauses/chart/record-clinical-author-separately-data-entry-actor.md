@@ -75,7 +75,7 @@ are exercised by their own suite and are not re-tested here. No controller or
 migration outside these two slices stores the pair; the committed OpenAPI
 contract contains no chart-records path or provenance fields.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=RecordClinicalAuthorSeparatelyDataEntryActorTest test` —
 `tests="8" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim

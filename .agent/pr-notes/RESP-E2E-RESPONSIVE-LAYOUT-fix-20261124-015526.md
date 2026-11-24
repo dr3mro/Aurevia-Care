@@ -33,9 +33,9 @@ spec asserts a cross-device contract.
 
 ## Review owner
 
-Primary agent. Read-only reviewers: `smartclinic-plan-reviewer`,
-`smartclinic-code-reviewer`, `smartclinic-coverage-auditor`,
-`smartclinic-devsecops`.
+Primary agent. Read-only reviewers: `aurevia-plan-reviewer`,
+`aurevia-code-reviewer`, `aurevia-coverage-auditor`,
+`aurevia-devsecops`.
 
 ## Data changes
 
@@ -247,10 +247,10 @@ acceptance.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

@@ -37,7 +37,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_invoice_list_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_invoice_list_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(600)
 class InvoiceListIntegrationTest {
@@ -56,9 +56,9 @@ class InvoiceListIntegrationTest {
     // A3 has the larger id so it sorts first under id DESC.
     static final List<String> INVOICES_A = List.of(INVOICE_A1, INVOICE_A3, INVOICE_A2);
     static final List<String> INVOICES_B = List.of(INVOICE_B1, INVOICE_B2);
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_invoice_list_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_invoice_list_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -75,17 +75,17 @@ class InvoiceListIntegrationTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_invoice_list_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_invoice_list_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_invoice_list_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_invoice_list_it OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedMember(statement, ORG_A, "finance-a", "finance");
             seedMember(statement, ORG_A, "reception-a", "reception");
@@ -105,7 +105,7 @@ class InvoiceListIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_invoice_list_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_invoice_list_it WITH (FORCE)");
         }
     }
 

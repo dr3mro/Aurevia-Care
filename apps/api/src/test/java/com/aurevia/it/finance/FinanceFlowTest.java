@@ -43,7 +43,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_finance_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_finance_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class FinanceFlowTest {
@@ -53,9 +53,9 @@ class FinanceFlowTest {
     static final String ORG_C = "33333333-3333-3333-3333-333333333333";
     static final String ORG_D = "44444444-4444-4444-4444-444444444444";
     static final String ORG_E = "55555555-5555-5555-5555-555555555555";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_finance_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_finance_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     static final String CLINICAL_MARKER = "CLINICAL_MARKER_DO_NOT_EXPOSE";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -73,18 +73,18 @@ class FinanceFlowTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_finance_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_finance_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_finance_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_finance_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             for (String org : new String[] {ORG_A, ORG_B, ORG_C, ORG_D, ORG_E}) {
                 seedOrganization(statement, org);
@@ -105,7 +105,7 @@ class FinanceFlowTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_finance_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_finance_it WITH (FORCE)");
         }
     }
 
@@ -211,7 +211,7 @@ class FinanceFlowTest {
     }
 
     private static String patientId(String org) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "finance-" + suffix(org));
             try (Statement statement = connection.createStatement();
@@ -228,7 +228,7 @@ class FinanceFlowTest {
     }
 
     private static String actorId(String org, String subject) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "finance-" + suffix(org));
             try (PreparedStatement statement = connection.prepareStatement(
@@ -257,7 +257,7 @@ class FinanceFlowTest {
     }
 
     private static void execute(String org, String subject, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (Statement statement = connection.createStatement()) {
@@ -282,7 +282,7 @@ class FinanceFlowTest {
     }
 
     private long auditCount(String org, String action, String resourceId) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "finance-" + suffix(org));
             try (PreparedStatement statement = connection.prepareStatement(

@@ -15,7 +15,7 @@ All three are met.
 
 Evidence sources: all results below came from **executed tool commands** run in this worker. No
 reviewer, simulated user or human participant evidence was used; no specialist review was requested
-for a routine test-only change. The `orevia-delivery` and `orevia-senior-python` skills
+for a routine test-only change. The `aurevia-delivery` and `aurevia-senior-python` skills
 were loaded.
 
 ## Affected requirements
@@ -28,7 +28,7 @@ Routine — a single new test file, no production code, contracts, migrations or
 
 ## Review owner
 
-Senior Python Tooling (`orevia-senior-python` skill loaded). No separate reviewer needed for a
+Senior Python Tooling (`aurevia-senior-python` skill loaded). No separate reviewer needed for a
 routine test-only change; no clinical, security or architecture boundary was altered.
 
 ## Data changes
@@ -145,7 +145,7 @@ boundary was touched. No production code changed.
   `gen.render(ROOT)`, so I restored that committed content into the worktree as a local test repair.
   Because the file is skip-worktree, this produced **no git diff**; `git status` showed only the new
   untracked test file. After the repair the full suite was `Ran 896 tests ... OK`. This is the known
-  worker-image skip-worktree measurement artifact documented in MEMORY.md and `orevia-delivery`;
+  worker-image skip-worktree measurement artifact documented in MEMORY.md and `aurevia-delivery`;
   no file under `scripts/` or `.opencode/` was edited.
 - The coverage run touched the tracked `.coverage` artifact; I restored it with `git restore .coverage`.
   Final `git status --short` was `?? scripts/tests/test_gen_opencode_coverage.py` only (plus this

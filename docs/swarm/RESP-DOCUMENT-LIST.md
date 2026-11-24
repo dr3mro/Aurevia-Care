@@ -68,7 +68,7 @@ result is touched.
 ## Review owner
 
 Senior React and Vite specialist (advisory review requested and received from
-`orevia-senior-react`); senior TypeScript standards applied. UX review
+`aurevia-senior-react`); senior TypeScript standards applied. UX review
 limited to the responsive/RTL structure assertions in the new test file.
 
 ## Data changes
@@ -102,7 +102,7 @@ Commands run (all from `apps/staff-web` unless noted), with final lines:
 - `bash check.sh` → `Test Files 159 passed (159); Tests 1897 passed (1897)`; `No files with missing coverage. 207 files fully covered.`; `Statements 100% (3733/3733), Branches 100% (1896/1896), Functions 100% (1263/1263), Lines 100% (3567/3567)`. (The console "useTheme must be used inside ThemeProvider" lines are the expected error path asserted by `tests/theme/ThemeProvider.test.tsx`, not failures.)
 - Typecheck final lines (required by the frontend rule):
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   Exit 0, no `error TS…` lines.

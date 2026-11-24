@@ -53,8 +53,8 @@ authorization, patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo specialist (`orevia-senior-mobile`, loaded for
-this pass) and Debugger (`orevia-debugger`, loaded for gate triage). An
+Senior React Native and Expo specialist (`aurevia-senior-mobile`, loaded for
+this pass) and Debugger (`aurevia-debugger`, loaded for gate triage). An
 earlier bounded, read-only advisory review found no blocking issue: rest-omission
 is the smallest correct fix, the rest object is assignable to the `reports` prop,
 `_discardedResult` is exempt from `noUnusedLocals` (rest-sibling rule) and

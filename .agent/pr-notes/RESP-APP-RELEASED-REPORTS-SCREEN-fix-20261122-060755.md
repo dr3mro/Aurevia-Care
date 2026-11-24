@@ -19,9 +19,9 @@ I rehydrated the governing context fully (AGENTS.md, CODING_STYLE.md,
 docs/WORKFLOW.md, WORKSPACE.md, TODO.md, MEMORY.md, PROJECT.md, the task file
 `tasks/00319000-RESP-APP-RELEASED-REPORTS-SCREEN.md`, decision 0005, the spec
 clause, the two scope files and the layout hook) and loaded the matching skills:
-`orevia-delivery`, `orevia-senior-mobile`,
-`orevia-senior-typescript`, `orevia-debugger` and
-`orevia-qa-reviewer`. I then **re-ran every scoped gate myself with fresh
+`aurevia-delivery`, `aurevia-senior-mobile`,
+`aurevia-senior-typescript`, `aurevia-debugger` and
+`aurevia-qa-reviewer`. I then **re-ran every scoped gate myself with fresh
 tool commands** rather than trusting the earlier "green" note claims. All
 scoped gates pass. This pass adds only this notes file; no production, test,
 config, threshold, exclusion, tracker, workflow, `scripts/` or `.opencode/`
@@ -57,8 +57,8 @@ association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) and Senior
-TypeScript (`orevia-senior-typescript`) guidance loaded and applied. Their
+Senior React Native and Expo (`aurevia-senior-mobile`) and Senior
+TypeScript (`aurevia-senior-typescript`) guidance loaded and applied. Their
 definition of done is met: `bash apps/patient-mobile/check.sh` green, typecheck
 final lines pasted below, every `error TS…` resolved, no `any` / `@ts-ignore`
 added. No named clinician or patient review was available and none is claimed.

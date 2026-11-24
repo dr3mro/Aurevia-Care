@@ -14,7 +14,7 @@ Routine (verification only — no production, contract, client or test file chan
 
 ## Review owner
 
-orevia-senior-backend (contract/controller consistency); read-only reviews by orevia-plan-reviewer, orevia-code-reviewer, orevia-coverage-auditor and orevia-devsecops. orevia-test-engineer and orevia-senior-backend were consulted on the test-first and wrapper questions.
+aurevia-senior-backend (contract/controller consistency); read-only reviews by aurevia-plan-reviewer, aurevia-code-reviewer, aurevia-coverage-auditor and aurevia-devsecops. aurevia-test-engineer and aurevia-senior-backend were consulted on the test-first and wrapper questions.
 
 ## Data changes
 
@@ -80,10 +80,10 @@ No production file was changed, so there is **no new or changed branch to map** 
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 
@@ -95,7 +95,7 @@ No production file was changed, so there is **no new or changed branch to map** 
 - **Worker-environment false positives recorded once.** `worker-check.sh` and six `test_check_pack` failures come solely from the skip-worktree CI-profile `opencode.json` (OPS-CW-003-01), confirmed via `git ls-files -v` and a `git show HEAD:opencode.json` vs `gen.render(ROOT)` comparison. Do not re-diagnose or regenerate that file.
 - **staff-web dependencies were absent.** `npm --prefix apps/staff-web ci` was needed to run `gen:api:check` and `check.sh`; it changed no tracked file.
 - **Optional (non-blocking) nit from devsecops.** `contracts/openapi.yaml:1624` declares `IdempotencyKey` as `required: true` for the send operation, while `InstantMessagingController.java:106` binds `@RequestHeader(value = "Idempotency-Key", required = false)`. Deduplication is not weakened: `InstantMessagingService.requireKey` rejects a missing/blank key with 422, so no gate is affected. Pre-existing and outside this story's change; recorded for a future documentation-consistency story, not fixed here.
-- **Reviewer conflict resolved.** orevia-code-reviewer initially returned NO-GO with a Critical "false green" finding. On escalation with the SMSG-07 signed-off convention, the `git blame` proof that `isListResponse()` is unchanged since START-08, and the proof that its proposed `*Page` fix would break the exact-set assertion (out of scope), it withdrew the finding and returned GO. No suppression or weakening was introduced; the verdict rests on authoritative project evidence.
+- **Reviewer conflict resolved.** aurevia-code-reviewer initially returned NO-GO with a Critical "false green" finding. On escalation with the SMSG-07 signed-off convention, the `git blame` proof that `isListResponse()` is unchanged since START-08, and the proof that its proposed `*Page` fix would break the exact-set assertion (out of scope), it withdrew the finding and returned GO. No suppression or weakening was introduced; the verdict rests on authoritative project evidence.
 - **Optional (non-blocking) notes from code-reviewer.** (a) `contracts/openapi.yaml:2322-2347` marks every property of `InstantMessage`, `InstantUnread` and `InstantConversation` optional (generated client uses `?`) while the Java views are non-null records; adding `required` is a future tightening. (b) Same `Idempotency-Key` required-vs-optional nit already recorded above. Both pre-existing, outside this story's change, not fixed here.
 - **Optional handoff notes from senior-backend.** (a) `OpenApiPaginationRulesTest.isListResponse()` is a heuristic: a `$ref` to an array schema whose name does not end in `Page` is silently treated as not-a-list. Hardening it (resolve `$ref`, inspect `type`) belongs in a separate, covered test-quality story — not a wire-format change here, and the rule/test files are out of this task's scope. (b) ARC-03 calls for cursor pagination on families that include conversations/messages; the "not a cursor-paginated page" design is a deliberate, already-published choice. If that tension matters, route it to the Product Owner as a new story rather than resurrecting this stale brief. (c) The task entry in `tasks/00002000-FIX-INSTANT-OPENAPI.md` remains `[-]` while its acceptance tests are green — tracker drift; the integrator owns reconciliation, and swarm workers must not edit `tasks/`.
 

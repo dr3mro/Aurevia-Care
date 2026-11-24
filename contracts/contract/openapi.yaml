@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Orevia cross-cutting API contract (X-01)
+  title: Aurevia cross-cutting API contract (X-01)
   version: 0.1.0
   description: >-
     Synthetic-only wire contract for ARC-03 and ARC-04. Versioning,

@@ -55,7 +55,7 @@ Evidence source: executed shell commands (tool), plus simulated specialist revie
 - Canonical gate: `bash apps/staff-web/check.sh` → exit 0; `Test Files 159 passed (159)`, `Tests 1899 passed (1899)`; generated-client drift, lint, production build and bundle-size budget all passed. Re-run twice (before and after the RTL test addition), both exit 0.
 - `npm run typecheck` → exit 0, no `error TS…`. Final lines:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   TYPECHECK_EXIT=0
   ```

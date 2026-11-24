@@ -61,7 +61,7 @@ follow-ups) do not implement the seven catalog queues.
 Verified locally:
 
 ```
-OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=ProvideOperationalQueuesUnsignedEncountersUnreconciledReportsTest test
 Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
 ```

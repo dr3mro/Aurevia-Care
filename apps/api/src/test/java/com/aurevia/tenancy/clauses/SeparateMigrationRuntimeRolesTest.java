@@ -45,17 +45,17 @@ import org.springframework.test.context.ActiveProfiles;
 // production default in application.yml for the current_user assertion to prove
 // the deployment contract rather than this test's own configuration.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_separate_roles_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_separate_roles_it")
 @ActiveProfiles("synthetic-auth")
 class SeparateMigrationRuntimeRolesTest {
 
-    static final String MIGRATE_ROLE = "orevia_migrate";
-    static final String APP_ROLE = "orevia_app";
+    static final String MIGRATE_ROLE = "aurevia_migrate";
+    static final String APP_ROLE = "aurevia_app";
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_separate_roles_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_separate_roles_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     DataSource applicationDataSource;
@@ -66,16 +66,16 @@ class SeparateMigrationRuntimeRolesTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             // Roles are cluster-wide and shared with parallel suites. Force the
             // least-privilege attributes so an earlier run cannot poison them.
-            statement.execute("ALTER ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE");
-            statement.execute("ALTER ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE");
-            statement.execute("DROP DATABASE IF EXISTS orevia_separate_roles_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_separate_roles_it OWNER orevia_migrate");
+            statement.execute("ALTER ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE");
+            statement.execute("ALTER ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_separate_roles_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_separate_roles_it OWNER aurevia_migrate");
         }
         Flyway.configure()
                 .dataSource(URL, MIGRATE_ROLE, "")
@@ -94,7 +94,7 @@ class SeparateMigrationRuntimeRolesTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             // FORCE closes connections the Spring context may still hold when teardown runs.
-            statement.execute("DROP DATABASE IF EXISTS orevia_separate_roles_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_separate_roles_it WITH (FORCE)");
         }
     }
 

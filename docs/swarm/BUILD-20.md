@@ -49,7 +49,7 @@ patient link. No real clinical or patient sign-off was obtained — simulated en
 
 ## Review owner
 
-Primary agent (integrator). Bounded specialist review requested from `orevia-senior-mobile`.
+Primary agent (integrator). Bounded specialist review requested from `aurevia-senior-mobile`.
 No human clinical or privacy reviewer participated.
 
 ## Data changes

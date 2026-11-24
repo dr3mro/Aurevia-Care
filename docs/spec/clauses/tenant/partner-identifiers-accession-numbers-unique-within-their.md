@@ -16,7 +16,7 @@ Active HTTP-level proof (`synthetic-auth` profile, a fresh PostgreSQL database m
 - Test class: `com.aurevia.tenant.clauses.PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest`
   (`apps/api/src/test/java/com/aurevia/tenant/clauses/PartnerIdentifiersAccessionNumbersUniqueWithinTheirTest.java`).
   It follows the fixtures and database setup of `patient/clauses/RecordPatientrecordIssuerScopedMrnOrganizationTest`
-  and `it/lab/SpecimenAccessionIsolationTest`, with a dedicated database (`orevia_arc01c04_it`) so
+  and `it/lab/SpecimenAccessionIsolationTest`, with a dedicated database (`aurevia_arc01c04_it`) so
   durable rows are read back under forced row-level security. Two synthetic organizations and
   synthetic subjects (`reception-a`, `lab-a`, `auditor-a`, `reception-b`, `lab-b`) are used.
 

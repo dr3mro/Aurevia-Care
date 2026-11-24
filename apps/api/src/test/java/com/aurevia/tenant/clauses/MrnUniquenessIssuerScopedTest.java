@@ -44,15 +44,15 @@ import org.springframework.web.client.RestClient;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_arc01_clause3_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_arc01_clause3_it")
 @ActiveProfiles("synthetic-auth")
 class MrnUniquenessIssuerScopedTest {
 
     static final String ORG_A = "a1000000-0000-0000-0000-000000000001";
     static final String ORG_B = "b2000000-0000-0000-0000-000000000002";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_arc01_clause3_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_arc01_clause3_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     RestClient rest;
 
@@ -67,19 +67,19 @@ class MrnUniquenessIssuerScopedTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc01_clause3_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_arc01_clause3_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_arc01_clause3_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_arc01_clause3_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seed(statement, ORG_A, "reception-c3-a", "reception");
             seed(statement, ORG_B, "reception-c3-b", "reception");
@@ -92,7 +92,7 @@ class MrnUniquenessIssuerScopedTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc01_clause3_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_arc01_clause3_it WITH (FORCE)");
         }
     }
 
@@ -157,7 +157,7 @@ class MrnUniquenessIssuerScopedTest {
     }
 
     private int countMrnWithOrg(String organization, String issuer, String mrn) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + organization + "'");
             try (ResultSet result = statement.executeQuery(

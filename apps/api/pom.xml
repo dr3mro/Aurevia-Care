@@ -12,10 +12,10 @@
     <relativePath />
   </parent>
   <groupId>com.aurevia</groupId>
-  <artifactId>orevia-api</artifactId>
+  <artifactId>aurevia-api</artifactId>
   <version>0.1.0-SNAPSHOT</version>
-  <name>Orevia API</name>
-  <description>Tenant-isolated staff API for Orevia Cloud</description>
+  <name>Aurevia API</name>
+  <description>Tenant-isolated staff API for Aurevia Cloud</description>
 
   <properties>
     <java.version>21</java.version>

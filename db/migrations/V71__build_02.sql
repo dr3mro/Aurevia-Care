@@ -137,8 +137,8 @@ CREATE TRIGGER role_change_capture_revoke
     FOR EACH ROW EXECUTE FUNCTION public.capture_role_change();
 
 REVOKE ALL ON FUNCTION public.capture_role_change() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.capture_role_change() TO orevia_migrate;
+GRANT EXECUTE ON FUNCTION public.capture_role_change() TO aurevia_migrate;
 
 -- Reads only: the ledger can be appended to solely by the triggers above.
-GRANT SELECT ON public.role_change_history TO orevia_app;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.role_change_history FROM orevia_app;
+GRANT SELECT ON public.role_change_history TO aurevia_app;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.role_change_history FROM aurevia_app;

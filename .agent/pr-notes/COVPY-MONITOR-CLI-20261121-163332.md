@@ -20,7 +20,7 @@ contract, data or deployment change.
 
 ## Review owner
 
-Senior Python Tooling (`orevia-senior-python`); QA reviews the coverage evidence.
+Senior Python Tooling (`aurevia-senior-python`); QA reviews the coverage evidence.
 
 ## Data changes
 

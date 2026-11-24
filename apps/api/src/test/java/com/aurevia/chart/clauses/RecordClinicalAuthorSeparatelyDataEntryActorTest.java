@@ -44,7 +44,7 @@ import org.springframework.web.client.RestClient;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_clinical_author_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_clinical_author_it")
 @ActiveProfiles("synthetic-auth")
 class RecordClinicalAuthorSeparatelyDataEntryActorTest {
 
@@ -52,9 +52,9 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     private static final String PATIENT_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_clinical_author_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_clinical_author_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @LocalServerPort
     int port;
@@ -73,18 +73,18 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_clinical_author_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_clinical_author_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_clinical_author_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_clinical_author_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "clinician-a", "clinician");
             seedUser(statement, ORG_A, "clinician-b", "clinician");
@@ -105,7 +105,7 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_clinical_author_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_clinical_author_it WITH (FORCE)");
         }
     }
 
@@ -226,7 +226,7 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
     }
 
     private static int countRows(String text) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             // The migration owner is subject to FORCE RLS too, so bind the tenant
             // before reading the rows written inside the request transaction.
@@ -256,7 +256,7 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
         assertNotEquals(field(verified.getBody(), "clinicalAuthor"),
                 field(verified.getBody(), "dataEntryActor"));
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
@@ -290,7 +290,7 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
         ResponseEntity<String> replay = verify(id, "2", "clinician-b", ORG_A);
         assertEquals(409, replay.getStatusCode().value(), replay.getBody());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
@@ -314,7 +314,7 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
         ResponseEntity<String> denied = verify(id, "1", "assistant-a", ORG_A);
         assertEquals(HttpStatus.FORBIDDEN, denied.getStatusCode(), denied.getBody());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
@@ -337,7 +337,7 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
         assertTrue(created.getBody().contains("\"clinicalAuthor\":null"), created.getBody());
         String id = field(created.getBody(), "id");
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
@@ -394,7 +394,7 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
         ResponseEntity<String> denied = verify(id, "1", "clinician-other", ORG_B);
         assertEquals(HttpStatus.NOT_FOUND, denied.getStatusCode(), denied.getBody());
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(

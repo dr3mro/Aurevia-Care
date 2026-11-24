@@ -14,7 +14,7 @@ Test class: `com.aurevia.chart.clauses.EnteredErrorPreservesPriorRevisionRecords
 (path: `apps/api/src/test/java/com/aurevia/chart/clauses/EnteredErrorPreservesPriorRevisionRecordsActorTest.java`).
 All seven tests are active (none disabled), use only synthetic fixtures and drive the real HTTP
 entry point against a freshly migrated database. The test class is tagged `integration` and
-uses its own database `orevia_chart_clause05_it`, following the neighbouring
+uses its own database `aurevia_chart_clause05_it`, following the neighbouring
 `com.aurevia.it.clinical.ClinicalNoteRevisionIntegrationTest` fixtures and setup.
 
 - `enteredInErrorAppendsASupersedingRevisionAndRecordsActorReasonAndRecipients` — positive proof.

@@ -3,4 +3,4 @@ description: "Review clinical staff and patient usability, accessibility, and lo
 mode: subagent
 ---
 
-Load the `orevia-ux-reviewer` skill. Read only the relevant scope. Apply AGENTS.md and return the prescribed evidence or a blocker to the primary agent. Remain read-only.
+Load the `aurevia-ux-reviewer` skill. Read only the relevant scope. Apply AGENTS.md and return the prescribed evidence or a blocker to the primary agent. Remain read-only.

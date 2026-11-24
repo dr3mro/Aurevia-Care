@@ -126,15 +126,15 @@ CREATE TRIGGER template_audit_event_no_truncate
     FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation();
 
 REVOKE ALL ON FUNCTION public.guard_published_template_version() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.guard_published_template_version() TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.guard_published_template_version() TO aurevia_app;
 
-GRANT SELECT, INSERT, UPDATE ON public.template_field_dictionary TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.template_version_sequence TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.template_version TO orevia_app;
-GRANT SELECT, INSERT ON public.template_note_revision TO orevia_app;
-GRANT SELECT, INSERT ON public.template_audit_event TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.template_field_dictionary FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.template_version_sequence FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.template_version FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.template_note_revision FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.template_audit_event FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.template_field_dictionary TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.template_version_sequence TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.template_version TO aurevia_app;
+GRANT SELECT, INSERT ON public.template_note_revision TO aurevia_app;
+GRANT SELECT, INSERT ON public.template_audit_event TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.template_field_dictionary FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.template_version_sequence FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.template_version FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.template_note_revision FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.template_audit_event FROM aurevia_app;

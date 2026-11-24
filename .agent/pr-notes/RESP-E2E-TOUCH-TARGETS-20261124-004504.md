@@ -24,9 +24,9 @@ authorization or contract changed.
 
 ## Review owner
 
-smartclinic-senior-react and smartclinic-senior-typescript (staff web), smartclinic-test-engineer,
-smartclinic-plan-reviewer before coding; smartclinic-code-reviewer, smartclinic-coverage-auditor
-and smartclinic-devsecops after the change.
+aurevia-senior-react and aurevia-senior-typescript (staff web), aurevia-test-engineer,
+aurevia-plan-reviewer before coding; aurevia-code-reviewer, aurevia-coverage-auditor
+and aurevia-devsecops after the change.
 
 ## Data changes
 
@@ -191,11 +191,11 @@ rule is a documented layout contract, not a sign-off.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-test-engineer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
-- smartclinic-code-reviewer: GO
+- aurevia-plan-reviewer: GO
+- aurevia-test-engineer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
+- aurevia-code-reviewer: GO
 
 Verdict context: the plan reviewer issued a pre-code NO-GO with nine Required gaps and a final
 GO once all were closed; the test engineer issued a design-stage NO-GO with seven Required gaps

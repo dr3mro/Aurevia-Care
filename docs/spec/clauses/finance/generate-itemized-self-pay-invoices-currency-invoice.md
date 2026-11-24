@@ -75,7 +75,7 @@ change production code, an existing test, the contract or a migration.
 
 ## How to verify
 
-- Clause test (synthetic fixtures, real PostgreSQL): `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest test` — expected `EXIT:0`, with the Surefire report showing all four tests run and none skipped.
+- Clause test (synthetic fixtures, real PostgreSQL): `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest test` — expected `EXIT:0`, with the Surefire report showing all four tests run and none skipped.
 - Documentation check: `python3 -I scripts/check-docs.py` — expected exit 0.
 - Tooling unit tests: `python3 -I -m unittest discover -s scripts/tests` — expected 0 failures.
 - Worker gate: `bash scripts/worker-check.sh` — expected 0.

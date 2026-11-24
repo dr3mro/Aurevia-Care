@@ -52,7 +52,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_instruction_store_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_instruction_store_it")
 @ActiveProfiles("synthetic-auth")
 class JdbcInstructionStoreIntegrationTest {
 
@@ -69,9 +69,9 @@ class JdbcInstructionStoreIntegrationTest {
     private static final String SUBJECT_B = "clinician-b";
     private static final Instant ISSUED = Instant.parse("2026-11-20T10:00:00Z");
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/smartclinic_instruction_store_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_instruction_store_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     JdbcInstructionStore store;
@@ -87,18 +87,18 @@ class JdbcInstructionStoreIntegrationTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_migrate') THEN "
-                    + "CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_app') THEN "
-                    + "CREATE ROLE smartclinic_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS smartclinic_instruction_store_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE smartclinic_instruction_store_it OWNER smartclinic_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_instruction_store_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_instruction_store_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "smartclinic_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, SUBJECT_A, "clinician");
             seedUser(statement, ORG_B, SUBJECT_B, "clinician");
@@ -138,7 +138,7 @@ class JdbcInstructionStoreIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS smartclinic_instruction_store_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_instruction_store_it WITH (FORCE)");
         }
     }
 

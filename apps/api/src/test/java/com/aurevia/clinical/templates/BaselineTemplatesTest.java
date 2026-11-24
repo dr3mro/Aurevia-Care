@@ -124,7 +124,7 @@ class BaselineTemplatesTest {
                 "a global catalog needs its own immutability function (the shared one reads organization_id)");
         assertTrue(sql.contains("FOR EACH ROW EXECUTE FUNCTION public.reject_baseline_catalog_mutation()"),
                 "baseline field meanings are immutable");
-        assertTrue(sql.contains("GRANT SELECT ON public.clinical_template_baseline TO orevia_app"),
+        assertTrue(sql.contains("GRANT SELECT ON public.clinical_template_baseline TO aurevia_app"),
                 "the application may only read the approved baseline");
         assertFalse(sql.contains("UPDATE public.clinical_template_baseline"),
                 "there is no application update path for an approved baseline");

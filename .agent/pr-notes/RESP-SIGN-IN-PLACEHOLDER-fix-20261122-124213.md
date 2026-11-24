@@ -22,8 +22,8 @@ three prior fix rounds the debugger's own guidance is that a person takes over.
 
 Evidence source for every claim: **executed tool commands** in this worker (git, `npm ci`, Vitest
 via the module `check.sh`, the Python unittest suite, and direct file reads). Specialist review is
-**simulated** (skills loaded: orevia-delivery, orevia-debugger, orevia-senior-python,
-orevia-senior-react). There was **no** simulated-user walkthrough and **no** human participant.
+**simulated** (skills loaded: aurevia-delivery, aurevia-debugger, aurevia-senior-python,
+aurevia-senior-react). There was **no** simulated-user walkthrough and **no** human participant.
 
 ## Affected requirements
 
@@ -52,10 +52,10 @@ paths (`docs/WORKFLOW.md`). No data, contract, migration, authorization or clini
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) owns the staff-web surface; its definition of
+Senior React and Vite (`aurevia-senior-react`) owns the staff-web surface; its definition of
 done (`check.sh` + typecheck final lines) is satisfied below. Senior TypeScript
-(`orevia-senior-typescript`), UX (`orevia-ux-reviewer`), Debugger
-(`orevia-debugger`) and Python (`orevia-senior-python`) skills were loaded. All review is
+(`aurevia-senior-typescript`), UX (`aurevia-ux-reviewer`), Debugger
+(`aurevia-debugger`) and Python (`aurevia-senior-python`) skills were loaded. All review is
 **simulated**; no human or simulated-user participation.
 
 ## Data changes
@@ -95,7 +95,7 @@ participant produced evidence in this task.
 
    Typecheck final lines (exit 0 — **no `error TS…`**):
    ```
-   > orevia-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    The build step re-ran `tsc --noEmit -p tsconfig.json && vite build` and succeeded.

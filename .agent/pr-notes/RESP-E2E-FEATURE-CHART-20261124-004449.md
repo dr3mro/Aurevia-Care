@@ -7,7 +7,7 @@ Staff-web end-to-end responsive proof for the chart feature (WEB-07, UX-01). One
 - WEB-07 — supported clients and device matrix: staff web at 1280x720 and above with compact layout; decision 0004 governs a supported compact layout down to 320 px and this suite exercises 360 px phones through 1920 px desktops.
 - UX-01 — English and Arabic RTL (`html[dir]`/`html[lang]`), mixed-script clinical text, no page-wide horizontal scroll, all clinical values reachable on compact layouts, WCAG 2.2 AA gate.
 
-Note: WEB-07 in `SMARTCLINIC_V1_SPEC.md` still states the 1280/768 floors and a sub-768 px "use a larger screen" notice. `docs/decisions/0004-responsive-staff-web.md:54` says a person must amend the specification; the swarm may not. Decision 0004 and `docs/design/responsive-layout.md` govern this test; the spec text was not edited.
+Note: WEB-07 in `AUREVIA_V1_SPEC.md` still states the 1280/768 floors and a sub-768 px "use a larger screen" notice. `docs/decisions/0004-responsive-staff-web.md:54` says a person must amend the specification; the swarm may not. Decision 0004 and `docs/design/responsive-layout.md` govern this test; the spec text was not edited.
 
 ## Risk class
 
@@ -69,13 +69,13 @@ No signed data, cross-organization sharing, patient association change, prescrib
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (after all Required findings were addressed; re-review of the revised plan)
-- smartclinic-test-engineer: GO (conditional on seven Required test-design changes, all applied)
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
-- smartclinic-senior-typescript: GO
-- smartclinic-code-reviewer: GO (after notes sections and comment fixes; re-review)
-- smartclinic-senior-react: GO (after Tab-reachability and attestation-value fixes; re-review)
+- aurevia-plan-reviewer: GO (after all Required findings were addressed; re-review of the revised plan)
+- aurevia-test-engineer: GO (conditional on seven Required test-design changes, all applied)
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
+- aurevia-senior-typescript: GO
+- aurevia-code-reviewer: GO (after notes sections and comment fixes; re-review)
+- aurevia-senior-react: GO (after Tab-reachability and attestation-value fixes; re-review)
 
 ## Findings
 

@@ -69,7 +69,7 @@ The new HTTP test adds the real entry point, the interceptor-derived tenant
 context, an actual server on a random port, real PostgreSQL and V62's forced
 row-level security on the exact nine clause actions.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=AuditOpeningViewingSendingAssigningDownloadingAcknowledgingTest test` —
 `tests="5" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim

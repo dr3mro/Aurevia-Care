@@ -16,7 +16,7 @@ It is a real-PostgreSQL acceptance test tagged `integration`, using the
 `synthetic-auth` profile and two synthetic organizations (`ORG_A`, `ORG_B`) with
 the fixtures and database setup of the neighbouring `TenantOrganizationTest` and
 `IsolationAcrossSurfacesTest`. A dedicated database
-`orevia_arc01_clause1_it` is migrated from `db/migrations` and dropped after
+`aurevia_arc01_clause1_it` is migrated from `db/migrations` and dropped after
 the suite, so the durable row is read back under forced row-level security. All
 three methods pass; none is disabled.
 
@@ -29,7 +29,7 @@ Test methods (one positive rule proof and two negative refusals):
   It then reaches the seeded facility through the normal HTTP entry point
   `GET /api/v1/facilities/{code}` and asserts the response carries the owning
   organization, and reads the same durable row back as the non-owner
-  `orevia_app` role inside a `TransactionTemplate` with a bound
+  `aurevia_app` role inside a `TransactionTemplate` with a bound
   `TenantContext` (transaction-local `app.current_org`). The readback asserts the
   organization id and that the stored `id` parses as a UUID, proving the
   database-generated opaque identifier survives forced RLS.

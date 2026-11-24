@@ -45,16 +45,16 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_fin01_clause1_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_fin01_clause1_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_fin01_clause1_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_fin01_clause1_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String FINANCE_A = "finance-1111";
     private static final String RECEPTION_A = "reception-1111";
     private static final String FINANCE_B = "finance-2222";
@@ -94,18 +94,18 @@ class GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_fin01_clause1_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_fin01_clause1_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_fin01_clause1_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_fin01_clause1_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'bootstrap-1111'");
@@ -130,7 +130,7 @@ class GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_fin01_clause1_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_fin01_clause1_it WITH (FORCE)");
         }
     }
 
@@ -194,7 +194,7 @@ class GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest {
     }
 
     private static String patientId() {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, ORG_A, FINANCE_A);
             try (Statement statement = connection.createStatement();
@@ -211,7 +211,7 @@ class GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest {
     }
 
     private static Counts counts(String org, String subject) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (Statement statement = connection.createStatement()) {
@@ -234,7 +234,7 @@ class GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest {
     }
 
     private static long countById(String org, String subject, String sql, String id) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -257,7 +257,7 @@ class GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest {
         String itemSql = "SELECT invoice_id::text, line_no, quantity, unit_amount_minor, amount_minor "
                 + "FROM public.finance_invoice_item WHERE invoice_id = CAST(? AS uuid) ORDER BY line_no";
         List<ItemSnapshot> items = new ArrayList<>();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try {

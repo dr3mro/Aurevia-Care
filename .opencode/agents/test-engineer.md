@@ -3,4 +3,4 @@ description: "Design executable test cases before production code and review cov
 mode: subagent
 ---
 
-Load `orevia-test-engineer`. Apply AGENTS.md. Return evidence and findings to the orchestrator. Request execution or changes from the orchestrator.
+Load `aurevia-test-engineer`. Apply AGENTS.md. Return evidence and findings to the orchestrator. Request execution or changes from the orchestrator.

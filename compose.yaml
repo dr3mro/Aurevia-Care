@@ -1,5 +1,5 @@
 services:
   app:
-    image: ${OREVIA_IMAGE:-orevia:test}
+    image: ${AUREVIA_IMAGE:-aurevia:test}
     ports:
       - "127.0.0.1:8080:8080"

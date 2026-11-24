@@ -29,7 +29,7 @@ import org.springframework.web.client.RestClient;
 /** S-G0-07 acceptance: identity proofing, verified linking, unlinking and tenant isolation (IAM-05). */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_identity_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_identity_it")
 @ActiveProfiles("synthetic-auth")
 class IdentityProofingIsolationTest {
 
@@ -37,9 +37,9 @@ class IdentityProofingIsolationTest {
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String CHART_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     static final String CHART_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_identity_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_identity_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     RestClient rest;
 
@@ -54,18 +54,18 @@ class IdentityProofingIsolationTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_identity_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_identity_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_identity_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_identity_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedStaff(statement, ORG_A, "admin-a", "tenant_admin");
             seedStaff(statement, ORG_A, "registrar-a", "reception");
@@ -83,7 +83,7 @@ class IdentityProofingIsolationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_identity_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_identity_it WITH (FORCE)");
         }
     }
 
@@ -281,7 +281,7 @@ class IdentityProofingIsolationTest {
         enroll(subject, "Contact", "registrar-a", ORG_A);
         issueAndClaim(subject, CHART_A, "registrar-a", ORG_A);
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             useOrg(statement, ORG_A);
             statement.execute("SET app.actor = 'registrar-a'");
@@ -345,7 +345,7 @@ class IdentityProofingIsolationTest {
         enroll(subject, "Expired", "registrar-a", ORG_A);
         ResponseEntity<String> issue = issue(subject, CHART_A, "registrar-a", ORG_A);
         String token = field(issue.getBody(), "token");
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             useOrg(statement, ORG_A);
             // Backdate both endpoints so the invitation is genuinely expired while
@@ -398,7 +398,7 @@ class IdentityProofingIsolationTest {
         request(HttpMethod.POST, "/api/v1/patient-identity/links/unlink",
                 "{\"subject\":\"" + subject + "\",\"chartId\":\"" + CHART_A + "\",\"reason\":\"done\"}",
                 subject, ORG_A);
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             useOrg(statement, ORG_A);
             try (ResultSet result = statement.executeQuery(
@@ -419,7 +419,7 @@ class IdentityProofingIsolationTest {
         String subject = uniqueSubject("immutable");
         enroll(subject, "Immutable", "registrar-a", ORG_A);
         issueAndClaim(subject, CHART_A, "registrar-a", ORG_A);
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             useOrg(statement, ORG_A);
             boolean rejected = false;

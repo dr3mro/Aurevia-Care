@@ -32,7 +32,7 @@ cannot rewrite an old score).
   progress / discharge notes with signatures and SHA-256 checksums, approved summaries,
   revision-bound return acknowledgments and an append-only PT-01 audit trail.
 - Every table has `organization_id` in its key and foreign keys, `ENABLE` + `FORCE ROW LEVEL
-  SECURITY`, the `public.app_org()` policy, explicit grants to `orevia_app`, and append-only
+  SECURITY`, the `public.app_org()` policy, explicit grants to `aurevia_app`, and append-only
   triggers/fact-freeze triggers where the domain requires immutability.
 - Two named acceptance rules are enforced twice: in `TherapyService` (existing) and now in the
   database (discharge signature guard; scale-definition immutability + reading/scale-unit guard).
@@ -74,7 +74,7 @@ ever retired (no existing data depends on them today). Applied cleanly by `db/ch
 
 - Tenant scope: `organization_id` is part of every primary/foreign key; RLS is forced and the
   `USING (organization_id = public.app_org())` policy is attached per table.
-- Runtime role `orevia_app` gets read + append (and controlled UPDATE on episode,
+- Runtime role `aurevia_app` gets read + append (and controlled UPDATE on episode,
   evaluation, scale approval and draft notes); DELETE/TRUNCATE are revoked and append-only
   triggers reject immutable mutation for every role, including the migration owner.
 - Role checks (pt_clinician, pt_coordinator, tenant_admin, clinical_governance, privacy_auditor)

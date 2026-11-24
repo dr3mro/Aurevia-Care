@@ -42,7 +42,7 @@ ALTER TABLE public.facility ADD COLUMN time_zone text NOT NULL DEFAULT 'UTC';
 
 -- A facility time zone may be corrected by the application; nothing else on the
 -- facility row is writable through the runtime role.
-GRANT UPDATE (time_zone) ON public.facility TO orevia_app;
+GRANT UPDATE (time_zone) ON public.facility TO aurevia_app;
 
 CREATE TABLE public.visit_type (
     organization_id  uuid NOT NULL REFERENCES public.organization(organization_id),
@@ -298,16 +298,16 @@ CREATE TRIGGER appointment_update_guard
 
 -- Reference data is written only through the guarded INSERT path.
 GRANT SELECT, INSERT ON public.visit_type, public.scheduling_resource,
-                         public.resource_availability TO orevia_app;
+                         public.resource_availability TO aurevia_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON public.visit_type, public.scheduling_resource,
-       public.resource_availability FROM orevia_app;
+       public.resource_availability FROM aurevia_app;
 
 -- An appointment may move through its state machine but never be deleted.
-GRANT SELECT, INSERT, UPDATE ON public.appointment TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.appointment FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.appointment TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.appointment FROM aurevia_app;
 
-GRANT SELECT, INSERT ON public.appointment_event TO orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.appointment_event FROM orevia_app;
+GRANT SELECT, INSERT ON public.appointment_event TO aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.appointment_event FROM aurevia_app;
 
 REVOKE ALL ON FUNCTION public.guard_appointment_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_appointment_created_by_from_actor() FROM PUBLIC;

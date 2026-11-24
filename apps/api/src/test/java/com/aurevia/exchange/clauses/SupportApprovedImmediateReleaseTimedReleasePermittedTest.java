@@ -48,7 +48,7 @@ import org.springframework.web.client.RestClient;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_release_clauses_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_release_clauses_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class SupportApprovedImmediateReleaseTimedReleasePermittedTest {
@@ -56,10 +56,10 @@ class SupportApprovedImmediateReleaseTimedReleasePermittedTest {
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     private static final String PATIENT = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_release_clauses_it";
-    private static final String DB = "orevia_release_clauses_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_release_clauses_it";
+    private static final String DB = "aurevia_release_clauses_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String CLINICIAN_A = "clinician-a";
     private static final String RECEPTION_A = "reception-a";
     private static final String CLINICIAN_B = "clinician-b";
@@ -82,18 +82,18 @@ class SupportApprovedImmediateReleaseTimedReleasePermittedTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedStaff(statement, ORG_A, "bootstrap-a", "tenant_admin");
             seedPatient(statement, ORG_A, "bootstrap-a");
@@ -228,7 +228,7 @@ class SupportApprovedImmediateReleaseTimedReleasePermittedTest {
 
     /** Read a single-column result set as the tenant migration role. */
     private static List<String> queryStrings(String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(sql)) {
@@ -243,7 +243,7 @@ class SupportApprovedImmediateReleaseTimedReleasePermittedTest {
 
     /** Resolve a synthetic subject's local identifier inside its own tenant. */
     private static String userId(String org, String subject) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             try (ResultSet result = statement.executeQuery(

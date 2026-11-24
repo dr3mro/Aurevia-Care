@@ -2,7 +2,7 @@
 
 ## Summary
 
-Adds the API-level clause proof for the Clinician row of SMARTCLINIC_V1_SPEC.md
+Adds the API-level clause proof for the Clinician row of AUREVIA_V1_SPEC.md
 section 2. One new test class drives the real authorization decisions of the
 note, order, prescription and release services, plus the result action policy,
 with synthetic fixtures. One new four-heading status doc records what is proven
@@ -31,8 +31,8 @@ outcomes and absence of writes, and synthetic data only is used.
 
 ## Review owner
 
-smartclinic-senior-backend, smartclinic-senior-spring-security,
-smartclinic-senior-java-build; read-only reviewers listed under Review verdicts.
+aurevia-senior-backend, aurevia-senior-spring-security,
+aurevia-senior-java-build; read-only reviewers listed under Review verdicts.
 
 ## Data changes
 
@@ -57,7 +57,7 @@ None.
 ## Test evidence
 
 - `mvn -f apps/api/pom.xml -Dtest=RoleClinicianTest test`
-  final: `Tests run: 17, Failures: 0, Errors: 0, Skipped: 0 -- in com.aurevia.smartclinic.authz.clauses.RoleClinicianTest` (tool, exit 0). Re-run green after the final reviewer-driven assertion and style edits.
+  final: `Tests run: 17, Failures: 0, Errors: 0, Skipped: 0 -- in com.aurevia.aurevia.authz.clauses.RoleClinicianTest` (tool, exit 0). Re-run green after the final reviewer-driven assertion and style edits.
 - `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check`
   final: no findings, exit 0 (tool). Compiled before SpotBugs as required.
 - `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test`
@@ -120,18 +120,18 @@ estimates. The stale facility-scope clause doc is flagged below, not edited.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (after the @Disabled plan was replaced with ACTIVE gap tripwires; before coding)
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
-- smartclinic-senior-backend: GO
-- smartclinic-senior-java-build: GO
+- aurevia-plan-reviewer: GO (after the @Disabled plan was replaced with ACTIVE gap tripwires; before coding)
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
+- aurevia-senior-backend: GO
+- aurevia-senior-java-build: GO
 
 Optional reviewer findings addressed before the final run: added
 `verify(releases).insertNotification(...)` so the doc's "patient notification"
 claim matches an assertion; used a distinct `RECEPTION` subject in
 `receptionCannotAuthorizeARelease`; imported `ResultActions` instead of fully
-qualifying it. `smartclinic-test-engineer` and `smartclinic-senior-spring-security`
+qualifying it. `aurevia-test-engineer` and `aurevia-senior-spring-security`
 returned NO-GO on the first draft and their Required findings were incorporated
 (details under Findings).
 
@@ -166,10 +166,10 @@ returned NO-GO on the first draft and their Required findings were incorporated
   field. The real binding is the DB trigger in `V43__prescription_drafts.sql`
   (`NEW.prescriber_subject := app.actor`). This is cited as the compensating
   control rather than asserted through a mock that would prove nothing.
-- **Reviewer rounds.** `smartclinic-plan-reviewer` first returned NO-GO on the
+- **Reviewer rounds.** `aurevia-plan-reviewer` first returned NO-GO on the
   `@Disabled` plan; after replacing both disabled cases with active tripwires it
-  returned GO before any code was written. `smartclinic-test-engineer` and
-  `smartclinic-senior-spring-security` returned NO-GO with concrete findings,
+  returned GO before any code was written. `aurevia-test-engineer` and
+  `aurevia-senior-spring-security` returned NO-GO with concrete findings,
   all incorporated: real-path positive attest and release assertions, audit
   DENIED assertions, distinct role-gate versus ownership denials, `place` (not
   `saveDraft`) for the tenant-admin negative, clinician roles on the other-tenant
@@ -201,19 +201,19 @@ returned NO-GO on the first draft and their Required findings were incorporated
   {
     "title": "Grant clinicians the result reconciliation actions",
     "details": "ResultActionPolicy excludes the clinician role from RECONCILIATION_READ and RECONCILIATION_RESOLVE although the section-2 Clinician row grants reconcile. Decide the clinical safety boundary, grant the role if approved, add tests for the resolution route and OpenAPI entry, and flip reconcileIsCurrentlyDeniedToClinicianGap to a positive proof. See docs/spec/clauses/authz/role-clinician.md Gap 1.",
-    "scope": ["apps/api/src/main/java/com/aurevia/smartclinic/exchange/result", "apps/api/src/test/java/com/aurevia/smartclinic/exchange/result", "contracts/openapi.yaml"],
+    "scope": ["apps/api/src/main/java/com/aurevia/aurevia/exchange/result", "apps/api/src/test/java/com/aurevia/aurevia/exchange/result", "contracts/openapi.yaml"],
     "depends": []
   },
   {
     "title": "Enforce facility and care-relationship scope on clinical verbs",
     "details": "Facility narrowing is enforced only for check-in, intake, emergency access and messaging. Add a tenant-owned, forced-RLS association for facility assignment and encounter care relationship, propagate it through staff invitation acceptance, consult it in ClinicalNoteService, OrderPlacementService, RxService and the release path, update the action-policy contract and OpenAPI, and flip facilityScopeIsNotConsultedByClinicalOrderingGap. See docs/spec/clauses/authz/role-clinician.md Gap 2; needs persistence then enforcement then test enablement.",
-    "scope": ["db/migrations", "apps/api/src/main/java/com/aurevia/smartclinic/authz", "apps/api/src/main/java/com/aurevia/smartclinic/clinical", "apps/api/src/main/java/com/aurevia/smartclinic/orderentry", "apps/api/src/main/java/com/aurevia/smartclinic/prescription", "contracts/openapi.yaml"],
+    "scope": ["db/migrations", "apps/api/src/main/java/com/aurevia/aurevia/authz", "apps/api/src/main/java/com/aurevia/aurevia/clinical", "apps/api/src/main/java/com/aurevia/aurevia/orderentry", "apps/api/src/main/java/com/aurevia/aurevia/prescription", "contracts/openapi.yaml"],
     "depends": []
   },
   {
     "title": "Add an actor role decision to lab report release",
     "details": "LabReportReleaseService.release has no actor role check; the CLINICIAN constant is a notification recipient. Add the real authorization decision (reconciling it with ReleaseActionPolicy and the lab_verifier specialty duty), cover it with unit and HTTP tests, update the OpenAPI entry and record the clause evidence. See docs/spec/clauses/authz/role-clinician.md Gap 3.",
-    "scope": ["apps/api/src/main/java/com/aurevia/smartclinic/labflow/release", "apps/api/src/test/java/com/aurevia/smartclinic/labflow/release", "contracts/openapi.yaml"],
+    "scope": ["apps/api/src/main/java/com/aurevia/aurevia/labflow/release", "apps/api/src/test/java/com/aurevia/aurevia/labflow/release", "contracts/openapi.yaml"],
     "depends": []
   }
 ]

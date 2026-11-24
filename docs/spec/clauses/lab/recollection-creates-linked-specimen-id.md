@@ -67,7 +67,7 @@ Production classes exercised through the real HTTP entry point
   accession_no)` unique index, forced RLS, the version/state update guard and triggers
   that derive the actor from the authenticated subject.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecollectionCreatesLinkedSpecimenIdTest test`
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecollectionCreatesLinkedSpecimenIdTest test`
 — `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0` (see the story notes for the
 captured final lines).
 

@@ -68,7 +68,7 @@ END $$;
 
 -- The runtime role writes suggestions and tasks through the domain service;
 -- deletion and truncation are reserved for the migration owner.
-GRANT SELECT, INSERT, UPDATE ON public.follow_up_suggestion TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.care_team_task TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.follow_up_suggestion FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.care_team_task FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.follow_up_suggestion TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.care_team_task TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.follow_up_suggestion FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.care_team_task FROM aurevia_app;

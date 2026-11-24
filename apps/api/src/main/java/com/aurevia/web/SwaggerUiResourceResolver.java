@@ -43,8 +43,8 @@ final class SwaggerUiResourceResolver implements ResourceResolver {
             <html lang="en">
               <head>
                 <meta charset="UTF-8">
-                <title>Orevia API documentation</title>
-                <meta name="orevia-openapi-contract" content="/api/v1/openapi.yaml">
+                <title>Aurevia API documentation</title>
+                <meta name="aurevia-openapi-contract" content="/api/v1/openapi.yaml">
                 <link rel="stylesheet" type="text/css" href="/swagger-ui/swagger-ui.css">
                 <link rel="icon" type="image/png" href="/swagger-ui/favicon-32x32.png" sizes="32x32">
               </head>

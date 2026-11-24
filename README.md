@@ -1,6 +1,6 @@
 # Aurevia Care
 
-Aurevia Care (Orevia Cloud V1) is a multi-tenant healthcare platform: a Spring Boot API, a React staff web app and a React Native patient app, built by a team of OpenCode agents through GitHub Actions. The product specification is in `PROJECT_V1_SPEC.md`, the task files in `tasks/` (`tasks/` is a generated view), and setup details in `README-SETUP.md`.
+Aurevia Care (Aurevia Cloud V1) is a multi-tenant healthcare platform: a Spring Boot API, a React staff web app and a React Native patient app, built by a team of OpenCode agents through GitHub Actions. The product specification is in `PROJECT_V1_SPEC.md`, the task files in `tasks/` (`tasks/` is a generated view), and setup details in `README-SETUP.md`.
 
 ## Run it with one command
 

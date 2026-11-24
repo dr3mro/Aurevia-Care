@@ -35,8 +35,8 @@ safety-critical contract). Classified per `docs/WORKFLOW.md`.
 
 ## Review owner
 
-Primary agent (tool-verified). Prior simulated `orevia-senior-react` and
-`orevia-ux-reviewer` reviews on the first pass recorded no actionable
+Primary agent (tool-verified). Prior simulated `aurevia-senior-react` and
+`aurevia-ux-reviewer` reviews on the first pass recorded no actionable
 findings; those subagents had no shell and relied on the primary agent's evidence.
 No new public contract, migration or clinical data is involved, so no new
 cross-boundary or clinical review is required.

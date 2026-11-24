@@ -22,7 +22,7 @@ docs/WORKFLOW.md, WORKSPACE.md, TODO.md and its "Instructions for every agent",
 MEMORY.md, PROJECT.md, the story task file, decision `0005-patient-app-tablets.md`,
 both scoped files, `types.ts` and the layout hook), read the newest reconciled
 daily note's lessons (`.agent/pr-notes/2026-11-20.md`) and loaded the matching
-skills: `orevia-delivery`, `orevia-senior-mobile`. I then re-ran every
+skills: `aurevia-delivery`, `aurevia-senior-mobile`. I then re-ran every
 scoped gate myself with fresh tool commands; all pass. **This pass changes only
 this notes file** — no production, test, config, threshold, exclusion, tracker,
 workflow, `scripts/` or `.opencode/` file was edited by me.
@@ -60,7 +60,7 @@ association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) guidance loaded and
+Senior React Native and Expo (`aurevia-senior-mobile`) guidance loaded and
 applied; its definition of done is met. Independent QA and the full integration
 gate belong to the integrator/Delivery. No named clinical or patient reviewer
 was available.

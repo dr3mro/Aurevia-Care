@@ -20,7 +20,7 @@ Routine — contained staff-web presentation change with a new component test; n
 
 ## Review owner
 
-`orevia-senior-react` (bounded simulated review, advisory) plus the `orevia-senior-typescript` rules for the strict-TypeScript test. The reviewer returned **Approve, no actionable findings** after reading the two scoped files and the theme/design context; it did not run checks and relied on the tool evidence below. Non-blocking observations: the residual table inline styles are logical so they do not violate the shared-class rule; the `display:none` assertions inspect inline styles only (the component applies no hiding class). Evidence is tool reads plus a simulated reviewer; no human, clinical or patient-participant evidence.
+`aurevia-senior-react` (bounded simulated review, advisory) plus the `aurevia-senior-typescript` rules for the strict-TypeScript test. The reviewer returned **Approve, no actionable findings** after reading the two scoped files and the theme/design context; it did not run checks and relied on the tool evidence below. Non-blocking observations: the residual table inline styles are logical so they do not violate the shared-class rule; the `display:none` assertions inspect inline styles only (the component applies no hiding class). Evidence is tool reads plus a simulated reviewer; no human, clinical or patient-participant evidence.
 
 ## Data changes
 
@@ -85,7 +85,7 @@ Typecheck final lines (explicitly re-run and pasted as required):
 
 ```
 cd apps/staff-web && npm run typecheck
-> orevia-staff-web@0.1.0 typecheck
+> aurevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 typecheck exit: 0
 ```
@@ -94,7 +94,7 @@ Lint final lines:
 
 ```
 cd apps/staff-web && npm run lint
-> orevia-staff-web@0.1.0 lint
+> aurevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 ```
 

@@ -19,11 +19,11 @@ Acceptance mapping:
 
 ## Risk class
 
-Routine (contained new files, no clinical data, no permissions, no schema). Reviewed by a simulated `orevia-senior-react` specialist; no blocking findings.
+Routine (contained new files, no clinical data, no permissions, no schema). Reviewed by a simulated `aurevia-senior-react` specialist; no blocking findings.
 
 ## Review owner
 
-`orevia-senior-react` (read-only simulated review; files tool-inspected, checks not re-run by the reviewer). Skills loaded: `orevia-delivery`, `orevia-senior-react`, `orevia-senior-typescript`, `orevia-test-engineer`.
+`aurevia-senior-react` (read-only simulated review; files tool-inspected, checks not re-run by the reviewer). Skills loaded: `aurevia-delivery`, `aurevia-senior-react`, `aurevia-senior-typescript`, `aurevia-test-engineer`.
 
 ## Data changes
 
@@ -51,7 +51,7 @@ Exact commands and final lines (all run from `apps/staff-web` unless noted):
 - Green after implementation: `npx vitest run --exclude 'e2e/**' tests/theme/breakpoints.test.ts` → `Test Files  1 passed (1)` / `Tests  7 passed (7)`.
 - Typecheck (mandatory final lines): `npm run typecheck`:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   exit 0, no `error TS…` diagnostics.

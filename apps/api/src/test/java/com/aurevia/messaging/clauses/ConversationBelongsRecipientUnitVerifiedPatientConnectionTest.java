@@ -50,16 +50,16 @@ import com.aurevia.messaging.units.MessagingStore;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_arc07_c01_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_arc07_c01_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ConversationBelongsRecipientUnitVerifiedPatientConnectionTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_arc07_c01_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_arc07_c01_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     private static final String BOOTSTRAP = "arc07-bootstrap";
     private static final String PATIENT_ONE = "arc07-patient-one";
@@ -101,18 +101,18 @@ class ConversationBelongsRecipientUnitVerifiedPatientConnectionTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc07_c01_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_arc07_c01_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_arc07_c01_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_arc07_c01_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A, "ARC07-A", CHART_A);
             seedTenant(statement, ORG_B, "ARC07-B", CHART_B);
@@ -145,7 +145,7 @@ class ConversationBelongsRecipientUnitVerifiedPatientConnectionTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc07_c01_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_arc07_c01_it WITH (FORCE)");
         }
     }
 
@@ -308,7 +308,7 @@ class ConversationBelongsRecipientUnitVerifiedPatientConnectionTest {
 
     /** Count durable rows for one tenant, reading under forced row-level security. */
     private static int count(String organization, String table, String where) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + organization + "'");
             try (var result = statement.executeQuery(
@@ -321,7 +321,7 @@ class ConversationBelongsRecipientUnitVerifiedPatientConnectionTest {
 
     /** Read one scalar from the active tenant under forced row-level security. */
     private static String scalar(String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (var result = statement.executeQuery(sql)) {

@@ -62,7 +62,7 @@ Production classes and objects exercised through
   its immutable foreign key to `delivery_outbox(organization_id, id)`, RLS and
   FORCE RLS with the tenant policy, and the immutability triggers.
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=ReplaysPreserveEventIdentityNeedAuthorizationReasonTest test`
 — Surefire reported `Tests run: 9, Failures: 0, Errors: 0, Skipped: 0` (final rerun, 7.458 s); see
 `.agent/pr-notes/SPEC-ARC-05-C06-20261123-023804.md` for exact final lines.

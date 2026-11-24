@@ -207,8 +207,8 @@ class BrowserSessionHttpTest {
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,
                         AUDIENCE_PROPERTY + "=" + AUDIENCE,
-                        "orevia.oidc.client-id=synthetic-client",
-                        "orevia.oidc.client-secret=synthetic-secret");
+                        "aurevia.oidc.client-id=synthetic-client",
+                        "aurevia.oidc.client-secret=synthetic-secret");
     }
 
     private static MockMvc mvc(org.springframework.context.ApplicationContext context) {
@@ -252,7 +252,7 @@ class BrowserSessionHttpTest {
                 : Map.of("sub", SUBJECT, "iss", ISSUER);
         OAuth2User user = new DefaultOAuth2User(authorities, attributes, "sub");
         SecurityContext context = new SecurityContextImpl(
-                new OAuth2AuthenticationToken(user, authorities, "orevia"));
+                new OAuth2AuthenticationToken(user, authorities, "aurevia"));
         session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
         return session;
     }

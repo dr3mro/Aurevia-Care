@@ -38,7 +38,7 @@
   are relative to that directory. A role can read a row only inside its active
   organization and, where the code says so, only within an assigned facility,
   care team, unit or verified patient link.
-- **Append-only** means the runtime role `orevia_app` has no `UPDATE`,
+- **Append-only** means the runtime role `aurevia_app` has no `UPDATE`,
   `DELETE` or `TRUNCATE` path (enforced by revokes and/or
   `reject_immutable_mutation()` triggers). "No — state in place" means the row
   is mutated through a bounded state machine, typically with an immutable event

@@ -36,17 +36,17 @@ Entry point to test trace: HTTP POST `/api/v1/staff/instant/{conversationId}/mes
 
 RED, before the production change (genuine behavioral failure, test compiled against the old two-argument service):
 
-- `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest='InstantMessagingIntegrationTest#anHttpBodyConversationMismatchWritesToNeitherConversation' -Dgroups=integration test`
+- `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest='InstantMessagingIntegrationTest#anHttpBodyConversationMismatchWritesToNeitherConversation' -Dgroups=integration test`
 - Final lines: `Tests run: 1, Failures: 1, Errors: 0, Skipped: 0`; `Status expected:<422> but was:<200>` at `InstantMessagingIntegrationTest.java:252`.
 
 GREEN after the production change:
 
 - `mvn -B -f apps/api/pom.xml -Pno-security -Dtest='InstantMessagingServiceTest,InstantMessagingControllerTest' test` -> `Tests run: 42, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS`.
-- `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest='InstantMessagingIntegrationTest' -Dgroups=integration test` -> `Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS`.
+- `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest='InstantMessagingIntegrationTest' -Dgroups=integration test` -> `Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS`.
 - `mvn -B -f apps/api/pom.xml -Pno-security -Dtest='InstantAttachmentPublicationHttpTest,ConversationObjectAccessTest,TenantFacilityIsolationTest,StaffAttachmentPublicationWiringTest' test` -> `Tests run: 21, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS` (out-of-scope regression surface that sends over HTTP with matching IDs).
-- `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest='OpenApiRouteParityTest,OpenApiRouteCoverageTest' test` -> `Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS`.
+- `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest='OpenApiRouteParityTest,OpenApiRouteCoverageTest' test` -> `Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS`.
 - `mvn -B -f apps/api/pom.xml -Pno-security -Dtest='OpenApiContractDriftTest,OpenApiContractControllerTest,OpenApiContractHttpTest,OpenApiContractRulesTest,OpenApiErrorRulesTest,OpenApiPaginationRulesTest' test` -> `Tests run: 53, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS`.
-- Fresh coverage batch (also the coverage command): `rm -f apps/api/target/jacoco.exec && SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest='InstantMessagingServiceTest,InstantMessagingControllerTest,InstantMessagingIntegrationTest,InstantAttachmentPublicationHttpTest' test jacoco:report` -> `Tests run: 66, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS`.
+- Fresh coverage batch (also the coverage command): `rm -f apps/api/target/jacoco.exec && AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest='InstantMessagingServiceTest,InstantMessagingControllerTest,InstantMessagingIntegrationTest,InstantAttachmentPublicationHttpTest' test jacoco:report` -> `Tests run: 66, Failures: 0, Errors: 0, Skipped: 0`; `BUILD SUCCESS`.
 - `python3 -I scripts/check-wiring.py` -> no output, exit 0 (no resolved entries, baseline unchanged).
 - `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py'` -> `Ran 2 tests ... OK`.
 - `python3 -I scripts/check-docs.py` and `python3 -I scripts/check-names.py` -> exit 0, no output.
@@ -130,13 +130,13 @@ The advisor brief names `contracts/openapi.yaml` and the generated staff types b
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
-- smartclinic-senior-backend (plan): design confirmed; Required findings folded in
-- smartclinic-senior-spring-security: GO (authorization subject confirmed; sender-agnostic replay tracked as a task-request)
-- smartclinic-test-engineer: red cases and branch map adopted
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
+- aurevia-senior-backend (plan): design confirmed; Required findings folded in
+- aurevia-senior-spring-security: GO (authorization subject confirmed; sender-agnostic replay tracked as a task-request)
+- aurevia-test-engineer: red cases and branch map adopted
 
 ## Findings
 
@@ -160,7 +160,7 @@ The advisor brief names `contracts/openapi.yaml` and the generated staff types b
   {
     "title": "Reject instant-message replay keys reused by a different sender",
     "details": "JdbcInstantConversationStore.messageByClientId(org, conversationId, clientId) returns the first message for a key irrespective of sender. If another active participant reuses a key already committed in the same conversation, InstantMessagingService.send returns the first sender's message and silently drops the second sender's message. Add a stable documented conflict (409) when the replayed message's senderSubject differs from TenantContext.subject(), with a service unit test and an HTTP test using two synthetic participants. No migration required. Surveyed during FIX-INSTANT-SEND-CONTRACT and left out of that narrow URL-binding fix.",
-    "scope": ["apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant", "apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant", "contracts/openapi.yaml", "apps/api/src/main/resources/contract/openapi.yaml"],
+    "scope": ["apps/api/src/main/java/com/aurevia/aurevia/staffmsg/instant", "apps/api/src/test/java/com/aurevia/aurevia/staffmsg/instant", "contracts/openapi.yaml", "apps/api/src/main/resources/contract/openapi.yaml"],
     "depends": ["FIX-INSTANT-SEND-CONTRACT"]
   }
 ]

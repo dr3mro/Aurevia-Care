@@ -40,8 +40,8 @@ The repository contains configuration keys and tests only.
 
 | Configuration key | Where it is read | Purpose |
 |---|---|---|
-| `OREVIA_DB_URL`, `OREVIA_DB_USER`, `OREVIA_DB_PASSWORD` | [application.yml](../../../apps/api/src/main/resources/application.yml) | Database connection; password defaults to empty |
-| `OREVIA_OIDC_ISSUER_URI`, `OREVIA_OIDC_AUDIENCE` | [application.yml](../../../apps/api/src/main/resources/application.yml) | Managed OIDC validation; blank issuer fails startup outside the synthetic profile |
+| `AUREVIA_DB_URL`, `AUREVIA_DB_USER`, `AUREVIA_DB_PASSWORD` | [application.yml](../../../apps/api/src/main/resources/application.yml) | Database connection; password defaults to empty |
+| `AUREVIA_OIDC_ISSUER_URI`, `AUREVIA_OIDC_AUDIENCE` | [application.yml](../../../apps/api/src/main/resources/application.yml) | Managed OIDC validation; blank issuer fails startup outside the synthetic profile |
 | `NVD_API_KEY` | OWASP plugin via `nvdApiKeyEnvironmentVariable` in [pom.xml](../../../apps/api/pom.xml) | Fresh NVD data for dependency analysis; absent from the tree, cached-data fallback |
 | `OPENCODE_API_KEY_<slot>`, fallback `OPENCODE_API_KEY`, `SWARM_TOKEN` | Workflows and [docs/SWARM.md](../../../docs/SWARM.md) | Swarm worker authentication and workflow-file pushes |
 

@@ -32,15 +32,15 @@ test and documentation only; no runtime code is modified.
 
 ## Review owner
 
-Senior Java/Spring Boot and Test Engineer (skills loaded this pass: `orevia-delivery`,
-`orevia-senior-backend`, `orevia-test-engineer`, `orevia-senior-java-build`).
+Senior Java/Spring Boot and Test Engineer (skills loaded this pass: `aurevia-delivery`,
+`aurevia-senior-backend`, `aurevia-test-engineer`, `aurevia-senior-java-build`).
 Product Owner / Architect own the follow-up stories named in the gap note. Evidence source is
 **tool** (commands I executed) and **simulated specialist review** (skills/prior review). No
 human, clinical or patient evidence was available or claimed.
 
 ## Data changes
 
-None. The test creates and drops the disposable database `orevia_isolation_surfaces_it`
+None. The test creates and drops the disposable database `aurevia_isolation_surfaces_it`
 with synthetic organizations, subjects and records only. No migration was reserved or written;
 the reserved-version rule is not exercised by this story.
 
@@ -64,7 +64,7 @@ All commands were run by the primary agent from the repository root on 2026-11-2
 source: **tool** (executed commands) unless marked reviewer/simulated.
 
 1. Canonical focused integration test (real PostgreSQL, synthetic fixtures), run AFTER the fix:
-   `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test`
+   `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test`
    Exit 0. Surefire report final line:
    `Tests run: 7, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 9.345 s -- in com.aurevia.tenancy.clauses.IsolationAcrossSurfacesTest`
    The single skip is the story-mandated OPS-07 gap test, not a weakened gate. The two new

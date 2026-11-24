@@ -29,7 +29,7 @@ boundary was changed. Real patient and clinical acceptance remains a G5 gate.
 
 ## Review owner
 
-Senior React Native and Expo specialist (`orevia-senior-mobile`). The
+Senior React Native and Expo specialist (`aurevia-senior-mobile`). The
 integrator and Delivery own final acceptance.
 
 ## Data changes

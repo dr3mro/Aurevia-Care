@@ -54,7 +54,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_document_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_document_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class JdbcDocumentStoreIntegrationTest {
@@ -65,9 +65,9 @@ class JdbcDocumentStoreIntegrationTest {
     static final String PATIENT = "pat-shared";
     static final String CHECKSUM = "a".repeat(64);
     static final String OTHER_CHECKSUM = "b".repeat(64);
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_document_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_document_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     DocumentStore documentStore;
@@ -97,18 +97,18 @@ class JdbcDocumentStoreIntegrationTest {
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_document_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_document_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_document_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_document_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             for (String org : List.of(ORG_A, ORG_B)) {
                 statement.execute("SET app.current_org = '" + org + "'");
@@ -126,7 +126,7 @@ class JdbcDocumentStoreIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_document_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_document_it WITH (FORCE)");
         }
     }
 
@@ -179,7 +179,7 @@ class JdbcDocumentStoreIntegrationTest {
             assertEquals("NOT_COMPLETED", failed.code());
             return null;
         });
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement();
              ResultSet rows = statement.executeQuery("""
                      SELECT column_name FROM information_schema.columns
@@ -215,7 +215,7 @@ class JdbcDocumentStoreIntegrationTest {
         String subjectId = "44444444-4444-4444-4444-444444444444";
         String[] associationId = new String[1];
         byte[] original = "%PDF-1.4 synthetic original".getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              java.sql.PreparedStatement insert = connection.prepareStatement("""
                      INSERT INTO public.document_association
                          (organization_id, subject_type, subject_id, file_name, media_type, content)
@@ -297,7 +297,7 @@ class JdbcDocumentStoreIntegrationTest {
 
     @Test
     void immutableLedgersRejectMutationForTheMigrationOwner() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("""

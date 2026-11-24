@@ -59,11 +59,11 @@ Commands run from the repository root (tool evidence, EXIT values observed):
 Typecheck final lines (from `check.sh`; the same `tsc --noEmit -p tsconfig.json` also runs inside `npm run build`):
 
 ```
-> orevia-staff-web@0.1.0 typecheck
+> aurevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 
 
-> orevia-staff-web@0.1.0 lint
+> aurevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 ```
 

@@ -6,9 +6,9 @@ Added one Playwright spec, `apps/staff-web/e2e/navigationDrawerFlow.spec.ts`, th
 
 ## Affected requirements
 
-- **WEB-07** (`SMARTCLINIC_V1_SPEC.md:155`) — supported-client browser/vector matrix; measured `.app-shell[data-breakpoint]` across all configured projects.
-- **UX-01** (`SMARTCLINIC_V1_SPEC.md:90`) — EN/AR, RTL mirroring and WCAG 2.2 AA on staff web.
-- Adjacent context only: WEB-10 (`SMARTCLINIC_V1_SPEC.md:158`) appears in the reused `e2e/accessibility.ts` doc comment; not claimed by this task.
+- **WEB-07** (`AUREVIA_V1_SPEC.md:155`) — supported-client browser/vector matrix; measured `.app-shell[data-breakpoint]` across all configured projects.
+- **UX-01** (`AUREVIA_V1_SPEC.md:90`) — EN/AR, RTL mirroring and WCAG 2.2 AA on staff web.
+- Adjacent context only: WEB-10 (`AUREVIA_V1_SPEC.md:158`) appears in the reused `e2e/accessibility.ts` doc comment; not claimed by this task.
 
 ## Risk class
 
@@ -16,7 +16,7 @@ Cross-boundary verification (multiple viewports, locales, focus and accessibilit
 
 ## Review owner
 
-smartclinic-senior-react (staff web), smartclinic-senior-typescript (strict e2e TS), smartclinic-test-engineer (assertions first).
+aurevia-senior-react (staff web), aurevia-senior-typescript (strict e2e TS), aurevia-test-engineer (assertions first).
 
 ## Data changes
 
@@ -76,12 +76,12 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
-Advisory context: `smartclinic-context-optimizer` returned GO on the authoritative path/requirement map. The `smartclinic-senior-react`, `smartclinic-senior-typescript` and `smartclinic-test-engineer` skills and routing were loaded and their constraints applied (real shell entry point, strict TS with no `any`/`!`/ts-ignore, assertions-first); no formal verdict was requested from them by this task, so none is claimed here.
+Advisory context: `aurevia-context-optimizer` returned GO on the authoritative path/requirement map. The `aurevia-senior-react`, `aurevia-senior-typescript` and `aurevia-test-engineer` skills and routing were loaded and their constraints applied (real shell entry point, strict TS with no `any`/`!`/ts-ignore, assertions-first); no formal verdict was requested from them by this task, so none is claimed here.
 
 ## Findings
 

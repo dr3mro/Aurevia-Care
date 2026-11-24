@@ -93,12 +93,12 @@ Simulated, synthetic browser evidence only (WEB-10). No clinician, Arabic-speaki
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-senior-react: GO
-- smartclinic-senior-typescript: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-senior-react: GO
+- aurevia-senior-typescript: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 All six reviewers reported no Critical or Required finding after the plan gaps and Optional wording/consistency notes were addressed in the spec. The reviewers are read-only specialists; their evidence is their file reads, not independently re-run commands.
 

@@ -87,9 +87,9 @@ Not built — feature flags that default off:
   deployment step gates a release on a flag that is off by default.
 - The only adjacent in-repository switches are
   [RejectionNotificationPolicy.java](../../../../apps/api/src/main/java/com/aurevia/labflow/rejection/RejectionNotificationPolicy.java),
-  which injects `@Value("${orevia.lab.rejection.notify-patient:false}")`,
+  which injects `@Value("${aurevia.lab.rejection.notify-patient:false}")`,
   and [DocsEnabled.java](../../../../apps/api/src/main/java/com/aurevia/web/DocsEnabled.java),
-  which reads `orevia.docs.enabled` and keeps production docs off unless a
+  which reads `aurevia.docs.enabled` and keeps production docs off unless a
   profile or property enables them. Both are single-purpose switches, not
   WEB-11 rollout flags: neither stages a release, records a rollout or rollback,
   or is wired to deployment.

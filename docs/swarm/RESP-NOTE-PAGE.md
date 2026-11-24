@@ -51,8 +51,8 @@ contract or API change. Reviewed against `docs/WORKFLOW.md` routine class.
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`), Senior TypeScript
-(`orevia-senior-typescript`), UX reviewer (`orevia-ux-reviewer`).
+Senior React and Vite (`aurevia-senior-react`), Senior TypeScript
+(`aurevia-senior-typescript`), UX reviewer (`aurevia-ux-reviewer`).
 These skills were loaded; findings below are simulated review over the design
 contracts, not clinical or human acceptance.
 
@@ -93,14 +93,14 @@ Typecheck final lines (`npm run typecheck` = `tsc --noEmit -p tsconfig.json`),
 no `error TS…`:
 
 ```
-> orevia-staff-web@0.1.0 typecheck
+> aurevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 ```
 
 Lint final lines (`npm run lint` = `eslint . --max-warnings=0`), no warnings:
 
 ```
-> orevia-staff-web@0.1.0 lint
+> aurevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 ```
 

@@ -8,9 +8,9 @@ Swarm worker 9. Local checks: passed. Agent result: ok.
 
 # BUILD-06 — Documents: checksum, retained original bytes and void with reason
 
-**Status: COMPLETE within task scope. All implementation gates pass; the only failing check is the known `opencode.json` skip-worktree environment artifact (see Findings).** A bounded simulated `orevia-senior-backend` review raised a HIGH defect in the first implementation; it was fixed and re-verified, including a real-HTTP regression.
+**Status: COMPLETE within task scope. All implementation gates pass; the only failing check is the known `opencode.json` skip-worktree environment artifact (see Findings).** A bounded simulated `aurevia-senior-backend` review raised a HIGH defect in the first implementation; it was fixed and re-verified, including a real-HTTP regression.
 
-- Worker: `swarm-9`; branch `swarm/BUILD-06-417`; base HEAD `c45f9b1`. Evidence sources: **tool** for every command quoted under Test evidence/Coverage; **simulated reviewer** (`orevia-senior-backend`, session `ses_e02d07adcffe9PHuj0nnnXjzFG`) for the bounded diff review summarized under Clinical and architecture review. No simulated patient/user workflow and no human participant was exercised; no clinical or real-patient acceptance is claimed. Skills loaded: `orevia-delivery`, `orevia-senior-backend`, `orevia-senior-database`, `orevia-senior-java-build`, `orevia-test-engineer`. All fixtures are synthetic; no patient data, credential or real domain was used.
+- Worker: `swarm-9`; branch `swarm/BUILD-06-417`; base HEAD `c45f9b1`. Evidence sources: **tool** for every command quoted under Test evidence/Coverage; **simulated reviewer** (`aurevia-senior-backend`, session `ses_e02d07adcffe9PHuj0nnnXjzFG`) for the bounded diff review summarized under Clinical and architecture review. No simulated patient/user workflow and no human participant was exercised; no clinical or real-patient acceptance is claimed. Skills loaded: `aurevia-delivery`, `aurevia-senior-backend`, `aurevia-senior-database`, `aurevia-senior-java-build`, `aurevia-test-engineer`. All fixtures are synthetic; no patient data, credential or real domain was used.
 
 ## Summary
 
@@ -31,11 +31,11 @@ Cross-boundary (`docs/WORKFLOW.md`): a new tenant-scoped SQL read path, a new do
 
 ## Review owner
 
-Senior Java and Spring Boot (domain command, controller, audit), Senior PostgreSQL/Flyway (verified-download function, forced RLS, grants), Senior Java Build and Test Tooling (JaCoCo 100%, SpotBugs, Javadoc), Test Engineer (branch-to-test mapping). A bounded simulated `orevia-senior-backend` review was performed; no independent human reviewer was available.
+Senior Java and Spring Boot (domain command, controller, audit), Senior PostgreSQL/Flyway (verified-download function, forced RLS, grants), Senior Java Build and Test Tooling (JaCoCo 100%, SpotBugs, Javadoc), Test Engineer (branch-to-test mapping). A bounded simulated `aurevia-senior-backend` review was performed; no independent human reviewer was available.
 
 ## Data changes
 
-New `db/migrations/V75__build_06.sql` (reserved version V75, `-- Change: expand`) creates **one function and no table**: `public.document_association_verified_content(uuid) RETURNS TABLE (content bytea, intact boolean)`. It is additive and changes no existing row. It runs as the invoker (`SECURITY INVOKER` default), so forced RLS on `document_association` (V17) bounds it to `public.app_org()`; a foreign or absent row yields no row. `EXECUTE` is revoked from `PUBLIC` and granted only to `orevia_app`. No existing migration was edited; no backfill; negligible lock/volume impact. Flyway applied it in every integration run: `Successfully applied 33 migrations to schema "public", now at version v75`.
+New `db/migrations/V75__build_06.sql` (reserved version V75, `-- Change: expand`) creates **one function and no table**: `public.document_association_verified_content(uuid) RETURNS TABLE (content bytea, intact boolean)`. It is additive and changes no existing row. It runs as the invoker (`SECURITY INVOKER` default), so forced RLS on `document_association` (V17) bounds it to `public.app_org()`; a foreign or absent row yields no row. `EXECUTE` is revoked from `PUBLIC` and granted only to `aurevia_app`. No existing migration was edited; no backfill; negligible lock/volume impact. Flyway applied it in every integration run: `Successfully applied 33 migrations to schema "public", now at version v75`.
 
 ## Authorization boundaries and audit events
 
@@ -54,12 +54,12 @@ All commands run from the repo root on `swarm/BUILD-06-417`. Exit codes and fina
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='DocumentVerifiedDownloadTest,DocumentContentRepositoryTest,DocumentContentControllerTest' test` (red, before implementation) | 1 | `cannot find symbol: method verifiedAssociationContent(java.lang.String)` / `associationContent(java.lang.String)` |
 | same command after implementation (both before and after the reviewer fix) | 0 | `Tests run: 12, Failures: 0, Errors: 0, Skipped: 0` |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | 0 | full unit tier green |
-| `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='DocumentDigestIntegrationTest,Document*Test,PdfRendererTest' test` | 0 | real PostgreSQL; `Successfully applied 33 migrations ... now at version v75` |
-| `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=DocumentDownloadHttpIntegrationTest test` | 0 | HTTP 200 + octet-stream + original bytes, then 409 `CHECKSUM_MISMATCH` + durable `TAMPERED` audit, then 404 for the other tenant |
+| `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='DocumentDigestIntegrationTest,Document*Test,PdfRendererTest' test` | 0 | real PostgreSQL; `Successfully applied 33 migrations ... now at version v75` |
+| `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=DocumentDownloadHttpIntegrationTest test` | 0 | HTTP 200 + octet-stream + original bytes, then 409 `CHECKSUM_MISMATCH` + durable `TAMPERED` audit, then 404 for the other tenant |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check` | 0 | no findings |
 | `python3 -I scripts/check-migrations.py --require-baseline` | 0 | clean |
 | `python3 -I scripts/check-names.py` | 0 | clean (no story-ID folder/package) |
 | `python3 -I scripts/check-wiring.py` | 0 | clean |
 | `python3 -I scripts/check-docs.py` | 0 | clean |
 | `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | 0 | `Ran 2 tests ... OK` |
-| `OREVIA_PG_ADMIN=postgres bash db/check.sh` | 0 | `db: migrations, force
+| `AUREVIA_PG_ADMIN=postgres bash db/check.sh` | 0 | `db: migrations, force

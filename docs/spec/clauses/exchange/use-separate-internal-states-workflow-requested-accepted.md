@@ -87,7 +87,7 @@ and `TransmissionAcknowledgmentCannotCloseClinicalTaskTest` and are cited there
 as corroborating evidence rather than re-proven.
 
 Verified locally:
-`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=UseSeparateInternalStatesWorkflowRequestedAcceptedTest test`
+`AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=UseSeparateInternalStatesWorkflowRequestedAcceptedTest test`
 — 11 tests run, 0 failures, 0 errors, 0 skipped; see
 `.agent/pr-notes/SPEC-XCH-02-C01-20261122-153909.md` for the exact final lines.
 

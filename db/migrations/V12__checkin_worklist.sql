@@ -256,14 +256,14 @@ CREATE TRIGGER worklist_entry_update_guard
     BEFORE UPDATE ON public.worklist_entry
     FOR EACH ROW EXECUTE FUNCTION public.guard_worklist_entry_update();
 
-GRANT SELECT, INSERT ON public.check_in_verification TO orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.check_in_verification FROM orevia_app;
+GRANT SELECT, INSERT ON public.check_in_verification TO aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.check_in_verification FROM aurevia_app;
 
-GRANT SELECT, INSERT, UPDATE ON public.worklist_entry TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.worklist_entry FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.worklist_entry TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.worklist_entry FROM aurevia_app;
 
-GRANT SELECT, INSERT ON public.handoff_event TO orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.handoff_event FROM orevia_app;
+GRANT SELECT, INSERT ON public.handoff_event TO aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.handoff_event FROM aurevia_app;
 
 REVOKE ALL ON FUNCTION public.set_check_in_verification_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_worklist_created_by() FROM PUBLIC;

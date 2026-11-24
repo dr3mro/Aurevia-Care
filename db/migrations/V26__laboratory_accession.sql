@@ -193,14 +193,14 @@ CREATE TRIGGER lab_accession_update_guard
     BEFORE UPDATE ON public.lab_accession
     FOR EACH ROW EXECUTE FUNCTION public.guard_lab_accession_update();
 
-GRANT SELECT, INSERT, UPDATE ON public.lab_accession TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.lab_accession FROM orevia_app;
-GRANT SELECT, INSERT ON public.lab_accession_event TO orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.lab_accession_event FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.lab_accession TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.lab_accession FROM aurevia_app;
+GRANT SELECT, INSERT ON public.lab_accession_event TO aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.lab_accession_event FROM aurevia_app;
 
 REVOKE ALL ON FUNCTION public.set_lab_accession_created_by_from_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_lab_accession_event_actor_from_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.guard_lab_accession_update() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.set_lab_accession_created_by_from_actor() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.set_lab_accession_event_actor_from_actor() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.guard_lab_accession_update() TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.set_lab_accession_created_by_from_actor() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.set_lab_accession_event_actor_from_actor() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.guard_lab_accession_update() TO aurevia_app;

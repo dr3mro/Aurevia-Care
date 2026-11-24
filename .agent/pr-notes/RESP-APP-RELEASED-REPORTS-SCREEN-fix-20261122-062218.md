@@ -19,7 +19,7 @@ instead of the `renderScreen` function it describes. I moved it onto
 configuration, tracker, workflow, `scripts/` or `.opencode/` file was changed.
 
 Evidence source: **tool** evidence (commands I executed and observed) plus the
-earlier advisory `orevia-senior-mobile` reviewer report, faithfully
+earlier advisory `aurevia-senior-mobile` reviewer report, faithfully
 carried forward from the hand-off notes. No new reviewer, simulated-user or
 human-participant evidence was collected this run; no clinical or patient
 acceptance is claimed.
@@ -53,7 +53,7 @@ change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) definition of done
+Senior React Native and Expo (`aurevia-senior-mobile`) definition of done
 met. The advisory senior-mobile review recorded in the previous hand-off found
 no material gap; its two non-blocking observations (no `rowGap` on wrapped
 panes; RTL test uses `toContain` while exact order is asserted by the matrix)

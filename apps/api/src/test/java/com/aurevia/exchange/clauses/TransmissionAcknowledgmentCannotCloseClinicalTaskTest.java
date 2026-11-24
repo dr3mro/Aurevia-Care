@@ -45,7 +45,7 @@ import tools.jackson.databind.ObjectMapper;
  * state machine advances only the transmission channel and copies clinical
  * evidence unchanged, that the clinical review action policy admits only
  * clinicians, and that a stale version is refused before any transition. Direct
- * {@code orevia_app} SQL then checks the V20 {@code v_changed <> 1} guard
+ * {@code aurevia_app} SQL then checks the V20 {@code v_changed <> 1} guard
  * and the clinical-transition guard, so a storage writer cannot combine a
  * delivery with a clinical resolution. A clinician-only closure is exercised as
  * a positive control so a refusal of {@code resolve} cannot be confused with a
@@ -58,7 +58,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_xch02_ack_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_xch02_ack_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class TransmissionAcknowledgmentCannotCloseClinicalTaskTest {
@@ -71,10 +71,10 @@ class TransmissionAcknowledgmentCannotCloseClinicalTaskTest {
     private static final String ROLE_TASK = "00000001-0000-0000-0000-000000000004";
     private static final String CLOSURE_TASK = "00000001-0000-0000-0000-000000000005";
     private static final String PEER_TASK = "00000001-0000-0000-0000-000000000006";
-    private static final String DB = "orevia_xch02_ack_it";
+    private static final String DB = "aurevia_xch02_ack_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final Instant FIXED = Instant.parse("2026-11-19T12:00:00Z");
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -107,16 +107,16 @@ class TransmissionAcknowledgmentCannotCloseClinicalTaskTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A);
             seedTenant(statement, ORG_B);
@@ -237,7 +237,7 @@ class TransmissionAcknowledgmentCannotCloseClinicalTaskTest {
         }
         assertEquals(2, transmissionEvents);
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");
@@ -302,7 +302,7 @@ class TransmissionAcknowledgmentCannotCloseClinicalTaskTest {
 
     @Test
     void aForgedUpdateCannotDeliverAndResolveInOneWrite() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");
@@ -415,7 +415,7 @@ class TransmissionAcknowledgmentCannotCloseClinicalTaskTest {
     }
 
     private static String actorId(String org, String subject) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_app", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             statement.execute("SET app.actor = '" + subject + "'");

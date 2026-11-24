@@ -27,7 +27,7 @@ BEGIN
        OR NOT EXISTS (
               SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                WHERE n.nspname = 'public' AND p.proname = 'reject_immutable_mutation')
-       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'orevia_app') THEN
+       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'aurevia_app') THEN
         RAISE NOTICE 'V55 durable events deferred: prerequisites not installed yet';
         RETURN;
     END IF;
@@ -247,23 +247,23 @@ BEGIN
         BEFORE UPDATE ON public.delivery_dead_letter
         FOR EACH ROW EXECUTE FUNCTION public.guard_delivery_dead_letter_review()$ddl$;
 
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.delivery_outbox TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.delivery_dead_letter TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.delivery_receipt TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.delivery_replay TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.delivery_link TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.delivery_audit TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.delivery_outbox FROM orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.delivery_dead_letter FROM orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.delivery_receipt FROM orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.delivery_replay FROM orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.delivery_link FROM orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.delivery_audit FROM orevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.delivery_outbox TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.delivery_dead_letter TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.delivery_receipt TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.delivery_replay TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.delivery_link TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.delivery_audit TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.delivery_outbox FROM aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.delivery_dead_letter FROM aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.delivery_receipt FROM aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.delivery_replay FROM aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.delivery_link FROM aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.delivery_audit FROM aurevia_app$ddl$;
 
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_delivery_actor_subject() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_delivery_outbox_update() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_delivery_dead_letter_review() FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_delivery_actor_subject() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_delivery_outbox_update() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_delivery_dead_letter_review() TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_delivery_actor_subject() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_delivery_outbox_update() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_delivery_dead_letter_review() TO aurevia_app$ddl$;
 END $durable_event$;

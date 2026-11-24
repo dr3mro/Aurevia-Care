@@ -46,7 +46,7 @@ production file was changed in this fix pass.
 
 ## Review owner
 
-`orevia-senior-react` (bounded, advisory review from the first worker).
+`aurevia-senior-react` (bounded, advisory review from the first worker).
 Strict TypeScript rules were applied with a focused `tsc` and ESLint because the
 module `tsconfig.json` excludes `e2e/`. No specialist edited any file. The
 read-only verdicts for this pass are under "Review verdicts".
@@ -133,7 +133,7 @@ All commands were run from the repository root unless a `cd` is shown.
     - `gen:api: generated client matches the contract`
     - typecheck final lines (mandatory paste; no `error TS…`):
       ```
-      > orevia-staff-web@0.1.0 typecheck
+      > aurevia-staff-web@0.1.0 typecheck
       > tsc --noEmit -p tsconfig.json
       ```
     - `✓ built in 164ms` (`vite`)
@@ -205,12 +205,12 @@ involved; all evidence is synthetic and tool-generated.
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
-Disposition of reviewer findings: the `orevia-plan-reviewer` first returned
+Disposition of reviewer findings: the `aurevia-plan-reviewer` first returned
 NO-GO on this fix pass's plan with two Required findings — (a) diagnose the gate
 that actually sets the integrator's `checks` value rather than re-running green
 sub-checks, and (b) narrow the task-requests. Both are addressed above: Finding 1

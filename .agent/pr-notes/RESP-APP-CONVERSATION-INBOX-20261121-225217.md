@@ -13,7 +13,7 @@ Routine. Presentation-only styles and one new container per pane; no clinical lo
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) — bounded, read-only simulated subagent review of the two in-scope files; UX reviewer skill (`orevia-ux-reviewer`) and Test Engineer skill (`orevia-test-engineer`) loaded. Three low-severity findings were applied (minWidth, honest 200% evidence wording, removal of a brittle listener assertion). No human, clinician or patient-participant evidence is claimed.
+Senior React Native and Expo (`aurevia-senior-mobile`) — bounded, read-only simulated subagent review of the two in-scope files; UX reviewer skill (`aurevia-ux-reviewer`) and Test Engineer skill (`aurevia-test-engineer`) loaded. Three low-severity findings were applied (minWidth, honest 200% evidence wording, removal of a brittle listener assertion). No human, clinician or patient-participant evidence is claimed.
 
 ## Data changes
 

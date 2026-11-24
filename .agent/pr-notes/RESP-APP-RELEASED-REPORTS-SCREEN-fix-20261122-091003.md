@@ -11,8 +11,8 @@ I rehydrated the governing context first: `.agent/context-files.txt`,
 `AGENTS.md`, `CODING_STYLE.md`, `PROJECT.md`, `WORKSPACE.md`, `MEMORY.md`, `BUGS.md`,
 `TODO.md` (Instructions for every agent + this story's entry), `docs/WORKFLOW.md`,
 `docs/decisions/0005-patient-app-tablets.md`, the patient self-access product clause,
-`.github/pull_request_template.md`, and the `orevia-delivery`,
-`orevia-senior-mobile`, `orevia-senior-typescript` and `orevia-debugger`
+`.github/pull_request_template.md`, and the `aurevia-delivery`,
+`aurevia-senior-mobile`, `aurevia-senior-typescript` and `aurevia-debugger`
 skills. I surveyed `src/features/reports` and `src/app/layout` and confirmed reuse of
 the existing `windowClassFor` classifier, `patientDesign` tokens and `ReleasedReport`
 type.
@@ -61,10 +61,10 @@ contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) owns the mobile definition
+Senior React Native and Expo (`aurevia-senior-mobile`) owns the mobile definition
 of done, executed and met this pass (`apps/patient-mobile/check.sh` green, typecheck
 final lines and coverage below, zero `error TS…`). Senior TypeScript
-(`orevia-senior-typescript`) owns the strict `exactOptionalPropertyTypes` rule
+(`aurevia-senior-typescript`) owns the strict `exactOptionalPropertyTypes` rule
 that produced TS2375; the root strict typecheck, the exact failing gate
 `scripts/frontend-check.sh` and `scripts/frontend-typecheck-check.sh` are green.
 Independent QA and the full integration gate belong to the integrator/Delivery.

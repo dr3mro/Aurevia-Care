@@ -68,7 +68,7 @@ CREATE TRIGGER export_job_no_truncate
     BEFORE TRUNCATE ON public.export_job
     FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation();
 
-GRANT SELECT, INSERT, UPDATE ON public.export_job TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.export_job FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.export_job TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.export_job FROM aurevia_app;
 
 CREATE INDEX export_job_created_idx ON public.export_job (organization_id, created_at DESC);

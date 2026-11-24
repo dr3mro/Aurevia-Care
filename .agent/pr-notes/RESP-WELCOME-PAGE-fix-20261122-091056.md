@@ -37,11 +37,11 @@ safety-critical contract). Classified per `docs/WORKFLOW.md`.
 ## Review owner
 
 Primary agent (tool-verified). The first pass recorded simulated
-`orevia-senior-react` and `orevia-ux-reviewer` reviews, both with no
+`aurevia-senior-react` and `aurevia-ux-reviewer` reviews, both with no
 actionable findings; those subagents had no shell and relied on primary-agent
 evidence. This fix pass changes no code, so no new public contract, migration or
 clinical data is involved and no new cross-boundary or clinical review is required.
-A fresh bounded `orevia-senior-react` advisory review was run for this pass: it
+A fresh bounded `aurevia-senior-react` advisory review was run for this pass: it
 found no production-code issue and one low-impact test gap (RTL not exercised at a
 concrete width), which was fixed by parameterizing the width matrix over `en` and
 `ar`. No human participant.
@@ -73,7 +73,7 @@ Exact commands run and their final lines (all observed in this pass):
   `npm ci --no-audit --no-fund`, `added 486 packages in 7s`). Final lines of each
   stage:
   - `gen:api: generated client matches the contract`
-  - typecheck: `> orevia-staff-web@0.1.0 typecheck` then
+  - typecheck: `> aurevia-staff-web@0.1.0 typecheck` then
     `> tsc --noEmit -p tsconfig.json` — **no `error TS…`, exit 0**.
   - lint: `> eslint . --max-warnings 0` — no warnings, exit 0.
   - build: `✓ built in 159ms`; `dist/assets/WelcomePage-DcjT3cc2.js 0.47 kB │ gzip: 0.32 kB`;
@@ -154,7 +154,7 @@ prescribing, critical results or cross-organization sharing.
 - **No production code change was needed.** The first worker's implementation and
   responsive test are complete and correct; every scoped gate is green. This pass is
   verification, environment triage and one test-strengthening fix (below).
-- **Reviewer finding, resolved:** the `orevia-senior-react` review observed that
+- **Reviewer finding, resolved:** the `aurevia-senior-react` review observed that
   the width-matrix test rendered only with the default `en` locale while the RTL block
   covered only the three abstract bands, leaving the "RTL at a concrete width"
   acceptance criterion unverified (low impact — `useBreakpoint` is locale-independent).

@@ -23,7 +23,7 @@ public class RateLimiterConfiguration {
      */
     @Bean
     RateLimiter rateLimiter(Clock clock,
-                            @Value("${orevia.rate-limit.per-minute:600}") int perMinute) {
+                            @Value("${aurevia.rate-limit.per-minute:600}") int perMinute) {
         return new RateLimiter(clock, perMinute);
     }
 }

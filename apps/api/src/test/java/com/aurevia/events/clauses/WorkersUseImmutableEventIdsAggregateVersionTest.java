@@ -46,7 +46,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_delivery_version_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_delivery_version_it")
 @ActiveProfiles("synthetic-auth")
 class WorkersUseImmutableEventIdsAggregateVersionTest {
 
@@ -54,9 +54,9 @@ class WorkersUseImmutableEventIdsAggregateVersionTest {
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     private static final String AGGREGATE = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     private static final String DIGEST = "a".repeat(64);
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_delivery_version_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_delivery_version_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     DeliveryStore deliveryStore;
@@ -69,18 +69,18 @@ class WorkersUseImmutableEventIdsAggregateVersionTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_delivery_version_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_delivery_version_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_delivery_version_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_delivery_version_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "worker-a", "worker", "active");
             seedUser(statement, ORG_A, "operator-a", "operator", "active");
@@ -95,7 +95,7 @@ class WorkersUseImmutableEventIdsAggregateVersionTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_delivery_version_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_delivery_version_it WITH (FORCE)");
         }
     }
 

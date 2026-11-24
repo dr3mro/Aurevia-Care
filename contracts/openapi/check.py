@@ -73,7 +73,7 @@ def verify(directory: Path = GENERATED) -> tuple[list[str], int]:
         action = command.get("action", "")
         if f"operationId: {identifier}" not in contract:
             errors.append(f"contract missing operationId {identifier}")
-        if f"x-orevia-action: {action}" not in contract:
+        if f"x-aurevia-action: {action}" not in contract:
             errors.append(f"contract missing action {action} for {identifier}")
         block = blocks.get(identifier)
         if block is None:

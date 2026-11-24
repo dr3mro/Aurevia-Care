@@ -28,7 +28,7 @@ public final class ProductionSafetyCheck {
             "The production profile must not be combined with the synthetic-auth profile";
 
     /** Message for a missing database password. */
-    static final String PASSWORD_MESSAGE = "OREVIA_DB_PASSWORD must be set in the production profile";
+    static final String PASSWORD_MESSAGE = "AUREVIA_DB_PASSWORD must be set in the production profile";
 
     /** Message for a datasource URL that does not require TLS. */
     static final String TLS_MESSAGE =
@@ -42,11 +42,11 @@ public final class ProductionSafetyCheck {
      * Bind the runtime configuration used by the startup validation.
      *
      * @param environment     Spring environment used for profile checks
-     * @param databasePassword password from {@code OREVIA_DB_PASSWORD}, empty when unset
+     * @param databasePassword password from {@code AUREVIA_DB_PASSWORD}, empty when unset
      * @param datasourceUrl   datasource URL from {@code spring.datasource.url}
      */
     public ProductionSafetyCheck(Environment environment,
-            @Value("${OREVIA_DB_PASSWORD:}") String databasePassword,
+            @Value("${AUREVIA_DB_PASSWORD:}") String databasePassword,
             @Value("${spring.datasource.url:}") String datasourceUrl) {
         this.environment = environment;
         this.databasePassword = databasePassword;

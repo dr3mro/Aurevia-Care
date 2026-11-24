@@ -38,7 +38,7 @@ Routine (contained patient-app domain addition, no deployment or shared-contract
 
 ## Review owner
 
-`orevia-senior-mobile` (React Native/Expo, generic push notifications) with `orevia-test-engineer` for the branch map. Skill contents were loaded into this session; no additional reviewer was delegated because the work was bounded and all gates were executed directly.
+`aurevia-senior-mobile` (React Native/Expo, generic push notifications) with `aurevia-test-engineer` for the branch map. Skill contents were loaded into this session; no additional reviewer was delegated because the work was bounded and all gates were executed directly.
 
 ## Data changes
 

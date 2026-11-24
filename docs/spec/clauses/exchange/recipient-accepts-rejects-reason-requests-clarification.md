@@ -67,7 +67,7 @@ Production classes exercised through the controllers
   retained-copy tables, forced tenant RLS, immutable-ledger triggers and the
   actor-from-context trigger.
 
-Verified locally with `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=RecipientAcceptsRejectsReasonRequestsClarificationTest test`
+Verified locally with `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=RecipientAcceptsRejectsReasonRequestsClarificationTest test`
 — `Tests run: 9, Failures: 0, Errors: 0, Skipped: 0`; the Surefire XML for the
 class confirms 9 tests and 0 skipped. Static analysis with
 `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check`

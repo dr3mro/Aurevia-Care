@@ -88,7 +88,7 @@ class PdfRendererTest {
         assertTrue(text.contains("/Subject <" + utf16Hex("source:SYNTHETIC-LAB/REQ-1") + ">"));
         assertTrue(text.contains("/Keywords <" + utf16Hex(
                 "LTR v3 chart 22222222-2222-2222-2222-222222222222 2026-11-19T10:00:00Z") + ">"));
-        assertTrue(text.contains("/Producer <" + utf16Hex("Orevia PDF Renderer") + ">"));
+        assertTrue(text.contains("/Producer <" + utf16Hex("Aurevia PDF Renderer") + ">"));
     }
 
     @Test

@@ -60,11 +60,11 @@ class LoadConfigCoverageTests(unittest.TestCase):
         return path
 
     def test_duplicate_specialist_key_is_recorded(self):
-        # key in result AND startswith("orevia-") -> append to duplicates.
-        path = self.write_config('{"agents": {"orevia-qa": 1, "orevia-qa": 2}}')
+        # key in result AND startswith("aurevia-") -> append to duplicates.
+        path = self.write_config('{"agents": {"aurevia-qa": 1, "aurevia-qa": 2}}')
         config, duplicates = pack.load_config(path)
-        self.assertEqual(duplicates, ["orevia-qa"])
-        self.assertEqual(config["agents"]["orevia-qa"], 2)
+        self.assertEqual(duplicates, ["aurevia-qa"])
+        self.assertEqual(config["agents"]["aurevia-qa"], 2)
 
     def test_duplicate_non_specialist_key_is_ignored(self):
         # key in result is true but startswith is false: the short-circuit

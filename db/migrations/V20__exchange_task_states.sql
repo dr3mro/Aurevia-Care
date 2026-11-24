@@ -254,18 +254,18 @@ CREATE TRIGGER xch02_z_guard_task_update
 
 -- The runtime role may advance states and append evidence, but never delete a
 -- task or alter a ledger entry.
-GRANT SELECT, INSERT, UPDATE ON public.exchange_task TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.exchange_task FROM orevia_app;
-GRANT SELECT, INSERT ON public.exchange_task_transition TO orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.exchange_task_transition FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.exchange_task TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.exchange_task FROM aurevia_app;
+GRANT SELECT, INSERT ON public.exchange_task_transition TO aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.exchange_task_transition FROM aurevia_app;
 
 REVOKE ALL ON FUNCTION public.xch02_actor_id() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.xch02_set_task_created_by() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.xch02_initialize_task_channels() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.xch02_set_transition_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.xch02_guard_task_update() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.xch02_actor_id() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.xch02_set_task_created_by() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.xch02_initialize_task_channels() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.xch02_set_transition_actor() TO orevia_app;
-GRANT EXECUTE ON FUNCTION public.xch02_guard_task_update() TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.xch02_actor_id() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.xch02_set_task_created_by() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.xch02_initialize_task_channels() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.xch02_set_transition_actor() TO aurevia_app;
+GRANT EXECUTE ON FUNCTION public.xch02_guard_task_update() TO aurevia_app;

@@ -13,7 +13,7 @@ Proven by tests
 Test class: `com.aurevia.exchange.clauses.UnmatchedConflictingReportsEnterReconciliationQueueTest`
 (path: `apps/api/src/test/java/com/aurevia/exchange/clauses/UnmatchedConflictingReportsEnterReconciliationQueueTest.java`).
 It is an active two-tenant HTTP integration test against a dedicated synthetic PostgreSQL database
-(`orevia_xch04_clause3_it`) migrated with the production Flyway chain; none of its six tests is disabled.
+(`aurevia_xch04_clause3_it`) migrated with the production Flyway chain; none of its six tests is disabled.
 
 - `unmatchedResultIsDivertedToOpenReconciliationQueue` — positive proof of the diversion. Importing a
   result with no registered order returns HTTP 202 with reason `unmatched` and status `open`, persists one

@@ -44,10 +44,10 @@ Routine — contained presentational component plus one new test file, in two sc
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) — bounded read-only plan review was already
+Senior React and Vite (`aurevia-senior-react`) — bounded read-only plan review was already
 completed in the first pass; its recommendations (no redundant inline `gap`, no `useTheme`
 without a provider, static class, zero new branches) are present in the committed code.
-Senior TypeScript (`orevia-senior-typescript`) and UX (`orevia-ux-reviewer`) skills
+Senior TypeScript (`aurevia-senior-typescript`) and UX (`aurevia-ux-reviewer`) skills
 were loaded. All review was **simulated**; no human or simulated-user participation in this pass.
 
 ## Data changes
@@ -86,7 +86,7 @@ apps/staff-web/check.sh`, policy scripts). Specialist review is explicitly **sim
    `cd apps/staff-web && bash check.sh` → `EXIT=0` (gen:api:check, typecheck, lint, build,
    bundle budget, `test:coverage` all passed).
    - Typecheck final lines (exit 0, **no `error TS…`**):
-     `> orevia-staff-web@0.1.0 typecheck` /
+     `> aurevia-staff-web@0.1.0 typecheck` /
      `> tsc --noEmit -p tsconfig.json`. The build step re-ran
      `tsc --noEmit -p tsconfig.json && vite build` and succeeded.
    - Final test/coverage lines:

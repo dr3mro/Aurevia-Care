@@ -63,11 +63,11 @@ class ValidatePooledConnectionReuseFailClosedContextTest {
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     static final String ONLY_A = "ONLY-A";
-    static final String DATABASE = "orevia_arc02_pool_it";
+    static final String DATABASE = "aurevia_arc02_pool_it";
     static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DATABASE;
     static final String DATASOURCE_PROPERTY = "spring.datasource.url=" + URL;
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     FacilityService facilityService;
@@ -98,22 +98,22 @@ class ValidatePooledConnectionReuseFailClosedContextTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             // IF NOT EXISTS cannot correct a pre-existing bypass role, so verify the
             // security precondition instead of assuming it from the creation clause.
             assertRuntimeRolesDoNotBypassRls(statement);
             statement.execute("DROP DATABASE IF EXISTS " + DATABASE + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DATABASE + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DATABASE + " OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seed(statement, ORG_A, "admin-a", "tenant_admin", "MAIN", "Alpha Main");
             seed(statement, ORG_B, "admin-b", "tenant_admin", "MAIN", "Beta Main");
@@ -148,14 +148,14 @@ class ValidatePooledConnectionReuseFailClosedContextTest {
         Set<String> checked = new HashSet<>();
         try (ResultSet result = statement.executeQuery(
                 "SELECT rolname, rolbypassrls, rolcanlogin FROM pg_roles "
-                        + "WHERE rolname IN ('orevia_migrate', 'orevia_app')")) {
+                        + "WHERE rolname IN ('aurevia_migrate', 'aurevia_app')")) {
             while (result.next()) {
                 checked.add(result.getString(1));
                 assertFalse(result.getBoolean(2), result.getString(1) + " must not bypass RLS");
                 assertTrue(result.getBoolean(3), result.getString(1) + " must be able to log in");
             }
         }
-        assertEquals(Set.of("orevia_migrate", "orevia_app"), checked);
+        assertEquals(Set.of("aurevia_migrate", "aurevia_app"), checked);
     }
 
     /**
@@ -348,7 +348,7 @@ class ValidatePooledConnectionReuseFailClosedContextTest {
     private static HikariDataSource pool(int maximumPoolSize) {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(URL);
-        config.setUsername("orevia_app");
+        config.setUsername("aurevia_app");
         config.setPassword("");
         config.setMaximumPoolSize(maximumPoolSize);
         config.setMinimumIdle(0);

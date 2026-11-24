@@ -1,7 +1,7 @@
 # Performance checklist
 
 Quick reference for staff-web, patient-mobile and API performance work. Use alongside
-`orevia-senior-react`, `orevia-senior-mobile` and `orevia-senior-backend`.
+`aurevia-senior-react`, `aurevia-senior-mobile` and `aurevia-senior-backend`.
 The repo already enforces the WEB-08 bundle budget; this checklist covers the behaviors
 that a build-time gate cannot see.
 

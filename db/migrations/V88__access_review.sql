@@ -57,5 +57,5 @@ CREATE POLICY tenant_isolation ON public.emergency_access_review
 CREATE INDEX emergency_access_review_status_idx
     ON public.emergency_access_review (organization_id, status, opened_at DESC);
 
-GRANT SELECT, INSERT, UPDATE ON public.emergency_access_review TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.emergency_access_review FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.emergency_access_review TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.emergency_access_review FROM aurevia_app;

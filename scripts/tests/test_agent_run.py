@@ -13,7 +13,7 @@ from helpers import ROOT
 FAKE_OPENCODE = """#!/usr/bin/env bash
 cp .opencode/opencode.json "$SEEN"
 printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
-case "$*" in *orevia-task-advisor*)
+case "$*" in *aurevia-task-advisor*)
   case "${BRIEF_MODE:-none}" in
     good) printf 'chatter\\n<<<BRIEF\\nGoal: advised goal\\nBRIEF>>>\\n' ;;
     rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
@@ -176,7 +176,7 @@ class AgentRunTests(unittest.TestCase):
 
     def test_conflict_prompt_loads_the_dedicated_merge_skill(self):
         script = (ROOT / "scripts/agent-run.sh").read_text()
-        skill = ROOT / ".opencode/skills/orevia-merge-conflict/SKILL.md"
+        skill = ROOT / ".opencode/skills/aurevia-merge-conflict/SKILL.md"
         self.assertIn(str(skill.relative_to(ROOT)), script)
         self.push_to_main(str(skill.relative_to(ROOT)), skill.read_text())
         self.push_to_main("feature.txt", "main version\n")
@@ -319,7 +319,7 @@ class AgentRunTests(unittest.TestCase):
         self.assertIn("<<<BRIEF-FOR-WORKER", text)
         self.assertIn("Goal: advised goal", text)
         self.assertIn("## Routing", text)
-        self.assertIn("orevia-task-advisor", text)
+        self.assertIn("aurevia-task-advisor", text)
         self.assertNotIn("load the full project context", text)
 
     def test_a_failed_advisor_falls_back_to_the_routing_block(self):
@@ -331,7 +331,7 @@ class AgentRunTests(unittest.TestCase):
 
     def test_brief_off_skips_the_advisor(self):
         text = self.brief_prompts(BRIEF="off")
-        self.assertNotIn("--agent orevia-task-advisor", text)
+        self.assertNotIn("--agent aurevia-task-advisor", text)
         self.assertIn("## Routing", text)
 
     def test_a_non_swarm_run_keeps_the_full_context_prompt(self):
@@ -344,8 +344,8 @@ class AgentRunTests(unittest.TestCase):
         prompts = self.repo.parent / "prompts.log"
         self.run_cmd("implement", FAKE_MODE="commit", SWARM="1", PROMPT_LOG=str(prompts))
         text = prompts.read_text()
-        for name in ("orevia-plan-reviewer", "orevia-code-reviewer",
-                     "orevia-coverage-auditor", "orevia-devsecops"):
+        for name in ("aurevia-plan-reviewer", "aurevia-code-reviewer",
+                     "aurevia-coverage-auditor", "aurevia-devsecops"):
             self.assertIn(name, text)
         self.assertIn("Quality loop (mandatory)", text)
 

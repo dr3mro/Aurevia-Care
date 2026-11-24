@@ -1,4 +1,4 @@
-# Orevia defect register
+# Aurevia defect register
 
 Start with an empty register. Add findings only when supported by observed evidence. Record environmental blockers under the task in tasks/.
 

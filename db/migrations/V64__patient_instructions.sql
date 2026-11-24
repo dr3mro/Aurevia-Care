@@ -109,9 +109,9 @@ END $$;
 -- Reapproval of a template replaces the approved version in place, matching the
 -- port's put semantics; revision state advances by a single guarded UPDATE.
 -- Facts are declaration-only: no UPDATE or DELETE permission is ever granted.
-GRANT SELECT, INSERT, UPDATE ON public.instruction_template TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.instruction_revision TO smartclinic_app;
-GRANT SELECT, INSERT ON public.instruction_fact TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.instruction_template FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.instruction_revision FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact FROM smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.instruction_template TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.instruction_revision TO aurevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.instruction_template FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.instruction_revision FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact FROM aurevia_app;

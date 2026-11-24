@@ -3494,7 +3494,7 @@ export interface paths {
         };
         /**
          * Scrape aggregate request metrics as Prometheus exposition text for an allowed source
-         * @description Unauthenticated scrape. The source address is allowlisted by MetricsAccessPolicy; loopback is always permitted and additional CIDRs come from OREVIA_METRICS_ALLOW. A disallowed source receives a bare 404 with an empty body so the endpoint is not discoverable from an untrusted network. The body holds aggregate counters only, never request bodies, tokens, tenant or patient fields.
+         * @description Unauthenticated scrape. The source address is allowlisted by MetricsAccessPolicy; loopback is always permitted and additional CIDRs come from AUREVIA_METRICS_ALLOW. A disallowed source receives a bare 404 with an empty body so the endpoint is not discoverable from an untrusted network. The body holds aggregate counters only, never request bodies, tokens, tenant or patient fields.
          */
         get: operations["scrapeMetrics"];
         put?: never;

@@ -38,7 +38,7 @@ contract, migration or release change (docs/WORKFLOW.md).
 ## Review owner
 
 Senior React Native and Expo specialist — bounded advisory review received
-(subagent `orevia-senior-mobile`, report only, no edits). It confirmed the
+(subagent `aurevia-senior-mobile`, report only, no edits). It confirmed the
 omit idiom is the smallest correct fix, that `_discardedResult` is exempt from
 both `noUnusedLocals` (rest-sibling exemption) and
 `@typescript-eslint/no-unused-vars` (`varsIgnorePattern: '^_'`), and that

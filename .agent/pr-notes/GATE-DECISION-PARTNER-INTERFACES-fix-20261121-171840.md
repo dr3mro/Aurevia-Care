@@ -30,7 +30,7 @@ is documentation only and enables no traffic.
 ## Review owner
 
 Integration lead and partner owner (spec section 10) are the accountable decision makers.
-This fix was reviewed by `orevia-senior-integrations` as a bounded, simulated read-only
+This fix was reviewed by `aurevia-senior-integrations` as a bounded, simulated read-only
 advisory review (subagent session `ses_e00e07183ffevIQUSdQVRn0Wbz`). No human, clinical,
 partner or simulated-user evidence was used or claimed.
 
@@ -53,7 +53,7 @@ belong to the human decision in `S-G5-04`, not to this pack.
 ## Test evidence
 
 Evidence sources: **tool** (executed shell/Python commands below), **reviewer** (simulated
-`orevia-senior-integrations` subagent). No simulated-user or human-participant evidence.
+`aurevia-senior-integrations` subagent). No simulated-user or human-participant evidence.
 
 Red/green, test-first trace on branch `swarm/GATE-DECISION-PARTNER-INTERFACES-447` at base
 SHA `a68aadbec9809f5c260dbbf1739e2e64c9c6eede`:

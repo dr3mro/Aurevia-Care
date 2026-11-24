@@ -40,15 +40,15 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_doc_cmd_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_doc_cmd_it")
 @ActiveProfiles("synthetic-auth")
 class DocumentArtifactControllerHttpIntegrationTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_doc_cmd_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_doc_cmd_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String CONTEXT = "ctx-http";
     private static final String PATIENT = "pat-http";
     private static final String CHECKSUM = "a".repeat(64);
@@ -70,18 +70,18 @@ class DocumentArtifactControllerHttpIntegrationTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_doc_cmd_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_doc_cmd_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_doc_cmd_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_doc_cmd_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedStaff(statement, ORG_A, "uploader", "reception");
             seedStaff(statement, ORG_A, "scanner", "security_scanner");
@@ -106,7 +106,7 @@ class DocumentArtifactControllerHttpIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_doc_cmd_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_doc_cmd_it WITH (FORCE)");
         }
     }
 
@@ -177,7 +177,7 @@ class DocumentArtifactControllerHttpIntegrationTest {
     }
 
     private static void seedObject(String objectKey, int objectVersion, long sizeBytes) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              PreparedStatement insert = connection.prepareStatement(
                      "INSERT INTO public.document_verified_object "
                      + "(organization_id, object_key, object_version, checksum, size_bytes) "

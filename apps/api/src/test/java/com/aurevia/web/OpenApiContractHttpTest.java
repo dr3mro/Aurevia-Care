@@ -139,8 +139,8 @@ class OpenApiContractHttpTest {
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,
                         AUDIENCE_PROPERTY + "=" + AUDIENCE,
-                        "orevia.oidc.client-id=synthetic-client",
-                        "orevia.oidc.client-secret=synthetic-secret");
+                        "aurevia.oidc.client-id=synthetic-client",
+                        "aurevia.oidc.client-secret=synthetic-secret");
     }
 
     /**

@@ -61,7 +61,7 @@ Negative, forbidden, conflict and failure paths are covered with synthetic data.
 ## Review owner
 
 Senior React and Vite + Senior TypeScript (advisory bounded review dispatched to
-the `orevia-senior-react` specialist; its read-only findings are recorded
+the `aurevia-senior-react` specialist; its read-only findings are recorded
 under Findings). The primary worker ran every command listed below.
 
 ## Data changes
@@ -113,13 +113,13 @@ No simulated-clinical user, human participant or CI run was available or claimed
   `tsc --noEmit -p tsconfig.json`, and the `tsc` inside `npm run build`):
 
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
-  > orevia-staff-web@0.1.0 lint
+  > aurevia-staff-web@0.1.0 lint
   > eslint . --max-warnings 0
 
-  > orevia-staff-web@0.1.0 build
+  > aurevia-staff-web@0.1.0 build
   > tsc --noEmit -p tsconfig.json && vite build
   ✓ built in 94ms
   ```

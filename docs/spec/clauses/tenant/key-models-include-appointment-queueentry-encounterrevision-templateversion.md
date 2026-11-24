@@ -15,7 +15,7 @@ Test class: `com.aurevia.tenant.clauses.KeyModelsIncludeAppointmentQueueentryEnc
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic tenants that reuse one opaque id, following the Flyway
 and database harness of `IsolationAcrossSurfacesTest`. A dedicated database
-(`orevia_arc01_keymodels_it`) is migrated from `db/migrations`; all proof
+(`aurevia_arc01_keymodels_it`) is migrated from `db/migrations`; all proof
 reads use read-only `information_schema` / `pg_class` metadata and forced-RLS
 row reads. No production file, migration, existing test or contract is changed.
 

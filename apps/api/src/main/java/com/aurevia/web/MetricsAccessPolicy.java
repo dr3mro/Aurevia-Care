@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>Loopback is always allowed so the local load balancer and orchestrator can
  * scrape the endpoint. Additional networks come from the comma-separated CIDR
- * list in {@code OREVIA_METRICS_ALLOW}; with no configured value the policy
+ * list in {@code AUREVIA_METRICS_ALLOW}; with no configured value the policy
  * allows loopback only. A malformed CIDR fails construction so the application
  * never starts with a partially applied allowlist.</p>
  */
@@ -28,11 +28,11 @@ public final class MetricsAccessPolicy {
     /**
      * Build the allowlist from loopback and the configured CIDR entries.
      *
-     * @param cidrList comma-separated CIDRs from {@code OREVIA_METRICS_ALLOW},
+     * @param cidrList comma-separated CIDRs from {@code AUREVIA_METRICS_ALLOW},
      *                 possibly empty; blank entries are ignored
      * @throws IllegalArgumentException when a configured CIDR is malformed
      */
-    public MetricsAccessPolicy(@Value("${OREVIA_METRICS_ALLOW:}") String cidrList) {
+    public MetricsAccessPolicy(@Value("${AUREVIA_METRICS_ALLOW:}") String cidrList) {
         List<String> sources = new ArrayList<>(LOOPBACK);
         sources.addAll(Arrays.stream(cidrList.split(","))
                 .map(String::trim)

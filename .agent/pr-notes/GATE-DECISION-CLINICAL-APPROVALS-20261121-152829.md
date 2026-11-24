@@ -36,7 +36,7 @@ satisfied by this document.
 
 Clinical safety lead and site medical director (section 10 accountable roles),
 recorded in the document's empty approval record. A bounded simulated clinical
-review was requested from the `orevia-physician-reviewer` specialist and
+review was requested from the `aurevia-physician-reviewer` specialist and
 returned no actionable findings (see `## Clinical and architecture review`).
 No human clinical or participant evidence was available or claimed.
 
@@ -90,7 +90,7 @@ run because no frontend or Java file changed.
 
 ## Clinical and architecture review
 
-Simulated clinical review requested from `orevia-physician-reviewer`
+Simulated clinical review requested from `aurevia-physician-reviewer`
 (specialist evidence, not human clinical sign-off): **no actionable findings**.
 It independently verified all five approval categories, the eight exact
 headings, the four-column options table, that every link resolves to an existing
@@ -134,7 +134,7 @@ assert that a delivered escalation equals clinical receipt.
   an approved configuration in those stores would not survive a restart. The
   pack records this honestly under `## What is missing` instead of claiming
   durable support.
-- Simulated physician review (`orevia-physician-reviewer`) returned no
+- Simulated physician review (`aurevia-physician-reviewer`) returned no
   actionable findings; no change was made as a result.
 - No defect was found in the repository; no BUGS.md entry is warranted.
 

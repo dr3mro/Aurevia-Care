@@ -32,7 +32,7 @@ import com.aurevia.tenant.TenantContext;
  * inbound clinical payload.</p>
  *
  * <p>The queue status column cannot be advanced here: migration V22 grants
- * {@code orevia_app} only SELECT and INSERT on the reconciliation table,
+ * {@code aurevia_app} only SELECT and INSERT on the reconciliation table,
  * and this story reserves no migration version. A follow-up storage story must
  * grant a bounded UPDATE before the durable status can mirror the decision.</p>
  */

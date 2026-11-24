@@ -15,7 +15,7 @@ and added this fix-pass notes file. No production code or test needed a change: 
 gate is green with 100% coverage.
 
 Evidence sources in this pass: executed shell/tool commands (primary) and one bounded
-read-only specialist review via the `orevia-senior-react` skill (simulated, not a
+read-only specialist review via the `aurevia-senior-react` skill (simulated, not a
 human or clinical participant). No simulated-user or human-participant evidence.
 
 ## Affected requirements
@@ -48,10 +48,10 @@ no boundary, data or policy change.
 
 ## Review owner
 
-Senior React and Vite. Skills loaded: `orevia-delivery`, `orevia-senior-react`,
-`orevia-senior-typescript`, `orevia-test-engineer`, `orevia-ux-reviewer`.
+Senior React and Vite. Skills loaded: `aurevia-delivery`, `aurevia-senior-react`,
+`aurevia-senior-typescript`, `aurevia-test-engineer`, `aurevia-ux-reviewer`.
 An independent bounded read-only review was executed through the
-`orevia-senior-react` subagent; it returned **no blocking issues** (three LOW
+`aurevia-senior-react` subagent; it returned **no blocking issues** (three LOW
 notes and one INFO note, listed under Findings). Review is simulated via skill and
 executed tools, not a human or real-clinical participant.
 
@@ -90,7 +90,7 @@ Commands run in this fix pass and their final lines:
    - generated client: `gen:api: generated client matches the contract`
    - **typecheck final lines** (no diagnostics means clean, exit 0):
      ```
-     > orevia-staff-web@0.1.0 typecheck
+     > aurevia-staff-web@0.1.0 typecheck
      > tsc --noEmit -p tsconfig.json
 
      ```

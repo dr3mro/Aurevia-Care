@@ -134,8 +134,8 @@ supplied by this document.
   `SPEC-PRD-05-C01/02`, `SPEC-RX-02-C01/02`, `SPEC-XCH-03-C05`, `BUILD-10`, `BUILD-16`,
   `BUILD-40`, `BUILD-42`, `START-04`, `START-15`, `START-91`, `READY-54`) or NO TASK.
 - Evidence provenance: executed tool commands (checks, file reads, `git status`) for
-  repository facts; bounded read-only specialist reviews from `orevia-devsecops`
-  and `orevia-senior-cloud-iac` (simulated specialist review, not human evidence)
+  repository facts; bounded read-only specialist reviews from `aurevia-devsecops`
+  and `aurevia-senior-cloud-iac` (simulated specialist review, not human evidence)
   for coverage of the questions/options/evidence checklist; no simulated-user or human
   participant evidence. No clinical, legal or deployment approval is claimed.
 

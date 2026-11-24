@@ -41,8 +41,8 @@ no boundary, data or policy change.
 
 ## Review owner
 
-Senior React and Vite (skills `orevia-senior-react`, `orevia-senior-typescript`,
-`orevia-test-engineer`, `orevia-ux-reviewer` loaded). Review is simulated
+Senior React and Vite (skills `aurevia-senior-react`, `aurevia-senior-typescript`,
+`aurevia-test-engineer`, `aurevia-ux-reviewer` loaded). Review is simulated
 via skills and executed tools; no human or real-clinical participant.
 
 ## Data changes
@@ -81,7 +81,7 @@ Commands and final lines:
    - generated client: `gen:api: generated client matches the contract`
    - **typecheck final lines** (no diagnostics means clean, exit 0):
      ```
-     > orevia-staff-web@0.1.0 typecheck
+     > aurevia-staff-web@0.1.0 typecheck
      > tsc --noEmit -p tsconfig.json
 
      ```

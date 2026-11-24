@@ -19,8 +19,8 @@ I rehydrated the governing context (AGENTS.md, CODING_STYLE.md, README-SETUP.md,
 docs/WORKFLOW.md, WORKSPACE.md, TODO.md and its "Instructions for every agent",
 MEMORY.md, PROJECT.md, the task file, decision `0005-patient-app-tablets.md`,
 `docs/design/accessibility-patterns.md`, both scoped files and the layout hook)
-and loaded the matching skills: `orevia-delivery`, `orevia-senior-mobile`
-and `orevia-senior-typescript`. I then re-ran every scoped gate myself with
+and loaded the matching skills: `aurevia-delivery`, `aurevia-senior-mobile`
+and `aurevia-senior-typescript`. I then re-ran every scoped gate myself with
 fresh tool commands; all pass. **This pass changes only this notes file** — no
 production, test, config, threshold, exclusion, tracker, workflow, `scripts/` or
 `.opencode/` file was edited by me.
@@ -58,8 +58,8 @@ association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) and Senior TypeScript
-(`orevia-senior-typescript`) guidance loaded and applied; their definition
+Senior React Native and Expo (`aurevia-senior-mobile`) and Senior TypeScript
+(`aurevia-senior-typescript`) guidance loaded and applied; their definition
 of done is met. Independent QA and the full integration gate belong to the
 integrator/Delivery. No named clinical or patient reviewer was available.
 

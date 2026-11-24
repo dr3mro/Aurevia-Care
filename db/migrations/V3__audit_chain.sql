@@ -94,4 +94,4 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION public.audit_verify_chain(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.audit_verify_chain(uuid) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.audit_verify_chain(uuid) TO aurevia_app;

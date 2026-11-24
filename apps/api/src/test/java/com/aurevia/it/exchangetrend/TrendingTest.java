@@ -46,7 +46,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_trending_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_trending_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class TrendingTest {
@@ -62,9 +62,9 @@ class TrendingTest {
     static final String MRN_ISOLATION_A = "MRN-SYN-ISOLATION-A";
     static final String MRN_ISOLATION_B = "MRN-SYN-ISOLATION-B";
     static final String MRN_BACKDATED = "MRN-SYN-BPD";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_trending_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_trending_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private RestClient rest;
@@ -80,19 +80,19 @@ class TrendingTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_trending_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_trending_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_trending_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_trending_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedOrganization(statement, ORG_A);
             seedOrganization(statement, ORG_B);
@@ -107,7 +107,7 @@ class TrendingTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_trending_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_trending_it WITH (FORCE)");
         }
     }
 
@@ -168,7 +168,7 @@ class TrendingTest {
     }
 
     private static String patientId(String org) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "bootstrap-" + org.substring(2, 6));
             try (Statement statement = connection.createStatement();
@@ -183,7 +183,7 @@ class TrendingTest {
     }
 
     private static String createPatient(String org, String mrn) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "bootstrap-" + org.substring(2, 6));
             try (PreparedStatement statement = connection.prepareStatement(
@@ -218,7 +218,7 @@ class TrendingTest {
     }
 
     private static long countAudit(String action, String outcome) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, ORG_A, "admin-a");
             try (PreparedStatement statement = connection.prepareStatement(

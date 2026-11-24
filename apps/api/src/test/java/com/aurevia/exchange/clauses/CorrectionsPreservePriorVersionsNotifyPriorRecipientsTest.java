@@ -53,16 +53,16 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_xch04_correction_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_xch04_correction_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_xch04_correction_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_xch04_correction_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String ORDERS = "/api/v1/xch04/orders";
     private static final String RESULTS = "/api/v1/xch04/results";
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -81,21 +81,21 @@ class CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            // Both roles are needed: Flyway migrates as orevia_migrate while
-            // the application datasource connects as orevia_app under RLS.
+            // Both roles are needed: Flyway migrates as aurevia_migrate while
+            // the application datasource connects as aurevia_app under RLS.
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_xch04_correction_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_xch04_correction_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_xch04_correction_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_xch04_correction_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedOrganization(statement, ORG_A);
             seedOrganization(statement, ORG_B);
@@ -118,7 +118,7 @@ class CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_xch04_correction_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_xch04_correction_it WITH (FORCE)");
         }
     }
 
@@ -164,7 +164,7 @@ class CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest {
     }
 
     private static String patientId(String organization) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, organization, "admin-a");
             try (Statement statement = connection.createStatement();
@@ -191,7 +191,7 @@ class CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest {
     }
 
     private static long count(String organization, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, organization, "admin-a");
             try (Statement statement = connection.createStatement();

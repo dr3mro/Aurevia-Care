@@ -71,7 +71,7 @@ arguments), `com.aurevia.it.exchangeorder.OrderExchangeIntegrationTest`
 `com.aurevia.it.exchangeorder.OrderRecordsTest` (record value
 semantics).
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
 -Pno-security -Dtest=OrderIncludesLocalPatientEncounterOrderCodeTest test` —
 `tests="6" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim

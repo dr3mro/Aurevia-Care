@@ -1,6 +1,6 @@
 # Database
 
-Flyway migrations are applied by `orevia_migrate`; the application uses `orevia_app` (non-owner, no `BYPASSRLS`).
+Flyway migrations are applied by `aurevia_migrate`; the application uses `aurevia_app` (non-owner, no `BYPASSRLS`).
 
 - `V1__tenant_schema.sql` — tenant-owned tables with `(organization_id, id)` keys.
 - `V2__rls_roles_policies.sql` — runtime roles, `app_org()` and forced RLS on every tenant table.

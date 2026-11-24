@@ -47,8 +47,8 @@ simulated UX/RTL review was requested because the component composes clinical da
 
 ## Review owner
 
-- `orevia-senior-react` and `orevia-senior-typescript` skills loaded; module gate owns typecheck/lint/build/coverage.
-- `orevia-ux-reviewer` bounded simulated review: **no blocking finding; do not hold the task**
+- `aurevia-senior-react` and `aurevia-senior-typescript` skills loaded; module gate owns typecheck/lint/build/coverage.
+- `aurevia-ux-reviewer` bounded simulated review: **no blocking finding; do not hold the task**
   (reviewer evidence, static read, not human or clinical acceptance).
 
 ## Data changes
@@ -81,9 +81,9 @@ human participant or clinical evidence is claimed.
 - Canonical frontend gate (includes typecheck):
   - `bash apps/staff-web/check.sh` → exit 0.
   - `gen:api:check`: `gen:api: generated client matches the contract`.
-  - Typecheck final lines: `> orevia-staff-web@0.1.0 typecheck` /
+  - Typecheck final lines: `> aurevia-staff-web@0.1.0 typecheck` /
     `> tsc --noEmit -p tsconfig.json` / (no output — no `error TS…`) /
-    `> orevia-staff-web@0.1.0 lint`.
+    `> aurevia-staff-web@0.1.0 lint`.
   - Lint: `eslint . --max-warnings=0` clean. Build: `tsc --noEmit -p tsconfig.json && vite build` clean;
     `node scripts/check-bundle-size.mjs` clean.
   - Tests: `Test Files  159 passed (159)`, `Tests  1904 passed (1904)`.

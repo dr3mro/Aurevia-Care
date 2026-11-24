@@ -1,7 +1,7 @@
 # WEB-01 to WEB-13 evidence register
 
 This table maps each requirement in section 8.1 ("Production platform and web
-delivery") of the [Orevia Cloud V1 specification](../../../.opencode/config/PROJECT_V1_SPEC.md)
+delivery") of the [Aurevia Cloud V1 specification](../../../.opencode/config/PROJECT_V1_SPEC.md)
 to the repository evidence that proves it, for the G5 launch-readiness review.
 It is a snapshot of this checkout: a `proven by test` row means a committed
 test asserts the named behavior, not that a production deployment has been

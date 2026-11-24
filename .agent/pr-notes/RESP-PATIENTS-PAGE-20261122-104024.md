@@ -60,13 +60,13 @@ Observed with executed tools in `apps/staff-web` (Node 26, Vitest 5.1.1):
   `Tests  1912 passed (1912)`, then the coverage summary below.
 - `npm run typecheck` → final lines:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   (no `error TS…`, exit 0).
 - `npm run lint` → final lines:
   ```
-  > orevia-staff-web@0.1.0 lint
+  > aurevia-staff-web@0.1.0 lint
   > eslint . --max-warnings=0
   ```
   (no warnings, exit 0).

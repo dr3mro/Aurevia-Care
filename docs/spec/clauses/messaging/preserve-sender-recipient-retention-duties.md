@@ -20,7 +20,7 @@ security, and leaves the remaining HTTP exposure as the documented gap.
 Test class: `com.aurevia.messaging.clauses.PreserveSenderRecipientRetentionDutiesTest`
 (`apps/api/src/test/java/com/aurevia/messaging/clauses/PreserveSenderRecipientRetentionDutiesTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile. It migrates a fresh
-`orevia_retention_duty_it` database from `db/migrations`, seeds two isolated tenants
+`aurevia_retention_duty_it` database from `db/migrations`, seeds two isolated tenants
 with a tracked resource and directly seeded duty rows (organization A: sender 30 days,
 recipient 90 days; organization B: sender 10 days, recipient 20 days), binds a synthetic
 `TenantContext` for each proof and calls the injected service. All fixtures are synthetic.
@@ -80,7 +80,7 @@ Production types and data exercised by the preserved behavior:
 Verification command and result (tool evidence):
 
 ```
-OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=PreserveSenderRecipientRetentionDutiesTest test
 Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 ```

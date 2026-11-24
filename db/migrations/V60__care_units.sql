@@ -97,11 +97,11 @@ END $$;
 
 -- Directory and relationship rows are immutable; consumption and revocation are
 -- the only state moves and may flip one boolean or stamp one transition.
-GRANT SELECT, INSERT ON public.care_unit TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.eligible_relationship TO orevia_app;
-GRANT SELECT, INSERT, UPDATE ON public.patient_unit_connection TO orevia_app;
-GRANT SELECT, INSERT ON public.messaging_audit TO orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.care_unit FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.eligible_relationship FROM orevia_app;
-REVOKE DELETE, TRUNCATE ON public.patient_unit_connection FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_audit FROM orevia_app;
+GRANT SELECT, INSERT ON public.care_unit TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.eligible_relationship TO aurevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.patient_unit_connection TO aurevia_app;
+GRANT SELECT, INSERT ON public.messaging_audit TO aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.care_unit FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.eligible_relationship FROM aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.patient_unit_connection FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_audit FROM aurevia_app;

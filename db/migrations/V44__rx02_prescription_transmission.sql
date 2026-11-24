@@ -30,7 +30,7 @@ BEGIN
        OR NOT EXISTS (
               SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                WHERE n.nspname = 'public' AND p.proname = 'reject_immutable_mutation')
-       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'orevia_app') THEN
+       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'aurevia_app') THEN
         RAISE NOTICE 'V44 prescription transmission deferred: prerequisites not installed yet';
         RETURN;
     END IF;
@@ -234,16 +234,16 @@ BEGIN
         BEFORE UPDATE ON public.rx02_prescription
         FOR EACH ROW EXECUTE FUNCTION public.guard_rx02_prescription_update()$ddl$;
 
-    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.rx02_prescription TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.rx02_prescription FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.rx02_submission TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.rx02_submission FROM orevia_app$ddl$;
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.rx02_event TO orevia_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.rx02_event FROM orevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT, UPDATE ON public.rx02_prescription TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE DELETE, TRUNCATE ON public.rx02_prescription FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.rx02_submission TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.rx02_submission FROM aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.rx02_event TO aurevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.rx02_event FROM aurevia_app$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_rx02_created_by_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_rx02_event_actor_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_rx02_prescription_update() FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx02_created_by_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx02_event_actor_from_actor() TO orevia_app$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_rx02_prescription_update() TO orevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx02_created_by_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_rx02_event_actor_from_actor() TO aurevia_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_rx02_prescription_update() TO aurevia_app$ddl$;
 END $rx02$;

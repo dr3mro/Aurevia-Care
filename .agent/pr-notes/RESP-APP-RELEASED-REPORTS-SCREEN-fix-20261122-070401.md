@@ -31,7 +31,7 @@ errors. This is an ordering artifact of my first run, not a defect in the branch
 
 Evidence provenance: **tool** evidence for every command below (I executed and
 observed each run). **Reviewer** evidence is a bounded advisory
-`orevia-senior-mobile` review of the scoped diff this pass (report appended
+`aurevia-senior-mobile` review of the scoped diff this pass (report appended
 under Findings when received); no named clinician, patient or human-participant
 evidence was collected and none is claimed. No patient data, credential or raw
 log appears in this note.
@@ -67,7 +67,7 @@ patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) definition of done is
+Senior React Native and Expo (`aurevia-senior-mobile`) definition of done is
 met: `bash apps/patient-mobile/check.sh` passes with typecheck, lint and 100%
 coverage. A bounded independent advisory review of the scoped diff was requested
 this pass (tool/subagent evidence); its verdict was "correct and complete, no

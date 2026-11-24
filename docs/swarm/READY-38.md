@@ -14,9 +14,9 @@ production class.** Worker `swarm-9`, branch `swarm/READY-38-416`, base HEAD
 domain name is used. Evidence sources: **tool** (every command below was run),
 **simulated reviewer** (two read-only subagent reviews, findings incorporated),
 **simulated user** (none), **human participant** (none — no clinical acceptance
-is claimed). Skills loaded: `orevia-delivery`, `orevia-senior-backend`,
-`orevia-senior-database`, `orevia-senior-java-build`,
-`orevia-test-engineer`.
+is claimed). Skills loaded: `aurevia-delivery`, `aurevia-senior-backend`,
+`aurevia-senior-database`, `aurevia-senior-java-build`,
+`aurevia-test-engineer`.
 
 ## Summary
 
@@ -70,7 +70,7 @@ existing migration. Lock/volume impact is negligible. Row-level isolation and
 grant details are in the migration header. Migration order is last under both
 `sort -V` and Flyway numeric order, so `organization`, `public.app_org()` and
 `public.reject_immutable_mutation()` all exist first. The tagged test creates and
-drops its own `orevia_governance_it` database.
+drops its own `aurevia_governance_it` database.
 
 ## Authorization boundaries and audit events
 
@@ -97,12 +97,12 @@ later contract removing a table must point at an earlier `Change: expand` per
 ## Test evidence
 
 All commands run from the repo root, Java 21.0.13.1, Maven 3.10.0, PostgreSQL
-17.12 on 127.0.0.1:5432, `OREVIA_PG_ADMIN=postgres`. Final lines / results:
+17.12 on 127.0.0.1:5432, `AUREVIA_PG_ADMIN=postgres`. Final lines / results:
 
 | Command | Exit | Result / final line |
 |---|---|---|
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -DskipTests test-compile` | 0 | clean compile |
-| `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcMessagingGovernanceStoreIntegrationTest test` | 0 | Surefire: `Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`; Flyway: `Successfully applied 33 migrations to schema "public", now at version v62` |
+| `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcMessagingGovernanceStoreIntegrationTest test` | 0 | Surefire: `Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`; Flyway: `Successfully applied 33 migrations to schema "public", now at version v62` |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=MessagingGovernanceServiceTest,MessagingAuditDomainTest test` | 0 | `Tests run: 26` and `Tests run: 14`, 0 failures/errors/skipped |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security jacoco:report` | 0 | report generated at `apps/api/target/site/jacoco/jacoco.xml` |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` (all unit tests, integration excluded) | 0 | green |

@@ -47,7 +47,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_override_reason_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_override_reason_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class KeepOverrideReasonAuthorMatchedDataTest {
@@ -56,10 +56,10 @@ class KeepOverrideReasonAuthorMatchedDataTest {
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     private static final String CLINICIAN_A = "clinician-1111";
     private static final String CLINICIAN_B = "clinician-2222";
-    private static final String DB = "orevia_override_reason_it";
+    private static final String DB = "aurevia_override_reason_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     private static final String AMOX500 = "aaaa1111-0000-0000-0000-000000000001";
     private static final String CIPRO = "aaaa1111-0000-0000-0000-000000000004";
@@ -80,16 +80,16 @@ class KeepOverrideReasonAuthorMatchedDataTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedOrganization(statement, ORG_A);
             seedOrganization(statement, ORG_B);
@@ -176,7 +176,7 @@ class KeepOverrideReasonAuthorMatchedDataTest {
     }
 
     private static String patientId(String org) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "clinician-" + suffix(org));
             try (Statement statement = connection.createStatement();
@@ -203,7 +203,7 @@ class KeepOverrideReasonAuthorMatchedDataTest {
     }
 
     private static void execute(String org, String subject, String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (Statement statement = connection.createStatement()) {
@@ -218,7 +218,7 @@ class KeepOverrideReasonAuthorMatchedDataTest {
     }
 
     private static OverrideRow overrideRow(String org, String subject, String draftId) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (PreparedStatement statement = connection.prepareStatement(
@@ -242,7 +242,7 @@ class KeepOverrideReasonAuthorMatchedDataTest {
     }
 
     private static int overrideCount(String org, String subject, String draftId) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, subject);
             try (PreparedStatement statement = connection.prepareStatement(

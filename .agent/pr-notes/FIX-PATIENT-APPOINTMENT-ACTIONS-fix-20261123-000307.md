@@ -16,9 +16,9 @@ Routine repair of a test-only static-typing defect on a cross-boundary story. No
 
 ## Review owner
 
-- orevia-senior-mobile / orevia-senior-typescript — matching implementation specialists (skills loaded).
-- orevia-plan-reviewer — plan reviewed before code (VERDICT: GO).
-- orevia-code-reviewer, orevia-coverage-auditor, orevia-devsecops — independent read-only stages after code.
+- aurevia-senior-mobile / aurevia-senior-typescript — matching implementation specialists (skills loaded).
+- aurevia-plan-reviewer — plan reviewed before code (VERDICT: GO).
+- aurevia-code-reviewer, aurevia-coverage-auditor, aurevia-devsecops — independent read-only stages after code.
 
 ## Data changes
 
@@ -99,6 +99,6 @@ No test skipped, no threshold lowered, no exclusion or coverage-ignore comment a
 
 ## Review verdicts
 
-- orevia-code-reviewer: GO (test-only diff; no Critical, Required or Optional finding; types made honest without widening production types or weakening assertions)
-- orevia-coverage-auditor: GO (no production branch added or removed; facility fallback and dev-loopback branches still asserted; no skip, exclusion or threshold change)
-- orevia-devsecops: GO (test-only diff; no PHI, secrets, dependency, isolation or audit change; OWASP/SpotBugs not applicable to a frontend test-only pass; no tool run by the read-only reviewer)
+- aurevia-code-reviewer: GO (test-only diff; no Critical, Required or Optional finding; types made honest without widening production types or weakening assertions)
+- aurevia-coverage-auditor: GO (no production branch added or removed; facility fallback and dev-loopback branches still asserted; no skip, exclusion or threshold change)
+- aurevia-devsecops: GO (test-only diff; no PHI, secrets, dependency, isolation or audit change; OWASP/SpotBugs not applicable to a frontend test-only pass; no tool run by the read-only reviewer)

@@ -11,7 +11,7 @@
 -- therefore remain isolated. The three tables are append-only for the runtime
 -- role: policy and notices are approved configuration written by an authorized
 -- administration path, and access facts are immutable audit records. No UPDATE
--- or DELETE grant is given to orevia_app.
+-- or DELETE grant is given to aurevia_app.
 
 CREATE TABLE public.flow_policy (
     organization_id uuid NOT NULL REFERENCES public.organization(organization_id),
@@ -74,9 +74,9 @@ END $$;
 
 -- Approved configuration and audit facts are written only by authorized
 -- setup/admin paths; the runtime role can read and (for audit) append.
-GRANT SELECT ON public.flow_policy TO orevia_app;
-GRANT SELECT ON public.flow_approved_notice TO orevia_app;
-GRANT SELECT, INSERT ON public.flow_access_audit TO orevia_app;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.flow_policy FROM orevia_app;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.flow_approved_notice FROM orevia_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.flow_access_audit FROM orevia_app;
+GRANT SELECT ON public.flow_policy TO aurevia_app;
+GRANT SELECT ON public.flow_approved_notice TO aurevia_app;
+GRANT SELECT, INSERT ON public.flow_access_audit TO aurevia_app;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.flow_policy FROM aurevia_app;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.flow_approved_notice FROM aurevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.flow_access_audit FROM aurevia_app;

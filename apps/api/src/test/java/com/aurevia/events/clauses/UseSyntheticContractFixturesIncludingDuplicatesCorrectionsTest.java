@@ -61,7 +61,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_synthetic_fixtures_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_synthetic_fixtures_it")
 @ActiveProfiles("synthetic-auth")
 class UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest {
 
@@ -74,9 +74,9 @@ class UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest {
     static final String SNAPSHOT = "cbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
     static final String DISCLOSURE = "dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
     static final String WORK_ITEM = "ebbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_synthetic_fixtures_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_synthetic_fixtures_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     static final ObjectMapper MAPPER = new ObjectMapper();
 
     static JsonNode fixtures;
@@ -99,18 +99,18 @@ class UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_synthetic_fixtures_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_synthetic_fixtures_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_synthetic_fixtures_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_synthetic_fixtures_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "worker-a", "worker");
             seedUser(statement, ORG_A, "operator-a", "operator");
@@ -151,7 +151,7 @@ class UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_synthetic_fixtures_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_synthetic_fixtures_it WITH (FORCE)");
         }
     }
 
@@ -295,7 +295,7 @@ class UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest {
 
     /** Count stored receipts for one aggregate, proving the fixture's expected receipt count. */
     private int receiptCount(String aggregateId) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(

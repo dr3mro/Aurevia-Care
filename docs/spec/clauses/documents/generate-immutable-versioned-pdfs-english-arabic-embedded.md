@@ -13,7 +13,7 @@ Partly proven
 Test class: `com.aurevia.documents.clauses.GenerateImmutableVersionedPdfsEnglishArabicEmbeddedTest`
 (`apps/api/src/test/java/com/aurevia/documents/clauses/GenerateImmutableVersionedPdfsEnglishArabicEmbeddedTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile with its own
-Flyway-migrated database `orevia_doc_pdf_clause_it`. It drives the real HTTP
+Flyway-migrated database `aurevia_doc_pdf_clause_it`. It drives the real HTTP
 entry points `POST /api/v1/documents/rendered`,
 `GET /api/v1/documents/rendered/{id}` and
 `GET /api/v1/documents/rendered/{id}/content` with synthetic users, a synthetic

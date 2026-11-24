@@ -20,9 +20,9 @@ credential or real domain name used — all fixtures are synthetic.**
 - Worker: `swarm-1`; branch `swarm/READY-37-411`; base HEAD `de837cd` (contains
   PR #266). Evidence sources: **tool** (all commands and their final lines are
   quoted below), plus the earlier run's `.agent/pr-notes/READY-37-20261121-015744.md`
-  (tool + simulated reviewer evidence). Skills loaded: `orevia-delivery`,
-  `orevia-senior-backend`, `orevia-senior-database`,
-  `orevia-senior-java-build`, `orevia-test-engineer`. **No simulated
+  (tool + simulated reviewer evidence). Skills loaded: `aurevia-delivery`,
+  `aurevia-senior-backend`, `aurevia-senior-database`,
+  `aurevia-senior-java-build`, `aurevia-test-engineer`. **No simulated
   user or human participant was exercised in this pass; no clinical acceptance
   is claimed.**
 
@@ -45,7 +45,7 @@ verification recorded here.
 | ID | How the delivered change serves it |
 |---|---|
 | ARC-01 | Tenant-owned tables with `organization_id` in every primary key and business key (`locale`/`platform`, `notice_kind`); opaque `id`, identity `seq` and server instants. |
-| ARC-02 | `ENABLE`/`FORCE ROW LEVEL SECURITY` + `USING`/`WITH CHECK (organization_id = public.app_org())` on all three tables; tenant GUCs bound transaction-locally by `TenantGuardTransactionManager.doBegin`; non-owner `orevia_app` with `NOBYPASSRLS`. Membership re-read from the authoritative fold each request. |
+| ARC-02 | `ENABLE`/`FORCE ROW LEVEL SECURITY` + `USING`/`WITH CHECK (organization_id = public.app_org())` on all three tables; tenant GUCs bound transaction-locally by `TenantGuardTransactionManager.doBegin`; non-owner `aurevia_app` with `NOBYPASSRLS`. Membership re-read from the authoritative fold each request. |
 | OPS-02 | Append-only `flow_access_audit` with no UPDATE/DELETE/TRUNCATE grant and reject-mutation triggers; only non-sensitive facts stored (`subject`, `purpose`, `action`, `correlationId`, `outcome`, `occurredAt`). |
 
 ## Risk class
@@ -75,7 +75,7 @@ id)` key, database-owned `seq`/`id`, `UNIQUE (organization_id, seq)` with
 reject-UPDATE/DELETE/TRUNCATE triggers. Every table has `organization_id NOT
 NULL REFERENCES public.organization`, `created_at timestamptz NOT NULL DEFAULT
 now()`, forced RLS, a `tenant_isolation` policy with `USING` and `WITH CHECK`,
-and explicit grants/revokes to `orevia_app`. No existing migration was
+and explicit grants/revokes to `aurevia_app`. No existing migration was
 edited; no backfill or data migration; three empty tables, negligible lock/volume
 impact. This pass created no new migration (V61 remains the single reserved
 version used).
@@ -101,22 +101,22 @@ would reject a seed without `app.current_org` set. The production bean change is
 immediate on deploy; the adapter reads pre-existing folds, so no dual-write is
 required. Forward/rollback: a later contract removing a table must point at an
 earlier `Change: expand` per `docs/decisions/0002`. The tagged test creates and
-drops its own `orevia_flow_policy_it` database.
+drops its own `aurevia_flow_policy_it` database.
 
 ## Test evidence
 
 All commands run from the repo root on `swarm/READY-37-411`, Java 21.0.13.1
-(CI baseline), Maven 3.10.0, PostgreSQL on 127.0.0.1:5432, `OREVIA_PG_ADMIN=postgres`.
+(CI baseline), Maven 3.10.0, PostgreSQL on 127.0.0.1:5432, `AUREVIA_PG_ADMIN=postgres`.
 Exit codes and final lines:
 
 | Command | Exit | Result / final line |
 |---|---|---|
-| `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcFlowPolicyStoreIntegrationTest test` | 0 | `Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in ...JdbcFlowPolicyStoreIntegrationTest`; Flyway log `Successfully applied 32 migrations ... now at version v61` |
+| `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcFlowPolicyStoreIntegrationTest test` | 0 | `Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in ...JdbcFlowPolicyStoreIntegrationTest`; Flyway log `Successfully applied 32 migrations ... now at version v61` |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=PatientFlowPresentationTest test` | 0 | `Tests run: 13, Failures: 0, Errors: 0, Skipped: 0` |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security jacoco:report` | 0 | report generated (coverage below) |
 | `bash scripts/frontend-check.sh` | 0 | `frontend standards: policy and tool commands passed` |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check` | 0 | no findings |
-| `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration test` | 0 | all integration suites green |
+| `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration test` | 0 | all integration suites green |
 | `python3 -I scripts/worker_gate.py 0` | 0 | `integration tests passed` |
 | `bash db/check.sh` (the AUD-20261120-04 forced-RLS gate) | 0 | `db: migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified` |
 | `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | 0 | `Ran 2 tests ... OK` |

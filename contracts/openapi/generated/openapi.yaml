@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Orevia command contract (X-04)
+  title: Aurevia command contract (X-04)
   version: 0.1.0
   description: >-
     Synthetic-only explicit POST commands. Every operation names the
@@ -16,8 +16,8 @@ paths:
       description: >-
         Authorized by action FACILITY_WRITE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: FACILITY_WRITE
-      x-orevia-policy: ActionPolicy
+      x-aurevia-action: FACILITY_WRITE
+      x-aurevia-policy: ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -39,8 +39,8 @@ paths:
       description: >-
         Authorized by action STAFF_INVITE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: STAFF_INVITE
-      x-orevia-policy: ActionPolicy
+      x-aurevia-action: STAFF_INVITE
+      x-aurevia-policy: ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -62,8 +62,8 @@ paths:
       description: >-
         Authorized by action STAFF_DEACTIVATE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: STAFF_DEACTIVATE
-      x-orevia-policy: ActionPolicy
+      x-aurevia-action: STAFF_DEACTIVATE
+      x-aurevia-policy: ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -85,8 +85,8 @@ paths:
       description: >-
         Authorized by action CONFIG_CREATE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: CONFIG_CREATE
-      x-orevia-policy: ActionPolicy
+      x-aurevia-action: CONFIG_CREATE
+      x-aurevia-policy: ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -108,8 +108,8 @@ paths:
       description: >-
         Authorized by action CONFIG_APPROVE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: CONFIG_APPROVE
-      x-orevia-policy: ActionPolicy
+      x-aurevia-action: CONFIG_APPROVE
+      x-aurevia-policy: ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -131,8 +131,8 @@ paths:
       description: >-
         Authorized by action PATIENT_REGISTER in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: PATIENT_REGISTER
-      x-orevia-policy: ActionPolicy
+      x-aurevia-action: PATIENT_REGISTER
+      x-aurevia-policy: ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -154,8 +154,8 @@ paths:
       description: >-
         Authorized by action APPOINTMENT_BOOK in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: APPOINTMENT_BOOK
-      x-orevia-policy: ActionPolicy
+      x-aurevia-action: APPOINTMENT_BOOK
+      x-aurevia-policy: ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -177,8 +177,8 @@ paths:
       description: >-
         Authorized by action IDENTITY_VERIFY in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: IDENTITY_VERIFY
-      x-orevia-policy: WorklistPolicy
+      x-aurevia-action: IDENTITY_VERIFY
+      x-aurevia-policy: WorklistPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -200,8 +200,8 @@ paths:
       description: >-
         Authorized by action APPOINTMENT_CHECK_IN in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: APPOINTMENT_CHECK_IN
-      x-orevia-policy: WorklistPolicy
+      x-aurevia-action: APPOINTMENT_CHECK_IN
+      x-aurevia-policy: WorklistPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -223,8 +223,8 @@ paths:
       description: >-
         Authorized by action WORKLIST_ASSIGN in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: WORKLIST_ASSIGN
-      x-orevia-policy: WorklistPolicy
+      x-aurevia-action: WORKLIST_ASSIGN
+      x-aurevia-policy: WorklistPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -246,8 +246,8 @@ paths:
       description: >-
         Authorized by action LAB_ACCESSION_CREATE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: LAB_ACCESSION_CREATE
-      x-orevia-policy: LabActionPolicy
+      x-aurevia-action: LAB_ACCESSION_CREATE
+      x-aurevia-policy: LabActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -269,8 +269,8 @@ paths:
       description: >-
         Authorized by action LAB_SPECIMEN_COLLECT in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: LAB_SPECIMEN_COLLECT
-      x-orevia-policy: LabActionPolicy
+      x-aurevia-action: LAB_SPECIMEN_COLLECT
+      x-aurevia-policy: LabActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -292,8 +292,8 @@ paths:
       description: >-
         Authorized by action SPECIALTY_LAB_VERIFY_RELEASE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: SPECIALTY_LAB_VERIFY_RELEASE
-      x-orevia-policy: SpecialtyActions
+      x-aurevia-action: SPECIALTY_LAB_VERIFY_RELEASE
+      x-aurevia-policy: SpecialtyActions
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -315,8 +315,8 @@ paths:
       description: >-
         Authorized by action SPECIALTY_RAD_SIGN_INTERPRETATION in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: SPECIALTY_RAD_SIGN_INTERPRETATION
-      x-orevia-policy: SpecialtyActions
+      x-aurevia-action: SPECIALTY_RAD_SIGN_INTERPRETATION
+      x-aurevia-policy: SpecialtyActions
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -338,8 +338,8 @@ paths:
       description: >-
         Authorized by action SPECIALTY_PT_ACCEPT_REFERRAL in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: SPECIALTY_PT_ACCEPT_REFERRAL
-      x-orevia-policy: SpecialtyActions
+      x-aurevia-action: SPECIALTY_PT_ACCEPT_REFERRAL
+      x-aurevia-policy: SpecialtyActions
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -361,8 +361,8 @@ paths:
       description: >-
         Authorized by action SPECIALTY_ATTEST in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: SPECIALTY_ATTEST
-      x-orevia-policy: SpecialtyActions
+      x-aurevia-action: SPECIALTY_ATTEST
+      x-aurevia-policy: SpecialtyActions
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -384,8 +384,8 @@ paths:
       description: >-
         Authorized by action EXCHANGE_ACCEPT in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: EXCHANGE_ACCEPT
-      x-orevia-policy: Xch03ActionPolicy
+      x-aurevia-action: EXCHANGE_ACCEPT
+      x-aurevia-policy: Xch03ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -407,8 +407,8 @@ paths:
       description: >-
         Authorized by action EXCHANGE_REJECT in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: EXCHANGE_REJECT
-      x-orevia-policy: Xch03ActionPolicy
+      x-aurevia-action: EXCHANGE_REJECT
+      x-aurevia-policy: Xch03ActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -430,8 +430,8 @@ paths:
       description: >-
         Authorized by action RELEASE_AUTHORIZE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: RELEASE_AUTHORIZE
-      x-orevia-policy: ReleaseActionPolicy
+      x-aurevia-action: RELEASE_AUTHORIZE
+      x-aurevia-policy: ReleaseActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -453,8 +453,8 @@ paths:
       description: >-
         Authorized by action RELEASE_CORRECT in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: RELEASE_CORRECT
-      x-orevia-policy: ReleaseActionPolicy
+      x-aurevia-action: RELEASE_CORRECT
+      x-aurevia-policy: ReleaseActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -476,8 +476,8 @@ paths:
       description: >-
         Authorized by action RELEASE_WITHDRAW in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: RELEASE_WITHDRAW
-      x-orevia-policy: ReleaseActionPolicy
+      x-aurevia-action: RELEASE_WITHDRAW
+      x-aurevia-policy: ReleaseActionPolicy
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -499,8 +499,8 @@ paths:
       description: >-
         Authorized by action CRITICAL_ACKNOWLEDGE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: CRITICAL_ACKNOWLEDGE
-      x-orevia-policy: CriticalActions
+      x-aurevia-action: CRITICAL_ACKNOWLEDGE
+      x-aurevia-policy: CriticalActions
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -522,8 +522,8 @@ paths:
       description: >-
         Authorized by action FINANCE_INVOICE_CREATE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: FINANCE_INVOICE_CREATE
-      x-orevia-policy: FinanceActions
+      x-aurevia-action: FINANCE_INVOICE_CREATE
+      x-aurevia-policy: FinanceActions
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'
@@ -545,8 +545,8 @@ paths:
       description: >-
         Authorized by action ACKNOWLEDGE in the active organization.
         Client-supplied authority is never consulted.
-      x-orevia-action: ACKNOWLEDGE
-      x-orevia-policy: InstructionFactActions
+      x-aurevia-action: ACKNOWLEDGE
+      x-aurevia-policy: InstructionFactActions
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/SyntheticSubject'

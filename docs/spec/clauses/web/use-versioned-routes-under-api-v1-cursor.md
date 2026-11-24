@@ -16,7 +16,7 @@ It is a real-PostgreSQL acceptance test tagged `integration`, using the
 `synthetic-auth` profile and two synthetic organizations (`ORG_A`, `ORG_B`) with
 the fixtures and database setup of the neighbouring
 `it.staff.StaffListIntegrationTest`. A dedicated database
-`orevia_arc03_clause1_it` is migrated from `db/migrations` and dropped after
+`aurevia_arc03_clause1_it` is migrated from `db/migrations` and dropped after
 the suite. Every method sends synthetic headers (`X-Synthetic-Subject`,
 `X-Active-Organization`, and a fixed UUID `X-Correlation-Id`) through a real
 `RestClient` and asserts an HTTP status, a response header or a JSON body field.

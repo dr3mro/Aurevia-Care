@@ -74,7 +74,7 @@ Environment: staff-web `node_modules` was absent; installed with
 - **Typecheck (required frontend final lines)** — `cd apps/staff-web && npm run typecheck`
   - Final lines:
     ```
-    > orevia-staff-web@0.1.0 typecheck
+    > aurevia-staff-web@0.1.0 typecheck
     > tsc --noEmit -p tsconfig.json
     ```
     `TYPECHECK_EXIT=0`, no `error TS…`. An unused `ReactElement` type import found on the first run was removed and the check re-run clean.

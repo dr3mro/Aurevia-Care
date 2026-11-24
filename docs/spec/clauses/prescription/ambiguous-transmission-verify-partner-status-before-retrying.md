@@ -71,7 +71,7 @@ Corroborating suites already on `main` (not re-tested here):
 (`ambiguousTransmissionIsReconciledWithoutASecondSubmission`,
 `aPresentPartnerStatusReturnsToSubmittedWithoutARetry`).
 
-Verified locally: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
+Verified locally: `AUREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
 -Pno-security -Dtest=AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest test`
 — `tests="9" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 

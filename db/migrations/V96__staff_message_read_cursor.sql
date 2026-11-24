@@ -48,5 +48,5 @@ END $rls$;
 -- A cursor is per-person read state, not a clinical record: it may be advanced
 -- but never deleted or truncated by the application. Reads and writes stay in
 -- the tenant-guarded transaction so app_org() matches the named organization.
-GRANT SELECT, INSERT, UPDATE ON public.staff_message_read_cursor TO orevia_app;
-REVOKE DELETE, TRUNCATE ON public.staff_message_read_cursor FROM orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.staff_message_read_cursor TO aurevia_app;
+REVOKE DELETE, TRUNCATE ON public.staff_message_read_cursor FROM aurevia_app;

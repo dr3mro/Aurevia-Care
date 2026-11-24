@@ -26,8 +26,8 @@ public final class DiagnosticReportMapper {
 
     private static final String RESOURCE_TYPE = "DiagnosticReport";
     private static final String ERROR_CODE = "INVALID_DIAGNOSTIC_REPORT";
-    private static final String SOURCE_EXTENSION = "urn:orevia:fhir:report-source";
-    private static final String SUPERSEDES_EXTENSION = "urn:orevia:fhir:supersedes";
+    private static final String SOURCE_EXTENSION = "urn:aurevia:fhir:report-source";
+    private static final String SUPERSEDES_EXTENSION = "urn:aurevia:fhir:supersedes";
 
     private DiagnosticReportMapper() {
     }

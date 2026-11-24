@@ -67,7 +67,7 @@ Supporting gates: the Java-tier `committedArtifactsMatchAFreshGeneration` drift 
 | `finance`, `messaging.acknowledgment` | Self-pay finance and patient-instruction owning policies | [CommandCatalog.java](../../../apps/api/src/main/java/com/aurevia/api/authorization/CommandCatalog.java) |
 | Spring Web / DAO, JDK (`java.sql`, `java.nio`, `java.security`) | `@RestControllerAdvice`, `ResponseEntity`, `DuplicateKeyException`, byte-prefix codec and SHA-256 | [ApiErrorHandler.java](../../../apps/api/src/main/java/com/aurevia/api/ApiErrorHandler.java), [ByteParts.java](../../../apps/api/src/main/java/com/aurevia/api/contract/ByteParts.java) |
 
-Consumers of this package are the 21 controllers/services calling `IfMatch`, the 3 services calling `SqlFailureTranslator`, and the many modules throwing `ApiException`; they are discovered through Spring component scan from [OreviaApiApplication.java](../../../apps/api/src/main/java/com/aurevia/OreviaApiApplication.java).
+Consumers of this package are the 21 controllers/services calling `IfMatch`, the 3 services calling `SqlFailureTranslator`, and the many modules throwing `ApiException`; they are discovered through Spring component scan from [AureviaApiApplication.java](../../../apps/api/src/main/java/com/aurevia/AureviaApiApplication.java).
 
 ## Things to know
 

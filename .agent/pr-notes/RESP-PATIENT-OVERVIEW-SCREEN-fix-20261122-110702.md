@@ -49,14 +49,14 @@ data-flow boundary changed.
 
 ## Review owner
 
-- `orevia-senior-react` — **simulated review this pass** (read-only bounded
+- `aurevia-senior-react` — **simulated review this pass** (read-only bounded
   subagent, session `ses_dfd0db647ffeAdMYB5Za8SFAlh`): **no actionable in-scope
   findings**. Confirmed `.page`/`.grid-2`/`.touch` are the correct shared classes;
   the `.touch` span inside `Link` is the only in-scope target mechanism because
   `LinkProps` exposes no `className`; the jsdom test asserts mechanisms without
   fabricated pixel claims; 100 % coverage is plausible with both sides of the one
   branch taken; no type/lint/strictness risk.
-- `orevia-senior-react` and `orevia-ux-reviewer` — **simulated reviews
+- `aurevia-senior-react` and `aurevia-ux-reviewer` — **simulated reviews
   carried forward from the first pass** as notes: no actionable in-scope or
   blocking structural/semantic findings. Two optional UX suggestions (label the
   patient ID; make duplicate candidates clickable) were not applied because
@@ -105,7 +105,7 @@ Commands actually run in this pass (tool evidence):
    - `Lines        : 100% ( 3556/3556 )`
 3. Typecheck final lines (from the passing `check.sh` run), pasted as required:
    ```
-   > orevia-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    No `error TS…` was emitted; `CHECK_EXIT=0` for the run containing it. The

@@ -41,7 +41,7 @@ authorization, patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo specialist (`orevia-senior-mobile`). A bounded,
+Senior React Native and Expo specialist (`aurevia-senior-mobile`). A bounded,
 read-only advisory review recorded in the prior fix pass returned no blocking
 findings: rest-omission is the smallest correct fix, `Omit<ReleasedReport,
 'result'>` is assignable to the `reports` prop, `_discardedResult` is exempt from

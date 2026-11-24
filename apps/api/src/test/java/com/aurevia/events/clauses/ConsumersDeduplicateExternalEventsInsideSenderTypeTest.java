@@ -50,7 +50,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_delivery_dedup_clause_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_delivery_dedup_clause_it")
 @ActiveProfiles("synthetic-auth")
 class ConsumersDeduplicateExternalEventsInsideSenderTypeTest {
 
@@ -60,10 +60,10 @@ class ConsumersDeduplicateExternalEventsInsideSenderTypeTest {
     private static final String MISSING = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private static final String DIGEST = "a".repeat(64);
     private static final String CORRELATION = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
-    private static final String DB = "orevia_delivery_dedup_clause_it";
+    private static final String DB = "aurevia_delivery_dedup_clause_it";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String CONSUME = "/api/v1/delivery/consumer-events";
 
     private static final String AGG_DUPLICATE = "10000000-0000-0000-0000-000000000001";
@@ -88,15 +88,15 @@ class ConsumersDeduplicateExternalEventsInsideSenderTypeTest {
              Statement statement = root.createStatement()) {
             // A separate runtime role without bypass keeps FORCE RLS meaningful.
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
             try (ResultSet roles = statement.executeQuery(
                     "SELECT rolname, rolbypassrls FROM pg_roles "
-                            + "WHERE rolname IN ('orevia_migrate', 'orevia_app')")) {
+                            + "WHERE rolname IN ('aurevia_migrate', 'aurevia_app')")) {
                 int checked = 0;
                 while (roles.next()) {
                     assertFalse(roles.getBoolean("rolbypassrls"),
@@ -107,10 +107,10 @@ class ConsumersDeduplicateExternalEventsInsideSenderTypeTest {
             }
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "worker-a", "worker");
             seedUser(statement, ORG_A, "operator-a", "operator");
@@ -223,7 +223,7 @@ class ConsumersDeduplicateExternalEventsInsideSenderTypeTest {
     }
 
     private int receiptCount(String externalEventId) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(

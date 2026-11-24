@@ -46,12 +46,12 @@ class StaffAttachmentAudienceIntegrationTest {
     private static final String MAIL_B = "55555555-5555-5555-5555-555555555555";
     private static final String INSTANT_CONVERSATION = "66666666-6666-6666-6666-666666666666";
     private static final String INSTANT_MESSAGE = "77777777-7777-7777-7777-777777777777";
-    private static final String DATABASE = "orevia_attachment_audience_it";
+    private static final String DATABASE = "aurevia_attachment_audience_it";
     private static final String PREFIX = "jdbc:postgresql://127.0.0.1:5432/";
-    private static final String MIGRATE = "orevia_migrate";
-    private static final String APP = "orevia_app";
+    private static final String MIGRATE = "aurevia_migrate";
+    private static final String APP = "aurevia_app";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     private SingleConnectionDataSource dataSource;
     private Connection connection;
@@ -120,10 +120,10 @@ class StaffAttachmentAudienceIntegrationTest {
         try (Connection root = DriverManager.getConnection(PREFIX + "postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
         }
     }
 

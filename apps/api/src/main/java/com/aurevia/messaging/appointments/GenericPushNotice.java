@@ -21,7 +21,7 @@ public record GenericPushNotice(String title, String body, String deepLink) {
     public static final String GENERIC_BODY =
             "You have an update about your appointment. Open the app to view details.";
     /** Fixed in-app route; no appointment identifier is placed in a notification. */
-    public static final String GENERIC_LINK = "orevia://appointments";
+    public static final String GENERIC_LINK = "aurevia://appointments";
 
     /**
      * Return the single allowed status-change notification.

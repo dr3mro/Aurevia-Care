@@ -22,7 +22,7 @@ zero count cannot be vacuous.
   (`organization`, `user_identity`, `facility`, `membership`, `role_assignment`,
   `audit_event`); `pg_policies`
   reports the `tenant_isolation` policy with both `USING` and `WITH CHECK`; `pg_roles`
-  reports `orevia_app` as neither `rolbypassrls` nor `rolsuper`, owning no tenant
+  reports `aurevia_app` as neither `rolbypassrls` nor `rolsuper`, owning no tenant
   table. The seeded ORG_A row is visible under ORG_A and concealed under ORG_B both at
   SQL and through the documented HTTP entry point. An ORG_A `WITH CHECK` insert owned
   by the active tenant is visible to ORG_A and invisible to ORG_B.

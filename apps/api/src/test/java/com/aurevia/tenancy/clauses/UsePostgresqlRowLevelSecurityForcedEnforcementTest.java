@@ -41,28 +41,28 @@ import com.aurevia.tenant.TenantContext;
  * non-owner runtime role without bypass, and transaction-local tenant context.
  * This suite asserts each part with facts rather than call counts: the catalog
  * flags and policy of {@code public.facility}, the role attributes of
- * {@code orevia_app}, a seeded cross-tenant row that is visible under its
+ * {@code aurevia_app}, a seeded cross-tenant row that is visible under its
  * owner and concealed under a peer organization, a refused cross-tenant write,
  * and the bind/revert behavior of the production guarded transaction manager.</p>
  *
- * <p>Every connection to {@code orevia_app} is a fresh non-bypass connection;
+ * <p>Every connection to {@code aurevia_app} is a fresh non-bypass connection;
  * every catalog probe asserts that a row was actually returned. No production
  * code is added by this suite and all identifiers are synthetic.</p>
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_rls_forced_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_rls_forced_it")
 @ActiveProfiles("synthetic-auth")
 class UsePostgresqlRowLevelSecurityForcedEnforcementTest {
 
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    static final String MIGRATE = "orevia_migrate";
-    static final String APP = "orevia_app";
-    static final String DATABASE = "orevia_rls_forced_it";
+    static final String MIGRATE = "aurevia_migrate";
+    static final String APP = "aurevia_app";
+    static final String DATABASE = "aurevia_rls_forced_it";
     static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DATABASE;
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     static final String CORRELATION = "rls-forced-it";
     static final String MAIN = "MAIN";
     static final String CROSS_TENANT_CODE = "CROSS-TENANT-WRITE";
@@ -96,12 +96,12 @@ class UsePostgresqlRowLevelSecurityForcedEnforcementTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DATABASE + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DATABASE + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DATABASE + " OWNER aurevia_migrate");
         }
         Flyway.configure()
                 .dataSource(URL, MIGRATE, "")
@@ -257,14 +257,14 @@ class UsePostgresqlRowLevelSecurityForcedEnforcementTest {
                 }
             }
             try (ResultSet rows = statement.executeQuery(
-                    "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'orevia_app'")) {
-                assertTrue(rows.next(), "orevia_app must be provisioned");
+                    "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'aurevia_app'")) {
+                assertTrue(rows.next(), "aurevia_app must be provisioned");
                 assertFalse(rows.getBoolean("rolbypassrls"), "runtime role must not bypass RLS");
                 assertFalse(rows.getBoolean("rolsuper"), "superusers bypass RLS regardless of the flag");
             }
             try (ResultSet rows = statement.executeQuery(
                     "SELECT count(*) FROM pg_class c JOIN pg_roles r ON r.oid = c.relowner "
-                            + "WHERE r.rolname = 'orevia_app' "
+                            + "WHERE r.rolname = 'aurevia_app' "
                             + "AND c.relname IN ('organization','user_identity','facility',"
                             + "'membership','role_assignment','audit_event')")) {
                 assertTrue(rows.next());
@@ -319,7 +319,7 @@ class UsePostgresqlRowLevelSecurityForcedEnforcementTest {
                 assertEquals(1, rows.getInt(1), "the owner with matching context sees the seeded row");
             }
             try (ResultSet rows = statement.executeQuery(
-                    "SELECT rolbypassrls FROM pg_roles WHERE rolname = 'orevia_app'")) {
+                    "SELECT rolbypassrls FROM pg_roles WHERE rolname = 'aurevia_app'")) {
                 assertTrue(rows.next());
                 assertFalse(rows.getBoolean(1));
             }

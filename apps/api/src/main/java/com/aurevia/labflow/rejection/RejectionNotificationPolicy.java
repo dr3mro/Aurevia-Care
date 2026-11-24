@@ -22,7 +22,7 @@ public class RejectionNotificationPolicy {
      * @param patientNotificationEnabled whether patient notification is enabled for this site
      */
     public RejectionNotificationPolicy(
-            @Value("${orevia.lab.rejection.notify-patient:false}") boolean patientNotificationEnabled) {
+            @Value("${aurevia.lab.rejection.notify-patient:false}") boolean patientNotificationEnabled) {
         this.patientNotificationEnabled = patientNotificationEnabled;
     }
 

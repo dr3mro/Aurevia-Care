@@ -2,7 +2,7 @@
 
 ## Summary
 
-Extended the existing instance-local request metrics registry (`RequestMetrics`) with a bounded, cumulative latency histogram on the existing `GET /health/metrics` scrape. A fixed set of 13 nanosecond bounds (5 ms through 10 s, including exactly 0.5 s and 0.9 s) is recorded per existing `method|route|statusClass` key with `LongAdder`s. The scrape now also emits `# TYPE orevia_http_request_duration_seconds histogram` with ascending `_bucket{method,route,status,le}` samples, `le="+Inf"`, `_sum` and `_count`. `+Inf` and `_count` are derived from the existing request counter and `_sum` from the existing latency sum, so the histogram cannot disagree with the counters. The two existing counter families are untouched and byte-compatible. No dependency, migration, new route or OpenAPI change. The readiness guide documents the families, bounds, percentile query, the read/command route allowlist and the 0.5/0.9 thresholds.
+Extended the existing instance-local request metrics registry (`RequestMetrics`) with a bounded, cumulative latency histogram on the existing `GET /health/metrics` scrape. A fixed set of 13 nanosecond bounds (5 ms through 10 s, including exactly 0.5 s and 0.9 s) is recorded per existing `method|route|statusClass` key with `LongAdder`s. The scrape now also emits `# TYPE aurevia_http_request_duration_seconds histogram` with ascending `_bucket{method,route,status,le}` samples, `le="+Inf"`, `_sum` and `_count`. `+Inf` and `_count` are derived from the existing request counter and `_sum` from the existing latency sum, so the histogram cannot disagree with the counters. The two existing counter families are untouched and byte-compatible. No dependency, migration, new route or OpenAPI change. The readiness guide documents the families, bounds, percentile query, the read/command route allowlist and the 0.5/0.9 thresholds.
 
 ## Affected requirements
 
@@ -23,11 +23,11 @@ None. No Flyway migration, backfill, lock or volume impact. No rollback or forwa
 
 ## Authorization boundaries and audit events
 
-`GET /health/metrics` remains permitted in both production filter chains and gated inside `MetricsController` by `MetricsAccessPolicy` on the servlet remote address (loopback default, CIDR list from `OREVIA_METRICS_ALLOW`, malformed CIDR fails construction). No route, role or `SecurityConfiguration` matcher changed. No tenant context, role or patient link is involved and no audit event is added — the body still contains only aggregates; `le` is a fixed numeric bound. No patient data, credential or raw log was introduced.
+`GET /health/metrics` remains permitted in both production filter chains and gated inside `MetricsController` by `MetricsAccessPolicy` on the servlet remote address (loopback default, CIDR list from `AUREVIA_METRICS_ALLOW`, malformed CIDR fails construction). No route, role or `SecurityConfiguration` matcher changed. No tenant context, role or patient link is involved and no audit event is added — the body still contains only aggregates; `le` is a fixed numeric bound. No patient data, credential or raw log was introduced.
 
 ## Migration and rollout considerations
 
-Configuration-free rollout: the additional families appear on the next scrape after deployment. Existing dashboards reading `orevia_http_requests_total` or `orevia_http_request_seconds_sum` see byte-identical lines. Scrapers should be on loopback or added to `OREVIA_METRICS_ALLOW`; disallowed sources still receive a bare 404. The histogram is instance-local and non-durable by design (same as the existing counters).
+Configuration-free rollout: the additional families appear on the next scrape after deployment. Existing dashboards reading `aurevia_http_requests_total` or `aurevia_http_request_seconds_sum` see byte-identical lines. Scrapers should be on loopback or added to `AUREVIA_METRICS_ALLOW`; disallowed sources still receive a bare 404. The histogram is instance-local and non-durable by design (same as the existing counters).
 
 ## Test evidence
 
@@ -69,11 +69,11 @@ No test was skipped, disabled, excluded or given a lowered threshold; no suppres
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-test-engineer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-test-engineer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Clinical and architecture review
 
@@ -98,7 +98,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 [
   {
     "title": "Publish per-route p95 latency and read/command route-class alerts",
-    "details": "Consume orevia_http_request_duration_seconds_bucket from /health/metrics to emit runtime p95 for reads and commands with an explicit route allowlist and alert on >0.5 s / >0.9 s (OPS-03, WEB-06). This is the consumer follow-up named in docs/operations/slo.md; FIX-METRICS-PERCENTILES only supplies the histogram buckets. Keep at least one read and one command route per capacity decision D3.",
+    "details": "Consume aurevia_http_request_duration_seconds_bucket from /health/metrics to emit runtime p95 for reads and commands with an explicit route allowlist and alert on >0.5 s / >0.9 s (OPS-03, WEB-06). This is the consumer follow-up named in docs/operations/slo.md; FIX-METRICS-PERCENTILES only supplies the histogram buckets. Keep at least one read and one command route per capacity decision D3.",
     "scope": ["apps/api/src/main/java/com/aurevia/web", "apps/api/src/main/java/com/aurevia/observability", "apps/api/src/test/java/com/aurevia/web", "docs/operations/slo.md"],
     "depends": ["FIX-METRICS-PERCENTILES"]
   }

@@ -22,7 +22,7 @@ Routine. Contained, presentation-only change to one React Native component plus 
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`), with `orevia-senior-typescript` and `orevia-ux-reviewer` contracts loaded. The specialist was a bounded simulated subagent review (findings reported below); no human, clinician, simulated patient or real-user evidence is claimed.
+Senior React Native and Expo (`aurevia-senior-mobile`), with `aurevia-senior-typescript` and `aurevia-ux-reviewer` contracts loaded. The specialist was a bounded simulated subagent review (findings reported below); no human, clinician, simulated patient or real-user evidence is claimed.
 
 ## Data changes
 

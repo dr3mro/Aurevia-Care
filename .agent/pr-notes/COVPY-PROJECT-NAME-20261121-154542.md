@@ -23,7 +23,7 @@ contract, data or deployment behavior changes.
 
 ## Review owner
 
-Senior Python Tooling (`orevia-senior-python`) and Test Engineer (`orevia-test-engineer`)
+Senior Python Tooling (`aurevia-senior-python`) and Test Engineer (`aurevia-test-engineer`)
 skills loaded and applied; one bounded read-only specialist review requested. All checks below
 were executed by the primary worker (tool evidence). No simulated user or real human evidence.
 
@@ -128,7 +128,7 @@ While writing the latter, an initially mislabelled fixture (`leading-hyphen`) wa
 
 ## Specialist review
 
-One bounded read-only review by the `orevia-senior-python` specialist (session
+One bounded read-only review by the `aurevia-senior-python` specialist (session
 `ses_e0131674cffe8B0kbrndmKUOc2`) returned **PASS — no blocking findings**: all 4 arcs traced to
 asserting tests, no test without an assertion, synthetic stdlib-only data, sound `runpy`/patching
 seam with no credible false-positive path, and no correctness bug. It could not execute commands

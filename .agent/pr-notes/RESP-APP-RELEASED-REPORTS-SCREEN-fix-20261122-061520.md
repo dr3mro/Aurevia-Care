@@ -17,15 +17,15 @@ under `exactOptionalPropertyTypes: true`.
 I rehydrated the governing context (AGENTS.md, CODING_STYLE.md, docs/WORKFLOW.md,
 WORKSPACE.md, TODO.md, MEMORY.md, PROJECT.md, the task file, decision 0005, the
 spec clause, both scoped files and the layout hook) and loaded the matching
-skills: `orevia-delivery`, `orevia-senior-mobile`,
-`orevia-senior-typescript` and `orevia-debugger`. I then re-ran every
+skills: `aurevia-delivery`, `aurevia-senior-mobile`,
+`aurevia-senior-typescript` and `aurevia-debugger`. I then re-ran every
 scoped gate myself with fresh tool commands; all pass. This pass changes **only
 this notes file** — no production, test, config, threshold, exclusion, tracker,
 workflow, `scripts/` or `.opencode/` file was edited by me.
 
 Evidence source: **tool** evidence (commands the primary agent ran and observed).
 No reviewer, simulated-user or human-participant evidence is claimed. Specialists
-are advisory and made no edits; a bounded `orevia-senior-mobile` review was
+are advisory and made no edits; a bounded `aurevia-senior-mobile` review was
 requested this run and any material result is recorded under Findings.
 
 ## Affected requirements
@@ -56,8 +56,8 @@ association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`) and Senior TypeScript
-(`orevia-senior-typescript`) guidance loaded and applied; their definition
+Senior React Native and Expo (`aurevia-senior-mobile`) and Senior TypeScript
+(`aurevia-senior-typescript`) guidance loaded and applied; their definition
 of done is met. No named clinician or patient review was available and none is
 claimed.
 
@@ -199,7 +199,7 @@ remains a separate launch gate and is not claimed here.
    this worker did not touch them.
 6. No requirement-ID-named folder, new migration, new dependency or scope
    expansion was introduced.
-7. **Advisory `orevia-senior-mobile` review (read-only, no edits): no
+7. **Advisory `aurevia-senior-mobile` review (read-only, no edits): no
    material gap.** The reviewer confirmed touch targets (`MIN_PANE_WIDTH=48`,
    screen:36,110-111, test:166-170), direction-aware safe-area padding
    (screen:96-97, test:179-182,221-222), RTL row direction (screen:23-24,137,

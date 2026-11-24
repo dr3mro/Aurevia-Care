@@ -6,8 +6,8 @@ Continuation fix pass on branch `swarm/RESP-APP-RELEASED-REPORTS-SCREEN-505`.
 I rehydrated from the issue #656 / PR #655 findings and the newest hand-off note
 (`RESP-APP-RELEASED-REPORTS-SCREEN-fix-20261122-045110.md`), merged `origin/main`
 at the start (`Already up to date.`), installed all three locked dependency sets,
-loaded the `orevia-delivery`, `orevia-senior-mobile` and
-`orevia-senior-typescript` guidance, routed a bounded advisory review to the
+loaded the `aurevia-delivery`, `aurevia-senior-mobile` and
+`aurevia-senior-typescript` guidance, routed a bounded advisory review to the
 senior-mobile specialist, and independently re-ran every gate for the touched area.
 
 **The scoped repair is already present and correct at commit `5eccf8dc`:** the
@@ -60,8 +60,8 @@ authorisation, patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo specialist (`orevia-senior-mobile`, advisory
-review completed this pass) and Senior TypeScript (`orevia-senior-typescript`
+Senior React Native and Expo specialist (`aurevia-senior-mobile`, advisory
+review completed this pass) and Senior TypeScript (`aurevia-senior-typescript`
 guidance loaded). The bounded advisory review found **no blocking finding**: the
 rest-omission is the smallest correct fix under `exactOptionalPropertyTypes`,
 `Omit<ReleasedReport, 'result'>` is assignable to `readonly ReleasedReport[]`,

@@ -24,8 +24,8 @@ Routine — one in-scope test file, no runtime, contract, schema or gate change.
 
 ## Review owner
 
-orevia-test-engineer, orevia-plan-reviewer, orevia-code-reviewer,
-orevia-coverage-auditor, orevia-devsecops (read-only, advisory).
+aurevia-test-engineer, aurevia-plan-reviewer, aurevia-code-reviewer,
+aurevia-coverage-auditor, aurevia-devsecops (read-only, advisory).
 
 ## Data changes
 
@@ -152,10 +152,10 @@ or critical results.
 
 ## Review verdicts
 
-- orevia-plan-reviewer: GO
-- orevia-code-reviewer: GO
-- orevia-coverage-auditor: GO
-- orevia-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

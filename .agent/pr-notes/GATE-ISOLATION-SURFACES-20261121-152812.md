@@ -35,7 +35,7 @@ clinical or patient evidence was available or claimed.
 
 ## Data changes
 
-None. The test creates and drops the disposable database `orevia_isolation_surfaces_it` with
+None. The test creates and drops the disposable database `aurevia_isolation_surfaces_it` with
 synthetic organizations, subjects and records. No migration was reserved or written.
 
 ## Authorization boundaries and audit events
@@ -57,7 +57,7 @@ All commands were run by the primary agent from the repository root on 2026-11-2
 source: **tool** (executed commands) unless marked reviewer.
 
 1. Targeted integration test (real PostgreSQL, synthetic fixtures):
-   `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test`
+   `AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test`
    Exit 0. Surefire report final line:
    `Tests run: 7, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 6.834 s -- in com.aurevia.tenancy.clauses.IsolationAcrossSurfacesTest`
    The single skip is the story-mandated OPS-07 gap test, not a weakened gate.

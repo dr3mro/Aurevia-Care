@@ -63,7 +63,7 @@ patient data or credentials and adds no clinical decision logic.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`), simulated file-read
+Senior React Native and Expo (`aurevia-senior-mobile`), simulated file-read
 review with story ID, paths, acceptance criteria and evidence only. It returned
 one Medium blocking finding and three Low findings; all four were applied before
 the final gate (see `## Findings`). The reviewer explicitly confirmed hooks,

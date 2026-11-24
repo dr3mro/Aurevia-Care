@@ -44,14 +44,14 @@ import org.springframework.web.client.RestClient;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_patient_lock_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_patient_lock_it")
 @ActiveProfiles("synthetic-auth")
 class LockRecordsDuringCommitTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_patient_lock_it";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_patient_lock_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     RestClient rest;
 
@@ -68,18 +68,18 @@ class LockRecordsDuringCommitTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_patient_lock_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_patient_lock_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_patient_lock_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_patient_lock_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seed(statement, "reviewer-a", "tenant_admin");
             seed(statement, "approver-a", "privacy_auditor");
@@ -93,7 +93,7 @@ class LockRecordsDuringCommitTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_patient_lock_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_patient_lock_it WITH (FORCE)");
         }
     }
 
@@ -166,7 +166,7 @@ class LockRecordsDuringCommitTest {
     }
 
     private static int count(String table, String where) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
@@ -178,7 +178,7 @@ class LockRecordsDuringCommitTest {
     }
 
     private static String scalar(String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(sql)) {
@@ -196,7 +196,7 @@ class LockRecordsDuringCommitTest {
 
     /** Insert a review directly to exercise a malformed pair the public open command rejects. */
     private static void insertReview(String reviewId, String patientId) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'reviewer-a'");
@@ -208,7 +208,7 @@ class LockRecordsDuringCommitTest {
     }
 
     private static void assertRowLocked(String patientId) throws Exception {
-        try (Connection other = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection other = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = other.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             SQLException denied = assertThrows(SQLException.class, () -> statement.executeQuery(
@@ -218,7 +218,7 @@ class LockRecordsDuringCommitTest {
     }
 
     private static void assertRowLockable(String patientId) throws Exception {
-        try (Connection other = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection other = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = other.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
@@ -232,7 +232,7 @@ class LockRecordsDuringCommitTest {
     void pairLockHoldsExclusiveRowLocksOnBothRecordsUntilTransactionEnds() throws Exception {
         String[] pair = twoDuplicates("LOCK-B");
 
-        try (Connection holder = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection holder = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = holder.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("BEGIN");
@@ -296,7 +296,7 @@ class LockRecordsDuringCommitTest {
         String[] pair = twoDuplicates("LOCK-M");
         String missing = UUID.randomUUID().toString();
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery("SELECT public.lock_patient_pair('"

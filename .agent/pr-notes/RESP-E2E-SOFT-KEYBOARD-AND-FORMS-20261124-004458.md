@@ -17,7 +17,7 @@ Routine (test-only, synthetic). Cross-boundary review was still applied because 
 
 ## Review owner
 
-Orchestrator/integrator. Specialist reviewers: smartclinic-context-optimizer and smartclinic-test-engineer (plan), smartclinic-plan-reviewer (plan and final), smartclinic-senior-react and smartclinic-senior-typescript (loaded and consulted during design), smartclinic-code-reviewer, smartclinic-coverage-auditor, smartclinic-devsecops (post-code).
+Orchestrator/integrator. Specialist reviewers: aurevia-context-optimizer and aurevia-test-engineer (plan), aurevia-plan-reviewer (plan and final), aurevia-senior-react and aurevia-senior-typescript (loaded and consulted during design), aurevia-code-reviewer, aurevia-coverage-auditor, aurevia-devsecops (post-code).
 
 ## Data changes
 
@@ -43,9 +43,9 @@ Evidence source labels: **(tool)** = command I executed, **(simulated browser)**
   `npx tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --verbatimModuleSyntax --noUnusedLocals --noUnusedParameters --lib ES2022,DOM,DOM.Iterable --skipLibCheck e2e/softKeyboardAndForms.spec.ts`
   final line: no output; `spec_tsc_exit=0`.
 - **(tool)** `npm run typecheck` final lines:
-  `> smartclinic-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`; `typecheck_exit=0`.
+  `> aurevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`; `typecheck_exit=0`.
 - **(tool)** `npm run lint` final lines:
-  `> smartclinic-staff-web@0.1.0 lint` / `> eslint . --max-warnings 0`; `lint_exit=0`.
+  `> aurevia-staff-web@0.1.0 lint` / `> eslint . --max-warnings 0`; `lint_exit=0`.
 - **(tool)** `npm run build` final line: `✓ built in 216ms`; `build_exit=0`.
 - **(tool)** `node scripts/check-bundle-size.mjs` final line: `useBreakpoint-DEBbg83l.js 460 ok`; `bundle_exit=0`.
 - **(tool)** `npm run gen:api:check` final line: `gen:api: generated client matches the contract`; `gen_api_exit=0`.
@@ -91,10 +91,10 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Findings
 

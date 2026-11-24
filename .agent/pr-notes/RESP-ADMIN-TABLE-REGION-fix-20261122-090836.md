@@ -53,7 +53,7 @@ No API, data, authorization or deployment boundary changed (`docs/WORKFLOW.md`).
 
 ## Review owner
 
-`orevia-senior-react` and `orevia-ux-reviewer` — bounded simulated subagent
+`aurevia-senior-react` and `aurevia-ux-reviewer` — bounded simulated subagent
 reviews were recorded by the earlier worker and found no blocking defect. I did not
 re-run them in this pass and edited no reviewer code. No human, clinician or
 participant review was available or claimed.
@@ -90,19 +90,19 @@ in the earlier notes. No simulated-user, clinician or human-participant evidence
   `grep -c 'error TS'` returned 0):
 
 ```
-> orevia-staff-web@0.1.0 gen:api:check
+> aurevia-staff-web@0.1.0 gen:api:check
 > bash scripts/gen-api-types.sh --check
 
 ✨ openapi-typescript 7.4.2
 gen:api: generated client matches the contract
 
-> orevia-staff-web@0.1.0 typecheck
+> aurevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 
-> orevia-staff-web@0.1.0 lint
+> aurevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 
-> orevia-staff-web@0.1.0 build
+> aurevia-staff-web@0.1.0 build
 > tsc --noEmit -p tsconfig.json && vite build
 ✓ built in 158ms
 ```

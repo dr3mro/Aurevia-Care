@@ -22,8 +22,8 @@ Routine — test-only addition inside the single declared `scope`.
 
 ## Review owner
 
-Senior Python Tooling (`orevia-senior-python`) and Test Engineer
-(`orevia-test-engineer`); both skills were loaded.
+Senior Python Tooling (`aurevia-senior-python`) and Test Engineer
+(`aurevia-test-engineer`); both skills were loaded.
 
 ## Data changes
 

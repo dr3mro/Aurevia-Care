@@ -30,10 +30,10 @@ data, no persistence, no authorization, no API or contract change.
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) and Senior TypeScript
-(`orevia-senior-typescript`) skills were loaded and their mandatory
+Senior React and Vite (`aurevia-senior-react`) and Senior TypeScript
+(`aurevia-senior-typescript`) skills were loaded and their mandatory
 definition of done applied (`apps/staff-web/check.sh` incl. `tsc --noEmit`, no
-`any`/`@ts-ignore`). `orevia-delivery` skill loaded for the swarm loop.
+`any`/`@ts-ignore`). `aurevia-delivery` skill loaded for the swarm loop.
 Specialists are advisory in this worker model; checks were executed by the
 primary worker, not delegated.
 
@@ -77,7 +77,7 @@ Commands run (all from `apps/staff-web` unless noted), with final lines:
 - Typecheck — `npm run typecheck` (`tsc --noEmit -p tsconfig.json`) → exit `0`, no output/`error TS…`.
   Final lines:
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   (TYPECHECK EXIT: 0 — clean, no diagnostics.)

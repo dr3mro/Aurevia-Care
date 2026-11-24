@@ -30,7 +30,7 @@ authorization or migration boundary is crossed.
 
 ## Review owner
 
-Senior React Native and Expo (`orevia-senior-mobile`), plus synthetic UX review against
+Senior React Native and Expo (`aurevia-senior-mobile`), plus synthetic UX review against
 `docs/design/accessibility-patterns.md` section 9 and `docs/decisions/0005-patient-app-tablets.md`.
 Real VoiceOver/TalkBack and Arabic-clinician acceptance remain a G5 gate.
 

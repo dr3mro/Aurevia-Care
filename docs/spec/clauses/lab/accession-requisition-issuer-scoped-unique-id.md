@@ -16,7 +16,7 @@ It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic
 profile and two synthetic tenants that each register their own patient, following
 the fixtures and database setup of the neighbouring `it/lab/SpecimenAccessionIsolationTest`
 and the other `*/clauses` acceptance tests. A dedicated database
-(`orevia_lab01_clause1_it`) is dropped, recreated and migrated from
+(`aurevia_lab01_clause1_it`) is dropped, recreated and migrated from
 `filesystem:../../db/migrations` so the durable rows are read back under forced
 row-level security with `app.current_org` set per tenant.
 

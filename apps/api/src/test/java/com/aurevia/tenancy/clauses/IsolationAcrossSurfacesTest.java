@@ -52,7 +52,7 @@ import com.aurevia.tenancy.FacilityService;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_isolation_surfaces_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_isolation_surfaces_it")
 @ActiveProfiles("synthetic-auth")
 class IsolationAcrossSurfacesTest {
 
@@ -68,9 +68,9 @@ class IsolationAcrossSurfacesTest {
     static final String DIGEST = "a".repeat(64);
     static final byte[] ORIGINAL = "%PDF-1.4 synthetic original".getBytes(StandardCharsets.UTF_8);
     static final String ENCODED = Base64.getEncoder().encodeToString(ORIGINAL);
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_isolation_surfaces_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_isolation_surfaces_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     DeliveryStore deliveryStore;
@@ -94,18 +94,18 @@ class IsolationAcrossSurfacesTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_isolation_surfaces_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_isolation_surfaces_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_isolation_surfaces_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_isolation_surfaces_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedUser(statement, ORG_A, "admin-a", "tenant_admin");
             seedUser(statement, ORG_B, "admin-b", "tenant_admin");
@@ -148,7 +148,7 @@ class IsolationAcrossSurfacesTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_isolation_surfaces_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_isolation_surfaces_it WITH (FORCE)");
         }
     }
 

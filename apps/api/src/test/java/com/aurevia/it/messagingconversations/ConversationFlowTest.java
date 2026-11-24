@@ -58,16 +58,16 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_conversation_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_conversation_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ConversationFlowTest {
 
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/orevia_conversation_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_conversation_it";
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     static final String PATIENT = "patient-1111";
     static final String LAB_STAFF = "lab-a-1111";
     static final String CLINIC_STAFF = "clinic-a-1111";
@@ -105,18 +105,18 @@ class ConversationFlowTest {
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_conversation_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_conversation_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_conversation_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_conversation_it OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             for (String org : new String[] {ORG_A, ORG_B}) {
                 seedOrganization(statement, org);
@@ -140,7 +140,7 @@ class ConversationFlowTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_conversation_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_conversation_it WITH (FORCE)");
         }
     }
 
@@ -245,7 +245,7 @@ class ConversationFlowTest {
     }
 
     private String patientId(String org) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + org + "'");
             var result = statement.executeQuery("SELECT id::text FROM public.patient_record WHERE mrn = 'MRN-1'");
@@ -430,7 +430,7 @@ class ConversationFlowTest {
     @Test
     void databaseGuardsRejectIllegalWrites() throws Exception {
         String id = open(ORG_A, PATIENT, PATIENT, "lab");
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = '" + PATIENT + "'");
@@ -459,7 +459,7 @@ class ConversationFlowTest {
     @Test
     void directFoldAssertionsConfirmVerifiedLinkAndForcedRls() throws Exception {
         String id = open(ORG_A, PATIENT, PATIENT, "lab");
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              PreparedStatement visible = connection.prepareStatement(
                      "SELECT count(*) FROM public.conversation WHERE id = CAST(? AS uuid)");
              PreparedStatement hidden = connection.prepareStatement(

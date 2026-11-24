@@ -68,7 +68,7 @@ Corroborating suites already on `main` (not re-tested here):
 `verifiedAssociationContent`).
 
 Verified locally:
-`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RetainOriginalBytesChecksumTest test`
+`AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RetainOriginalBytesChecksumTest test`
 —— `tests="4" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim
 that the document routes are published in the committed OpenAPI contract.

@@ -15,7 +15,7 @@ Routine (docs/WORKFLOW.md): one contained staff-web presentation change with an 
 
 ## Review owner
 
-`orevia-senior-react` (staff React/Vite), supported by `orevia-senior-typescript` (strict TS) and `orevia-ux-reviewer` (RTL/keyboard). A bounded read-only review by the `orevia-senior-react` specialist was executed this pass (source: **reviewer, simulated**): **no blocking findings**; it confirmed the breakpoint layout, strict TS of production and test, logical/RTL/safe-area/zoom handling, doc comments, and that both new conditionals have both sides asserted. Two pre-existing low advisories (inline 4 px gap, literal `1px` border) were explicitly left unchanged because the story forbids styling/behaviour changes beyond responsiveness.
+`aurevia-senior-react` (staff React/Vite), supported by `aurevia-senior-typescript` (strict TS) and `aurevia-ux-reviewer` (RTL/keyboard). A bounded read-only review by the `aurevia-senior-react` specialist was executed this pass (source: **reviewer, simulated**): **no blocking findings**; it confirmed the breakpoint layout, strict TS of production and test, logical/RTL/safe-area/zoom handling, doc comments, and that both new conditionals have both sides asserted. Two pre-existing low advisories (inline 4 px gap, literal `1px` border) were explicitly left unchanged because the story forbids styling/behaviour changes beyond responsiveness.
 
 ## Data changes
 
@@ -31,7 +31,7 @@ None. Presentation-only change to a display component already reachable from `Ad
 
 ## Test evidence
 
-Evidence source: **executed tool commands** (git, Vitest, tsc, ESLint, Vite build, bundle-size gate, V8 coverage, repository policy scripts) plus **one simulated reviewer** (`orevia-senior-react`); no human, clinical or simulated-user evidence.
+Evidence source: **executed tool commands** (git, Vitest, tsc, ESLint, Vite build, bundle-size gate, V8 coverage, repository policy scripts) plus **one simulated reviewer** (`aurevia-senior-react`); no human, clinical or simulated-user evidence.
 
 - Reconcile — `git merge --no-edit origin/main` → `Already up to date.`; `git status --short` empty; no conflict markers in the two scoped files.
 - RED (from the first worker, recorded in the earlier notes) — `cd apps/staff-web && node_modules/.bin/vitest run tests/responsive/features-admin/AccessStateNotice.responsive.test.tsx` → `Test Files 1 failed (1)`, `Tests 11 failed | 3 passed (14)`; the failures were exactly the missing `data-breakpoint`, `stack`/`cluster` class and logical safe-area padding. Not repeated here because the implementation already makes it green.
@@ -42,7 +42,7 @@ Evidence source: **executed tool commands** (git, Vitest, tsc, ESLint, Vite buil
   ```
 - TYPECHECK (mandatory, re-run this pass) — `cd apps/staff-web && npm run typecheck`, final lines (no `error TS…`):
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   exit 0 (empty output after the script header means no diagnostics).

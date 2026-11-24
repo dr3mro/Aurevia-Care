@@ -41,7 +41,7 @@ public final class CommandCatalog {
     /**
      * Recipient order response commands owned by the exchange-response policy.
      *
-     * <p>The value is a published {@code x-orevia-policy} identifier in the
+     * <p>The value is a published {@code x-aurevia-policy} identifier in the
      * generated OpenAPI contract (kept stable for contract/rollback compatibility,
      * like the {@code /api/v1/xch03/orders} route). The owning Java class is
      * {@link com.aurevia.exchange.response.ExchangeResponseActionPolicy};

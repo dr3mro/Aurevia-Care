@@ -282,7 +282,7 @@ class JdbcStaffAttachmentStoreTest {
     @Test
     void objectStoreConfigurationProvidesTheAdapter() {
         assertTrue(new StaffAttachmentConfiguration()
-                .staffAttachmentObjectStore("/tmp/orevia-test") instanceof ObjectStorePort);
+                .staffAttachmentObjectStore("/tmp/aurevia-test") instanceof ObjectStorePort);
     }
 
     @Test

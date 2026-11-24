@@ -68,7 +68,7 @@ same tests.
 Local verification (tool evidence):
 
 ```
-OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=TriggerXchRelevantIssuedRevisionsTest test
+AUREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=TriggerXchRelevantIssuedRevisionsTest test
 ```
 
 Surefire report: `tests="7" errors="0" skipped="0" failures="0"`.

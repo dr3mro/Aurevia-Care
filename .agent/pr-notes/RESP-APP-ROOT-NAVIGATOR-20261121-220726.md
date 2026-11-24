@@ -32,7 +32,7 @@ Routine — contained patient-app presentation change. Cross-boundary only in th
 
 ## Review owner
 
-`orevia-senior-mobile` (simulated reviewer, loaded skill and bounded review) and `orevia-senior-typescript` (skill; strict TypeScript/typecheck gate). No human, patient or clinician review is claimed; real accessibility acceptance remains a G5 gate.
+`aurevia-senior-mobile` (simulated reviewer, loaded skill and bounded review) and `aurevia-senior-typescript` (skill; strict TypeScript/typecheck gate). No human, patient or clinician review is claimed; real accessibility acceptance remains a G5 gate.
 
 ## Data changes
 
@@ -91,7 +91,7 @@ Every new or changed branch in `RootNavigator.tsx` and the test that takes it:
 
 ## Clinical and architecture review
 
-Simulated `orevia-senior-mobile` review is recorded in Findings. `orevia-senior-typescript` skill applied: `tsc --noEmit` green, no `any`, no `@ts-ignore`, no disabled/skipped test. No clinical-safety review is required: no clinical value, prescribing, patient association or critical result is rendered or changed by this presentation-only diff. Real VoiceOver/TalkBack and Arabic-clinician acceptance remain G5 gates and are not claimed here.
+Simulated `aurevia-senior-mobile` review is recorded in Findings. `aurevia-senior-typescript` skill applied: `tsc --noEmit` green, no `any`, no `@ts-ignore`, no disabled/skipped test. No clinical-safety review is required: no clinical value, prescribing, patient association or critical result is rendered or changed by this presentation-only diff. Real VoiceOver/TalkBack and Arabic-clinician acceptance remain G5 gates and are not claimed here.
 
 ## Findings
 
@@ -102,7 +102,7 @@ Simulated `orevia-senior-mobile` review is recorded in Findings. `orevia-senior-
 
 ### Simulated senior-mobile review (reviewer, not tool/human evidence)
 
-A bounded `orevia-senior-mobile` review found no blocking issue and confirmed the physical→logical inset swap, the empty detail slot's neutral accessibility impact, the `borderStartWidth` divider behaviour and full branch coverage. It could not run commands in its environment and relied on the tool evidence above. Three of its observations were addressed in this same pass:
+A bounded `aurevia-senior-mobile` review found no blocking issue and confirmed the physical→logical inset swap, the empty detail slot's neutral accessibility impact, the `borderStartWidth` divider behaviour and full branch coverage. It could not run commands in its environment and relied on the tool evidence above. Three of its observations were addressed in this same pass:
 
 1. **Bottom inset applied twice (medium, now fixed)** — the tab bar previously added `paddingBottom: max(insets.bottom, 8)` while the containing region already applied `insets.bottom`, which could double the inset on a notched device. `tabBarStyle` is now only `{ minHeight: TOUCH_TARGET }`; the bottom inset lives once on `responsive-content`. The RTL/LTR inset assertions in the test still prove the region applies it.
 2. **Double horizontal mirroring (medium, device check deferred)** — `applyDirection()` and the explicit `direction` style both follow the same active locale, so one logical flip is intended, not two. The redundant `direction: 'ltr'` in `styles.twoPane` (always overridden by the inline locale value) was removed to avoid confusion. A cold-start VoiceOver/TalkBack pass on a real Arabic device remains a G5/launch-gate item and is not claimed as done here.

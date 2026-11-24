@@ -17,7 +17,7 @@ Routine (docs/WORKFLOW.md): one contained staff-web presentation change with an 
 
 ## Review owner
 
-`orevia-senior-react` (staff React/Vite), `orevia-senior-typescript` (strict TS), `orevia-ux-reviewer` (RTL/keyboard). Definition of done from the senior-react skill applied: full `apps/staff-web/check.sh`, typecheck final lines recorded below, every `error TS…` fixed.
+`aurevia-senior-react` (staff React/Vite), `aurevia-senior-typescript` (strict TS), `aurevia-ux-reviewer` (RTL/keyboard). Definition of done from the senior-react skill applied: full `apps/staff-web/check.sh`, typecheck final lines recorded below, every `error TS…` fixed.
 
 ## Data changes
 
@@ -62,14 +62,14 @@ Evidence source: executed tool commands (Vitest, tsc, ESLint, Vite build, bundle
   (The `useI18n/useTheme must be used inside …Provider` stack traces printed during the run come from the existing intentional fail-closed tests in `tests/i18n/I18nProvider.test.tsx` and `tests/theme/ThemeProvider.test.tsx`; the suite and coverage gate passed.)
 - TYPECHECK — `npm run typecheck` in `apps/staff-web`. Final lines (no `error TS…`):
   ```
-  > orevia-staff-web@0.1.0 typecheck
+  > aurevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   EXIT:0
   ```
   (An earlier check.sh run caught `TS6133: 'screen'/'ReactElement' is declared but its value is never read` in the new test; both unused imports were removed and the gate re-run green.)
 - Markdown check — `python3 -I scripts/check-docs.py` → `check-docs exit: 0`, no output (run after editing this notes file).
-- Independent bounded UX review — `orevia-ux-reviewer` (source: **reviewer, simulated**): no blocking findings; structural requirements, no-hidden-text/no-physical-sides/no-behaviour-change and test coverage all judged satisfied. Its advisory "record the missing-class Lesson" is already covered under Lessons for workers below.
+- Independent bounded UX review — `aurevia-ux-reviewer` (source: **reviewer, simulated**): no blocking findings; structural requirements, no-hidden-text/no-physical-sides/no-behaviour-change and test coverage all judged satisfied. Its advisory "record the missing-class Lesson" is already covered under Lessons for workers below.
 - Commit (local branch only, not pushed): `327693f3 Make AccessStateNotice responsive with breakpoint-aware layout`.
 - Entry-point-to-test trace: `AdminScreen.tsx` renders `<AccessStateNotice state label />` in the access-review section → the new test renders the same component under the real `ThemeProvider` + `I18nProvider` with a deterministic `matchMedia` stub → asserts `data-breakpoint`, `data-access-state`, role, glyph, both `<bdi>` runs, logical style string and RTL behaviour.
 

@@ -97,13 +97,13 @@ class BuildAndRenderCoverageTests(unittest.TestCase):
                 self.assertEqual(json.loads(text),
                                  gen.build([], ci))
                 self.assertTrue(text.endswith("\n"))
-        (agents / "orevia-z.md").write_text("synthetic\n")
-        (agents / "orevia-a.md").write_text("synthetic\n")
+        (agents / "aurevia-z.md").write_text("synthetic\n")
+        (agents / "aurevia-a.md").write_text("synthetic\n")
         for ci in (False, True):
             with self.subTest(ci=ci, agents=2):
                 config = json.loads(gen.render(root, ci))
                 self.assertEqual(set(config["agents"]),
-                                 {gen.PRIMARY, "orevia-a", "orevia-z"})
+                                 {gen.PRIMARY, "aurevia-a", "aurevia-z"})
 
 
 class ReadJsonCoverageTests(unittest.TestCase):

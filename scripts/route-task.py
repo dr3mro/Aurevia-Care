@@ -72,8 +72,8 @@ def existing(names, root, kind="agents"):
     """Keep only the agents (or skills) that exist in this repository."""
     def has(name):
         if kind == "skills":
-            return (root / ".opencode/skills" / f"orevia-{name}" / "SKILL.md").is_file()
-        return (root / ".opencode/agents" / f"orevia-{name}.md").is_file()
+            return (root / ".opencode/skills" / f"aurevia-{name}" / "SKILL.md").is_file()
+        return (root / ".opencode/agents" / f"aurevia-{name}.md").is_file()
     return [n for n in names if has(n)]
 
 
@@ -83,9 +83,9 @@ def render(scope, requirements, title, root=ROOT):
     skills = existing(["delivery"] + specialists, root, "skills")
     dirs = [e for e in scope if (root / e).exists()]
     lines = ["## Routing", f"Task: {title or 'untitled'}",
-             "Consult these read-only specialists (the agent name is orevia-<name>): "
+             "Consult these read-only specialists (the agent name is aurevia-<name>): "
              + ", ".join(specialists),
-             "Load these skills before you start (they are .opencode/skills/orevia-<name>/SKILL.md): "
+             "Load these skills before you start (they are .opencode/skills/aurevia-<name>/SKILL.md): "
              + ", ".join(skills),
              "Read first: AGENTS.md, CODING_STYLE.md, the requirement IDs " + (", ".join(requirements) or "(none)")
              + " in .opencode/config/PROJECT_V1_SPEC.md, and these paths in scope: " + (", ".join(dirs) or "(new files only)")]

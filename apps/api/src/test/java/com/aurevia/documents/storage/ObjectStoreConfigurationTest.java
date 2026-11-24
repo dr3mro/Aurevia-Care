@@ -15,9 +15,9 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
  */
 class ObjectStoreConfigurationTest {
 
-    private static final String ENDPOINT = "OREVIA_S3_ENDPOINT";
-    private static final String BUCKET = "OREVIA_S3_BUCKET";
-    private static final String REGION = "OREVIA_S3_REGION";
+    private static final String ENDPOINT = "AUREVIA_S3_ENDPOINT";
+    private static final String BUCKET = "AUREVIA_S3_BUCKET";
+    private static final String REGION = "AUREVIA_S3_REGION";
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(ObjectStoreConfiguration.class)
@@ -49,7 +49,7 @@ class ObjectStoreConfigurationTest {
 
     @Test
     void missingEndpointNamesOnlyThatSetting() {
-        runner.withPropertyValues(ENDPOINT + "=", BUCKET + "=orevia-private", REGION + "=us-east-1")
+        runner.withPropertyValues(ENDPOINT + "=", BUCKET + "=aurevia-private", REGION + "=us-east-1")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure()).hasMessageContaining(ENDPOINT);
@@ -67,7 +67,7 @@ class ObjectStoreConfigurationTest {
 
     @Test
     void missingRegionNamesOnlyThatSetting() {
-        runner.withPropertyValues(ENDPOINT + "=https://s3.example.test", BUCKET + "=orevia-private",
+        runner.withPropertyValues(ENDPOINT + "=https://s3.example.test", BUCKET + "=aurevia-private",
                 REGION + "=").run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure()).hasMessageContaining(REGION);
@@ -76,7 +76,7 @@ class ObjectStoreConfigurationTest {
 
     @Test
     void plainHttpEndpointFailsStartup() {
-        runner.withPropertyValues(ENDPOINT + "=http://s3.example.test", BUCKET + "=orevia-private",
+        runner.withPropertyValues(ENDPOINT + "=http://s3.example.test", BUCKET + "=aurevia-private",
                 REGION + "=us-east-1").run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure()).hasMessageContaining("https");
@@ -85,7 +85,7 @@ class ObjectStoreConfigurationTest {
 
     @Test
     void validSettingsCreateTheS3Adapter() {
-        runner.withPropertyValues(ENDPOINT + "=https://s3.example.test", BUCKET + "=orevia-private",
+        runner.withPropertyValues(ENDPOINT + "=https://s3.example.test", BUCKET + "=aurevia-private",
                 REGION + "=us-east-1").run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(ObjectStorePort.class);

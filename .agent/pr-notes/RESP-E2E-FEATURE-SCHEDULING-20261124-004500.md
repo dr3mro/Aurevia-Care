@@ -26,7 +26,7 @@ Routine (test-only addition). One new browser-level acceptance spec; no producti
 
 ## Review owner
 
-Senior React and Vite specialist for the staff web; read-only reviews by smartclinic-plan-reviewer (before coding), smartclinic-code-reviewer, smartclinic-coverage-auditor and smartclinic-devsecops (after coding). Verdicts are recorded under `## Review verdicts`.
+Senior React and Vite specialist for the staff web; read-only reviews by aurevia-plan-reviewer (before coding), aurevia-code-reviewer, aurevia-coverage-auditor and aurevia-devsecops (after coding). Verdicts are recorded under `## Review verdicts`.
 
 ## Data changes
 
@@ -50,7 +50,7 @@ Entry point to test trace: `page.goto('/e2e/reception/reception-harness.html')` 
 2. `npx eslint e2e/responsive-scheduling.spec.ts --max-warnings 0` — final line: exit 0, no output (strictTypeChecked, zero warnings).
 3. `npm run typecheck` — final lines:
    ```
-   > smartclinic-staff-web@0.1.0 typecheck
+   > aurevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    exit 0 (tsc prints nothing on success).
@@ -225,9 +225,9 @@ only the timing of one assertion in an existing test.
 
 ## Review verdicts
 
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
 
 ## Why this is not finished
 

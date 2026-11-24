@@ -51,13 +51,13 @@ import tools.jackson.databind.ObjectMapper;
 @Timeout(300)
 class CommitStatusAcceptanceEventAuditTogetherTest {
 
-    static final String DB = "orevia_xch03_atomicity_it";
+    static final String DB = "aurevia_xch03_atomicity_it";
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DB;
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final String CHECKSUM = "a".repeat(64);
     private static final String VERIFIER_A = "lab-verifier-1111";
     private static final String VERIFIER_B = "lab-verifier-2222";
@@ -89,16 +89,16 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DB + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DB + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DB + " OWNER aurevia_migrate");
         }
-        Flyway.configure().dataSource(URL, "orevia_migrate", "")
+        Flyway.configure().dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations").load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             seedTenant(statement, ORG_A);
             seedTenant(statement, ORG_B);
@@ -174,7 +174,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
 
     /** Read the tenant-local id of the synthetic patient used by accept. */
     private static String patientId(String org) {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "")) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, org, "admin-" + org.substring(0, 4));
             try (Statement statement = connection.createStatement();
@@ -203,7 +203,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
 
     /** Open a read-only JDBC session bound to the caller's tenant and actor. */
     private static Connection scoped(String org, String actor) throws Exception {
-        Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
         connection.setAutoCommit(false);
         bind(connection, org, actor);
         return connection;
@@ -332,7 +332,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
      * transaction. The predicate is this test's own unique correlation id.
      */
     private static void installAuditFailure(String marker) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("CREATE OR REPLACE FUNCTION public.clause_test_fail_accept_audit() "
                     + "RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog AS $fn$ "
@@ -343,7 +343,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
             // trigger callable by the application role alone.
             statement.execute("REVOKE EXECUTE ON FUNCTION public.clause_test_fail_accept_audit() FROM PUBLIC");
             statement.execute("GRANT EXECUTE ON FUNCTION public.clause_test_fail_accept_audit() "
-                    + "TO orevia_app");
+                    + "TO aurevia_app");
             statement.execute("CREATE TRIGGER clause_test_fail_accept_audit BEFORE INSERT "
                     + "ON public.audit_event FOR EACH ROW "
                     + "EXECUTE FUNCTION public.clause_test_fail_accept_audit()");
@@ -352,7 +352,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
 
     /** Remove the temporary audit fault-injection trigger. */
     private static void removeAuditFailure() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("DROP TRIGGER IF EXISTS clause_test_fail_accept_audit ON public.audit_event");
             statement.execute("DROP FUNCTION IF EXISTS public.clause_test_fail_accept_audit()");
@@ -366,7 +366,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
      * survive and the audit assertion in the test would detect that.
      */
     private static void installDeferredCommitFailure(String orderId) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("CREATE OR REPLACE FUNCTION public.clause_test_fail_order_commit() "
                     + "RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog AS $fn$ "
@@ -374,7 +374,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
                     + "RAISE EXCEPTION 'synthetic order commit failure'; "
                     + "END IF; RETURN NULL; END $fn$");
             statement.execute("REVOKE EXECUTE ON FUNCTION public.clause_test_fail_order_commit() FROM PUBLIC");
-            statement.execute("GRANT EXECUTE ON FUNCTION public.clause_test_fail_order_commit() TO orevia_app");
+            statement.execute("GRANT EXECUTE ON FUNCTION public.clause_test_fail_order_commit() TO aurevia_app");
             statement.execute("CREATE CONSTRAINT TRIGGER clause_test_fail_order_commit AFTER UPDATE "
                     + "ON public.xch03_order DEFERRABLE INITIALLY DEFERRED FOR EACH ROW "
                     + "EXECUTE FUNCTION public.clause_test_fail_order_commit()");
@@ -383,7 +383,7 @@ class CommitStatusAcceptanceEventAuditTogetherTest {
 
     /** Remove the temporary deferred commit-failure trigger. */
     private static void removeDeferredCommitFailure() throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("DROP TRIGGER IF EXISTS clause_test_fail_order_commit ON public.xch03_order");
             statement.execute("DROP FUNCTION IF EXISTS public.clause_test_fail_order_commit()");

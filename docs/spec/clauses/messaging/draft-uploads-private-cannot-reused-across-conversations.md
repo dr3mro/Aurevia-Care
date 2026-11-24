@@ -13,7 +13,7 @@ Proven by tests
 Test class: `com.aurevia.messaging.clauses.DraftUploadsPrivateCannotReusedAcrossConversationsTest`
 (path: `apps/api/src/test/java/com/aurevia/messaging/clauses/DraftUploadsPrivateCannotReusedAcrossConversationsTest.java`).
 All three tests are active (none disabled) and run against real PostgreSQL with synthetic fixtures only.
-They use a fresh database `orevia_draft_uploads_clause_it`, apply the production Flyway migrations under
+They use a fresh database `aurevia_draft_uploads_clause_it`, apply the production Flyway migrations under
 `db/migrations`, seed two tenants with identical local connection, unit and patient identifiers and bind
 `TenantContext` exactly as the HTTP interceptor does.
 

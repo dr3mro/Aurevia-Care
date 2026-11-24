@@ -26,8 +26,8 @@ was touched (docs/WORKFLOW.md).
 
 ## Review owner
 
-Senior React and Vite (`orevia-senior-react`) and UX reviewer
-(`orevia-ux-reviewer`), both simulated bounded reviews. Their findings are
+Senior React and Vite (`aurevia-senior-react`) and UX reviewer
+(`aurevia-ux-reviewer`), both simulated bounded reviews. Their findings are
 addressed under Findings below. No human or real-clinical evidence is claimed.
 
 ## Data changes

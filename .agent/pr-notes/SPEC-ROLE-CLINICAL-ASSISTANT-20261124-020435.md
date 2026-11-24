@@ -31,7 +31,7 @@ None.
 
 ## Plan (fixed after plan review)
 
-1. Bounded evidence: `WorklistPolicy.ASSISTANT_ACTIONS` (lines 48-49) grants WORKLIST_READ, VITALS_RECORD, HANDOFF, INTAKE_LINK; `CheckInService.authorize` (428-439) checks membership + role; `facilityDenial` (452-459) narrows by facility via `outsideAssignedFacilities`; `handoff` (278-325) checks the current assignee's and target's membership and version but never compares `context.subject()` to the assignee or care team; `ResultActionPolicy.ALLOWED` (34-40) has no assistant action; `SpecialtyRoles.ALL` (35-38) has no CLINICAL_ASSISTANT; `ChartActionPolicy` (24-26) grants vitals entry to the assistant. Verified by tool reads and by smartclinic-context-optimizer and smartclinic-senior-spring-security.
+1. Bounded evidence: `WorklistPolicy.ASSISTANT_ACTIONS` (lines 48-49) grants WORKLIST_READ, VITALS_RECORD, HANDOFF, INTAKE_LINK; `CheckInService.authorize` (428-439) checks membership + role; `facilityDenial` (452-459) narrows by facility via `outsideAssignedFacilities`; `handoff` (278-325) checks the current assignee's and target's membership and version but never compares `context.subject()` to the assignee or care team; `ResultActionPolicy.ALLOWED` (34-40) has no assistant action; `SpecialtyRoles.ALL` (35-38) has no CLINICAL_ASSISTANT; `ChartActionPolicy` (24-26) grants vitals entry to the assistant. Verified by tool reads and by aurevia-context-optimizer and aurevia-senior-spring-security.
 2. Correct the plan-reviewer Required gaps before coding:
    - R1: active membership, facility scope, unassigned item and stale version are **generic IAM-01/workflow/facility guards**, not proof of this row's scope constraint ("Assigned encounters or care team"). The green tests are labelled that way in `## Evidence`; the would-prove test for "another encounter / caller is not the assignee or care team" is in `## Gap`; Status stays **Partly proven** specifically because the scope constraint is unbuilt.
    - R2: name the exact gates and state the `@Disabled` conflict as an explicit deviation: story step 3 asks for `@Disabled("GAP: ...")` gap tests, but `scripts/check-constraints.py:56` rejects every added `@Disabled` and a new file is all added lines, so gap tests are documented in `## Gap` and no test is skipped.
@@ -69,11 +69,11 @@ none — routine, test-and-doc-only change with synthetic fixtures; no clinical 
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
-- smartclinic-test-engineer: GO (test design)
+- aurevia-plan-reviewer: GO
+- aurevia-code-reviewer: GO
+- aurevia-coverage-auditor: GO
+- aurevia-devsecops: GO
+- aurevia-test-engineer: GO (test design)
 
 All four required reviewers answered GO. The plan reviewer's initial NO-GO (generic guards presented as scope evidence, unnamed gates) and the code reviewer's initial NO-GO (missing `## Clinical and architecture review`) were fixed and re-reviewed. No Critical or Required finding is unresolved; the devsecops and code-reviewer Optional precision findings were applied in commit `16de4392`.
 

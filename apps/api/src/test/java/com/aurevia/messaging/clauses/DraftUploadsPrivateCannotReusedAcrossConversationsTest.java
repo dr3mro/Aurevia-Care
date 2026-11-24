@@ -54,7 +54,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_draft_uploads_clause_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_draft_uploads_clause_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class DraftUploadsPrivateCannotReusedAcrossConversationsTest {
@@ -68,10 +68,10 @@ class DraftUploadsPrivateCannotReusedAcrossConversationsTest {
     static final String PATIENT = "pat-shared";
     static final String OTHER_PATIENT = "pat-other";
     static final String CHECKSUM = "a".repeat(64);
-    static final String DATABASE = "orevia_draft_uploads_clause_it";
+    static final String DATABASE = "aurevia_draft_uploads_clause_it";
     static final String URL = "jdbc:postgresql://127.0.0.1:5432/" + DATABASE;
     static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
 
     @Autowired
     AttachmentStore attachmentStore;
@@ -89,18 +89,18 @@ class DraftUploadsPrivateCannotReusedAcrossConversationsTest {
                  "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_migrate') THEN "
+                    + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
+                    + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
             statement.execute("DROP DATABASE IF EXISTS " + DATABASE + " WITH (FORCE)");
-            statement.execute("CREATE DATABASE " + DATABASE + " OWNER orevia_migrate");
+            statement.execute("CREATE DATABASE " + DATABASE + " OWNER aurevia_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "aurevia_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("INSERT INTO public.organization (organization_id, display_name) VALUES ('"
@@ -288,7 +288,7 @@ class DraftUploadsPrivateCannotReusedAcrossConversationsTest {
             return null;
         });
 
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             SQLException failure = assertThrows(SQLException.class, () -> statement.executeUpdate(

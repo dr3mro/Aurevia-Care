@@ -246,7 +246,7 @@ class WorkerPostgresTests(unittest.TestCase):
         self.assertIn("postgresql-17", dockerfile)
         self.assertIn("apt.postgresql.org", dockerfile)
         self.assertIn("COPY start-postgres.sh /usr/local/bin/start-postgres", dockerfile)
-        self.assertIn("OREVIA_PG_ADMIN=postgres", dockerfile)
+        self.assertIn("AUREVIA_PG_ADMIN=postgres", dockerfile)
         starter = (ROOT / ".github/agent-image/start-postgres.sh").read_text()
         self.assertIn("127.0.0.1", starter)
         self.assertIn("-A trust", starter)
@@ -255,7 +255,7 @@ class WorkerPostgresTests(unittest.TestCase):
     def test_worker_starts_postgresql_and_runs_the_worker_check(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         self.assertIn("CHECK_SCRIPT: scripts/worker-check.sh", text)
-        self.assertIn("OREVIA_PG_ADMIN: postgres", text)
+        self.assertIn("AUREVIA_PG_ADMIN: postgres", text)
         self.assertLess(text.index("if command -v start-postgres"), text.index("id: s1"))
 
     def test_worker_check_runs_integration_tests_and_database_policy(self):
@@ -913,7 +913,7 @@ class PlanTests(unittest.TestCase):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
         self.assertIn("GATE: scripts/integrator-gate.sh", text)
         self.assertIn("postgres:", text)
-        self.assertIn("OREVIA_PG_ADMIN: postgres", text)
+        self.assertIn("AUREVIA_PG_ADMIN: postgres", text)
         self.assertNotIn("GATE: scripts/quick-check.sh", text)
 
     def test_task_id_of_handles_multi_hyphen_story_ids(self):
@@ -1942,7 +1942,7 @@ class DailyReviewTests(unittest.TestCase):
 
     def test_suggestions_go_to_one_issue_and_are_never_applied(self):
         data = {"summary": "s", "tasks": [],
-                "agents": [{"agent": "orevia-test-engineer", "problem": "skips failure paths", "change": "add a rule"}],
+                "agents": [{"agent": "aurevia-test-engineer", "problem": "skips failure paths", "change": "add a rule"}],
                 "workflow": [{"title": "Slow gate", "evidence": "40 minutes", "change": "split it"}]}
         with tempfile.TemporaryDirectory() as tmp:
             todo = Path(tmp, "TODO.md")
@@ -1954,7 +1954,7 @@ class DailyReviewTests(unittest.TestCase):
             kind, _, title, body = record.call_args.args[:4]
             self.assertEqual(kind, "daily-devsecops")
             self.assertIn("DevSecOps", title)
-            self.assertIn("orevia-test-engineer", body)
+            self.assertIn("aurevia-test-engineer", body)
             self.assertIn("Nothing here was applied", body)
 
     def test_nothing_to_suggest_opens_no_issue_and_bad_json_changes_nothing(self):
@@ -1998,8 +1998,8 @@ class DailyReviewTests(unittest.TestCase):
         script = (ROOT / "scripts/agent-run.sh").read_text()
         self.assertIn("This is READ-ONLY", script.split("daily_prompt() {")[1])
         self.assertIn("Today's focus: $(daily_focus", script)
-        self.assertIn("orevia-qa-reviewer", script)
-        self.assertIn("orevia-devsecops", script)
+        self.assertIn("aurevia-qa-reviewer", script)
+        self.assertIn("aurevia-devsecops", script)
         self.assertIn("a person decides on them", script)
         self.assertIn("daily-qa) cmd_daily qa", script)
         self.assertIn("daily-devsecops) cmd_daily devsecops", script)
