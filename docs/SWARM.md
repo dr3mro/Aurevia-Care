@@ -127,11 +127,31 @@ For each issue (at most 3 per run): an issue with no task goes to a read-only **
 
 Agent text that lands on `main` (tasks/ entries, the daily note) is passed through the same link, requirement-ID and secret checks Delivery runs, so it cannot turn `main` red.
 
+## Two independent verification gates
+
+Two native GitHub checks guard a protected merge, and they answer different questions:
+
+- **`Delivery gate`** (`.github/workflows/delivery.yml`) verifies the *code*: policy, script tests, frontend, Java/database and docs must all succeed. `scripts/check-delivery-gate.py` fails closed on a missing, failed, cancelled or unjustifiably skipped job. The workflow has no path filters on any trigger, so a documentation-only PR or push still reports the check. It is already required by the `PROTECT` ruleset.
+- **`Swarm gate`** (`.github/workflows/swarm-gate.yml`) verifies the *swarm contract*: PR classification (worker, integration, reconciliation, manual or malformed automation), task existence and eligibility, evidence schema, protected-file/workflow/coverage-config restrictions, binding to the exact tested SHA, and integration-manifest ancestry. `scripts/swarm_gate.py` is pure and checked out from the protected base revision, so a worker PR cannot edit the verifier that judges it; worker notes are inspected for shape and revision binding, never treated as proof of a passing check.
+
+**Trust model.** The gate workflow checks out the base revision for the verifier and a second checkout of the tested revision for the manifest only. It runs with `contents: read` and `pull-requests: read`; it never pushes or merges. Manual pull requests get repository-wide checks and receive `not_applicable` for swarm-specific checks; a PR with an automation signal it cannot parse fails closed. `merge_group` events are classified as integration revisions and verified against the merge-group head, so no worker-head result is reused.
+
+**Rollout.** Stage A ships the Swarm gate as a *non-required* check while `Delivery gate` stays required; the owner validates it on a docs-only PR, a code PR, a manual PR, an integration PR and a deliberately failing case. Stage B asks the owner to add `Swarm gate` to the `PROTECT` ruleset's required checks (keep `Delivery gate`), disable bypass for automation and keep force pushes off. Rollback is to remove `Swarm gate` from the required checks; the workflow can remain. This implementation does not change branch protection or grant any bypass.
+
 ## Prepared images
 
 The worker image installs Debian's `python3-yaml` and checks the import with `python3 -I` during the build. The hosted Delivery tooling, fix-PR validation and integrator jobs use `.github/actions/setup-tooling-python` before running the same script tests. For local runs, `python3 -I -c 'import yaml'` verifies that PyYAML is available to the interpreter used by the gates.
 
 The optional repository variable `SWARM_MODEL` overrides the agent model at runtime for every workflow that runs OpenCode, including the swarm worker. When it is unset, the worker uses the model configured for its slot in `.github/swarm/slots.json` and the daily workflows use their compiled default. Set it to a model identifier supported by the OpenCode CLI and the configured slot API keys; it changes the `--model` argument only and does not rewrite the baked slot configuration, which the agent pack check validates.
+
+### Two independent gates
+
+Two separate native checks report on every revision; neither substitutes for the other:
+
+- **`Delivery gate`** (from `delivery.yml`) is the existing comprehensive CI verdict. It fails closed when any mandatory job is missing, failed, cancelled or unjustifiably skipped (`scripts/check-delivery-gate.py`). There are no path filters on any trigger, so a documentation-only PR or push still reports the check; branch protection never waits forever for a verdict that cannot be created.
+- **`Swarm gate`** (from `swarm-gate.yml`) is the trusted swarm-contract verdict. It classifies each PR (worker, integration, reconciliation, ordinary human, or malformed automation), verifies the task exists and is eligible on the protected base, checks that evidence has the required shape, rejects worker edits to gates/workflows/coverage/trackers, and binds the result to the exact GitHub head SHA. For merge groups it reads the integration manifest from the tested tree and proves each recorded worker head is an ancestor of that tree. Worker-authored notes are supporting metadata only: they cannot mark a check passed or not-applicable. The verifier runs from `scripts/swarm_gate.py` checked out at the protected base revision, so a worker PR cannot edit the code that judges it. Ordinary human PRs get applicable repository-wide policy checks with swarm-specific checks reported as not applicable; malformed automation fails closed. `SWARM_GATE_REQUIRED_CHECKS` (optional repository variable, comma-separated check names) adds objective GitHub check conclusions that must be `success` or `neutral` for worker PRs.
+
+**Rollout.** `Swarm gate` is deployed first as a non-required check so its verdicts can be validated on worker, integration, reconciliation and ordinary PRs, plus a merge-group revision. Only after that validation should the repository owner add `Swarm gate` to the required status checks alongside — never instead of — `Delivery gate`. The gate workflow is read-only (`contents: read`, `pull-requests: read`) and never pushes or merges; GitHub remains the authority for protected merges.
 
 `pr-rebase.yml` refreshes a new pull request onto `main` on open so its gate runs against the current base. `dependabot-auto-merge.yml` merges low-risk dependency updates. `release-app-image.yml` publishes the tagged application image only when the tag points to a green default-branch commit; tags are restricted by the `PROTECT-TAGS` ruleset.
 

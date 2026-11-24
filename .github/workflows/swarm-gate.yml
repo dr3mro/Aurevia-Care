@@ -1,0 +1,56 @@
+name: Swarm gate
+
+# Independent of Delivery. Delivery verifies the code; this workflow verifies
+# the swarm contract from a checkout of the protected base revision, so a
+# worker PR can never edit the verifier that judges it. GitHub reports the
+# native "Swarm gate" check for the exact revision under test.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+# Never cancel a verdict for a commit that can be merged: branch protection
+# checks the exact SHA. queue:max keeps one pending run per ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  swarm-gate:
+    name: Swarm gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # The verifier and the task/evidence inputs come only from the protected
+      # base revision. For a merge group the base is the queue target.
+      - name: Check out trusted base verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.ref }}
+          persist-credentials: false
+          path: base
+      # The manifest and ancestry are read from the exact revision being
+      # tested (the PR merge commit or the merge-group commit). No executable
+      # code from this checkout is ever run by the gate.
+      - name: Check out the revision under test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          path: tested
+      - name: Verify the swarm contract
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SWARM_GATE_REQUIRED_CHECKS: ${{ vars.SWARM_GATE_REQUIRED_CHECKS || '' }}
+        run: |
+          python3 -I base/scripts/swarm_gate.py evaluate \
+            --event-path "$GITHUB_EVENT_PATH" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --root base \
+            --head-root tested
