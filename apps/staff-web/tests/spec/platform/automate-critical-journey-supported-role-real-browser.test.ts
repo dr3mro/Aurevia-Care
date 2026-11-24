@@ -82,17 +82,29 @@ const axeGateConsumers: readonly string[] = [
 const e2eSpecs = (): string[] =>
   filesBelow(resolve(moduleRoot, 'e2e')).filter((path) => path.endsWith('.spec.ts'));
 
-/** The exact e2e spec set committed today; a new journey must replace this pin. */
+/**
+ * The exact e2e spec set committed today; a new journey must replace this pin.
+ *
+ * The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
+ * journeys were added by commit 4698687f (BUILD-60). Pinning them keeps the
+ * tripwire honest: the remaining GAP assertions (no staging-RC report, no
+ * light/dark visual checks) still fail the day that evidence actually lands.
+ */
 const currentSpecs: readonly string[] = [
+  'adminflow/admin-journey.spec.ts',
   'clinicalnote/clinicalnote-journey.spec.ts',
+  'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
+  'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
   'smoke.spec.ts',
+  'therapyflow/therapy-journey.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {

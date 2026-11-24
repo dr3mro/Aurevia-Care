@@ -58,6 +58,42 @@ GREEN after the production change:
 
 Known environment false positive (confirmed once, not re-diagnosed): `python3 -I -m unittest discover -s scripts/tests` -> `Ran 1432 tests`, `FAILED (failures=6)`, all six in `test_check_pack.py` (OPS-CW-003-01). Evidence: `git ls-files -v opencode.json` -> `S opencode.json`; `sha256sum opencode.json .github/opencode.ci.json` are identical; `git show HEAD:opencode.json` equals `gen_opencode.render(ci=False)` and the CI profile equals `gen_opencode.render(ci=True)`. The committed profile is correct; the worktree file is the CI runtime profile installed under `skip-worktree`. No protected file was regenerated or committed.
 
+## Repair attempt 1 — coverage gate (stale e2e spec pin)
+
+The coverage check (`bash apps/staff-web/check.sh`) failed on a pre-existing,
+non-coverage tripwire at
+`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`.
+This is not a production coverage gap and is not caused by this story: the test
+pins the exact committed e2e spec set in `currentSpecs`, but commit `4698687f`
+(BUILD-60) added five bilingual role journeys to `origin/main` without updating
+the pin, so `expect(specs.sort()).toEqual([...currentSpecs].sort())` saw 14
+files versus 9. The identical failure on clean `origin/main` is recorded in
+Finding 2.
+
+Fix (following the test's own documented contract: "a new journey must replace
+this pin"): added the five committed spec paths to `currentSpecs` —
+`adminflow/admin-journey.spec.ts`, `financeflow/finance-journey.spec.ts`,
+`pharmacyflow/pharmacy-bilingual-journey.spec.ts`,
+`radflow/radiology-bilingual-journey.spec.ts`, `therapyflow/therapy-journey.spec.ts`.
+No threshold, exclusion, skip, suppression or generated-code marker was added
+or lowered. None of the five specs contains a `toHaveScreenshot`,
+`toMatchSnapshot`, `getComputedStyle`, `data-theme` or `colorScheme` pattern, so
+the remaining GAP assertions (`workflows` empty, `visualChecks` empty) are
+unchanged and still pass — the WEB-10 evidence gap stays honestly recorded.
+
+Branch-to-test list for this repair (no production branch changed):
+
+| Changed line / branch | Test that exercises it |
+|---|---|
+| `currentSpecs` pin expanded from 9 to all 14 committed e2e specs | `automate-critical-journey-supported-role-real-browser.test.ts` > `GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded` — asserts `e2eSpecs()` equals `currentSpecs`; now passes with 14/14 |
+| GAP assertions stay active so real evidence would still fail them | same test — `workflows.sort()` equals `[]` and `visualChecks.sort()` equals `[]` remain unchanged and green |
+| No new production line or branch was introduced by this repair | n/a — the only edit is the artifact pin plus its doc comment in the spec test |
+
+Test evidence (tool):
+
+- `cd apps/staff-web && npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` -> `Test Files  1 passed (1)`, `Tests  3 passed (3)`.
+- `cd apps/staff-web && bash check.sh` -> `Test Files  268 passed (268)`, `Tests  3045 passed (3045)`; coverage summary `Statements  100% ( 5107/5107 )`, `Branches  100% ( 2634/2634 )`, `Functions  100% ( 1697/1697 )`, `Lines  100% ( 4903/4903 )`, `No files with missing coverage. 267 files fully covered.`
+
 ## Coverage
 
 Tool evidence from `apps/api/target/site/jacoco/jacoco.xml` after the fresh batch above (no `jacoco.exec` carried in):
@@ -105,7 +141,7 @@ The advisor brief names `contracts/openapi.yaml` and the generated staff types b
 ## Findings
 
 1. **Scope deviation (resolved in code, recorded here):** the packaged contract mirror was updated although it is not in the declared scope. Rationale and evidence are under `## Brief corrections`; `OpenApiContractDriftTest` passes.
-2. **Pre-existing red on `main`:** `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` expects a frozen list of 9 e2e specs, but `main` has 14 after commit `4698687f` added bilingual role journeys. The identical failure was reproduced on clean `origin/main` in a detached worktree. Not caused by and not fixable inside this story's scope.
+2. **Pre-existing red on `main` (resolved in repair attempt 1):** `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` expected a frozen list of 9 e2e specs, but `main` has 14 after commit `4698687f` added bilingual role journeys. The identical failure was reproduced on clean `origin/main` in a detached worktree. Not caused by this story. To unblock the delivery coverage gate, repair attempt 1 refreshed the `currentSpecs` pin to all 14 committed specs (see "Repair attempt 1" above); the full `apps/staff-web/check.sh` then passed 3045/3045 tests at 100% coverage.
 3. **Environment false positive:** six `test_check_pack.py` failures from the CI `opencode.json` profile under `skip-worktree` (OPS-CW-003-01); confirmed with `git ls-files -v`, sha256 comparison and generator round-trip. No protected file changed.
 4. **Replay key is not sender-checked (out of scope):** `JdbcInstantConversationStore.messageByClientId` returns the first message for a client key regardless of sender, so a second participant reusing a key in the same conversation can receive the first participant's message. Adding a 409 would change the error contract and needs its own story; a `task-requests` block is included below.
 5. **No new wiring debt:** `check-wiring.py` reported no resolved entries, so no baseline regeneration is needed from this worker.
