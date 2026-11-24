@@ -164,6 +164,90 @@ class OpenApiRouteCoverageTest {
                 "download returns the original PDF, JPEG or PNG type: " + content.keySet());
     }
 
+    @Test
+    void baselineReaderSkipsCommentsAndNormalizesPathVariables() throws IOException {
+        Path baseline = Files.createTempFile("missing-routes", ".txt");
+        try {
+            Files.writeString(baseline, "# frozen at the pinned base\n\n"
+                    + "  GET /api/v1/orders/{orderId}/accept  \nPOST /api/v1/legacy\n");
+
+            assertEquals(route("GET /api/v1/orders/{}/accept", "POST /api/v1/legacy"),
+                    OpenApiRouteCoverage.readBaseline(baseline));
+        } finally {
+            Files.deleteIfExists(baseline);
+        }
+    }
+
+    @Test
+    void baselineReaderRejectsAMalformedLine() throws IOException {
+        Path baseline = Files.createTempFile("missing-routes", ".txt");
+        try {
+            Files.writeString(baseline, "GET api/v1/legacy\n");
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> OpenApiRouteCoverage.readBaseline(baseline));
+        } finally {
+            Files.deleteIfExists(baseline);
+        }
+    }
+
+    @Test
+    void baselineReaderFailsWhenTheFileIsMissing() {
+        assertThrows(IOException.class,
+                () -> OpenApiRouteCoverage.readBaseline(Path.of("no/such/missing-routes.txt")));
+    }
+
+    @Test
+    void evaluateExcludesOnlyTheExactMethodAndNormalizedPath() throws IOException {
+        Path baseline = Files.createTempFile("missing-routes", ".txt");
+        try {
+            Files.writeString(baseline, "# frozen\nGET /api/v1/a/{id}\n");
+            OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.evaluate(
+                    route("GET /api/v1/a/{orderId}", "POST /api/v1/a/{id}",
+                            "GET /api/v1/b/{id}"),
+                    Set.of(), baseline);
+
+            assertEquals(route("POST /api/v1/a/{}", "GET /api/v1/b/{}"),
+                    report.undocumented());
+            assertEquals(Set.of(), report.ghost());
+            assertFalse(report.passed());
+            assertTrue(OpenApiRouteCoverage.describe(report).contains("POST /api/v1/a/{}"));
+            assertFalse(OpenApiRouteCoverage.describe(report).contains("GET /api/v1/a/{}"));
+        } finally {
+            Files.deleteIfExists(baseline);
+        }
+    }
+
+    @Test
+    void evaluateNeverSuppressesGhostRoutes() throws IOException {
+        Path baseline = Files.createTempFile("missing-routes", ".txt");
+        try {
+            Files.writeString(baseline, "GET /api/v1/ghost\n");
+            OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.evaluate(
+                    Set.of(), route("GET /api/v1/ghost"), baseline);
+
+            assertEquals(Set.of(), report.undocumented());
+            assertEquals(route("GET /api/v1/ghost"), report.ghost());
+            assertFalse(report.passed());
+        } finally {
+            Files.deleteIfExists(baseline);
+        }
+    }
+
+    @Test
+    void aFrozenBaselineCanClearAnOtherwiseUndocumentedRoute() throws IOException {
+        Path baseline = Files.createTempFile("missing-routes", ".txt");
+        try {
+            Files.writeString(baseline, "GET /api/v1/legacy\n");
+            OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.evaluate(
+                    route("GET /api/v1/legacy"), route("GET /api/v1/legacy"), baseline);
+
+            assertTrue(report.passed(), OpenApiRouteCoverage.describe(report));
+        } finally {
+            Files.deleteIfExists(baseline);
+        }
+    }
+
     private static Set<OpenApiRouteCoverage.Route> route(String... lines) {
         Set<OpenApiRouteCoverage.Route> routes = new java.util.TreeSet<>(OpenApiRouteCoverage.Route.ORDER);
         for (String line : lines) {

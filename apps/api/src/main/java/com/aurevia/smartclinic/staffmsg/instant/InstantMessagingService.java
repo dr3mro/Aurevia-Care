@@ -6,11 +6,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentPublication;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.AddParticipantRequest;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.ConversationView;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.CreateGroupRequest;
@@ -45,17 +47,32 @@ public class InstantMessagingService {
 
     private final InstantConversationStore store;
     private final Clock clock;
+    private final StaffAttachmentPublication attachments;
 
     /**
-     * Create the service with its tenant-scoped store and application clock.
+     * Create the service with its tenant-scoped store, clock and publication seam.
+     *
+     * @param store       instant conversation store
+     * @param clock       application clock used for server timestamps
+     * @param attachments publication seam for files bound to the conversation
+     */
+    @Autowired
+    public InstantMessagingService(InstantConversationStore store, Clock clock,
+                                   StaffAttachmentPublication attachments) {
+        this.store = store;
+        this.clock = clock;
+        this.attachments = attachments;
+    }
+
+    /**
+     * Create the service without attachment publication, for callers that do not
+     * own a message send (unit fixtures and security checks).
      *
      * @param store instant conversation store
      * @param clock application clock used for server timestamps
      */
-    @Autowired
     public InstantMessagingService(InstantConversationStore store, Clock clock) {
-        this.store = store;
-        this.clock = clock;
+        this(store, clock, StaffAttachmentPublication.none());
     }
 
     /**
@@ -188,8 +205,23 @@ public class InstantMessagingService {
         Access access = requireAccess(request.facilityId(), request.conversationId(), true);
         Optional<StaffMessage> previous = store.messageByClientId(
                 context.organizationId(), access.conversation().id(), key);
-        StaffMessage message = previous.orElseGet(() -> store.sendMessage(context.organizationId(),
-                access.conversation().id(), access.participant().role().wire(), body, key, clock.instant()));
+        StaffMessage message;
+        if (previous.isPresent()) {
+            message = previous.get();
+        } else {
+            // Preflight before the ledger write so a quarantined file cannot leave
+            // a published message with no attachment grant.
+            List<String> prepared = attachments.requirePublishable(context.organizationId(), context.subject(),
+                    access.conversation().id());
+            message = store.sendMessage(context.organizationId(), access.conversation().id(),
+                    access.participant().role().wire(), body, key, clock.instant());
+            Set<String> recipients = access.participants().stream()
+                    .filter(participant -> participant.isActiveAt(clock.instant()))
+                    .map(StaffParticipant::subject)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            attachments.publish(context.organizationId(), context.subject(), access.conversation().id(),
+                    message.id(), recipients, prepared);
+        }
         return messageView(message);
     }
 

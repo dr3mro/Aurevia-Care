@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -147,6 +148,46 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
     }
 
     @Override
+    public boolean bindToMessage(StaffAttachment attachment) {
+        return transactions.execute(status -> {
+            // A pending link still carries the draft identifier. Conditional update
+            // on that value makes the pending-to-sent transition a compare-and-set:
+            // a same-key replay cannot bind the row twice.
+            int changed = jdbc.update("""
+                    UPDATE public.staff_attachment_link
+                       SET message_id = CAST(:messageId AS uuid), scan_state = :scanState,
+                           checksum = :checksum
+                     WHERE organization_id = CAST(:organizationId AS uuid)
+                       AND id = CAST(:id AS uuid)
+                       AND message_id = CAST(:draftId AS uuid)
+                    """, new MapSqlParameterSource()
+                            .addValue("organizationId", attachment.organizationId())
+                            .addValue("id", attachment.id())
+                            .addValue("draftId", attachment.draftId())
+                            .addValue("messageId", attachment.messageId())
+                            .addValue("scanState", attachment.scanState().wire())
+                            .addValue("checksum", attachment.checksum()));
+            if (changed == 1) {
+                putMetadata(attachment);
+                return true;
+            }
+            // No row changed: distinguish a replay of this message from a file
+            // already bound elsewhere, so a retry cannot widen or steal an audience.
+            List<String> bound = jdbc.query("""
+                    SELECT message_id::text FROM public.staff_attachment_link
+                     WHERE organization_id = CAST(:organizationId AS uuid) AND id = CAST(:id AS uuid)
+                    """, new MapSqlParameterSource()
+                            .addValue("organizationId", attachment.organizationId())
+                            .addValue("id", attachment.id()),
+                    (resultSet, rowNumber) -> resultSet.getString("message_id"));
+            if (bound.stream().anyMatch(attachment.messageId()::equals)) {
+                return false;
+            }
+            throw new ApiException(409, "ALREADY_SENT", "the file has already been sent");
+        });
+    }
+
+    @Override
     public int countForDraft(String organizationId, String draftId) {
         return transactions.execute(status -> jdbc.queryForObject("""
                 SELECT count(*) FROM public.staff_attachment_link
@@ -158,20 +199,41 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
 
     @Override
     public boolean isRecipient(String organizationId, String messageId, String subject) {
+        // The audience is resolved per message, not per conversation: a mail reply
+        // shares its thread with earlier messages, and a departed participant must
+        // not keep a download grant. Mail recipients are frozen on the published
+        // message; instant recipients come from still-open conversation membership.
         return transactions.execute(status -> Boolean.TRUE.equals(jdbc.queryForObject("""
                 SELECT EXISTS (
                     SELECT 1 FROM public.staff_message msg
-                      JOIN public.staff_participant part
-                        ON part.organization_id = msg.organization_id
-                       AND part.conversation_id = msg.conversation_id
                      WHERE msg.organization_id = CAST(:organizationId AS uuid)
                        AND msg.id = CAST(:messageId AS uuid)
-                       AND part.staff_subject = :subject
+                       AND (
+                            EXISTS (
+                                SELECT 1 FROM public.staff_mail_metadata mail
+                                 WHERE mail.organization_id = msg.organization_id
+                                   AND mail.message_id = msg.id
+                                   AND mail.resolved_recipients @> ARRAY[CAST(:subject AS text)])
+                            OR EXISTS (
+                                SELECT 1 FROM public.staff_participant part
+                                 WHERE part.organization_id = msg.organization_id
+                                   AND part.conversation_id = msg.conversation_id
+                                   AND part.staff_subject = CAST(:subject AS text)
+                                   AND part.left_at IS NULL)
+                       )
                 )
                 """, new MapSqlParameterSource()
                         .addValue("organizationId", organizationId)
                         .addValue("messageId", messageId)
                         .addValue("subject", subject), Boolean.class)));
+    }
+
+    @Override
+    public void grantRecipients(String organizationId, String messageId, Set<String> subjects) {
+        // There is no separate grant row: isRecipient derives the audience from the
+        // message's frozen mail recipients or its active conversation participants.
+        // Recording it here would grant a whole reply thread a single message's
+        // audience, so the durable tier intentionally performs no write.
     }
 
     @Override

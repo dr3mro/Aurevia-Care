@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Tenant administration browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only harness for the bilingual tenant-admin journey (WEB-10,
+         OPS-07). Vite dev serves this at /e2e/adminflow/admin-harness.html.
+         The real ExportPage is mounted with a role override because the
+         pre-login shell fixes the role to reception. The role query parameter
+         selects the override for the harness only; it is never an authority in
+         the screen or in production. -->
+    <main>
+      <div id="admin-harness" data-testid="admin-harness"></div>
+    </main>
+    <script type="module" src="./admin-harness.tsx"></script>
+  </body>
+</html>
