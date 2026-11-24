@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -45,6 +46,7 @@ class InstantMessagingServiceTest {
     private static final String ACTOR = "nurse-a";
     private static final String PEER = "nurse-b";
     private static final String CONVERSATION = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    private static final String OTHER_CONVERSATION = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private static final Instant NOW = Instant.parse("2026-11-21T10:00:00Z");
 
     private InstantConversationStore store;
@@ -80,7 +82,7 @@ class InstantMessagingServiceTest {
 
     private ApiException failure(String facility) {
         return assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(facility, CONVERSATION, "body"), "key-1"));
+                () -> service.send(CONVERSATION, new SendRequest(facility, CONVERSATION, "body"), "key-1"));
     }
 
     /**
@@ -244,6 +246,34 @@ class InstantMessagingServiceTest {
         assertEquals(403, error.status());
     }
 
+    /** A body naming another conversation is refused before any store interaction. */
+    @Test
+    void sendRejectsAMismatchedBodyIdBeforeTouchingTheStore() {
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.send(OTHER_CONVERSATION,
+                        new SendRequest(FACILITY, CONVERSATION, "body"), "key-1"));
+        assertEquals(422, error.status());
+        assertEquals("INVALID_INPUT", error.code());
+        verifyNoInteractions(store);
+    }
+
+    @Test
+    void sendRejectsMissingIdsFromEitherThePathOrTheBody() {
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.send(null,
+                        new SendRequest(FACILITY, CONVERSATION, "body"), "key-1")).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.send("  ",
+                        new SendRequest(FACILITY, CONVERSATION, "body"), "key-1")).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.send(CONVERSATION,
+                        new SendRequest(FACILITY, null, "body"), "key-1")).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.send(CONVERSATION,
+                        new SendRequest(FACILITY, "  ", "body"), "key-1")).status());
+        verifyNoInteractions(store);
+    }
+
     @Test
     void aRetriedSendReturnsTheFirstMessageWithoutPublishingAgain() {
         when(store.conversation(ORG, CONVERSATION))
@@ -252,7 +282,8 @@ class InstantMessagingServiceTest {
                 .thenReturn(List.of(participant(ACTOR, ParticipantRole.OWNER, null)));
         when(store.messageByClientId(ORG, CONVERSATION, "key-1")).thenReturn(Optional.of(message(1L, ACTOR)));
 
-        assertEquals(1L, service.send(new SendRequest(FACILITY, CONVERSATION, "body"), "key-1").sequence());
+        assertEquals(1L, service.send(CONVERSATION, new SendRequest(FACILITY, CONVERSATION, "body"), "key-1").sequence());
+        verify(store).messageByClientId(ORG, CONVERSATION, "key-1");
         verify(store, never()).sendMessage(anyString(), anyString(), anyString(), anyString(),
                 anyString(), any());
     }
@@ -267,7 +298,7 @@ class InstantMessagingServiceTest {
         when(store.sendMessage(ORG, CONVERSATION, "member", "body", "key-2", NOW))
                 .thenReturn(message(2L, ACTOR));
 
-        assertEquals(2L, service.send(new SendRequest(FACILITY, CONVERSATION, "body"), "key-2").sequence());
+        assertEquals(2L, service.send(CONVERSATION, new SendRequest(FACILITY, CONVERSATION, "body"), "key-2").sequence());
         verify(store).sendMessage(ORG, CONVERSATION, "member", "body", "key-2", NOW);
     }
 
@@ -279,17 +310,17 @@ class InstantMessagingServiceTest {
                 .thenReturn(List.of(participant(ACTOR, ParticipantRole.OWNER, null)));
 
         assertEquals(422, assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(FACILITY, CONVERSATION, "body"), "  ")).status());
+                () -> service.send(CONVERSATION, new SendRequest(FACILITY, CONVERSATION, "body"), "  ")).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(FACILITY, CONVERSATION, ""), "key-3")).status());
+                () -> service.send(CONVERSATION, new SendRequest(FACILITY, CONVERSATION, ""), "key-3")).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(FACILITY, CONVERSATION, "body"), null)).status());
+                () -> service.send(CONVERSATION, new SendRequest(FACILITY, CONVERSATION, "body"), null)).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(FACILITY, CONVERSATION, "body"), "k".repeat(201))).status());
+                () -> service.send(CONVERSATION, new SendRequest(FACILITY, CONVERSATION, "body"), "k".repeat(201))).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(FACILITY, CONVERSATION, null), "key-3")).status());
+                () -> service.send(CONVERSATION, new SendRequest(FACILITY, CONVERSATION,null), "key-3")).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(FACILITY, CONVERSATION, "a".repeat(4001)), "key-3")).status());
+                () -> service.send(CONVERSATION, new SendRequest(FACILITY, CONVERSATION, "a".repeat(4001)), "key-3")).status());
         verify(store, never()).sendMessage(anyString(), anyString(), anyString(), anyString(),
                 anyString(), any());
     }

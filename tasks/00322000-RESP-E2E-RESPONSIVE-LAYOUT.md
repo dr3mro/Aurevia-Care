@@ -1,4 +1,6 @@
-- [-] RESP-E2E-RESPONSIVE-LAYOUT · Staff web end-to-end: responsiveLayout across phone, tablet and desktop
+- [x] RESP-E2E-RESPONSIVE-LAYOUT · Staff web end-to-end: responsiveLayout across phone, tablet and desktop
+  - evidence: PR #1534 merged to main (auto-reconciled)
+  - pr: #1534
   - agent: swarm-8
   - attempts: 1
   - requirements: WEB-07, UX-01

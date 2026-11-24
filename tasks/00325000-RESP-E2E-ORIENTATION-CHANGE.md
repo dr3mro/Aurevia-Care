@@ -1,5 +1,5 @@
-- [-] RESP-E2E-ORIENTATION-CHANGE · Staff web end-to-end: orientationChange across phone, tablet and desktop
-  - agent: swarm-1
+- [x] RESP-E2E-ORIENTATION-CHANGE · Staff web end-to-end: orientationChange across phone, tablet and desktop
+  - pr: #1532
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/orientationChange.spec.ts
