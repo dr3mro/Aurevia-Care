@@ -1,5 +1,4 @@
-- [-] RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE · Staff web end-to-end: rightToLeftResponsive across phone, tablet and desktop
-  - agent: swarm-1
+- [ ] RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE · Staff web end-to-end: rightToLeftResponsive across phone, tablet and desktop
   - attempts: 4
   - evidence: PR #1556 merged to main (auto-reconciled)
   - requirements: WEB-07, UX-01
