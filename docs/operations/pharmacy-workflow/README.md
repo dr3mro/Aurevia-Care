@@ -13,7 +13,7 @@
   in the [browser journey](#verify-the-journey).
 
 The approved clauses are in the
-[product specification](../../../SMARTCLINIC_V1_SPEC.md) (RX-02 in section 5 and
+[product specification](../../../.opencode/config/PROJECT_V1_SPEC.md) (RX-02 in section 5 and
 WEB-09 in section 6). The executable journey is
 [`pharmacy-journey.spec.ts`](../../../apps/staff-web/e2e/pharmacyflow/pharmacy-journey.spec.ts);
 its deterministic API stand-in

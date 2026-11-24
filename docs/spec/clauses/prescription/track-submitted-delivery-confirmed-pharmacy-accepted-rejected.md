@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.prescription.clauses.TrackSubmittedDeliveryConfirmedPharmacyAcceptedRejectedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/TrackSubmittedDeliveryConfirmedPharmacyAcceptedRejectedTest.java`),
+Test class `com.aurevia.prescription.clauses.TrackSubmittedDeliveryConfirmedPharmacyAcceptedRejectedTest`
+(`apps/api/src/test/java/com/aurevia/prescription/clauses/TrackSubmittedDeliveryConfirmedPharmacyAcceptedRejectedTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants
 sharing local identifiers. It drives the real REST entry point and reads the
 committed append-only ledger through `GET /api/v1/prescriptions/{id}`; it does
@@ -68,20 +68,20 @@ Production classes exercised through `POST /api/v1/prescriptions` and its
 `/{id}/pharmacy-response`, `/{id}/dispensing`, `/{id}/renew` and `/{id}/cancel`
 routes plus `GET /api/v1/prescriptions/{id}`:
 
-- `com.aurevia.smartclinic.prescription.rx.RxController` — thin adapter parsing
+- `com.aurevia.prescription.rx.RxController` — thin adapter parsing
   `If-Match` and delegating each command to the service.
-- `com.aurevia.smartclinic.prescription.rx.RxService` — `transmit`,
+- `com.aurevia.prescription.rx.RxService` — `transmit`,
   `confirmDelivery`, `pharmacyResponse`, `recordDispensing`, `renew` and
   `cancel` append one matching event each in the same tenant-guarded
   transaction as the state change; `authorize`, `requireVersion`,
   `requireState`, `requireSubmission` and `requirePrescriber` enforce the
   refusals.
-- `com.aurevia.smartclinic.prescription.rx.RxContract` — `EventType` declares
+- `com.aurevia.prescription.rx.RxContract` — `EventType` declares
   the seven clause facts as distinct values plus `DISPENSING_EVIDENCE`, and
   `State.canTransitionTo` gates the legal moves.
-- `com.aurevia.smartclinic.prescription.rx.RxActions` — bounded clinician and
+- `com.aurevia.prescription.rx.RxActions` — bounded clinician and
   pharmacy role matrix used by `RxService.authorize`.
-- `com.aurevia.smartclinic.prescription.rx.RxRepository` — `appendEvent` writes
+- `com.aurevia.prescription.rx.RxRepository` — `appendEvent` writes
   each immutable fact and `events(id)` reads the ordered trail;
   `insertSubmission` creates the one logical submission row asserted by the
   test.

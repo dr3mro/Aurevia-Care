@@ -19,7 +19,7 @@ instead of the `renderScreen` function it describes. I moved it onto
 configuration, tracker, workflow, `scripts/` or `.opencode/` file was changed.
 
 Evidence source: **tool** evidence (commands I executed and observed) plus the
-earlier advisory `smartclinic-senior-mobile` reviewer report, faithfully
+earlier advisory `orevia-senior-mobile` reviewer report, faithfully
 carried forward from the hand-off notes. No new reviewer, simulated-user or
 human-participant evidence was collected this run; no clinical or patient
 acceptance is claimed.
@@ -53,7 +53,7 @@ change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) definition of done
+Senior React Native and Expo (`orevia-senior-mobile`) definition of done
 met. The advisory senior-mobile review recorded in the previous hand-off found
 no material gap; its two non-blocking observations (no `rowGap` on wrapped
 panes; RTL test uses `toContain` while exact order is asserted by the matrix)
@@ -195,7 +195,7 @@ device remains a separate launch gate and is not claimed here.
    edited.
 5. **Pre-existing conflict markers in three Java HL7 files (out of scope,
    flagged, not fixed).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds markers in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
    (inside comments, so compile/tests are unaffected). They exist on
    `origin/main` too and are unrelated to the patient-mobile reports screen.
 6. **Non-failing React `act()` warning** from `src/app/PatientResource.tsx:54`

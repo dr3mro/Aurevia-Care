@@ -44,7 +44,7 @@ blocker is delivery tooling, not a change in this story.
 ## Review owner
 
 Primary agent (tool-verified). Earlier passes recorded simulated
-`smartclinic-senior-react` and `smartclinic-ux-reviewer` reviews, both with no
+`orevia-senior-react` and `orevia-ux-reviewer` reviews, both with no
 actionable findings; those subagents had no shell and relied on primary-agent
 evidence. This pass changes no code, so no new public contract, migration or
 clinical data is involved and no new cross-boundary or clinical review is required.
@@ -73,7 +73,7 @@ Exact commands run in this pass and their final lines:
   `apps/api/.../hl7/` Java files (see Findings).
 - `bash apps/staff-web/check.sh` → **exit 0**. Final lines of each stage:
   - `gen:api: generated client matches the contract`
-  - typecheck: `> smartclinic-staff-web@0.1.0 typecheck` then
+  - typecheck: `> orevia-staff-web@0.1.0 typecheck` then
     `> tsc --noEmit -p tsconfig.json` — **no `error TS…`, exit 0**
   - lint: `> eslint . --max-warnings 0` — no warnings, exit 0
   - build: `> tsc --noEmit -p tsconfig.json && vite build`, `✓ built in 137ms`,
@@ -201,7 +201,7 @@ association, prescribing, critical results or cross-organization sharing.
   this branch touches it; it was neither regenerated, edited nor committed. Per
   AGENTS.md the integrator/Delivery own the repository-wide gate.
 - Pre-existing, outside scope and untouched: `origin/main` contains literal conflict
-  markers in three `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/`
+  markers in three `apps/api/src/main/java/com/aurevia/exchange/hl7/`
   Java files (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). The
   merge with `origin/main` was clean and no marker exists in either scoped file.
 - The first worker's notes (`RESP-WELCOME-PAGE-20261122-084248.md`) carried a

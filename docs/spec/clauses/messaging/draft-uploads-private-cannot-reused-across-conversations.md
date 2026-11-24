@@ -10,10 +10,10 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.DraftUploadsPrivateCannotReusedAcrossConversationsTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/DraftUploadsPrivateCannotReusedAcrossConversationsTest.java`).
+Test class: `com.aurevia.messaging.clauses.DraftUploadsPrivateCannotReusedAcrossConversationsTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/DraftUploadsPrivateCannotReusedAcrossConversationsTest.java`).
 All three tests are active (none disabled) and run against real PostgreSQL with synthetic fixtures only.
-They use a fresh database `smartclinic_draft_uploads_clause_it`, apply the production Flyway migrations under
+They use a fresh database `orevia_draft_uploads_clause_it`, apply the production Flyway migrations under
 `db/migrations`, seed two tenants with identical local connection, unit and patient identifiers and bind
 `TenantContext` exactly as the HTTP interceptor does.
 
@@ -33,17 +33,17 @@ They use a fresh database `smartclinic_draft_uploads_clause_it`, apply the produ
 
 Production classes and artefacts exercised through their public boundaries:
 
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentService` — `visible()` confines a non-downloadable
+- `com.aurevia.messaging.attachments.AttachmentService` — `visible()` confines a non-downloadable
   draft to its uploader for `view()` and `events()`; `download()` refuses an unpublished draft with 409
   `NOT_PUBLISHED` before checking conversation participation; `load()` reads only inside the active tenant.
-- `com.aurevia.smartclinic.messaging.attachments.JdbcAttachmentStore` — the guarded `INSERT ... ON CONFLICT ...
+- `com.aurevia.messaging.attachments.JdbcAttachmentStore` — the guarded `INSERT ... ON CONFLICT ...
   WHERE` upsert returns no row and raises 409 `WRONG_CONVERSATION` when an existing draft would be rebound to a
   different uploader, connection, unit or patient.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentContract` — the `Attachment`, `Actor`,
+- `com.aurevia.messaging.attachments.AttachmentContract` — the `Attachment`, `Actor`,
   `ConnectionGrant` and `View` records carry the immutable binding and fact trail used by the assertions.
 - `db/migrations/V82__attachment_store.sql` — `attachment_binding_immutable()` trigger plus `ENABLE`/`FORCE ROW
   LEVEL SECURITY` and the tenant policy are the database authority for both non-reuse and tenant isolation.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentController` — exposes only `POST /api/v1/patient/files/upload`,
+- `com.aurevia.messaging.attachments.AttachmentController` — exposes only `POST /api/v1/patient/files/upload`,
   `POST /api/v1/patient/files/{id}/scan` and `GET /api/v1/patient/files/{id}/download`. No publish, view or events
   HTTP route exists, so the draft privacy and non-reuse rules cannot be observed over HTTP; the real-DB
   service/store path above is the appropriate evidence for this test-only clause proof.

@@ -10,11 +10,11 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.RevocationBlocksFutureSenderHostedRetrievalRecordsTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/RevocationBlocksFutureSenderHostedRetrievalRecordsTest.java`).
+Test class: `com.aurevia.exchange.clauses.RevocationBlocksFutureSenderHostedRetrievalRecordsTest`
+(path: `apps/api/src/test/java/com/aurevia/exchange/clauses/RevocationBlocksFutureSenderHostedRetrievalRecordsTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, uses the
 `synthetic-auth` profile and a dedicated database
-`smartclinic_xch03_revoke_clause_it` created from the production Flyway
+`orevia_xch03_revoke_clause_it` created from the production Flyway
 migrations, and seeds two synthetic tenants with their own subjects, patient
 record and orders. All four tests are active (none are disabled) and use
 synthetic data only.
@@ -59,24 +59,24 @@ Test methods (one positive rule proof, three negative refusals):
 
 Production classes exercised through the real HTTP entry point:
 
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseController` — thin
+- `com.aurevia.exchange.response.ExchangeResponseController` — thin
   adapter for `/accept`, `/revoke`, `/retrieve` and the order `GET`; it parses
   `If-Match` into a machine-readable precondition before calling the service.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseService` —
+- `com.aurevia.exchange.response.ExchangeResponseService` —
   `revoke` validates the notification fields, inserts the notification inside
   the guarded transaction and writes the terminal `REVOKED` state; `retrieve`
   re-checks that state on every call and raises the 410; `run` enforces the
   version compare-and-set and appends the audit event; `authorize` re-derives
   active membership and roles on each request.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy` —
+- `com.aurevia.exchange.response.ExchangeResponseActionPolicy` —
   grants `EXCHANGE_REVOKE` only to `clinician` and `tenant_admin` and separates
   it from recipient actions (wrong-role negative).
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseInputs` —
+- `com.aurevia.exchange.response.ExchangeResponseInputs` —
   trust-boundary validation of the revoke reason, retention policy, target,
   channel and event id.
-- `com.aurevia.smartclinic.exchange.response.ExchangeState` — the terminal
+- `com.aurevia.exchange.response.ExchangeState` — the terminal
   `REVOKED` state and its wire form asserted in the response and history.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands` — the
+- `com.aurevia.exchange.response.ExchangeResponseCommands` — the
   `RevokeRequest` payload and `Notification` / `OrderView` projections asserted
   through the response body.
 

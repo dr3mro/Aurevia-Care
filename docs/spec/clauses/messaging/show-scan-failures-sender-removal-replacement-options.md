@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.ShowScanFailuresSenderRemovalReplacementOptionsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ShowScanFailuresSenderRemovalReplacementOptionsTest.java`),
+Test class `com.aurevia.messaging.clauses.ShowScanFailuresSenderRemovalReplacementOptionsTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/ShowScanFailuresSenderRemovalReplacementOptionsTest.java`),
 a synthetic, database-free clause test in the same `clauses` style as
 `docs/spec/clauses/scheduling/transfer-handoff-requires-active-assignee.md`:
 `InMemoryAttachmentStore`, `AttachmentService` with `Clock.fixed(2026-11-19T12:00:00Z, UTC)`,
@@ -47,7 +47,7 @@ status-plus-code helper as `AttachmentAcceptanceTest`. Every case enters through
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentService` — `scan`
+- `com.aurevia.messaging.attachments.AttachmentService` — `scan`
   records the failed verdict, caps the detail and appends `scan_failed`; `view` and
   `events` return the file and its fact trail to the uploader through `visible`;
   `remove` is uploader-only, accepts a bounded reason and refuses published or

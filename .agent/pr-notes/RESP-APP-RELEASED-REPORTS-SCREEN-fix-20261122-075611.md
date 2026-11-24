@@ -18,7 +18,7 @@ already uses the corrected form. No earlier fix needed to be undone.
 
 I rehydrated the governing context (AGENTS.md, CODING_STYLE.md, README-SETUP.md,
 docs/WORKFLOW.md, WORKSPACE.md, MEMORY.md, PROJECT.md, the story task file, the
-smartclinic-delivery and smartclinic-senior-mobile skills, decision
+orevia-delivery and orevia-senior-mobile skills, decision
 `0005-patient-app-tablets.md`, both scoped files and `reports/types.ts`) and then
 re-ran every scoped gate myself with fresh tool commands. All pass. This pass
 changes **only this notes file** — no production, test, config, threshold,
@@ -57,7 +57,7 @@ association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`): its mandatory
+Senior React Native and Expo (`orevia-senior-mobile`): its mandatory
 definition of done was executed and met this pass (module `check.sh` green,
 typecheck final lines and coverage summary recorded below, zero `error TS…`).
 A prior bounded advisory review by that specialist confirmed the fix is correct

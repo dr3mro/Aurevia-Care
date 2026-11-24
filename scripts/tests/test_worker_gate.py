@@ -135,8 +135,8 @@ class CandidateValidationTest(unittest.TestCase):
                 self.assertEqual(out, [{"file": name, "rule": "tracker"}])
 
     def test_tracker_rule_wins_over_scope(self):
-        self.assertEqual(self.validate(changed=["TODO.md"]),
-                         [{"file": "TODO.md", "rule": "tracker"}])
+        self.assertEqual(self.validate(changed=[".opencode/config/MEMORY.md"]),
+                         [{"file": ".opencode/config/MEMORY.md", "rule": "tracker"}])
 
     def test_missing_heading_is_reported(self):
         out = self.validate(notes=notes_text(missing=["Coverage"]))
@@ -180,10 +180,10 @@ class CandidateValidationTest(unittest.TestCase):
         self.assertEqual(out, [{"file": "", "rule": "candidate-changed"}])
 
     def test_all_violations_are_returned_together(self):
-        out = self.validate(changed=["TODO.md", "scripts/other.py"],
+        out = self.validate(changed=[".opencode/config/MEMORY.md", "scripts/other.py"],
                             notes=notes_text(missing=["Coverage"]))
         self.assertEqual(out, [
-            {"file": "TODO.md", "rule": "tracker"},
+            {"file": ".opencode/config/MEMORY.md", "rule": "tracker"},
             {"file": "scripts/other.py", "rule": "scope"},
             {"file": NOTES, "rule": "notes-heading"},
         ])
@@ -310,7 +310,7 @@ class MainTest(unittest.TestCase):
 
     def test_pinned_candidate_violation_fails_the_gate(self):
         self.assertEqual(self.run_main(env={"STORY_BODY": SCOPE_TEXT},
-                                       changed=CHANGED + ["TODO.md"]), 1)
+                                       changed=CHANGED + [".opencode/config/MEMORY.md"]), 1)
 
     def test_candidate_change_fails_the_gate_with_structured_output(self):
         output = io.StringIO()

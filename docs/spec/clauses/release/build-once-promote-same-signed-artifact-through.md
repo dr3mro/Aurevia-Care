@@ -14,7 +14,7 @@ Rule 3 forces this status. The clause needs a signed artifact, an SBOM, a truste
 
 What the specification requires (authoritative text):
 
-- WEB-11 in [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) requires the same signed artifact with an SBOM to be promoted through environments, alongside progressive rollout, expand/contract migrations and a release checklist. The G5 evidence rule below the same requirement table assigns evidence for WEB-11 to be produced with the infrastructure owner; a script cannot manufacture it.
+- WEB-11 in [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) requires the same signed artifact with an SBOM to be promoted through environments, alongside progressive rollout, expand/contract migrations and a release checklist. The G5 evidence rule below the same requirement table assigns evidence for WEB-11 to be produced with the infrastructure owner; a script cannot manufacture it.
 - The [WEB-11 evidence register row](../../../operations/production-readiness/evidence.md) marks this requirement `needs infrastructure owner` and states that the smallest closing task is to attach the signed-artifact SBOM and matching digest promoted unchanged. It is deliberately not `missing` because section 8.1 puts verification outside worker scope.
 
 Real mechanisms in the repository — partial only; each proves a build, never a signature or a promotion:

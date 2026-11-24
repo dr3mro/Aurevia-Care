@@ -2,10 +2,10 @@
   - agent: swarm-5
   - attempts: 1
   - requirements: OPS-06, WEB-05, ARC-04
-  - scope: scripts/worker_gate.py, scripts/worker-check.sh, scripts/tests, apps/api/src/main/java/com/aurevia/smartclinic/it/contract, apps/api/src/test/java/com/aurevia/smartclinic/it/contract, contracts/openapi/missing-routes.txt
+  - scope: scripts/worker_gate.py, scripts/worker-check.sh, scripts/tests, apps/api/src/main/java/com/aurevia/it/contract, apps/api/src/test/java/com/aurevia/it/contract, contracts/openapi/missing-routes.txt
   - depends: FIX-WORKER-REPORTS
   - details:
-    Agent brief. Maintainer briefing. Start in `scripts/worker_gate.py` at `related` and `decide`, existing cases in `scripts/tests/test_worker_gate.py`, and `OpenApiRouteParityTest#everyControllerRouteIsDocumentedOrBaselined`. The parity test lives under `src/test/java/com/aurevia/smartclinic/it/contract`.
+    Agent brief. Maintainer briefing. Start in `scripts/worker_gate.py` at `related` and `decide`, existing cases in `scripts/tests/test_worker_gate.py`, and `OpenApiRouteParityTest#everyControllerRouteIsDocumentedOrBaselined`. The parity test lives under `src/test/java/com/aurevia/it/contract`.
     Write the red case for a controller-only diff and a failing parity report. Add separate assertions for baseline growth, a documented candidate, baseline shrinkage, and missing or unusable pinned-base evidence. Keep report handling for unrelated suites intact. A pre-existing parity exception must identify the exact method and normalized path.
     Protected tooling requires a maintainer. Verify Python line and branch coverage for the policy and exercise the real Spring parity suite plus the generated client check for the documented case.
 

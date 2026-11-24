@@ -5,7 +5,7 @@
 Fix pass on the committed G0 cross-surface isolation evidence (base SHA `5a52d7ee`,
 branch `swarm/GATE-ISOLATION-SURFACES-447`). The original story is already implemented:
 one real-PostgreSQL integration test
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/IsolationAcrossSurfacesTest.java`)
+(`apps/api/src/test/java/com/aurevia/tenancy/clauses/IsolationAcrossSurfacesTest.java`)
 and one gap note (`docs/gates/g0-isolation-surfaces.md`). I re-ran the canonical test and every
 applicable in-scope gate: all are green. I found no reproducible defect in the two files in scope.
 
@@ -22,7 +22,7 @@ No production code, migration, dependency, threshold or tracker file was changed
 ARC-02 (tenant derivation, forced RLS, fail-closed context, jobs/search/exports/files) and
 IAM-01 (active membership, explicit organization selection, next-request authorization).
 OPS-07 is referenced only as the missing tenant-export requirement; G0 row of
-`SMARTCLINIC_V1_SPEC.md` section 9 and `S-G0-04` in `TODO.md` are the parent context.
+`PROJECT_V1_SPEC.md` section 9 and `S-G0-04` in `TODO.md` are the parent context.
 No new requirement ID was introduced.
 
 ## Risk class
@@ -32,15 +32,15 @@ test and documentation only; no runtime code is modified.
 
 ## Review owner
 
-Senior Java/Spring Boot and Test Engineer (skills loaded this pass: `smartclinic-delivery`,
-`smartclinic-senior-backend`, `smartclinic-test-engineer`, `smartclinic-senior-java-build`).
+Senior Java/Spring Boot and Test Engineer (skills loaded this pass: `orevia-delivery`,
+`orevia-senior-backend`, `orevia-test-engineer`, `orevia-senior-java-build`).
 Product Owner / Architect own the follow-up stories named in the gap note. Evidence source is
 **tool** (commands I executed) and **simulated specialist review** (skills/prior review). No
 human, clinical or patient evidence was available or claimed.
 
 ## Data changes
 
-None. The test creates and drops the disposable database `smartclinic_isolation_surfaces_it`
+None. The test creates and drops the disposable database `orevia_isolation_surfaces_it`
 with synthetic organizations, subjects and records only. No migration was reserved or written;
 the reserved-version rule is not exercised by this story.
 
@@ -64,9 +64,9 @@ All commands were run by the primary agent from the repository root on 2026-11-2
 source: **tool** (executed commands) unless marked reviewer/simulated.
 
 1. Canonical focused integration test (real PostgreSQL, synthetic fixtures), run AFTER the fix:
-   `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test`
+   `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test`
    Exit 0. Surefire report final line:
-   `Tests run: 7, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 9.345 s -- in com.aurevia.smartclinic.tenancy.clauses.IsolationAcrossSurfacesTest`
+   `Tests run: 7, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 9.345 s -- in com.aurevia.tenancy.clauses.IsolationAcrossSurfacesTest`
    The single skip is the story-mandated OPS-07 gap test, not a weakened gate. The two new
    write-side assertions are inside `missingTenantContextFailsClosedOnEverySurface` and passed on
    the first run (the behavior already existed; the assertions document it — this pass adds no

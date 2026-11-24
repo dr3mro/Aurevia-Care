@@ -184,22 +184,22 @@ BEGIN
 END $$;
 
 -- Every write is made by an authorized workflow through the runtime role.
-GRANT SELECT, INSERT ON public.instruction_fact_instruction TO smartclinic_app;
-GRANT SELECT, INSERT ON public.instruction_fact_publication TO smartclinic_app;
-GRANT SELECT, INSERT ON public.instruction_fact_dispatch TO smartclinic_app;
-GRANT SELECT, INSERT ON public.instruction_fact_first_view TO smartclinic_app;
-GRANT SELECT, INSERT ON public.instruction_fact_acknowledgment TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.instruction_fact_follow_up TO smartclinic_app;
-GRANT SELECT, INSERT ON public.instruction_fact_client_digest TO smartclinic_app;
-GRANT SELECT, INSERT ON public.instruction_fact_audit TO smartclinic_app;
-GRANT SELECT, INSERT ON public.instruction_fact_unit_assignment TO smartclinic_app;
+GRANT SELECT, INSERT ON public.instruction_fact_instruction TO orevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_publication TO orevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_dispatch TO orevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_first_view TO orevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_acknowledgment TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.instruction_fact_follow_up TO orevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_client_digest TO orevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_audit TO orevia_app;
+GRANT SELECT, INSERT ON public.instruction_fact_unit_assignment TO orevia_app;
 
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_instruction FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_publication FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_dispatch FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_first_view FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_acknowledgment FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.instruction_fact_follow_up FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_client_digest FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_audit FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_unit_assignment FROM smartclinic_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_instruction FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_publication FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_dispatch FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_first_view FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_acknowledgment FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.instruction_fact_follow_up FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_client_digest FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_audit FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.instruction_fact_unit_assignment FROM orevia_app;

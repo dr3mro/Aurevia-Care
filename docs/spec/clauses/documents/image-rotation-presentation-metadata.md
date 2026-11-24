@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.documents.clauses.ImageRotationPresentationMetadataTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/ImageRotationPresentationMetadataTest.java`),
+Test class `com.aurevia.documents.clauses.ImageRotationPresentationMetadataTest`
+(`apps/api/src/test/java/com/aurevia/documents/clauses/ImageRotationPresentationMetadataTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants and
 a fresh, issuer-scoped MRN for each chart. It drives the live controller routes:
 `POST /api/v1/documents/associations`, `GET /api/v1/documents/associations/{id}`,
@@ -52,23 +52,23 @@ and `GET /api/v1/documents/rendered/{id}/content`.
 
 Production classes exercised through those HTTP entry points:
 
-- `com.aurevia.smartclinic.documents.DocumentController` — thin adapter for the
+- `com.aurevia.documents.DocumentController` — thin adapter for the
   link, association, content and render routes.
-- `com.aurevia.smartclinic.documents.DocumentInputs` — accepts PDF, JPEG and
+- `com.aurevia.documents.DocumentInputs` — accepts PDF, JPEG and
   PNG originals, bounds rotation to 0/90/180/270 with a null-to-zero default
   and emits `INVALID_ROTATION` on both the link and render paths.
-- `com.aurevia.smartclinic.documents.DocumentService` — forwards rotation into
+- `com.aurevia.documents.DocumentService` — forwards rotation into
   the link command, re-verifies the database-owned digest on download, and
   stamps rotation only onto the immutable render.
-- `com.aurevia.smartclinic.documents.DocumentRepository` — persists and reads
+- `com.aurevia.documents.DocumentRepository` — persists and reads
   the separate `rotation_degrees` column; it never writes a caller-supplied
   digest.
-- `com.aurevia.smartclinic.documents.PdfRenderer` — writes `/Rotate` into the
+- `com.aurevia.documents.PdfRenderer` — writes `/Rotate` into the
   rendered page and hashes the whole body, including rotation, into the render's
   identifier.
-- `com.aurevia.smartclinic.documents.DocumentPolicy` — reception link/read,
+- `com.aurevia.documents.DocumentPolicy` — reception link/read,
   clinician-only render.
-- `com.aurevia.smartclinic.documents.DocumentModel` — immutable command and view
+- `com.aurevia.documents.DocumentModel` — immutable command and view
   records carrying the rotation value.
 - `db/migrations/V17__document_associations.sql` — the separate bounded rotation
   column, the insert trigger that derives `sha256` from the retained bytes, the
@@ -84,7 +84,7 @@ before/after invariance of the source original, and the refusal of an
 unsupported rotation on both the link and render paths.
 
 Verified locally:
-`SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=ImageRotationPresentationMetadataTest test`
+`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=ImageRotationPresentationMetadataTest test`
 — `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0` (see the story notes for the
 captured final line).
 

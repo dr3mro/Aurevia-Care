@@ -4,7 +4,7 @@
 
 Staff web meets, at the 75th percentile on a mid-range laptop over broadband, largest contentful paint of 2.5 s or less, interaction to next paint of 200 ms or less and layout shift of 0.1 or less.
 
-The authoritative wording is in [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md), requirement WEB-08.
+The authoritative wording is in [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md), requirement WEB-08.
 
 ## Status
 

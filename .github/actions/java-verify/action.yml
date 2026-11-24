@@ -31,17 +31,17 @@ runs:
       shell: bash
       env:
         NVD_API_KEY: ${{ inputs.nvd-api-key }}
-        SMARTCLINIC_PG_ADMIN: ${{ inputs.pg-admin }}
-        SMARTCLINIC_OIDC_ISSUER_URI: https://issuer.example.test/
-        SMARTCLINIC_OIDC_AUDIENCE: smartclinic-test-audience
-        SMARTCLINIC_OIDC_CLIENT_ID: smartclinic-test-client
-        SMARTCLINIC_OIDC_CLIENT_SECRET: smartclinic-test-secret
+        OREVIA_PG_ADMIN: ${{ inputs.pg-admin }}
+        OREVIA_OIDC_ISSUER_URI: https://issuer.example.test/
+        OREVIA_OIDC_AUDIENCE: orevia-test-audience
+        OREVIA_OIDC_CLIENT_ID: orevia-test-client
+        OREVIA_OIDC_CLIENT_SECRET: orevia-test-secret
       run: bash apps/api/check.sh
 
     - name: PostgreSQL migration and policy checks
       shell: bash
       env:
-        SMARTCLINIC_PG_ADMIN: ${{ inputs.pg-admin }}
+        OREVIA_PG_ADMIN: ${{ inputs.pg-admin }}
       run: bash db/check.sh
 
     - name: Upload verification reports

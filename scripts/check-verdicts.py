@@ -5,8 +5,8 @@ each reviewer's last line into its notes file under "## Review verdicts", one li
 reviewer:
 
     ## Review verdicts
-    - smartclinic-code-reviewer: GO
-    - smartclinic-coverage-auditor: NO-GO
+    - orevia-code-reviewer: GO
+    - orevia-coverage-auditor: NO-GO
     Required: the false side of the update in StoreX has no test
 
 A reviewer that is missing, answers NO-GO, or leaves a Critical or Required finding
@@ -25,11 +25,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # The reviewers every code change needs: correctness, 100% coverage, and security.
-REQUIRED = ("smartclinic-code-reviewer", "smartclinic-coverage-auditor", "smartclinic-devsecops")
+REQUIRED = ("orevia-code-reviewer", "orevia-coverage-auditor", "orevia-devsecops")
 
 SECTION = re.compile(r"(?mi)^##\s+Review verdicts\s*$")
 NEXT_SECTION = re.compile(r"(?m)^##\s")
-VERDICT = re.compile(r"^\s*[-*]?\s*`?(smartclinic-[a-z0-9-]+)`?\s*[:—-]\s*(GO|NO-GO)\b", re.I)
+VERDICT = re.compile(r"^\s*[-*]?\s*`?(orevia-[a-z0-9-]+)`?\s*[:—-]\s*(GO|NO-GO)\b", re.I)
 FINDING = re.compile(r"^\s*[-*]?\s*(Critical|Required)\s*[:—-]\s*(.+)$", re.I)
 # Files with nothing to review: prose, the trackers and the agents' own notes.
 DOCS_ONLY = re.compile(r"(\.md$|^docs/|^\.agent/|^tasks/)")

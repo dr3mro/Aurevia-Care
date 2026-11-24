@@ -15,7 +15,7 @@ Documentation-only fix pass. The existing decision pack already met every accept
 - Referenced but not decided: **RAD-01** (imaging interpretation privileges), **XCH-05** (critical-result escalation and human acknowledgment).
 - Gate/authority: section 9 G5 row (each site approves workflow, staffing and downtime drills; no unresolved critical-escalation defect) and section 10 ("Clinical templates, code sets, interpreting privileges, results escalation and coverage" — clinical safety lead and site medical director; approved dictionaries and timed workflow drills).
 
-Requirement IDs come from `SMARTCLINIC_V1_SPEC.md` (ADM-01 line 88, CLN-04 line 54, XCH-05 line 67, RAD-01 line 77, section 9 G5 row line 174, section 10 line 183) and story `GATE-DECISION-CLINICAL-APPROVALS` in `TODO.md`/`tasks/00300000-GATE-DECISION-CLINICAL-APPROVALS.md`.
+Requirement IDs come from `PROJECT_V1_SPEC.md` (ADM-01 line 88, CLN-04 line 54, XCH-05 line 67, RAD-01 line 77, section 9 G5 row line 174, section 10 line 183) and story `GATE-DECISION-CLINICAL-APPROVALS` in `TODO.md`/`tasks/00300000-GATE-DECISION-CLINICAL-APPROVALS.md`.
 
 ## Risk class
 
@@ -23,7 +23,7 @@ Safety-critical (evidence for patient-safety-relevant clinical configuration). T
 
 ## Review owner
 
-Accountable roles are the clinical safety lead and the site medical director (section 10), recorded in the document's intentionally empty approval record. The earlier pass obtained a simulated physician review (`smartclinic-physician-reviewer`) with no actionable findings; this pass changed no clinical content. A bounded independent QA review of this fix pass was requested (outcome recorded below). No human clinical or participant evidence was available or claimed.
+Accountable roles are the clinical safety lead and the site medical director (section 10), recorded in the document's intentionally empty approval record. The earlier pass obtained a simulated physician review (`orevia-physician-reviewer`) with no actionable findings; this pass changed no clinical content. A bounded independent QA review of this fix pass was requested (outcome recorded below). No human clinical or participant evidence was available or claimed.
 
 ## Data changes
 
@@ -62,7 +62,7 @@ Not applicable. Documentation-only change: no production line, branch, method or
 
 ## Clinical and architecture review
 
-Earlier pass (unchanged content): simulated review by `smartclinic-physician-reviewer` returned no actionable findings; it verified all five approval categories, the eight exact headings, the four-column options table, resolving links, real task IDs, no invented jurisdiction/region/partner/name/date, `Not approved` status, 12 unchecked boxes and empty approval cells. This pass changed only one tracker-reference sentence (which task produces clause notes); no clinical claim, approval category, option or evidence checklist item was altered, so that review remains applicable. A bounded independent QA review of the new reference was requested as a background advisory check and returned **no actionable findings** (simulated structural/repository review; it could not execute `check-docs.py` itself and corroborated the primary agent's exit-0 result by file reads). No human clinical sign-off was available or claimed.
+Earlier pass (unchanged content): simulated review by `orevia-physician-reviewer` returned no actionable findings; it verified all five approval categories, the eight exact headings, the four-column options table, resolving links, real task IDs, no invented jurisdiction/region/partner/name/date, `Not approved` status, 12 unchecked boxes and empty approval cells. This pass changed only one tracker-reference sentence (which task produces clause notes); no clinical claim, approval category, option or evidence checklist item was altered, so that review remains applicable. A bounded independent QA review of the new reference was requested as a background advisory check and returned **no actionable findings** (simulated structural/repository review; it could not execute `check-docs.py` itself and corroborated the primary agent's exit-0 result by file reads). No human clinical sign-off was available or claimed.
 
 ## Acceptance mapping
 

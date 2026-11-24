@@ -18,8 +18,8 @@ bean inside the tenant-guarded transaction (`TenantContext` + `TransactionTempla
 which binds `app.current_org` and `app.actor` for forced RLS. The clause behaviour,
 not a user-facing route, is what these tests prove.
 
-Test class: `com.aurevia.smartclinic.chart.clauses.ObGynCapturesLmpStructuredObstetricHistoryTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/ObGynCapturesLmpStructuredObstetricHistoryTest.java`):
+Test class: `com.aurevia.chart.clauses.ObGynCapturesLmpStructuredObstetricHistoryTest`
+(`apps/api/src/test/java/com/aurevia/chart/clauses/ObGynCapturesLmpStructuredObstetricHistoryTest.java`):
 
 - `clinicianSavesObgynNoteWithIsoLmpAndApprovedDictionaryCode` — a tenant admin defines
   the `obstetric_history` dictionary with the approved synthetic codes `G0P0`…`G4P0`
@@ -46,19 +46,19 @@ Test class: `com.aurevia.smartclinic.chart.clauses.ObGynCapturesLmpStructuredObs
 
 Production classes and artifacts exercised:
 
-- `com.aurevia.smartclinic.clinical.templates.TemplateKind` — `OBGYN` family.
-- `com.aurevia.smartclinic.clinical.templates.BaselineTemplates` — `fieldsFor(OBGYN)`
+- `com.aurevia.clinical.templates.TemplateKind` — `OBGYN` family.
+- `com.aurevia.clinical.templates.BaselineTemplates` — `fieldsFor(OBGYN)`
   defines `lmp` as a required DATE and `obstetricHistory` as a required CODE with
   dictionary key `obstetric_history`.
-- `com.aurevia.smartclinic.clinical.templates.TemplateService` — dictionary and
+- `com.aurevia.clinical.templates.TemplateService` — dictionary and
   version definition/approval, governance gate (`DICTIONARY_NOT_APPROVED`), note
   validation and role authorization (`CLINICIAN` save, `TENANT_ADMIN` define,
   `CLINICAL_GOVERNANCE` approve), plus freezing of field meanings and dictionary
   entries at save time.
-- `com.aurevia.smartclinic.clinical.templates.JdbcTemplateStore` — the production
+- `com.aurevia.clinical.templates.JdbcTemplateStore` — the production
   tenant-scoped JDBC store over the V80 tables.
-- `com.aurevia.smartclinic.tenant.TenantContext` and
-  `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager` — bind the tenant
+- `com.aurevia.tenant.TenantContext` and
+  `com.aurevia.tenant.TenantGuardTransactionManager` — bind the tenant
   GUCs for every store call under forced RLS.
 - `db/migrations/V80__template_store.sql` — `template_field_dictionary`,
   `template_version`, `template_version_sequence`, `template_note_revision` and
@@ -69,7 +69,7 @@ Production classes and artifacts exercised:
   synthetic site codes `G0P0`…`G4P0`. It is a global reference catalog, not a tenant
   seed; tenant dictionaries and approvals are created through `TemplateService`.
 
-Verified locally with `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally with `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=ObGynCapturesLmpStructuredObstetricHistoryTest test`: the Surefire
 report shows `tests="5" errors="0" skipped="0" failures="0"`.
 

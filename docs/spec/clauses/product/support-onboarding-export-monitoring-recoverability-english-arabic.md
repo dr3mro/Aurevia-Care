@@ -17,15 +17,15 @@ No human, partner, cloud-account or signed-decision evidence is held here.
 
 ### Onboarding — implemented in application code (OPS-08)
 
-- REST entry point [`ImportController.java`](../../../../apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing/ImportController.java)
-  and service [`OnboardingImportService.java`](../../../../apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing/OnboardingImportService.java)
+- REST entry point [`ImportController.java`](../../../../apps/api/src/main/java/com/aurevia/tenant/importing/ImportController.java)
+  and service [`OnboardingImportService.java`](../../../../apps/api/src/main/java/com/aurevia/tenant/importing/OnboardingImportService.java)
   implement the versioned manifest, deterministic mapping, dry-run findings,
   controlled batches and provenance-preserving import. The package also holds
   `ImportManifest`, `DryRunReport`, `ImportBatch`, `ImportProvenance`,
   `HistoricalSignature` and related types under
-  [`tenant/importing/`](../../../../apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing/ImportController.java).
-- Behaviour is tested by [`OnboardingImportServiceTest.java`](../../../../apps/api/src/test/java/com/aurevia/smartclinic/tenant/importing/OnboardingImportServiceTest.java)
-  and [`ImportControllerTest.java`](../../../../apps/api/src/test/java/com/aurevia/smartclinic/tenant/importing/ImportControllerTest.java).
+  [`tenant/importing/`](../../../../apps/api/src/main/java/com/aurevia/tenant/importing/ImportController.java).
+- Behaviour is tested by [`OnboardingImportServiceTest.java`](../../../../apps/api/src/test/java/com/aurevia/tenant/importing/OnboardingImportServiceTest.java)
+  and [`ImportControllerTest.java`](../../../../apps/api/src/test/java/com/aurevia/tenant/importing/ImportControllerTest.java).
 - Fail-closed contract evaluator [`infra/onboarding/onboarding.py`](../../../../infra/onboarding/onboarding.py)
   with gate [`infra/onboarding/check.sh`](../../../../infra/onboarding/check.sh)
   and handoff [`docs/operations/onboarding/README.md`](../../../operations/onboarding/README.md).
@@ -49,7 +49,7 @@ No human, partner, cloud-account or signed-decision evidence is held here.
 
 ### Monitoring — health probes and evidence evaluators only (OPS-03, OPS-05, WEB-05, WEB-06)
 
-- [`HealthController.java`](../../../../apps/api/src/main/java/com/aurevia/smartclinic/web/HealthController.java)
+- [`HealthController.java`](../../../../apps/api/src/main/java/com/aurevia/web/HealthController.java)
   serves the unauthenticated `/health/live` and `/health/ready` probes (WEB-05);
   readiness performs a status-only database round trip.
 - Signal and ownership catalog in [`docs/operations/recovery/operational-runbooks.md`](../../../operations/recovery/operational-runbooks.md)
@@ -82,11 +82,11 @@ No human, partner, cloud-account or signed-decision evidence is held here.
   test [`I18nProvider.direction.test.tsx`](../../../../apps/staff-web/src/i18n/I18nProvider.direction.test.tsx).
 - Patient app localization: [`messages.ts`](../../../../apps/patient-mobile/src/app/messages.ts)
   and direction test [`direction.test.ts`](../../../../apps/patient-mobile/src/app/direction.test.ts).
-- Server-side document rendering: [`PdfRenderer.java`](../../../../apps/api/src/main/java/com/aurevia/smartclinic/documents/PdfRenderer.java)
+- Server-side document rendering: [`PdfRenderer.java`](../../../../apps/api/src/main/java/com/aurevia/documents/PdfRenderer.java)
   derives `RTL` from the `ar` locale and emits a direction marker; its own
   Javadoc limits this slice to structure and direction, not glyph shaping or
-  font licensing. Tested by [`PdfRendererTest.java`](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/documents/PdfRendererTest.java).
-  Catalog direction support lives in [`Direction.java`](../../../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/Direction.java).
+  font licensing. Tested by [`PdfRendererTest.java`](../../../../apps/api/src/test/java/com/aurevia/it/documents/PdfRendererTest.java).
+  Catalog direction support lives in [`Direction.java`](../../../../apps/api/src/main/java/com/aurevia/catalog/dictionary/Direction.java).
 - Localization/RTL contract evaluator [`infra/accessibility/ux01_evidence.py`](../../../../infra/accessibility/ux01_evidence.py)
   and gate [`infra/accessibility/check-ux01.sh`](../../../../infra/accessibility/check-ux01.sh),
   documented in [`docs/operations/accessibility/localization-and-rtl.md`](../../../operations/accessibility/localization-and-rtl.md)
@@ -99,7 +99,7 @@ No human, partner, cloud-account or signed-decision evidence is held here.
   and signed-build/delivery-safety material under
   [`infra/delivery-safety/check.sh`](../../../../infra/delivery-safety/check.sh).
   The requirement boundary and the pre-production decision table are in
-  [`SMARTCLINIC_V1_SPEC.md`](../../../../SMARTCLINIC_V1_SPEC.md) (sections 8, 8.1
+  [`PROJECT_V1_SPEC.md`](../../../../.opencode/config/PROJECT_V1_SPEC.md) (sections 8, 8.1
   and 10). No market-specific policy pack or jurisdiction decision artifact is
   held in the repository.
 

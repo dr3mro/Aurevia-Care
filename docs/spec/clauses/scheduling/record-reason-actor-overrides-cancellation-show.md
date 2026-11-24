@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.scheduling.clauses.RecordReasonActorOverridesCancellationShowTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/scheduling/clauses/RecordReasonActorOverridesCancellationShowTest.java`),
+Test class `com.aurevia.scheduling.clauses.RecordReasonActorOverridesCancellationShowTest`
+(`apps/api/src/test/java/com/aurevia/scheduling/clauses/RecordReasonActorOverridesCancellationShowTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants
 sharing the same facility, resource and patient codes:
 
@@ -52,26 +52,26 @@ sharing the same facility, resource and patient codes:
 Production classes exercised through the HTTP entry point
 `POST /api/v1/appointments` and `POST /api/v1/appointments/{id}/{cancel,no-show}`:
 
-- `com.aurevia.smartclinic.web.AppointmentController` — thin adapter; parses
+- `com.aurevia.web.AppointmentController` — thin adapter; parses
   `If-Match` and the recorded `ReasonRequest`.
-- `com.aurevia.smartclinic.scheduling.AppointmentService` — `createOne` records
+- `com.aurevia.scheduling.AppointmentService` — `createOne` records
   the override reason, `checkAvailability` requires it outside approved windows,
   and `transition` / `cancel` / `noShow` require and forward the reason.
-- `com.aurevia.smartclinic.scheduling.AppointmentState` — `requiresReason()` is
+- `com.aurevia.scheduling.AppointmentState` — `requiresReason()` is
   true only for `CANCELLED` and `NO_SHOW`; `canTransitionTo` gates the branches.
-- `com.aurevia.smartclinic.scheduling.SchedulingInputs` — normalizes the reason
+- `com.aurevia.scheduling.SchedulingInputs` — normalizes the reason
   and rejects an over-long or blank value.
-- `com.aurevia.smartclinic.scheduling.AppointmentRepository` and
-  `com.aurevia.smartclinic.scheduling.AppointmentEvent` — persist the append-only
+- `com.aurevia.scheduling.AppointmentRepository` and
+  `com.aurevia.scheduling.AppointmentEvent` — persist the append-only
   history event with its reason and actor, exposed by `AppointmentView`.
 - `db/migrations/V8__scheduling.sql` — `appointment.override_reason` and
   `appointment_event.reason` columns, the `appointment_event_actor` trigger that
   derives `actor_id` from the authenticated `app.actor`, forced tenant RLS and
   the database state-machine guard.
-- `com.aurevia.smartclinic.authz.ActionPolicy` and `com.aurevia.smartclinic.tenant.TenantContext`
+- `com.aurevia.authz.ActionPolicy` and `com.aurevia.tenant.TenantContext`
   — action and tenant authorization re-checked inside the guarded transaction.
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecordReasonActorOverridesCancellationShowTest test`
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecordReasonActorOverridesCancellationShowTest test`
 — `Tests run: 11, Failures: 0, Errors: 0, Skipped: 0` (see the story notes for the
 captured final lines).
 

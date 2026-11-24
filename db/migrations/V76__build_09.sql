@@ -19,7 +19,7 @@ BEGIN
        OR NOT EXISTS (
               SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                WHERE n.nspname = 'public' AND p.proname = 'app_org')
-       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'smartclinic_app') THEN
+       OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'orevia_app') THEN
         RAISE NOTICE 'V76 medication catalog version deferred: prerequisites not installed yet';
         RETURN;
     END IF;
@@ -65,8 +65,8 @@ BEGIN
         BEFORE TRUNCATE ON public.medication_catalog_version
         FOR EACH STATEMENT EXECUTE FUNCTION public.reject_catalog_version_mutation()$ddl$;
 
-    EXECUTE $ddl$GRANT SELECT, INSERT ON public.medication_catalog_version TO smartclinic_app$ddl$;
-    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.medication_catalog_version FROM smartclinic_app$ddl$;
+    EXECUTE $ddl$GRANT SELECT, INSERT ON public.medication_catalog_version TO orevia_app$ddl$;
+    EXECUTE $ddl$REVOKE UPDATE, DELETE, TRUNCATE ON public.medication_catalog_version FROM orevia_app$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.reject_catalog_version_mutation() FROM PUBLIC$ddl$;
-    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.reject_catalog_version_mutation() TO smartclinic_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.reject_catalog_version_mutation() TO orevia_app$ddl$;
 END $rx01$;

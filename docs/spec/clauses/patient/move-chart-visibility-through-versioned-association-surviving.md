@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.patient.clauses.MoveChartVisibilityThroughVersionedAssociationSurvivingTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/MoveChartVisibilityThroughVersionedAssociationSurvivingTest.java`),
+Test class `com.aurevia.patient.clauses.MoveChartVisibilityThroughVersionedAssociationSurvivingTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/MoveChartVisibilityThroughVersionedAssociationSurvivingTest.java`),
 an HTTP-level integration test on real PostgreSQL with synthetic staff and patients:
 
 - `consolidationMovesDuplicateChartVisibilityToTheSurvivingRecord` — the second
@@ -32,11 +32,11 @@ Production classes exercised through the real HTTP entry point
 `POST /api/v1/duplicate-reviews/{reviewId}/consolidate` and
 `GET /api/v1/duplicate-reviews/{survivorId}/{duplicateId}`:
 
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationController` (thin adapter),
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService`
+- `com.aurevia.patient.consolidation.ConsolidationController` (thin adapter),
+- `com.aurevia.patient.consolidation.ConsolidationService`
   (`consolidate` appends the `ACTIVE` association under the pair lock and refuses
   a stale version, an already-moved duplicate or an already-aliased survivor),
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateRepository`
+- `com.aurevia.patient.consolidation.DuplicateRepository`
   (`insertAssociation` and `effectivePatientId`), and
 - the migration `db/migrations/V9__duplicate_review_consolidation.sql`:
   `chart_association` with forced RLS, append-only triggers, database-owned
@@ -44,13 +44,13 @@ Production classes exercised through the real HTTP entry point
   fold functions.
 
 Verified locally:
-`SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=MoveChartVisibilityThroughVersionedAssociationSurvivingTest test`
+`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=MoveChartVisibilityThroughVersionedAssociationSurvivingTest test`
 — 3 tests, 0 failures, 0 errors.
 
 Discovery found no other production implementation of this clause: the chart
 visibility fold lives only in `DuplicateRepository.effectivePatientId` and V9,
 and is called from `ConsolidationService` and the `ReviewDetail.chartVisibilityId`
-read path. The related `com.aurevia.smartclinic.patient.identity.ChartLink`
+read path. The related `com.aurevia.patient.identity.ChartLink`
 records account-to-chart linking (IAM-05), not duplicate-consolidation visibility.
 
 ## Gap

@@ -12,7 +12,7 @@ Not built
 
 Surveyed the repository with tool searches and file reads. The end-to-end suite and its npm script exist, but nothing runs them on a release candidate and no report is kept.
 
-- The clause is clause 3 of WEB-10 in [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) (line 158); line 163 assigns WEB-10 evidence to CI and the end-to-end suite.
+- The clause is clause 3 of WEB-10 in [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) (line 158); line 163 assigns WEB-10 evidence to CI and the end-to-end suite.
 - The suite itself is present: [smoke.spec.ts](../../../../apps/staff-web/e2e/smoke.spec.ts) checks the home page title and skip link, an axe scan that fails only on serious or critical violations, the Arabic right-to-left toggle and the absence of horizontal scrolling at 768 px. [playwright.config.ts](../../../../apps/staff-web/e2e/playwright.config.ts) defines the browser/viewport matrix and the injectable `E2E_BASE_URL`. [package.json](../../../../apps/staff-web/package.json) (line 19) declares the `e2e` script.
 - The report is not durable: `reporter: 'list'` in [playwright.config.ts](../../../../apps/staff-web/e2e/playwright.config.ts) (line 116) prints to the console. No `html`, `json`, `junit` or `blob` reporter writes a report file.
 - [README.md](../../../../apps/staff-web/README.md) (lines 67-71) states the suite is deliberately excluded from `check.sh` because the worker image has no browser binaries, and that "a person must add a CI job that installs Chromium and runs it".

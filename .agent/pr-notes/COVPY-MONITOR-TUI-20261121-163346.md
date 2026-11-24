@@ -25,7 +25,7 @@ Routine (test-only change; no production, contract, migration or deployment file
 
 ## Review owner
 
-Senior Python Tooling (`smartclinic-senior-python`) and the Tester/QA reviewers of the monitor
+Senior Python Tooling (`orevia-senior-python`) and the Tester/QA reviewers of the monitor
 coverage epic. No clinical reviewer needed.
 
 ## Data changes

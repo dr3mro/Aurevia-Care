@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.events.clauses.UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/events/clauses/UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest.java`).
+Test class: `com.aurevia.events.clauses.UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest`
+(path: `apps/api/src/test/java/com/aurevia/events/clauses/UseSyntheticContractFixturesIncludingDuplicatesCorrectionsTest.java`).
 All seven tests are active (none disabled) and pass against a real PostgreSQL database with synthetic
 fixtures only. The suite recreates its own database from the authoritative Flyway migrations, seeds two
 tenants with bounded roles and a confirmed synthetic order and patient, and drives every scenario of
@@ -46,16 +46,16 @@ neither the version watermark nor the deduplication key can leak between tests.
 
 Production classes exercised through the entry point and its transaction:
 
-- `com.aurevia.smartclinic.events.DeliveryController` — thin adapter binding the delivery routes and
+- `com.aurevia.events.DeliveryController` — thin adapter binding the delivery routes and
   delegating to the domain service.
-- `com.aurevia.smartclinic.events.DurableEventService` — consume deduplication and outcome recording,
+- `com.aurevia.events.DurableEventService` — consume deduplication and outcome recording,
   correction/out-of-order version gating, bounded retry and dead-letter review, replay, and identifier
   confirmation before linking.
-- `com.aurevia.smartclinic.events.DeliveryActions` — role matrix used for the wrong-role refusals.
-- `com.aurevia.smartclinic.events.DeliveryInputs` — trust-boundary validation, including the 64-hex digest
+- `com.aurevia.events.DeliveryActions` — role matrix used for the wrong-role refusals.
+- `com.aurevia.events.DeliveryInputs` — trust-boundary validation, including the 64-hex digest
   rule that makes the fixture placeholders safe to send.
-- `com.aurevia.smartclinic.events.DurableEventContract` — immutable records returned on the wire.
-- `com.aurevia.smartclinic.events.JdbcDeliveryStore` — tenant-guarded persistence behind `DeliveryStore`.
+- `com.aurevia.events.DurableEventContract` — immutable records returned on the wire.
+- `com.aurevia.events.JdbcDeliveryStore` — tenant-guarded persistence behind `DeliveryStore`.
 - `db/migrations/V55__durable_event_outbox.sql` — forced tenant row-level security and immutable fact
   ledgers that enforce the tenant concealment in the evidence above.
 - `contracts/events/README.md` (X-02) and `contracts/events/fixtures/partner-events.json` — the authoritative

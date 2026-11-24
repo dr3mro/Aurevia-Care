@@ -223,10 +223,10 @@ CREATE TRIGGER release_update_guard
     BEFORE UPDATE ON public.patient_release
     FOR EACH ROW EXECUTE FUNCTION public.guard_release_update();
 
-GRANT SELECT, INSERT, UPDATE ON public.patient_release TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.patient_release FROM smartclinic_app;
-GRANT SELECT, INSERT ON public.release_event, public.release_notification TO smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.release_event, public.release_notification FROM smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.patient_release TO orevia_app;
+REVOKE DELETE, TRUNCATE ON public.patient_release FROM orevia_app;
+GRANT SELECT, INSERT ON public.release_event, public.release_notification TO orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.release_event, public.release_notification FROM orevia_app;
 
 REVOKE ALL ON FUNCTION public.reject_release_ledger_mutation() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_release_actor_from_actor() FROM PUBLIC;

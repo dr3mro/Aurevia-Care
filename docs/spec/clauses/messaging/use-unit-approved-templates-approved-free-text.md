@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.UseUnitApprovedTemplatesApprovedFreeTextTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/UseUnitApprovedTemplatesApprovedFreeTextTest.java`),
+Test class `com.aurevia.messaging.clauses.UseUnitApprovedTemplatesApprovedFreeTextTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/UseUnitApprovedTemplatesApprovedFreeTextTest.java`),
 driven through the `InstructionController` HTTP adapter methods with an injected
 service, a synthetic tenant-keyed `InstructionStore.InMemory` and synthetic
 members. It is an adapter/service-tier test: it uses direct construction rather
@@ -57,14 +57,14 @@ durability or contract publication (see `## Gap`). All 12 tests are enabled:
 
 Production classes exercised through `POST /api/v1/patient-instructions/templates`
 and `POST /api/v1/patient-instructions`:
-`com.aurevia.smartclinic.messaging.instructions.InstructionController` (thin HTTP
-adapter), `com.aurevia.smartclinic.messaging.instructions.InstructionService`
+`com.aurevia.messaging.instructions.InstructionController` (thin HTTP
+adapter), `com.aurevia.messaging.instructions.InstructionService`
 (approval gate, template-versus-free-text branch, clinical authorization,
-context binding and unit assignment), `com.aurevia.smartclinic.messaging.instructions.InstructionActions`
-(bounded role matrix), `com.aurevia.smartclinic.messaging.instructions.InstructionStore`
-(`InMemory.approvedTemplate` tenant and unit filter), `com.aurevia.smartclinic.messaging.instructions.InstructionInputs`
+context binding and unit assignment), `com.aurevia.messaging.instructions.InstructionActions`
+(bounded role matrix), `com.aurevia.messaging.instructions.InstructionStore`
+(`InMemory.approvedTemplate` tenant and unit filter), `com.aurevia.messaging.instructions.InstructionInputs`
 (bounded input validation) and the records/enums in
-`com.aurevia.smartclinic.messaging.instructions.InstructionContract`.
+`com.aurevia.messaging.instructions.InstructionContract`.
 
 "Professional scope" is enforced here as the clinical-content authorization
 boundary: clinical templates and all free text require the clinician role, while

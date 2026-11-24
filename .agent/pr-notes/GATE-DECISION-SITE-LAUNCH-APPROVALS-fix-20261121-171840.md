@@ -1,4 +1,4 @@
-<!-- SMARTCLINIC_V1_SPEC.md section 11: fix pass for GATE-DECISION-SITE-LAUNCH-APPROVALS. Synthetic data only. -->
+<!-- PROJECT_V1_SPEC.md section 11: fix pass for GATE-DECISION-SITE-LAUNCH-APPROVALS. Synthetic data only. -->
 
 ## Summary
 
@@ -7,7 +7,7 @@ pack added in the base commit (`9d221b54`). No earlier-run findings were include
 in this worker's prompt, so I independently re-checked the committed document
 against every acceptance criterion in
 `tasks/00303000-GATE-DECISION-SITE-LAUNCH-APPROVALS.md`, the G5 row of section 9,
-section 10 and OPS-01/MSG-06 of `SMARTCLINIC_V1_SPEC.md`, and the real repository
+section 10 and OPS-01/MSG-06 of `PROJECT_V1_SPEC.md`, and the real repository
 file tree.
 
 Result: the document already satisfies all criteria. No acceptance defect was
@@ -51,7 +51,7 @@ human gates.
 ## Review owner
 
 Product owner with clinical safety lead, privacy lead and integration lead as the
-section-10 accountable roles. An independent bounded simulated `smartclinic-qa-reviewer`
+section-10 accountable roles. An independent bounded simulated `orevia-qa-reviewer`
 review of this decision pack was run for this fix pass (session
 `ses_e00dfc690ffeP6VQu8q4Q3y4vo`); its verdict, **PASS with no blocking, major or
 minor acceptance defects**, is recorded under Findings. No human, clinical or
@@ -103,7 +103,7 @@ actually executed, with final lines (tool evidence):
 - `test -d docs/spec/clauses` → missing, confirming the pack's "What is missing"
   statement that clause notes are owned by open tasks rather than linked files.
 
-Entry-point-to-evidence trace: `SMARTCLINIC_V1_SPEC.md` §8 OPS-01/MSG-06, §9 G5
+Entry-point-to-evidence trace: `PROJECT_V1_SPEC.md` §8 OPS-01/MSG-06, §9 G5
 row and §10 → `docs/launch/site-launch-approvals.md` decisions/checklist/approval
 record → `python3 -I scripts/check-docs.py` → exit 0.
 

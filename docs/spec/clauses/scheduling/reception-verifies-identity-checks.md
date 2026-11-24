@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.scheduling.clauses.ReceptionVerifiesIdentityChecksTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/scheduling/clauses/ReceptionVerifiesIdentityChecksTest.java`).
+Test class: `com.aurevia.scheduling.clauses.ReceptionVerifiesIdentityChecksTest`
+(path: `apps/api/src/test/java/com/aurevia/scheduling/clauses/ReceptionVerifiesIdentityChecksTest.java`).
 All five tests are active (none are disabled) and use synthetic data only.
 
 - `receptionVerifiesIdentityThenChecksInAndCreatesAnAuditedWorklistItem` — positive proof.
@@ -35,7 +35,7 @@ All five tests are active (none are disabled) and use synthetic data only.
 
 This class is clause-focused service-level evidence. The end-to-end HTTP proof that both
 routes persist to PostgreSQL is the existing
-`com.aurevia.smartclinic.it.schedulingcheckin.CheckInWorklistIntegrationTest`, which posts to
+`com.aurevia.it.schedulingcheckin.CheckInWorklistIntegrationTest`, which posts to
 `POST /api/v1/clinic/verifications` and `POST /api/v1/clinic/appointments/{id}/check-in` against
 the real controller and store. The thin controller delegation is covered separately by
 `it.schedulingcheckin.ClinicControllerTest`.
@@ -43,19 +43,19 @@ the real controller and store. The thin controller delegation is covered separat
 Production classes exercised through the normal command entry point
 (`CheckInService.verify` and `CheckInService.checkIn`):
 
-- `com.aurevia.smartclinic.scheduling.checkin.CheckInService` — owns identity evidence, the
+- `com.aurevia.scheduling.checkin.CheckInService` — owns identity evidence, the
   verification-before-check-in invariant, facility scope, version precondition and the
   transactional `SUCCESS`/`DENIED` audit pair.
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistPolicy` — grants `IDENTITY_VERIFY` and
+- `com.aurevia.scheduling.checkin.WorklistPolicy` — grants `IDENTITY_VERIFY` and
   `CHECK_IN` to `reception` and withholds `IDENTITY_VERIFY` from `clinical_assistant`.
-- `com.aurevia.smartclinic.scheduling.checkin.Verification` — immutable evidence record that
+- `com.aurevia.scheduling.checkin.Verification` — immutable evidence record that
   retains identifier categories, never their values.
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistItem` — the checked-in arrival entry.
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistRepository` — stores verification and
+- `com.aurevia.scheduling.checkin.WorklistItem` — the checked-in arrival entry.
+- `com.aurevia.scheduling.checkin.WorklistRepository` — stores verification and
   worklist rows and answers the assigned-facility scope check.
-- `com.aurevia.smartclinic.scheduling.AppointmentService` and `Appointment` — the shared owner
+- `com.aurevia.scheduling.AppointmentService` and `Appointment` — the shared owner
   of the `booked → checked_in` state machine and version.
-- `com.aurevia.smartclinic.scheduling.checkin.ClinicController` — the thin HTTP adapter that
+- `com.aurevia.scheduling.checkin.ClinicController` — the thin HTTP adapter that
   exposes both commands as `POST /api/v1/clinic/verifications` and
   `POST /api/v1/clinic/appointments/{id}/check-in`; its delegation is covered by
   `it.schedulingcheckin.ClinicControllerTest` and its real HTTP persistence by

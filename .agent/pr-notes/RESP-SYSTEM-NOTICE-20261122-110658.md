@@ -30,10 +30,10 @@ data, no persistence, no authorization, no API or contract change.
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) and Senior TypeScript
-(`smartclinic-senior-typescript`) skills were loaded and their mandatory
+Senior React and Vite (`orevia-senior-react`) and Senior TypeScript
+(`orevia-senior-typescript`) skills were loaded and their mandatory
 definition of done applied (`apps/staff-web/check.sh` incl. `tsc --noEmit`, no
-`any`/`@ts-ignore`). `smartclinic-delivery` skill loaded for the swarm loop.
+`any`/`@ts-ignore`). `orevia-delivery` skill loaded for the swarm loop.
 Specialists are advisory in this worker model; checks were executed by the
 primary worker, not delegated.
 
@@ -77,7 +77,7 @@ Commands run (all from `apps/staff-web` unless noted), with final lines:
 - Typecheck — `npm run typecheck` (`tsc --noEmit -p tsconfig.json`) → exit `0`, no output/`error TS…`.
   Final lines:
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   (TYPECHECK EXIT: 0 — clean, no diagnostics.)
@@ -138,7 +138,7 @@ separate launch gates.
 - No defect was found in the component or the shared stylesheet/hook.
 - Observation outside this scope (reported, not changed): `git grep -nE '^(<<<<<<<|>>>>>>>) '`
   finds conflict markers in three committed HL7 Java files
-  (`apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  (`apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java`, `Hl7Segment.java`). Both `HEAD` and `origin/main` contain them
   (introduced by `b6b349f0`); my `git merge --no-edit origin/main` was clean
   (`Already up to date`) and introduced no marker. Left untouched as out of scope

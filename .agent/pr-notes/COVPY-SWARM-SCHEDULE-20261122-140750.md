@@ -19,7 +19,7 @@ Routine — one new synthetic test file, no runtime, contract, schema or gate ch
 
 ## Review owner
 
-smartclinic-senior-python and smartclinic-test-engineer (advisory; no production change).
+orevia-senior-python and orevia-test-engineer (advisory; no production change).
 
 ## Data changes
 
@@ -106,7 +106,7 @@ Each previously uncovered line/branch and the test that now takes it:
   usable test results`). Per AGENTS.md these are worker-environment false positives; the
   integrator owns the full gate. No attempt was made to edit a protected file for them.
 - The tree already contains committed conflict markers in three unrelated Java files
-  (`apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  (`apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java`, `Hl7Segment.java`, lines around 6–18). They are in HEAD, not introduced
   by this change, and are outside this task's scope; left untouched for the integrator.
 

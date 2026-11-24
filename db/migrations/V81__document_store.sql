@@ -208,17 +208,17 @@ CREATE INDEX document_event_resource_idx
 -- verifies objects and appends facts. Immutable ledgers accept only inserts;
 -- their triggers cover the migration owner too. A verified object record may
 -- be removed after a quarantine failure, but no artifact row is ever deleted.
-GRANT SELECT, INSERT, UPDATE ON public.document_authorization TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.document_artifact TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.document_verified_object TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.document_pdf_job TO smartclinic_app;
-GRANT SELECT, INSERT ON public.document_pdf_binding TO smartclinic_app;
-GRANT SELECT, INSERT ON public.document_release TO smartclinic_app;
-GRANT SELECT, INSERT ON public.document_event TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.document_authorization FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.document_artifact FROM smartclinic_app;
-REVOKE TRUNCATE ON public.document_verified_object FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.document_pdf_job FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.document_pdf_binding FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.document_release FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.document_event FROM smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.document_authorization TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.document_artifact TO orevia_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.document_verified_object TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.document_pdf_job TO orevia_app;
+GRANT SELECT, INSERT ON public.document_pdf_binding TO orevia_app;
+GRANT SELECT, INSERT ON public.document_release TO orevia_app;
+GRANT SELECT, INSERT ON public.document_event TO orevia_app;
+REVOKE DELETE, TRUNCATE ON public.document_authorization FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.document_artifact FROM orevia_app;
+REVOKE TRUNCATE ON public.document_verified_object FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.document_pdf_job FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.document_pdf_binding FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.document_release FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.document_event FROM orevia_app;

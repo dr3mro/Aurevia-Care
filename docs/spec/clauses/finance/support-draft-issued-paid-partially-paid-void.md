@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.finance.clauses.SupportDraftIssuedPaidPartiallyPaidVoidTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/finance/clauses/SupportDraftIssuedPaidPartiallyPaidVoidTest.java`),
+Test class `com.aurevia.finance.clauses.SupportDraftIssuedPaidPartiallyPaidVoidTest`
+(`apps/api/src/test/java/com/aurevia/finance/clauses/SupportDraftIssuedPaidPartiallyPaidVoidTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants and
 synthetic finance, tenant-admin, reception and patient fixtures. It proves the
 clause through the real REST entry point, not just the domain enum:
@@ -46,22 +46,22 @@ clause through the real REST entry point, not just the domain enum:
   precondition is refused with 428 `PRECONDITION_REQUIRED` and a malformed one with
   422 `INVALID_IF_MATCH`, leaving the draft untouched.
 
-Production classes exercised through `com.aurevia.smartclinic.finance.FinanceController`
+Production classes exercised through `com.aurevia.finance.FinanceController`
 (`POST /api/v1/finance/invoices`, `/{id}/issue`, `/{id}/payments`, `/{id}/refunds`,
 `/{id}/void`, `GET /invoices`, `/invoices/{id}`):
 
-- `com.aurevia.smartclinic.finance.FinanceService` — `create`, `issue`, `postEntry`,
+- `com.aurevia.finance.FinanceService` — `create`, `issue`, `postEntry`,
   `voidInvoice`, `get`, `list`, `targetState`, version and state guards, and the
   403/404/409/412/422 refusal codes.
-- `com.aurevia.smartclinic.finance.FinanceContract.InvoiceState` — the five wire
+- `com.aurevia.finance.FinanceContract.InvoiceState` — the five wire
   states asserted above, the production `canTransitionTo` matrix (DRAFT ->
   ISSUED/VOID, ISSUED -> PARTIALLY_PAID/PAID/VOID, PARTIALLY_PAID -> ISSUED/PAID,
   PAID -> PARTIALLY_PAID/ISSUED, VOID terminal; this suite exercises the subset
   named in the test bullets) and `targetState` balance arithmetic.
-- `com.aurevia.smartclinic.finance.FinanceActions` and `FinanceInputs` — the
+- `com.aurevia.finance.FinanceActions` and `FinanceInputs` — the
   finance/tenant_admin/reception action matrix, approval separation and bounded
   entry inputs.
-- `com.aurevia.smartclinic.api.IfMatch` and `ApiException` — precondition parsing
+- `com.aurevia.api.IfMatch` and `ApiException` — precondition parsing
   and structured error codes.
 - `db/migrations/V45__finance.sql` — the five-state CHECK, RLS/FORCE RLS, the
   version+1 and append-only money guards and the transition trigger that mirrors

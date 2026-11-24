@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.authz.clauses.PermissionChangesTakeEffectNextProtectedRequestTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/PermissionChangesTakeEffectNextProtectedRequestTest.java`).
+Test class: `com.aurevia.authz.clauses.PermissionChangesTakeEffectNextProtectedRequestTest`
+(path: `apps/api/src/test/java/com/aurevia/authz/clauses/PermissionChangesTakeEffectNextProtectedRequestTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, using the `synthetic-auth`
 profile, two synthetic tenants and the same fixtures and database setup as the
 neighbouring `authz.clauses` tests. All four tests are active (none are disabled)
@@ -44,16 +44,16 @@ Test methods (one positive rule proof, three negative refusals):
 
 Production classes exercised through the normal HTTP entry points:
 
-- Controllers: `com.aurevia.smartclinic.web.StaffController` (the invite, deactivate
+- Controllers: `com.aurevia.web.StaffController` (the invite, deactivate
   and read commands).
-- Domain services and boundaries: `com.aurevia.smartclinic.staff.StaffService`, whose
+- Domain services and boundaries: `com.aurevia.staff.StaffService`, whose
   `authorize` helper calls `hasActiveMembership` and `activeRoles` on every command so
   a deactivation or expired grant denies the next request without waiting for a token
-  to expire; `com.aurevia.smartclinic.staff.StaffRepository`;
-  `com.aurevia.smartclinic.authz.ActionPolicy`;
-  `com.aurevia.smartclinic.tenant.TenantContext`;
-  `com.aurevia.smartclinic.web.TenantContextInterceptor` and
-  `com.aurevia.smartclinic.tenancy.FacilityService` (the same request-time check on a
+  to expire; `com.aurevia.staff.StaffRepository`;
+  `com.aurevia.authz.ActionPolicy`;
+  `com.aurevia.tenant.TenantContext`;
+  `com.aurevia.web.TenantContextInterceptor` and
+  `com.aurevia.tenancy.FacilityService` (the same request-time check on a
   second protected route family).
 
 Where the clause is implemented today (source survey result):
@@ -65,7 +65,7 @@ Where the clause is implemented today (source survey result):
   `valid_from`/`valid_to` effective-date gating. Deactivation appends a `revoked`
   event, so the fold turns inactive immediately. The functions are `SECURITY INVOKER`
   under forced row-level security, so a missing tenant context fails closed (ARC-02).
-- `apps/api/src/main/java/com/aurevia/smartclinic/staff/StaffService.java` re-resolves
+- `apps/api/src/main/java/com/aurevia/staff/StaffService.java` re-resolves
   membership and roles in each guarded transaction: `invite`, `deactivate`, `get`,
   `history` and `list` all call `authorize` before acting, and `deactivate` appends the
   revoked membership event. `StaffRepository` reads the two fold functions above.
@@ -75,7 +75,7 @@ Where the clause is implemented today (source survey result):
 - Contract: `contracts/openapi.yaml` declares `/api/v1/staff`,
   `/api/v1/staff/{subject}` and `/api/v1/staff/{subject}/deactivate`, which are the
   entry points the test drives.
-- The nearby `com.aurevia.smartclinic.authz.history.RoleHistoryIntegrationTest.permissionChangeDeniesTheNextProtectedRequest`
+- The nearby `com.aurevia.authz.history.RoleHistoryIntegrationTest.permissionChangeDeniesTheNextProtectedRequest`
   independently exercises the same rule through the role-history route.
 
 ## Gap

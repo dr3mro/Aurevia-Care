@@ -18,7 +18,7 @@ IAM-02 (immutable membership/role history; who/when/effective dates; next-reques
 
 ## Risk class
 
-Safety-critical (authorization/identity administration): negative authorization, cross-tenant concealment, immutability and next-request revocation are covered by explicit tests. Reviewers: `smartclinic-senior-spring-security`, `smartclinic-senior-database`, `smartclinic-senior-backend`, `smartclinic-test-engineer`, `smartclinic-qa-reviewer` (simulated plan/review; code and checks executed by this worker).
+Safety-critical (authorization/identity administration): negative authorization, cross-tenant concealment, immutability and next-request revocation are covered by explicit tests. Reviewers: `orevia-senior-spring-security`, `orevia-senior-database`, `orevia-senior-backend`, `orevia-test-engineer`, `orevia-qa-reviewer` (simulated plan/review; code and checks executed by this worker).
 
 ## Review owner
 

@@ -33,7 +33,7 @@ contract, migration, deployment or patient-facing change (docs/WORKFLOW.md).
 
 ## Review owner
 
-Senior Python Tooling (`smartclinic-senior-python`) and Test Engineer (`smartclinic-test-engineer`).
+Senior Python Tooling (`orevia-senior-python`) and Test Engineer (`orevia-test-engineer`).
 Evidence provenance: commands executed by the primary agent (tool evidence); read-only specialist
 reviews below (simulated/static review); no simulated user and no human participant. No clinical or
 real-patient evidence is claimed.
@@ -144,12 +144,12 @@ boundary or downtime behavior is touched.
 
 ## Review verdicts
 
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: GO
 
-(Also: smartclinic-plan-reviewer GO for the plan; smartclinic-test-engineer confirmed no new case
-is needed; smartclinic-context-optimizer supplied the symbol/stale-prose briefing.)
+(Also: orevia-plan-reviewer GO for the plan; orevia-test-engineer confirmed no new case
+is needed; orevia-context-optimizer supplied the symbol/stale-prose briefing.)
 
 ## Findings
 

@@ -16,7 +16,7 @@ Routine (docs/WORKFLOW.md): a contained, presentation-only change to one shared 
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) — bounded static review returned no blocking findings; its one non-blocking hygiene finding (RTL test leaking `dir`/`lang`) was fixed before the final gate. Orchestrator owns edits and checks. No clinical/human reviewer involved; evidence below is tool and simulated-review only.
+Senior React and Vite (`orevia-senior-react`) — bounded static review returned no blocking findings; its one non-blocking hygiene finding (RTL test leaking `dir`/`lang`) was fixed before the final gate. Orchestrator owns edits and checks. No clinical/human reviewer involved; evidence below is tool and simulated-review only.
 
 ## Data changes
 
@@ -40,13 +40,13 @@ Commands run (executed by the orchestrator; tool evidence):
 - Same command after implementation — GREEN: `Test Files  1 passed (1)`, `Tests  12 passed (12)`.
 - `npm run typecheck` — clean; final lines:
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   (no `error TS…` output, exit 0)
 - `npm run lint` — clean; final lines:
   ```
-  > smartclinic-staff-web@0.1.0 lint
+  > orevia-staff-web@0.1.0 lint
   > eslint . --max-warnings 0
   ```
   (no warnings, exit 0)
@@ -91,7 +91,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 - No blocking defects. `bash apps/staff-web/check.sh` is green with 100% per-file coverage.
 - The senior-react reviewer's only finding (RTL test left `dir`/`lang` on `documentElement`) was fixed by removing both attributes in the test's `afterEach`; final targeted run and full gate stayed green.
-- Pre-existing, unrelated repository defect observed while checking for conflicts: committed conflict markers exist at HEAD in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7Parser.java,Hl7ParseException.java,Hl7Segment.java}` (`<<<<<<< HEAD` / `>>>>>>> origin/swarm/BUILD-37-469`). Confirmed with `git show HEAD:apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7Parser.java`. Not introduced by this change and outside this task's scope; left untouched. `git merge --no-edit origin/main` reported "Already up to date", so no merge conflict was introduced here.
+- Pre-existing, unrelated repository defect observed while checking for conflicts: committed conflict markers exist at HEAD in `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7Parser.java,Hl7ParseException.java,Hl7Segment.java}` (`<<<<<<< HEAD` / `>>>>>>> origin/swarm/BUILD-37-469`). Confirmed with `git show HEAD:apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7Parser.java`. Not introduced by this change and outside this task's scope; left untouched. `git merge --no-edit origin/main` reported "Already up to date", so no merge conflict was introduced here.
 - No missing class was needed: `stack` and `touch` from `responsive.css` covered the layout; no stylesheet edit.
 
 ## Lessons for workers

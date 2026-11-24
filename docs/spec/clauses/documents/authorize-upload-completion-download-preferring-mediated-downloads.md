@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.documents.clauses.AuthorizeUploadCompletionDownloadPreferringMediatedDownloadsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/AuthorizeUploadCompletionDownloadPreferringMediatedDownloadsTest.java`).
+Test class `com.aurevia.documents.clauses.AuthorizeUploadCompletionDownloadPreferringMediatedDownloadsTest`
+(`apps/api/src/test/java/com/aurevia/documents/clauses/AuthorizeUploadCompletionDownloadPreferringMediatedDownloadsTest.java`).
 It is a synthetic, database-free clause test in the same `clauses` style as
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: the real
 `DocumentArtifactController` is constructed with the real `QuarantineService` and
@@ -73,28 +73,28 @@ Download authorization and mediation:
 
 Production classes and files surveyed and exercised by these entry points:
 
-- `com.aurevia.smartclinic.documents.DocumentArtifactController` —
+- `com.aurevia.documents.DocumentArtifactController` —
   `complete` (lines 109–113), `download` (136–140) and actor derivation (238–262):
   organization and subject come from the bound tenant context, roles from
   current active membership inside the tenant-guarded transaction, and the
   patient role fails closed.
-- `com.aurevia.smartclinic.documents.QuarantineService` — `complete` (136–149)
+- `com.aurevia.documents.QuarantineService` — `complete` (136–149)
   and `download` (187–201): authorize, tenant-scoped load, version precondition,
   state guard, object verification, compare-and-set and append-only facts;
   `verifyObject` (249–255), `requireVersion` (257–261) and `replace` (263–267).
-- `com.aurevia.smartclinic.documents.DocumentGuard` — `authorize`, `deny`,
+- `com.aurevia.documents.DocumentGuard` — `authorize`, `deny`,
   `conflict`, `stale`, `notFound` and `record`: one policy table for denials with
   durable, non-sensitive `ACCESS_DENIED` facts.
-- `com.aurevia.smartclinic.documents.DocumentActions` — `COMPLETE` and
+- `com.aurevia.documents.DocumentActions` — `COMPLETE` and
   `DOWNLOAD` grants; `document_reviewer` may do both, `pdf_renderer` neither,
   and `clinician` may download.
-- `com.aurevia.smartclinic.documents.DocumentContract` — `Actor`, `Artifact`,
+- `com.aurevia.documents.DocumentContract` — `Actor`, `Artifact`,
   `ArtifactState.downloadable()`, `CompleteRequest`, `MediatedDownload` (656–669,
   no payload, file name or URL), `DocumentEvent` and `EventType`
   (`UPLOAD_COMPLETED`, `DOWNLOADED`, `ACCESS_DENIED`).
-- `com.aurevia.smartclinic.documents.DocumentStore` / `JdbcDocumentStore` —
+- `com.aurevia.documents.DocumentStore` / `JdbcDocumentStore` —
   tenant-scoped `artifact`, `verifyObject`, `replaceArtifactIfVersion` and
-  `appendEvent`; `com.aurevia.smartclinic.api.IfMatch` — 428/422 precondition
+  `appendEvent`; `com.aurevia.api.IfMatch` — 428/422 precondition
   parsing (the 412 is raised by `requireVersion` and `replace` above).
 
 Broader evidence already present (not repeated here):

@@ -10,21 +10,21 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.tenancy.clauses.SeparateMigrationRuntimeRolesTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/SeparateMigrationRuntimeRolesTest.java`),
+Test class `com.aurevia.tenancy.clauses.SeparateMigrationRuntimeRolesTest`
+(`apps/api/src/test/java/com/aurevia/tenancy/clauses/SeparateMigrationRuntimeRolesTest.java`),
 a real-PostgreSQL integration test tagged `integration` under the `synthetic-auth`
 profile. It provisions both roles and a synthetic database, applies the real
-Flyway migrations as `smartclinic_migrate`, seeds two synthetic organizations and
+Flyway migrations as `orevia_migrate`, seeds two synthetic organizations and
 asserts on the PostgreSQL catalog and real JDBC connections rather than on
 synthetic-auth HTTP headers, which bind only application context.
 
 - `migrationAndRuntimeRolesAreDistinctAndLeastPrivileged` (positive) — the two
   roles exist as distinct login roles with `rolbypassrls`, `rolcreatedb` and
-  `rolcreaterole` all false; `smartclinic_app` owns no table in `public`, cannot
+  `rolcreaterole` all false; `orevia_app` owns no table in `public`, cannot
   create schema objects and is not the owner of `public.facility` (the migration
   role is); the six V2 tenant tables all have `relrowsecurity` and
   `relforcerowsecurity`, which is what constrains even the owning role; and the
-  application's autowired datasource authenticates as `smartclinic_app`, not as
+  application's autowired datasource authenticates as `orevia_app`, not as
   the migration owner.
 - `runtimeRoleCannotBypassForcedRowLevelSecurity` (negative) — with a
   transaction-local `app.current_org`, the runtime role sees only that tenant's
@@ -44,21 +44,21 @@ Production sources whose behavior is proven (none were changed by this test):
 - `db/migrations/V2__rls_roles_policies.sql` — `public.app_org()` from
   `app.current_org`, ENABLE and FORCE row level security with the
   `tenant_isolation` policy on the tenant tables, and least-privilege GRANTs to
-  `smartclinic_app`. It deliberately does not create the roles or grant DDL to
+  `orevia_app`. It deliberately does not create the roles or grant DDL to
   the runtime role.
 - `infra/app/start.sh` — the deployment bootstrap that this test mirrors:
-  provisions `smartclinic_migrate` and `smartclinic_app` as `LOGIN NOBYPASSRLS
-  NOCREATEDB NOCREATEROLE`, creates the database with `OWNER smartclinic_migrate`,
-  applies migrations as `smartclinic_migrate` and starts the API with
-  `SMARTCLINIC_DB_USER=smartclinic_app`. The test reproduces these settings on a
+  provisions `orevia_migrate` and `orevia_app` as `LOGIN NOBYPASSRLS
+  NOCREATEDB NOCREATEROLE`, creates the database with `OWNER orevia_migrate`,
+  applies migrations as `orevia_migrate` and starts the API with
+  `OREVIA_DB_USER=orevia_app`. The test reproduces these settings on a
   synthetic database; it does not execute the image bootstrap.
 - `apps/api/src/main/resources/application.yml` — the runtime datasource
-  defaults to `smartclinic_app` and Spring Flyway is disabled, so application
+  defaults to `orevia_app` and Spring Flyway is disabled, so application
   traffic never runs as the migration role.
 - `db/check.sh` — the existing database gate asserting the same catalog
   invariants (no BYPASSRLS, no tenant table owned by the runtime role, unset
   context yields no rows).
-- `apps/api/src/main/java/com/aurevia/smartclinic/tenant/TenantContext` and
+- `apps/api/src/main/java/com/aurevia/tenant/TenantContext` and
   `TenantGuardTransactionManager` — bind the selected organization to
   `app.current_org` inside each transaction, including on the runtime role's
   connections.

@@ -10,14 +10,14 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.ValidatePatientDestinationContextServerConnectionTimeTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ValidatePatientDestinationContextServerConnectionTimeTest.java`).
+Test class: `com.aurevia.messaging.clauses.ValidatePatientDestinationContextServerConnectionTimeTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/ValidatePatientDestinationContextServerConnectionTimeTest.java`).
 All six tests are active, pass with synthetic data only, and assert the authoritative
 HTTP status and machine-readable code of every refusal through `ApiException`.
 The proof boundary is the domain/service boundary: the real service is driven with
 the synthetic `InMemoryMessagingStore`, a fixed `Clock` and a synthetic
 `TenantContext`; no HTTP request, real identity or patient data is involved. The
-neighbouring `com.aurevia.smartclinic.messaging.units.CareUnitDirectoryServiceTest`
+neighbouring `com.aurevia.messaging.units.CareUnitDirectoryServiceTest`
 independently covers the same guards through the same service, including invitation,
 listing and revocation-conflict behaviour that this clause-proof deliberately does
 not repeat.
@@ -51,7 +51,7 @@ Test methods (one positive rule proof and five refusals):
 
 Production classes exercised:
 
-- `com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService` — `connect`
+- `com.aurevia.messaging.units.CareUnitDirectoryService` — `connect`
   validates the patient (`patientExists`, `verifiedCharts`), the destination
   (`findUnit` restricted to active units in the active tenant) and the context
   (`MessagingInputs.context`, then the exact unit, context and reference match
@@ -59,23 +59,23 @@ Production classes exercised:
   methods `requireActive`, `requireActiveConnectionById`,
   `requireActiveConnection` and `requireUsableConnection` re-derive tenant,
   membership, chart link, connection state and unit category on every call.
-- `com.aurevia.smartclinic.messaging.units.MessagingInputs` — total validation of
+- `com.aurevia.messaging.units.MessagingInputs` — total validation of
   identifiers, context and reference before any domain or store call.
-- `com.aurevia.smartclinic.messaging.units.MessagingActions` — bounded action
+- `com.aurevia.messaging.units.MessagingActions` — bounded action
   matrix separating patient self-service from staff actions.
-- `com.aurevia.smartclinic.messaging.units.MessagingContract` — the verified
+- `com.aurevia.messaging.units.MessagingContract` — the verified
   relationship, connection and server-derived verified-connection records.
-- `com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier`
+- `com.aurevia.messaging.conversations.PatientConnectionVerifier`
   and `ConversationUnitResolver` — the conversation-side port and the bounded
   unit-category vocabulary; every identity returned to a protected command is
   resolved from the tenant directory, never accepted from the client.
-- `com.aurevia.smartclinic.tenant.TenantContext` — the request-derived tenant
+- `com.aurevia.tenant.TenantContext` — the request-derived tenant
   and subject; a missing context fails closed.
 - Controllers that expose the guarded commands:
-  `com.aurevia.smartclinic.messaging.units.CareUnitController`
+  `com.aurevia.messaging.units.CareUnitController`
   (`GET /api/v1/care-units`, `POST` and `GET /api/v1/patient-unit-connections`,
   `POST /api/v1/patient-unit-connections/{id}/revoke`) and
-  `com.aurevia.smartclinic.messaging.conversations.ConversationController`
+  `com.aurevia.messaging.conversations.ConversationController`
   (protected conversation commands that reach the verifier through
   `ConversationService`).
 
@@ -89,7 +89,7 @@ Where the clause is implemented today (source survey result):
   cannot create a parallel conversation.
 - `db/migrations/V91__staff_messaging.sql` adds the staff-to-staff messaging
   tables under the same forced row-level-security policy.
-- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/units/` holds the
+- `apps/api/src/main/java/com/aurevia/messaging/units/` holds the
   directory service, store interface, JDBC implementation, inputs, actions and
   contracts; the conversation-side verifier and resolver live under
   `messaging/conversations/`.

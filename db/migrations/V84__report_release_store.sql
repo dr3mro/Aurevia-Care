@@ -128,11 +128,11 @@ CREATE TRIGGER report_revision_identity_guard
 
 -- Current link and revision state is updated on each protected action; the
 -- decision ledger is append-only for the runtime role.
-GRANT SELECT, INSERT, UPDATE ON public.report_chart_link TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.report_release_revision TO smartclinic_app;
-GRANT SELECT, INSERT ON public.report_release_history TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.report_chart_link FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.report_release_revision FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.report_release_history FROM smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.report_chart_link TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.report_release_revision TO orevia_app;
+GRANT SELECT, INSERT ON public.report_release_history TO orevia_app;
+REVOKE DELETE, TRUNCATE ON public.report_chart_link FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.report_release_revision FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.report_release_history FROM orevia_app;
 
 REVOKE ALL ON FUNCTION public.guard_report_revision_update() FROM PUBLIC;

@@ -129,6 +129,6 @@ scenario on synthetic data; a real clinician and patient acceptance session is
 a separate G5 activity.
 
 The authoritative clauses are in the
-[product specification](../../../SMARTCLINIC_V1_SPEC.md). The authorization
+[product specification](../../../.opencode/config/PROJECT_V1_SPEC.md). The authorization
 decisions expected at steps 2, 15, 16 and 17 are defined in the
 [permission matrix](permissions.md).

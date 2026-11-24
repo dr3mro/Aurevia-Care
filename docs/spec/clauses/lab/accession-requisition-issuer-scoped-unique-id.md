@@ -10,13 +10,13 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.lab.clauses.AccessionRequisitionIssuerScopedUniqueIdTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/AccessionRequisitionIssuerScopedUniqueIdTest.java`).
+Test class: `com.aurevia.lab.clauses.AccessionRequisitionIssuerScopedUniqueIdTest`
+(`apps/api/src/test/java/com/aurevia/lab/clauses/AccessionRequisitionIssuerScopedUniqueIdTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic tenants that each register their own patient, following
 the fixtures and database setup of the neighbouring `it/lab/SpecimenAccessionIsolationTest`
 and the other `*/clauses` acceptance tests. A dedicated database
-(`smartclinic_lab01_clause1_it`) is dropped, recreated and migrated from
+(`orevia_lab01_clause1_it`) is dropped, recreated and migrated from
 `filesystem:../../db/migrations` so the durable rows are read back under forced
 row-level security with `app.current_org` set per tenant.
 
@@ -46,18 +46,18 @@ Test methods (one positive rule proof and four negative refusals):
 
 Production classes the test exercises:
 
-- HTTP entry point: `com.aurevia.smartclinic.lab.accession.LabAccessionController`
+- HTTP entry point: `com.aurevia.lab.accession.LabAccessionController`
   (`POST /api/v1/lab/accessions`, `GET /api/v1/lab/accessions/{id}`).
-- Domain service: `com.aurevia.smartclinic.lab.accession.LabAccessionService`
+- Domain service: `com.aurevia.lab.accession.LabAccessionService`
   (`accession`, including the pre-check, duplicate-key race guard, role authorization
   and audit on each outcome).
-- SQL boundary and policy: `com.aurevia.smartclinic.lab.accession.LabAccessionRepository`
-  (`accessionExists`, `insert`, `findById`), `com.aurevia.smartclinic.lab.accession.LabActionPolicy`
-  (`ACCESSION_CREATE` allows `lab_collector` only), `com.aurevia.smartclinic.lab.accession.LabInputs`
-  (bounded issuer and number), `com.aurevia.smartclinic.lab.accession.AccessionCommands.AccessionRequest`.
-- Tenant scope: `com.aurevia.smartclinic.tenant.TenantContext`,
-  `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager`,
-  `com.aurevia.smartclinic.web.TenantContextInterceptor`.
+- SQL boundary and policy: `com.aurevia.lab.accession.LabAccessionRepository`
+  (`accessionExists`, `insert`, `findById`), `com.aurevia.lab.accession.LabActionPolicy`
+  (`ACCESSION_CREATE` allows `lab_collector` only), `com.aurevia.lab.accession.LabInputs`
+  (bounded issuer and number), `com.aurevia.lab.accession.AccessionCommands.AccessionRequest`.
+- Tenant scope: `com.aurevia.tenant.TenantContext`,
+  `com.aurevia.tenant.TenantGuardTransactionManager`,
+  `com.aurevia.web.TenantContextInterceptor`.
 
 Where the clause is implemented today (survey result):
 
@@ -66,10 +66,10 @@ Where the clause is implemented today (survey result):
   row-level security on both `lab_accession` and `lab_accession_event` via a
   `tenant_isolation` policy on `organization_id = public.app_org()`, an append-only
   history ledger, database-owned author and version columns, and immutability triggers.
-- Domain: `apps/api/src/main/java/com/aurevia/smartclinic/lab/accession` implements the
+- Domain: `apps/api/src/main/java/com/aurevia/lab/accession` implements the
   issuer-scoped accession check and its concurrent duplicate-key backstop, the bounded
   laboratory action policy and input validation, and the tenant-guarded repository.
-- Controller: `apps/api/src/main/java/com/aurevia/smartclinic/lab/accession/LabAccessionController.java`.
+- Controller: `apps/api/src/main/java/com/aurevia/lab/accession/LabAccessionController.java`.
 - Contract: `POST /api/v1/lab/accessions` is currently baselined as a missing route in
   `contracts/openapi.yaml`; adding the OpenAPI entry is a separate
   contract story and is intentionally out of scope for this clause-evidence change.

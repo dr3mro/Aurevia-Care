@@ -162,9 +162,9 @@ $$;
 
 REVOKE ALL ON FUNCTION public.next_trend_comparability_version(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.current_trend_comparability(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.next_trend_comparability_version(text) TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.current_trend_comparability(text) TO smartclinic_app;
-GRANT SELECT, INSERT ON public.trend_observation TO smartclinic_app;
-GRANT SELECT, INSERT ON public.trend_comparability TO smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.trend_observation FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.trend_comparability FROM smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.next_trend_comparability_version(text) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.current_trend_comparability(text) TO orevia_app;
+GRANT SELECT, INSERT ON public.trend_observation TO orevia_app;
+GRANT SELECT, INSERT ON public.trend_comparability TO orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.trend_observation FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.trend_comparability FROM orevia_app;

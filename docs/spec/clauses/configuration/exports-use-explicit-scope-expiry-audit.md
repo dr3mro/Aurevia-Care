@@ -15,14 +15,14 @@ scope, bounded expiry and audit). It does not claim OpenAPI publication or live
 deployment; those are separate concerns. The `tenant_admin` permission predicate
 itself is proven by `ExportPermissionGuardTest`, and forced-RLS invisibility of
 another tenant's job row is proven by
-`com.aurevia.smartclinic.tenant.export.TenantExportIntegrationTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenant/export/TenantExportIntegrationTest.java`,
+`com.aurevia.tenant.export.TenantExportIntegrationTest`
+(`apps/api/src/test/java/com/aurevia/tenant/export/TenantExportIntegrationTest.java`,
 `aJobFromAnotherTenantIsInvisibleAndExpiryIsDurable`); this class exercises those
 boundaries through the service and HTTP entry points.
 
 
-Test class `com.aurevia.smartclinic.configuration.clauses.ExportsUseExplicitScopeExpiryAuditTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/configuration/clauses/ExportsUseExplicitScopeExpiryAuditTest.java`).
+Test class `com.aurevia.configuration.clauses.ExportsUseExplicitScopeExpiryAuditTest`
+(`apps/api/src/test/java/com/aurevia/configuration/clauses/ExportsUseExplicitScopeExpiryAuditTest.java`).
 It reuses the synthetic fixtures of `TenantExportServiceTest` (mocked
 `ExportStore`, `ExportPermissionGuard` and `AuditAppender`, a fixed `Clock`,
 `FileSystemObjectStore` and `TenantContext.set/clear`) and the standalone MockMvc
@@ -57,17 +57,17 @@ plus `ApiErrorHandler` fixture of `ExportControllerTest`. All data is synthetic.
   trail and cleanup are not left in an orphaned state.
 
 Production classes exercised by the entry point:
-`com.aurevia.smartclinic.tenant.export.ExportController` (thin injected HTTP
+`com.aurevia.tenant.export.ExportController` (thin injected HTTP
 adapter for `/api/v1/tenant/exports`),
-`com.aurevia.smartclinic.tenant.export.TenantExportService` (`start`, `download`,
+`com.aurevia.tenant.export.TenantExportService` (`start`, `download`,
 `expire` and the `authorize` guard),
-`com.aurevia.smartclinic.tenant.export.ExportPermissionGuard` (`mayExport`,
+`com.aurevia.tenant.export.ExportPermissionGuard` (`mayExport`,
 bounded to an active `tenant_admin`),
-`com.aurevia.smartclinic.tenant.export.ExportModel.Manifest` (organization and
+`com.aurevia.tenant.export.ExportModel.Manifest` (organization and
 policy version), `ExportModel.ExportJob` (`expired`, `isExpired`) and
 `ExportModel.ExportResult` (explicit expiry), with tenant RLS/FORCE RLS supplied
 by `db/migrations/V89__tenant_export.sql`. Audit events are appended through
-`com.aurevia.smartclinic.audit.AuditAppender` under the OPS-02 chain.
+`com.aurevia.audit.AuditAppender` under the OPS-02 chain.
 
 Verified locally:
 `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=ExportsUseExplicitScopeExpiryAuditTest test`

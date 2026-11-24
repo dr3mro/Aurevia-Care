@@ -10,10 +10,10 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.documents.clauses.GenerateImmutableVersionedPdfsEnglishArabicEmbeddedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/GenerateImmutableVersionedPdfsEnglishArabicEmbeddedTest.java`),
+Test class: `com.aurevia.documents.clauses.GenerateImmutableVersionedPdfsEnglishArabicEmbeddedTest`
+(`apps/api/src/test/java/com/aurevia/documents/clauses/GenerateImmutableVersionedPdfsEnglishArabicEmbeddedTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile with its own
-Flyway-migrated database `smartclinic_doc_pdf_clause_it`. It drives the real HTTP
+Flyway-migrated database `orevia_doc_pdf_clause_it`. It drives the real HTTP
 entry points `POST /api/v1/documents/rendered`,
 `GET /api/v1/documents/rendered/{id}` and
 `GET /api/v1/documents/rendered/{id}/content` with synthetic users, a synthetic
@@ -70,21 +70,21 @@ Entry-point-to-test trace:
 
 Production classes and files exercised by this request path:
 
-- `com.aurevia.smartclinic.documents.DocumentController` — the thin HTTP adapter
+- `com.aurevia.documents.DocumentController` — the thin HTTP adapter
   for the render and content routes; the service is injected, not constructed.
-- `com.aurevia.smartclinic.documents.DocumentService` — validation, the
+- `com.aurevia.documents.DocumentService` — validation, the
   `DOCUMENT_RENDER` authorization check, version allocation, render dispatch,
   the tenant-guarded transaction and the audit row.
-- `com.aurevia.smartclinic.documents.PdfRenderer` — the deterministic single-page
+- `com.aurevia.documents.PdfRenderer` — the deterministic single-page
   PDF byte builder, `direction(en|ar)` derivation, flow-direction markers, page
   number, provenance and print-profile objects.
-- `com.aurevia.smartclinic.documents.DocumentModel.PdfSpec`, `RenderRequest`,
+- `com.aurevia.documents.DocumentModel.PdfSpec`, `RenderRequest`,
   `RenderedDocument` — the render input and immutable metadata value types.
-- `com.aurevia.smartclinic.documents.DocumentPolicy` — the action matrix that
+- `com.aurevia.documents.DocumentPolicy` — the action matrix that
   reserves `DOCUMENT_RENDER` for the `clinician` role.
-- `com.aurevia.smartclinic.documents.DocumentInputs` — the boundary validator
+- `com.aurevia.documents.DocumentInputs` — the boundary validator
   that restricts the locale to `en` or `ar` and returns `INVALID_LOCALE`.
-- `com.aurevia.smartclinic.documents.DocumentRepository` — the RLS-bounded SQL
+- `com.aurevia.documents.DocumentRepository` — the RLS-bounded SQL
   boundary that reads the rendered row and serves the retained bytes.
 - `db/migrations/V17__document_associations.sql` — the `rendered_document` table,
   its forced row-level security, the version index and the trigger that derives
@@ -116,7 +116,7 @@ Closing the gap needs **two** separate production tasks, both outside this
 test-only story's scope: (1) select and integrate an approved, licensed PDF
 rendering library with a real embedded font pipeline — changing
 `apps/api/pom.xml` (the vetted dependency) and
-`apps/api/src/main/java/com/aurevia/smartclinic/documents/PdfRenderer.java`
+`apps/api/src/main/java/com/aurevia/documents/PdfRenderer.java`
 (`FONT_HEX`, the object-7 stream and its `/Length1`, and a subset `/BaseFont`
 tag), with security, dependency and coverage review; (2) implement verified
 Arabic glyph shaping and font subsetting in `PdfRenderer.visualOrder()` and the

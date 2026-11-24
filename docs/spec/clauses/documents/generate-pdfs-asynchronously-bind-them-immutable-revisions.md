@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.documents.clauses.GeneratePdfsAsynchronouslyBindThemImmutableRevisionsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/GeneratePdfsAsynchronouslyBindThemImmutableRevisionsTest.java`),
+Test class `com.aurevia.documents.clauses.GeneratePdfsAsynchronouslyBindThemImmutableRevisionsTest`
+(`apps/api/src/test/java/com/aurevia/documents/clauses/GeneratePdfsAsynchronouslyBindThemImmutableRevisionsTest.java`),
 a focused domain-service test over a tenant-scoped in-memory store, a fixed
 clock and synthetic actors in two synthetic tenants:
 
@@ -41,12 +41,12 @@ clock and synthetic actors in two synthetic tenants:
   corrected revision succeeds only with its own fresh job and binding.
 
 Production classes exercised through their public commands:
-`com.aurevia.smartclinic.documents.PdfBindingService` (requestRender,
+`com.aurevia.documents.PdfBindingService` (requestRender,
 pickupRender, finishRender, bind, release and the sameWork, sameRevision,
 pdfReady and requireVersion decisions),
-`com.aurevia.smartclinic.documents.DocumentGuard` (role and tenant checks and
-audit facts), `com.aurevia.smartclinic.documents.DocumentActions` (role grants)
-and `com.aurevia.smartclinic.documents.DocumentContract` (immutable commands and
+`com.aurevia.documents.DocumentGuard` (role and tenant checks and
+audit facts), `com.aurevia.documents.DocumentActions` (role grants)
+and `com.aurevia.documents.DocumentContract` (immutable commands and
 states). The HTTP entry points are `DocumentArtifactController` routes
 `POST /api/v1/documents/artifacts/renders`, `.../renders/{jobId}/pickup`,
 `.../renders/{jobId}/finish`, `.../bindings` and `.../releases`, already covered

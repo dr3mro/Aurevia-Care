@@ -1,15 +1,15 @@
 {
   "controller-builds": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentController.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/radiology/ImagingController.java"
+    "apps/api/src/main/java/com/aurevia/messaging/appointments/PatientAppointmentController.java",
+    "apps/api/src/main/java/com/aurevia/radiology/ImagingController.java"
   ],
   "fb-suppression": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/web/TenantContextInterceptor.java"
+    "apps/api/src/main/java/com/aurevia/web/TenantContextInterceptor.java"
   ],
   "inmemory-in-main": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/InMemoryDecisionSink.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/InMemoryTemplateStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/InMemoryPatientAccessStore.java"
+    "apps/api/src/main/java/com/aurevia/api/authorization/InMemoryDecisionSink.java",
+    "apps/api/src/main/java/com/aurevia/clinical/templates/InMemoryTemplateStore.java",
+    "apps/api/src/main/java/com/aurevia/messaging/enrollment/InMemoryPatientAccessStore.java"
   ],
   "requirement-id-name": [
     "db/migrations/V21__xch03_order_response.sql:xch03_event",
@@ -27,11 +27,11 @@
     "db/migrations/V44__rx02_prescription_transmission.sql:rx02_submission"
   ],
   "store-without-durable": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/DeviceTokenStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions/InstructionStore.java"
+    "apps/api/src/main/java/com/aurevia/messaging/appointments/DeviceTokenStore.java",
+    "apps/api/src/main/java/com/aurevia/messaging/appointments/PatientAppointmentStore.java",
+    "apps/api/src/main/java/com/aurevia/messaging/instructions/InstructionStore.java"
   ],
   "unreferenced-service": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/TemplateService.java"
+    "apps/api/src/main/java/com/aurevia/clinical/templates/TemplateService.java"
   ]
 }

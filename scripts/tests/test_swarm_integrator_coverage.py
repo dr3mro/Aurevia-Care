@@ -295,7 +295,7 @@ class RulesPullRequestTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.root)
         self.patch = self.root / "rules.patch"
         self.patch.write_text(
-            "diff --git a/AGENTS.md b/AGENTS.md\n--- a/AGENTS.md\n+++ b/AGENTS.md\n"
+            "diff --git a/.opencode/setup/AGENTS.md b/.opencode/setup/AGENTS.md\n--- a/.opencode/setup/AGENTS.md\n+++ b/.opencode/setup/AGENTS.md\n"
             "+A synthetic instruction.\n")
 
     def open(self, returncode=0, gh_result="/pull/42", patch_text=None, exists=True):
@@ -485,7 +485,6 @@ class IntegratorBatchTest(unittest.TestCase):
         self.repo()
         merged = mock.Mock()
         with mock.patch.object(swarm, "gh"), \
-                mock.patch.object(swarm, "migrate_tasks"), \
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=["scripts/swarm.py"]), \
@@ -498,7 +497,6 @@ class IntegratorBatchTest(unittest.TestCase):
         self.repo()
         out = io.StringIO()
         with mock.patch.object(swarm, "gh"), \
-                mock.patch.object(swarm, "migrate_tasks"), \
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=[]), \
@@ -527,7 +525,6 @@ class IntegratorBatchTest(unittest.TestCase):
             return "main-sha\n"
 
         with mock.patch.object(swarm, "gh"), \
-                mock.patch.object(swarm, "migrate_tasks"), \
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=[]), \
@@ -550,7 +547,6 @@ class IntegratorBatchTest(unittest.TestCase):
             1, ("push",), stderr="error: GH013: Repository rule violations found for refs/heads/main."
         )
         with mock.patch.object(swarm, "gh") as gh, \
-                mock.patch.object(swarm, "migrate_tasks"), \
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=[]), \
@@ -587,7 +583,6 @@ class IntegratorBatchTest(unittest.TestCase):
             return "main-sha\n"
 
         with mock.patch.object(swarm, "gh"), \
-                mock.patch.object(swarm, "migrate_tasks"), \
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=[]), \

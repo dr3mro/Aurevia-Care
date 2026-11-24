@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.audit.clauses.CannotUnlockOtherOrganizationsDataTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/audit/clauses/CannotUnlockOtherOrganizationsDataTest.java`),
+Test class: `com.aurevia.audit.clauses.CannotUnlockOtherOrganizationsDataTest`
+(`apps/api/src/test/java/com/aurevia/audit/clauses/CannotUnlockOtherOrganizationsDataTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the
 HTTP entry points of the emergency-access feature against two synthetic organizations
 (`ORG_A` and `ORG_B`), both with the break-glass configuration approved and a tenant-local
@@ -33,23 +33,23 @@ HTTP entry points of the emergency-access feature against two synthetic organiza
 
 Production classes and files exercised by these requests:
 
-- `com.aurevia.smartclinic.authz.access.AccessController` — thin HTTP adapter for
+- `com.aurevia.authz.access.AccessController` — thin HTTP adapter for
   `POST /api/v1/access/emergency`, `GET /api/v1/access/emergency/active` and
   `POST /api/v1/access/emergency/{id}/review`; the organization and actor come only
   from request headers, and the body-supplied facility code is validated and scoped
   to the active organization by the domain service and forced RLS.
-- `com.aurevia.smartclinic.authz.access.EmergencyAccessService` — re-reads active
+- `com.aurevia.authz.access.EmergencyAccessService` — re-reads active
   membership, the clinician role, site approval and facility scope inside each guarded
   transaction, and persists the grant under the active organization only.
-- `com.aurevia.smartclinic.authz.access.AccessRepository` — `hasActiveMembership`,
+- `com.aurevia.authz.access.AccessRepository` — `hasActiveMembership`,
   `insertGrant`, `latestGrant`, `findGrant`, `reviewGrant`, `effectiveConfig`,
   `facilityExists`, `outsideAssignedFacilities` and `appendAudit`, all bound by forced
   row-level security.
-- `com.aurevia.smartclinic.authz.access.AccessRules` — validates facility, reason and
+- `com.aurevia.authz.access.AccessRules` — validates facility, reason and
   duration before any authorization decision.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` — binds the selected
-  organization from `X-Active-Organization`; `com.aurevia.smartclinic.tenant.TenantContext`
-  and `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager` bind it to
+- `com.aurevia.web.TenantContextInterceptor` — binds the selected
+  organization from `X-Active-Organization`; `com.aurevia.tenant.TenantContext`
+  and `com.aurevia.tenant.TenantGuardTransactionManager` bind it to
   `app.current_org` inside the transaction.
 - `db/migrations/V11__emergency_and_support_access.sql` — tenant-owned
   `emergency_access_grant` with forced row-level security and a composite facility

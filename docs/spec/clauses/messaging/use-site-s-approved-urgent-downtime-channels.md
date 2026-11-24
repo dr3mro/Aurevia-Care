@@ -13,8 +13,8 @@ Proven by tests
 Two enabled HTTP-level acceptance tests exercise the clause through the normal
 `POST /api/v1/care-units/{unitId}/service-profiles` entry point:
 
-- Test class: `com.aurevia.smartclinic.messaging.clauses.UseSiteSApprovedUrgentDowntimeChannelsTest`
-  (`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/UseSiteSApprovedUrgentDowntimeChannelsTest.java`).
+- Test class: `com.aurevia.messaging.clauses.UseSiteSApprovedUrgentDowntimeChannelsTest`
+  (`apps/api/src/test/java/com/aurevia/messaging/clauses/UseSiteSApprovedUrgentDowntimeChannelsTest.java`).
   It uses `@Tag("integration")`, `@SpringBootTest` on a random port with one
   per-class PostgreSQL database migrated from `db/migrations`,
   `@ActiveProfiles("synthetic-auth")`, `X-Synthetic-Subject` and
@@ -34,24 +34,24 @@ Two enabled HTTP-level acceptance tests exercise the clause through the normal
 
 Production classes the tests exercise through that entry point:
 
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileController` — thin
+- `com.aurevia.messaging.service.ServiceProfileController` — thin
   adapter for `GET /api/v1/care-units/{unitId}/service-profile` and
   `POST /api/v1/care-units/{unitId}/service-profiles`.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileService` — `publish`
+- `com.aurevia.messaging.service.ServiceProfileService` — `publish`
   now requires both channels to be members of the tenant's effective,
   named-approved policy before storing a draft. A blank, absent or unapproved
   code is refused through the existing audited `deny` path with a stable
   `UNAPPROVED_CHANNEL` code, so no row is written and a `DENIED` audit is kept.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileStore` and
-  `com.aurevia.smartclinic.messaging.service.JdbcServiceProfileStore` — the new
+- `com.aurevia.messaging.service.ServiceProfileStore` and
+  `com.aurevia.messaging.service.JdbcServiceProfileStore` — the new
   `approvedChannels` read resolves the comma-separated codes from
   `public.effective_config(key)` inside the tenant-guarded transaction, with an
   explicit organization predicate as defence in depth. An empty or unapproved
   policy yields an empty set and fails closed.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileInputs` — continues
+- `com.aurevia.messaging.service.ServiceProfileInputs` — continues
   to bound and de-identify the free-text fields; the channel membership check
   runs before it so a blank channel also reaches the audited denial path.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileContract` —
+- `com.aurevia.messaging.service.ServiceProfileContract` —
   `ServiceProfile` and `PublishProfileRequest` carry the two channel fields.
 - `db/migrations/V5__tenant_configuration.sql` supplies the immutable, approved
   version fold; `db/migrations/V92__service_profiles.sql` persists the channels
@@ -60,7 +60,7 @@ Production classes the tests exercise through that entry point:
 Policy keys `msg06.approved_urgent_channels` and
 `msg06.approved_downtime_channels`, and the `UNAPPROVED_CHANNEL` wire code,
 follow the established approved-channel convention in
-`com.aurevia.smartclinic.prescription.rx.RxService`.
+`com.aurevia.prescription.rx.RxService`.
 
 Entry-point-to-test trace:
 `POST /api/v1/care-units/{unitId}/service-profiles` →

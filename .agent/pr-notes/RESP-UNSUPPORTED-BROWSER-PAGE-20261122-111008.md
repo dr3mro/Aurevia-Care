@@ -42,8 +42,8 @@ authorization, no state machine, no API and no shared component changed.
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) with Senior TypeScript
-(`smartclinic-senior-typescript`) for the strict-typecheck gate. Both skills were
+Senior React and Vite (`orevia-senior-react`) with Senior TypeScript
+(`orevia-senior-typescript`) for the strict-typecheck gate. Both skills were
 loaded. No cross-boundary or safety-critical review required.
 
 ## Data changes
@@ -88,12 +88,12 @@ Mandatory frontend gate:
 
 Typecheck final lines (paste as required by the frontend definition of done):
 - `npm run typecheck` →
-  `> smartclinic-staff-web@0.1.0 typecheck`
+  `> orevia-staff-web@0.1.0 typecheck`
   `> tsc --noEmit -p tsconfig.json`
   (no `error TS…` output; exit 0).
 - `bash scripts/frontend-typecheck-check.sh` →
-  `> smartclinic-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`
-  then `> smartclinic-staff-web@0.1.0 lint` / `> eslint . --max-warnings 0`,
+  `> orevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`
+  then `> orevia-staff-web@0.1.0 lint` / `> eslint . --max-warnings 0`,
   final line `frontend typecheck: passed (or no frontend files changed)` (exit 0).
 - `npm run gen:api:check` → final line `gen:api: generated client matches the contract`.
 
@@ -164,7 +164,7 @@ boundary, contract or state machine changed.
 ## Findings
 
 - Pre-existing (out of scope, in HEAD at `aff9f6e6`): committed conflict markers
-  in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java` and `Hl7Segment.java` (from `origin/swarm/BUILD-37-469`). They
   were present before this change, are outside this task's scope, and were left
   untouched. `git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/staff-web` is clean.

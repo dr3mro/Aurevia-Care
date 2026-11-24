@@ -5,7 +5,7 @@
 - Requirement IDs: OPS-06
 - Risk class: cross-boundary (delivery pipeline and the worker image supply chain)
 - Target files: [`.github/workflows/swarm-images.yml`](../../../.github/workflows/swarm-images.yml) (publish) and [`.github/workflows/swarm.yml`](../../../.github/workflows/swarm.yml) (`plan` and `worker` jobs).
-- Reviewed, **not changed**: [`.github/workflows/agent-image.yml`](../../../.github/workflows/agent-image.yml), [`.github/workflows/swarm-worker.yml`](../../../.github/workflows/swarm-worker.yml), [`.github/swarm/slots.json`](../../../.github/swarm/slots.json), and the generation helpers in [`scripts/swarm.py`](../../../scripts/swarm.py) added by WFAUDIT-02.
+- Reviewed, **not changed**: [`.github/workflows/agent-image.yml`](../../../.github/workflows/agent-image.yml), [`.github/workflows/swarm-worker.yml`](../../../.github/workflows/swarm-worker.yml), `.github/swarm/slots.json` (removed in the new layout), and the generation helpers in [`scripts/swarm.py`](../../../scripts/swarm.py) added by WFAUDIT-02.
 
 ## Problem (evidence from the current files)
 
@@ -416,7 +416,7 @@ person performs this rollback.
 Most evidence in this document came from executed tool commands and direct file
 reads: `git apply --check`, `yaml.safe_load`, `bash -n`, `shellcheck`, synthetic
 stub Docker/gh dry-runs and the real `scripts/swarm.py` helper. A bounded
-`smartclinic-github-workflow` specialist review (file reads only, no commands)
+`orevia-github-workflow` specialist review (file reads only, no commands)
 identified four issues — the artifact extraction path, status-only run
 selection, the first-publish restore gap and a log line written only to
 `$GITHUB_OUTPUT` — all addressed in the current diff and text above. No

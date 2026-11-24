@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.VerifiedPatientAccountLinkSeveralIndependentlyVerifiedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/VerifiedPatientAccountLinkSeveralIndependentlyVerifiedTest.java`),
+Test class: `com.aurevia.patient.clauses.VerifiedPatientAccountLinkSeveralIndependentlyVerifiedTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/VerifiedPatientAccountLinkSeveralIndependentlyVerifiedTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the
 normal HTTP entry points under `/api/v1/patient-identity` with synthetic accounts and charts.
 
@@ -29,17 +29,17 @@ normal HTTP entry points under `/api/v1/patient-identity` with synthetic account
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.patient.identity.IdentityProofingController` —
+- `com.aurevia.patient.identity.IdentityProofingController` —
   `POST /api/v1/patient-identity/accounts`, `POST /invitations`,
   `POST /links/claim`, `GET /accounts/{subject}/links` and
   `GET /accounts/{subject}/access`; a thin adapter that injects the service.
-- `com.aurevia.smartclinic.patient.identity.IdentityProofingService` —
+- `com.aurevia.patient.identity.IdentityProofingService` —
   `enroll`, `issueInvitation`, `linkWithInvitation`, `links` and `hasAccess`;
   each link is an append-only event issued from a separate single-use invitation.
-- `com.aurevia.smartclinic.patient.identity.IdentityProofingRepository` —
+- `com.aurevia.patient.identity.IdentityProofingRepository` —
   `insertLink`, `currentLink`, `links`, `hasAccess` and `consumeInvitation`;
   the single SQL boundary over the tenant-guarded transaction.
-- `com.aurevia.smartclinic.patient.identity.PatientAccount`, `ChartLink`,
+- `com.aurevia.patient.identity.PatientAccount`, `ChartLink`,
   `InvitationIssue`, `InvitationRecord` and `IdentityActionPolicy` — the domain
   types and bounded staff-action policy; `PatientAccount` and the `current_chart_links()`
   fold key links to immutable chart identifiers, never to mutable contact data.

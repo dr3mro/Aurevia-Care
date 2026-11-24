@@ -121,7 +121,7 @@ class MergeTests(unittest.TestCase):
         os.chdir(self.dir)
         self.addCleanup(os.chdir, original)
         Path(".agent/pr-notes").mkdir(parents=True)
-        Path("TODO.md").write_text(TEXT)
+        swarm.store().write(TEXT)
 
     def note(self, name, items):
         Path(".agent/pr-notes", name).write_text(fence(items))
@@ -142,7 +142,7 @@ class MergeTests(unittest.TestCase):
         self.note("T-01-20261121-100000.md", [good(depends=["T-02"])])
         with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": "abc", "body": "done"}):
             comment = swarm.record_merge(415, "T-01", "abc")
-        text = Path("TODO.md").read_text()
+        text = swarm.store().read()
         self.assertIn("[x] T-01", text)
         self.assertIn("- [ ] FU-415-01 · Add the missing report endpoint", text)
         self.assertIn("Added the follow-up task(s) this worker asked for: FU-415-01.", comment)

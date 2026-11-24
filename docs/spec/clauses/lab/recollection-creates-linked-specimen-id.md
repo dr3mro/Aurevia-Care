@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.lab.clauses.RecollectionCreatesLinkedSpecimenIdTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/RecollectionCreatesLinkedSpecimenIdTest.java`),
+Test class `com.aurevia.lab.clauses.RecollectionCreatesLinkedSpecimenIdTest`
+(`apps/api/src/test/java/com/aurevia/lab/clauses/RecollectionCreatesLinkedSpecimenIdTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants sharing
 the same issuer and accession-number space. The happy path drives a specimen through
 accession, collection, receipt and rejection before recollecting it; the original
@@ -43,31 +43,31 @@ specimen's new state and both specimens' immutable histories are read back throu
 Production classes exercised through the real HTTP entry point
 `POST /api/v1/lab/accessions/{id}/recollect` and `GET /api/v1/lab/accessions/{id}`:
 
-- `com.aurevia.smartclinic.lab.accession.LabAccessionController` — thin adapter binding
+- `com.aurevia.lab.accession.LabAccessionController` — thin adapter binding
   `RecollectRequest` and mapping the outcome to HTTP 201.
-- `com.aurevia.smartclinic.lab.accession.LabAccessionService` — `recollect` re-derives
+- `com.aurevia.lab.accession.LabAccessionService` — `recollect` re-derives
   membership and role inside one tenant-guarded transaction, requires the rejected
   state and the expected version, inserts the linked row, transitions the original and
   appends both history events and the audit row together.
-- `com.aurevia.smartclinic.lab.accession.LabActionPolicy` — `SPECIMEN_RECOLLECT` is
+- `com.aurevia.lab.accession.LabActionPolicy` — `SPECIMEN_RECOLLECT` is
   allowed only for `lab_verifier`.
-- `com.aurevia.smartclinic.lab.accession.AccessionState` — the single legal edge is
+- `com.aurevia.lab.accession.AccessionState` — the single legal edge is
   `REJECTED -> RECOLLECTED`.
-- `com.aurevia.smartclinic.lab.accession.LabInputs` and
-  `com.aurevia.smartclinic.lab.accession.AccessionCommands.RecollectRequest` — bound the
+- `com.aurevia.lab.accession.LabInputs` and
+  `com.aurevia.lab.accession.AccessionCommands.RecollectRequest` — bound the
   new accession number, issuer and expected version at the trust boundary.
-- `com.aurevia.smartclinic.lab.accession.LabAccession`,
-  `com.aurevia.smartclinic.lab.accession.AccessionEvent` and
-  `com.aurevia.smartclinic.lab.accession.AccessionView` — the returned projection, the
+- `com.aurevia.lab.accession.LabAccession`,
+  `com.aurevia.lab.accession.AccessionEvent` and
+  `com.aurevia.lab.accession.AccessionView` — the returned projection, the
   append-only history and the read view used to verify the link survives a read.
-- `com.aurevia.smartclinic.lab.accession.LabAccessionRepository` — tenant-bounded
+- `com.aurevia.lab.accession.LabAccessionRepository` — tenant-bounded
   insert, version-guarded update and event append.
 - `db/migrations/V26__laboratory_accession.sql` — `replaces_accession_id` with an
   organization-scoped foreign key, the `(organization_id, accession_issuer,
   accession_no)` unique index, forced RLS, the version/state update guard and triggers
   that derive the actor from the authenticated subject.
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecollectionCreatesLinkedSpecimenIdTest test`
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RecollectionCreatesLinkedSpecimenIdTest test`
 — `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0` (see the story notes for the
 captured final lines).
 

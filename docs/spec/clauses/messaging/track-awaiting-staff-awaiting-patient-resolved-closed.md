@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.TrackAwaitingStaffAwaitingPatientResolvedClosedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/TrackAwaitingStaffAwaitingPatientResolvedClosedTest.java`),
+Test class `com.aurevia.messaging.clauses.TrackAwaitingStaffAwaitingPatientResolvedClosedTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/TrackAwaitingStaffAwaitingPatientResolvedClosedTest.java`),
 a database-free, service-level proof. Its entry point is `ConversationService`,
 not the state enum: every state change is asserted through the persisted wire key
 passed to `ConversationRepository.updateState` and the work-item fact passed to
@@ -47,13 +47,13 @@ audit appender are mocked.
   work item is unchanged. This proves subject-scoped concealment, not cross-tenant
   RLS (which is enforced in the database and proven by `ConversationFlowTest`).
 
-Production classes exercised: `com.aurevia.smartclinic.messaging.conversations.ConversationService`
+Production classes exercised: `com.aurevia.messaging.conversations.ConversationService`
 (`reply` reopen, `resolve`, `close`, `get` and the `requireWritable`, `requireVersion`
-and `requireAccess` guards), `com.aurevia.smartclinic.messaging.conversations.ConversationContract`
+and `requireAccess` guards), `com.aurevia.messaging.conversations.ConversationContract`
 (`State` with the four wire keys, `WorkEventType.REOPENED`/`RESOLVED`/`CLOSED`),
-`com.aurevia.smartclinic.messaging.conversations.ConversationInputs` (reason gate),
-`com.aurevia.smartclinic.messaging.conversations.ConversationActions`,
-`com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService` with
+`com.aurevia.messaging.conversations.ConversationInputs` (reason gate),
+`com.aurevia.messaging.conversations.ConversationActions`,
+`com.aurevia.messaging.units.CareUnitDirectoryService` with
 `InMemoryMessagingStore`, and the mocked `ConversationRepository` boundary.
 `ConversationService` enforces terminality through `requireWritable`; the pure
 `State.canTransitionTo` matrix is covered separately by

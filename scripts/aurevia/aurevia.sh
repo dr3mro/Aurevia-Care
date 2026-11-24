@@ -275,12 +275,12 @@ cmd_logs() {
 }
 
 cmd_shell() { pick_runtime; running || die "$NAME is not running (aurevia run)"; run rt exec -it "$NAME" sh; }
-cmd_psql()  { pick_runtime; running || die "$NAME is not running (aurevia run)"; run rt exec -it "$NAME" psql -h 127.0.0.1 -U postgres -d smartclinic; }
+cmd_psql()  { pick_runtime; running || die "$NAME is not running (aurevia run)"; run rt exec -it "$NAME" psql -h 127.0.0.1 -U postgres -d orevia; }
 
 cmd_dump() {
   pick_runtime; running || die "$NAME is not running (aurevia run)"
   local out=${1:-aurevia-$(date +%Y%m%d-%H%M%S).sql}
-  run rt exec "$NAME" pg_dump -h 127.0.0.1 -U postgres smartclinic > "$out"
+  run rt exec "$NAME" pg_dump -h 127.0.0.1 -U postgres orevia > "$out"
   ok "wrote $out"
 }
 

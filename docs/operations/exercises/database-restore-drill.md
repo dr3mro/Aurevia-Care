@@ -33,7 +33,7 @@ evidence template for the exercise.
 
 ## Recovery targets taken from the specification
 
-From [OPS-04](../../../SMARTCLINIC_V1_SPEC.md) and the enforced
+From [OPS-04](../../../.opencode/config/PROJECT_V1_SPEC.md) and the enforced
 [recovery targets](../recovery/recovery-targets.md):
 
 | Objective | Target | Measured how |

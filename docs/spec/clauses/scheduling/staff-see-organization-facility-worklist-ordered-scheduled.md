@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.scheduling.clauses.StaffSeeOrganizationFacilityWorklistOrderedScheduledTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/scheduling/clauses/StaffSeeOrganizationFacilityWorklistOrderedScheduledTest.java`).
+Test class: `com.aurevia.scheduling.clauses.StaffSeeOrganizationFacilityWorklistOrderedScheduledTest`
+(path: `apps/api/src/test/java/com/aurevia/scheduling/clauses/StaffSeeOrganizationFacilityWorklistOrderedScheduledTest.java`).
 All three tests are active (none disabled), use synthetic data only, and drive
 `GET /api/v1/clinic/worklist` over HTTP against a real PostgreSQL database seeded
 with the production Flyway migrations.
@@ -34,20 +34,20 @@ with the production Flyway migrations.
 Production classes exercised through the normal HTTP entry point
 (`GET /api/v1/clinic/worklist`):
 
-- `com.aurevia.smartclinic.scheduling.checkin.ClinicController` — thin adapter that
+- `com.aurevia.scheduling.checkin.ClinicController` — thin adapter that
   delegates the worklist read; no service construction inside the controller.
-- `com.aurevia.smartclinic.scheduling.checkin.CheckInService` — `worklist(...)` validates
+- `com.aurevia.scheduling.checkin.CheckInService` — `worklist(...)` validates
   the facility code and limit, re-derives membership and the `WORKLIST_READ` role
   permission on each request, applies the facility-scope guard, appends a `WORKLIST_READ`
   audit event and returns an immutable copy of the ordered rows.
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistRepository` — `listWorklist(...)`
+- `com.aurevia.scheduling.checkin.WorklistRepository` — `listWorklist(...)`
   with `ORDER BY COALESCE(a.starts_at, w.created_at) ASC, w.priority DESC, w.created_at ASC, w.id ASC`,
   the row mapper for `WorklistItem` (scheduled time, stored priority, assignee and
   assignment timestamp), all under the transaction-local tenant GUC.
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistPolicy` — grants `WORKLIST_READ`
+- `com.aurevia.scheduling.checkin.WorklistPolicy` — grants `WORKLIST_READ`
   to `tenant_admin`, `reception`, `clinical_assistant` and `clinician`, and denies it
   to `privacy_auditor` (negative test).
-- `com.aurevia.smartclinic.scheduling.checkin.WorklistItem` — the returned projection
+- `com.aurevia.scheduling.checkin.WorklistItem` — the returned projection
   carrying `startsAt`, `priority`, `assigneeSubject`, `assignedAt` and `version`.
 - `db/migrations/V12__checkin_worklist.sql` — creates `worklist_entry` with the tenant
   key in its primary key and foreign keys, ENABLE/FORCE row-level security with a
@@ -56,7 +56,7 @@ Production classes exercised through the normal HTTP entry point
   backs the facility-scope guard.
 
 Neighbouring implementations observed in the source survey (not changed by this task):
-`com.aurevia.smartclinic.scheduling.AppointmentService` owns the V8 appointment state
+`com.aurevia.scheduling.AppointmentService` owns the V8 appointment state
 machine used to create checked-in worklist rows; the existing
 `it/schedulingcheckin/CheckInWorklistIntegrationTest.worklistOrdersByScheduledTimeAndConfiguredPriority`
 and `configuredPriorityIsAppliedToWorklistItems` prove that stored priority is resolved

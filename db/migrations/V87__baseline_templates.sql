@@ -107,7 +107,7 @@ CREATE VIEW public.current_clinical_template_baseline AS
 REVOKE ALL ON public.clinical_template_baseline FROM PUBLIC;
 REVOKE ALL ON public.current_clinical_template_baseline FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.reject_baseline_catalog_mutation() FROM PUBLIC;
-GRANT SELECT ON public.clinical_template_baseline TO smartclinic_app;
-GRANT SELECT ON public.current_clinical_template_baseline TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.reject_baseline_catalog_mutation() TO smartclinic_app;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.clinical_template_baseline FROM smartclinic_app;
+GRANT SELECT ON public.clinical_template_baseline TO orevia_app;
+GRANT SELECT ON public.current_clinical_template_baseline TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.reject_baseline_catalog_mutation() TO orevia_app;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.clinical_template_baseline FROM orevia_app;

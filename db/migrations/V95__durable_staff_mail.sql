@@ -81,7 +81,7 @@ END $rls$;
 
 -- The draft is mutable but never truncated; the retry ledger is append-only.
 -- The message ledger and folders keep the V91 grant set and are reused unchanged.
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.staff_mail_draft TO smartclinic_app;
-GRANT SELECT, INSERT ON public.staff_mail_idempotency TO smartclinic_app;
-REVOKE TRUNCATE ON public.staff_mail_draft FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.staff_mail_idempotency FROM smartclinic_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.staff_mail_draft TO orevia_app;
+GRANT SELECT, INSERT ON public.staff_mail_idempotency TO orevia_app;
+REVOKE TRUNCATE ON public.staff_mail_draft FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.staff_mail_idempotency FROM orevia_app;

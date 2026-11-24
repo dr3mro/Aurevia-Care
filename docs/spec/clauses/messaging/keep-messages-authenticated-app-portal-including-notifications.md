@@ -11,8 +11,8 @@ Partly proven
 ## Evidence
 
 Test class:
-`com.aurevia.smartclinic.messaging.clauses.KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest.java`).
+`com.aurevia.messaging.clauses.KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest.java`).
 All seven tests are active (none disabled) and pass against a dedicated, freshly migrated PostgreSQL database with two synthetic tenants. Synthetic fixtures and identifiers only; no patient data or credentials.
 
 - `aReplyRemainsReadableInInboxAndThread` — positive proof of the storage/read half. A verified patient opens a thread through `POST /api/v1/conversations`; a lab staff member posts a reply through `POST /api/v1/conversations/{id}/reply` with `If-Match: 1`; a later `GET /api/v1/conversations/{id}` returns the immutable message body and its staff sender kind, and `GET /api/v1/conversations/inbox` lists the thread with an unread count of one. A second `GET /api/v1/conversations/{id}` returns the same body, showing the message survives beyond the command that wrote it.
@@ -25,11 +25,11 @@ All seven tests are active (none disabled) and pass against a dedicated, freshly
 
 Production classes exercised through the normal HTTP entry point `POST/GET /api/v1/conversations/**`:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController` — thin adapter binding JSON for every route and `If-Match` for each mutating route that requires a version; the service is injected, never constructed in the controller.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService` — `reply`, `get`, `inbox`, `authorize` and `requireAccess` run inside one tenant-guarded transaction, enforce role/unit/tenant and version/state invariants, and commit the message, audit event and state together.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationRepository` — tenant-scoped SQL boundary storing messages in `conversation_message` and serving the thread and inbox projections.
-- `com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier` — re-resolves the verified patient connection when a thread is opened and on every patient reply.
-- `com.aurevia.smartclinic.messaging.appointments.GenericPushNotice` — the generic, content-free notification value checked by the cross-check.
+- `com.aurevia.messaging.conversations.ConversationController` — thin adapter binding JSON for every route and `If-Match` for each mutating route that requires a version; the service is injected, never constructed in the controller.
+- `com.aurevia.messaging.conversations.ConversationService` — `reply`, `get`, `inbox`, `authorize` and `requireAccess` run inside one tenant-guarded transaction, enforce role/unit/tenant and version/state invariants, and commit the message, audit event and state together.
+- `com.aurevia.messaging.conversations.ConversationRepository` — tenant-scoped SQL boundary storing messages in `conversation_message` and serving the thread and inbox projections.
+- `com.aurevia.messaging.conversations.PatientConnectionVerifier` — re-resolves the verified patient connection when a thread is opened and on every patient reply.
+- `com.aurevia.messaging.appointments.GenericPushNotice` — the generic, content-free notification value checked by the cross-check.
 - `db/migrations/V33__conversation_lifecycle.sql` — the `conversation_message` table with row level security enabled and forced, and the guards that keep the message ledger append-only.
 
 The test overrides the messaging directory with a `@Primary` `InMemoryMessagingStore` test bean, as the neighbouring MSG-02 integration tests do; conversation and message persistence still runs through the real repository and migration on PostgreSQL.
@@ -72,7 +72,7 @@ This evidence task added only one test class and this document. It changed no pr
 Commands run from the repository root with synthetic fixtures only:
 
 ```text
-SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest test
+OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest test
 python3 -I scripts/check-docs.py
 python3 -I -m unittest discover -s scripts/tests
 bash scripts/worker-check.sh

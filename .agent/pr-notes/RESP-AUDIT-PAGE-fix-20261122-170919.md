@@ -10,8 +10,8 @@ Entry point → test trace: route `/admin/audit` → `AuditPage` (`src/features/
 
 ## Affected requirements
 
-- WEB-07 — supported clients / responsive staff web (compact layout down to 320 px; the browser matrix itself is Playwright E2E work). `SMARTCLINIC_V1_SPEC.md` line 155.
-- UX-01 — English and Arabic RTL, mixed-script clinical text, WCAG 2.2 AA support. `SMARTCLINIC_V1_SPEC.md` line 90.
+- WEB-07 — supported clients / responsive staff web (compact layout down to 320 px; the browser matrix itself is Playwright E2E work). `PROJECT_V1_SPEC.md` line 155.
+- UX-01 — English and Arabic RTL, mixed-script clinical text, WCAG 2.2 AA support. `PROJECT_V1_SPEC.md` line 90.
 
 Design evidence (tool reads): `docs/design/responsive-layout.md` §§2–7, 11–13; decision `docs/decisions/0004-responsive-staff-web.md` (Phones 320–767, Tablets 768–1279, Desktop ≥1280; compact/medium/expanded `min-width` bands; no clinical column hidden with `display: none`; 44×44 coarse-pointer targets; 200 % zoom reflow; RTL mirror). Note 0004 is `Proposed` and the spec amendment is an owner decision — the swarm did not edit the spec.
 
@@ -35,7 +35,7 @@ Routine (contained staff-web presentation change). No clinical data, authorizati
 
 ## Review owner
 
-Senior React and Vite specialist; UX reviewer for the LTR/RTL layout contract. This pass used `smartclinic-delivery`, `smartclinic-senior-react`, `smartclinic-senior-typescript`, `smartclinic-plan-reviewer`, `smartclinic-code-reviewer`, `smartclinic-coverage-auditor` and `smartclinic-devsecops`. Evidence here comes from executed tool commands and executed Vitest/Vite/TypeScript tooling plus read-only specialist reviews — no human, clinician or patient participant evidence. Earlier-run simulated UX findings are carried forward under Findings as review activity only.
+Senior React and Vite specialist; UX reviewer for the LTR/RTL layout contract. This pass used `orevia-delivery`, `orevia-senior-react`, `orevia-senior-typescript`, `orevia-plan-reviewer`, `orevia-code-reviewer`, `orevia-coverage-auditor` and `orevia-devsecops`. Evidence here comes from executed tool commands and executed Vitest/Vite/TypeScript tooling plus read-only specialist reviews — no human, clinician or patient participant evidence. Earlier-run simulated UX findings are carried forward under Findings as review activity only.
 
 ## Data changes
 
@@ -55,7 +55,7 @@ All commands executed from branch `swarm/RESP-AUDIT-PAGE-997`, HEAD `fe844c6cd64
 
 1. `cd apps/staff-web && npm run typecheck` — exit 0. Final lines (mandatory typecheck evidence):
    ```
-   > smartclinic-staff-web@0.1.0 typecheck
+   > orevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    No `error TS…` lines. The same typecheck also ran inside step 3 and passed.
@@ -96,15 +96,15 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- orevia-plan-reviewer: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: GO
 
 ## Findings
 
 - **Earlier blockers are resolved on the current base (tool evidence).** The prior notes reported `bash apps/staff-web/check.sh` failing 17 tests in seven responsive test files (`AdminScreen`, `ChartPage`, `ChartScreen`, `DuplicatesPage`, `PatientsPage`, `NotFoundPage`, `SignedOutPage`). On current `origin/main` `f80b58b` the same command exits 0 with 206/206 files, 2542/2542 tests and 100 % coverage. No out-of-scope file was edited by this pass.
-- **Pre-existing conflict markers in three HL7 Java files (tool evidence, out of scope).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds lines 6/10 in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, lines 14/18 in `Hl7Parser.java` and lines 10/14 in `Hl7Segment.java`. They are unresolved merge output committed on `main`, inside Javadoc, so they do not fail `javac`, tests or the staff-web gate, but they violate the repository rule that the grep be empty. Owners: the BUILD-37 / interoperability work; requested as a task below. This pass did not touch them.
+- **Pre-existing conflict markers in three HL7 Java files (tool evidence, out of scope).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds lines 6/10 in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, lines 14/18 in `Hl7Parser.java` and lines 10/14 in `Hl7Segment.java`. They are unresolved merge output committed on `main`, inside Javadoc, so they do not fail `javac`, tests or the staff-web gate, but they violate the repository rule that the grep be empty. Owners: the BUILD-37 / interoperability work; requested as a task below. This pass did not touch them.
 - The RTL label `auditEvents` names `ApiPage`'s `section.page`, `AuditEventList`'s `section` and `AdminTableRegion`'s `div[role=region]`, so `getByRole('region', { name: … })` is ambiguous; the scoped test uses `getAllByRole(...).length > 0`. A future story could give those regions distinct accessible names.
 - jsdom cannot measure pixels, evaluate media queries or detect keyboard provenance; the scoped tests assert classes, data attributes, DOM order and stylesheet text, never painted output. Painted size, 44×44 boxes, 200 % zoom and safe-area padding remain `RESP-E2E-*` evidence (design contract §13).
 - Coverage auditor Optional (review evidence, not a gate failure): `src/features/admin/AuditPage.test.tsx` has no case that supplies events with the `nextCursor` key absent (`undefined`) to pin the second clause of `next !== null && next !== undefined` behaviorally. Istanbul reports 44/44 branches and the full module gate is green; adding such a test would strengthen semantics but is not required by any gate. Left unchanged to keep this pass notes-only and inside scope.
@@ -114,7 +114,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 - A re-dispatched worker can find the task's code already merged in HEAD. Verify the scope in isolation (targeted Vitest, `npm run typecheck`, a `--coverage.reportOnFailure` probe) and then run the module gate; distinguish already-resolved module-gate failures from ones you cause by checking whether the failing files are in your scope and by re-running the gate on the current base.
 - `bash apps/staff-web/check.sh` writes expected jsdom console errors (`Not implemented: navigation`, provider-outside-provider throws) while still exiting 0 — judge the green by the `Test Files`/`Tests` summary and exit status, not by console noise.
 - `vitest run --coverage` on a two-file subset always fails the global per-file threshold because `vite.config.ts` sets `include: ['src/**/*']` with `perFile: true`; pass `--coverage.reportOnFailure`, read the touched file's row from `coverage/coverage-summary.json`, and treat the full module gate as authoritative.
-- `scripts/check-verdicts.py` matches `- smartclinic-<name>: GO`, not a bare `VERDICT: GO` line, in `## Review verdicts`; write the three lines in that exact form.
+- `scripts/check-verdicts.py` matches `- orevia-<name>: GO`, not a bare `VERDICT: GO` line, in `## Review verdicts`; write the three lines in that exact form.
 - `responsive.css` wraps `.app-shell > *`, `.cluster > *`, `.stack > *`, `.grid-2 > *` and `.card-list > *`, but has no `.page > *` rule and no `.audit-filters`/`.audit-events` class. Do not edit the stylesheet from a page story; wrap children in `stack`/`cluster`/`grid-2` and record the missing rule for a stylesheet story. `Form` switches to two columns only above six fields, so a `grid-2` div supplies phone stacking / medium two columns for the five-field audit form.
 - Reuse the `matchMedia` stub pattern with one state object per query so `useBreakpoint` listeners can be fired deterministically inside `act()`; in a Vitest jsdom module `import.meta.url` is not a `file:` URL, so use `dirname(fileURLToPath(import.meta.url))` + `join` to read the stylesheet.
 
@@ -122,11 +122,11 @@ Not required: no signed data, cross-organization sharing, patient association, p
 [
   {
     "title": "Resolve conflict markers in three committed HL7 Javadoc files",
-    "details": "git grep -nE '^(<<<<<<<|>>>>>>>) ' finds unresolved merge markers inside Javadoc in apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java (lines 6/10), Hl7Parser.java (14/18) and Hl7Segment.java (10/14), committed on main from origin/swarm/BUILD-37-469. Both sides of each conflict are byte-identical lines, so keep one copy and delete the markers plus the duplicate. Add a regression check that fails future merges carrying conflict markers, with its own 100%-covered unit tests. Do not touch RESP-AUDIT-PAGE files; they are green at 100%.",
+    "details": "git grep -nE '^(<<<<<<<|>>>>>>>) ' finds unresolved merge markers inside Javadoc in apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java (lines 6/10), Hl7Parser.java (14/18) and Hl7Segment.java (10/14), committed on main from origin/swarm/BUILD-37-469. Both sides of each conflict are byte-identical lines, so keep one copy and delete the markers plus the duplicate. Add a regression check that fails future merges carrying conflict markers, with its own 100%-covered unit tests. Do not touch RESP-AUDIT-PAGE files; they are green at 100%.",
     "scope": [
-      "apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java",
-      "apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7Parser.java",
-      "apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7Segment.java"
+      "apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java",
+      "apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7Parser.java",
+      "apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7Segment.java"
     ],
     "depends": []
   }

@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.lab.clauses.SupportPreliminaryFinalCorrectedEnteredErrorReportsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/SupportPreliminaryFinalCorrectedEnteredErrorReportsTest.java`),
+Test class: `com.aurevia.lab.clauses.SupportPreliminaryFinalCorrectedEnteredErrorReportsTest`
+(`apps/api/src/test/java/com/aurevia/lab/clauses/SupportPreliminaryFinalCorrectedEnteredErrorReportsTest.java`),
 a plain JUnit test with a fixed clock and synthetic fixtures that drives the in-memory
 laboratory report kernel directly. Surefire: `tests="7" errors="0" skipped="0" failures="0"`.
 
@@ -39,19 +39,19 @@ laboratory report kernel directly. Surefire: `tests="7" errors="0" skipped="0" f
 
 Production classes and files exercised by this kernel path:
 
-- `com.aurevia.smartclinic.lab.result.LabResultService` — capture, verify, correct and
+- `com.aurevia.lab.result.LabResultService` — capture, verify, correct and
   enter-in-error, append-only revision ledger, version preconditions, label matching,
   evaluation and trigger emission.
-- `com.aurevia.smartclinic.lab.result.LabCommands` — the `CaptureCommand`,
+- `com.aurevia.lab.result.LabCommands` — the `CaptureCommand`,
   `VerifyCommand`, `CorrectCommand` and `ErrorCommand` records.
-- `com.aurevia.smartclinic.lab.result.LabTypes.VerificationState` and
-  `com.aurevia.smartclinic.lab.result.LabTypes.TriggerType` — the legal transition matrix,
+- `com.aurevia.lab.result.LabTypes.VerificationState` and
+  `com.aurevia.lab.result.LabTypes.TriggerType` — the legal transition matrix,
   issued/terminal/reason predicates and wire forms.
-- `com.aurevia.smartclinic.lab.result.LabRules` — the `COLLECTOR` and `VERIFIER` role
+- `com.aurevia.lab.result.LabRules` — the `COLLECTOR` and `VERIFIER` role
   boundary used by the negative role test.
-- `com.aurevia.smartclinic.lab.result.ReportRevision`, `LabObservation`,
+- `com.aurevia.lab.result.ReportRevision`, `LabObservation`,
   `LabPolicyCatalog`, `ReferenceRange`, `TriggerEvent` and
-  `com.aurevia.smartclinic.api.ApiException` — the immutable revision, observation,
+  `com.aurevia.api.ApiException` — the immutable revision, observation,
   approved range, emitted event and structured error types asserted by the tests.
 
 The reachable production path also delegates to this kernel:
@@ -69,7 +69,7 @@ remain outside this test-only story:
 
 1. **HTTP-level proof.** No test in this story reaches `LabResultEntryController` over
    HTTP with real PostgreSQL and two synthetic tenants. One follow-up test task is needed
-   in `apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses` (or the `it/lab` fixture
+   in `apps/api/src/test/java/com/aurevia/lab/clauses` (or the `it/lab` fixture
    area) to assert the same states, versions, events and 403/404/412/409/422 refusals
    through `POST /api/v1/lab/results/{id}`, `/verify`, `/correct`, `/error` and
    `GET /{id}`. It can reuse the existing synthetic-auth and PostgreSQL fixtures; no

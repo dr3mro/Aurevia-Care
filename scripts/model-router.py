@@ -35,7 +35,7 @@ FORCE_OFF = 0
 FORCE_ON = 1
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 
-DEFAULT_REGISTRY = ".github/swarm/model-pricing.json"
+DEFAULT_REGISTRY = ".opencode/model-pricing.json"
 
 
 class ConfigurationError(ValueError):

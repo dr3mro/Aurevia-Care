@@ -568,12 +568,12 @@ class NotesTests(unittest.TestCase):
     def test_the_rules_patch_may_only_touch_instruction_documents(self):
         def patch(*paths):
             return "".join(f"diff --git a/{p} b/{p}\n--- a/{p}\n+++ b/{p}\n" for p in paths)
-        self.assertTrue(swarm.rules_patch_ok(patch("AGENTS.md", ".opencode/agents/x.md", "docs/NOTES.md")))
-        for bad in (patch("scripts/swarm.py"), patch("AGENTS.md", ".github/workflows/x.yml"),
+        self.assertTrue(swarm.rules_patch_ok(patch(".opencode/setup/AGENTS.md", ".opencode/agents/x.md", "docs/NOTES.md")))
+        for bad in (patch("scripts/swarm.py"), patch(".opencode/setup/AGENTS.md", ".github/workflows/x.yml"),
                     patch("docs/archive/pr-notes/x.md"), patch("docs/sub/x.md"), patch("check.sh"), "",
-                    patch("AGENTS.md") + "new file mode 120000\n",
-                    patch("AGENTS.md") + "GIT binary patch\n",
-                    patch("AGENTS.md") + "rename from AGENTS.md\n"):
+                    patch(".opencode/setup/AGENTS.md") + "new file mode 120000\n",
+                    patch(".opencode/setup/AGENTS.md") + "GIT binary patch\n",
+                    patch(".opencode/setup/AGENTS.md") + "rename from AGENTS.md\n"):
             self.assertFalse(swarm.rules_patch_ok(bad), bad)
 
     def test_publish_stores_the_day_archives_and_opens_issues(self):

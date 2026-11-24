@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.web.clauses.SameKeyPayloadReturnOriginalOutcomeSubjectTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/SameKeyPayloadReturnOriginalOutcomeSubjectTest.java`),
+Test class `com.aurevia.web.clauses.SameKeyPayloadReturnOriginalOutcomeSubjectTest`
+(`apps/api/src/test/java/com/aurevia/web/clauses/SameKeyPayloadReturnOriginalOutcomeSubjectTest.java`),
 a live, synthetic, contract-level unit test with no database or HTTP server. Both
 tests are active (none disabled) and pass. It proves the rule on the component
 that implements it, not on a production API route.
@@ -37,7 +37,7 @@ a thrown 409: `IDEMPOTENCY_CONFLICT` is an `ApiErrorCode` constant, not an outco
 of `resolve`.
 
 Production classes exercised by these tests (all in
-`com.aurevia.smartclinic.api.contract`): `IdempotencyLedger`, its
+`com.aurevia.api.contract`): `IdempotencyLedger`, its
 `InMemoryIdempotencyLedger` reference implementation, `IdempotencyLedger.Scope`,
 `IdempotencyLedger.Resolution`, `IdempotencyKey` and `RequestDigest`.
 `InMemoryIdempotencyLedger.resolve` returns `REPLAY` with the committed outcome
@@ -69,11 +69,11 @@ Closing the gap needs two separate tasks:
    `db/migrations/V66__idempotency_ledger.sql` creating a tenant-scoped table with
    forced RLS, grants and unique `(organization_id, subject, key)`, plus a
    `JdbcIdempotencyLedger` implementing `IdempotencyLedger` under
-   `apps/api/src/main/java/com/aurevia/smartclinic/api/contract/`.
+   `apps/api/src/main/java/com/aurevia/api/contract/`.
 2. HTTP wiring and conformance: a thin controller or interceptor under
-   `apps/api/src/main/java/com/aurevia/smartclinic/web/` that calls `claim` with a
+   `apps/api/src/main/java/com/aurevia/web/` that calls `claim` with a
    fresh authorization check, an HTTP integration test under
-   `apps/api/src/test/java/com/aurevia/smartclinic/it/`, a `Idempotency-Key` replay
+   `apps/api/src/test/java/com/aurevia/it/`, a `Idempotency-Key` replay
    entry in `contracts/openapi.yaml`, and the regenerated
    `apps/staff-web/src/api/generated/openapi.d.ts`.
 

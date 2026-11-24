@@ -250,14 +250,14 @@ REVOKE ALL ON FUNCTION public.lock_patient_pair(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.effective_patient_id(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.current_chart_associations() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.current_consolidations() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.next_chart_association_version(uuid) TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.next_consolidation_version(uuid) TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.lock_patient_pair(uuid, uuid) TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.effective_patient_id(uuid) TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.current_chart_associations() TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.current_consolidations() TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.next_chart_association_version(uuid) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.next_consolidation_version(uuid) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.lock_patient_pair(uuid, uuid) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.effective_patient_id(uuid) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.current_chart_associations() TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.current_consolidations() TO orevia_app;
 
 GRANT SELECT, INSERT ON public.duplicate_review, public.chart_association,
-                       public.consolidation, public.consolidation_dependency TO smartclinic_app;
+                       public.consolidation, public.consolidation_dependency TO orevia_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON public.duplicate_review, public.chart_association,
-                                 public.consolidation, public.consolidation_dependency FROM smartclinic_app;
+                                 public.consolidation, public.consolidation_dependency FROM orevia_app;

@@ -8,7 +8,7 @@ Result: the deliverable already satisfies every stated constraint and no reprodu
 
 ## Affected requirements
 
-XCH-06 and IAM-05 (primary). Supporting IDs cited in the pack and confirmed defined in `SMARTCLINIC_V1_SPEC.md`: OPS-01, OPS-02, PAT-02, PAT-03, ADM-01, PRD-06, plus the G5 row of section 9 and section 10. Acceptance mapping: task steps 1–3 → the eight required headings in the pack; "Not approved" status line and empty approval cells → the "decide nothing" constraint (task step 3).
+XCH-06 and IAM-05 (primary). Supporting IDs cited in the pack and confirmed defined in `PROJECT_V1_SPEC.md`: OPS-01, OPS-02, PAT-02, PAT-03, ADM-01, PRD-06, plus the G5 row of section 9 and section 10. Acceptance mapping: task steps 1–3 → the eight required headings in the pack; "Not approved" status line and empty approval cells → the "decide nothing" constraint (task step 3).
 
 ## Risk class
 
@@ -16,7 +16,7 @@ Safety-critical by subject matter (patient release, sensitive information, ident
 
 ## Review owner
 
-Privacy lead and clinical safety lead (section 10 of `SMARTCLINIC_V1_SPEC.md`), who own the human decision in `S-G5-03`. No human clinical or privacy feedback was supplied or claimed; an independent simulated QA review was recorded by the original run as "no findings".
+Privacy lead and clinical safety lead (section 10 of `PROJECT_V1_SPEC.md`), who own the human decision in `S-G5-03`. No human clinical or privacy feedback was supplied or claimed; an independent simulated QA review was recorded by the original run as "no findings".
 
 ## Data changes
 
@@ -64,7 +64,7 @@ All eight required headings present in order; status line is `Not approved`. The
 
 3. Referenced task IDs resolved against `TODO.md` (executed tool): `S-G5-03`, `S-G5-12`, `SPEC-OPS-02-C03`, `SPEC-XCH-06-C01`, `SPEC-XCH-06-C02`, `SPEC-XCH-06-C03`, `SPEC-IAM-05-C01` — all FOUND. `SPEC-OPS-02-C03` was opened (`tasks/00610000-SPEC-OPS-02-C03.md`) and confirmed to be the "Enforce least privilege and regular access review" clause task, matching the pack's "What is missing" note.
 
-4. Section 10 and G5 row read directly from `SMARTCLINIC_V1_SPEC.md:174,178-189`: the decision text, accountable roles (`Privacy lead and clinical safety lead`) and evidence phrase (`Approved rules, enrollment rehearsal and access review`) match the pack exactly.
+4. Section 10 and G5 row read directly from `PROJECT_V1_SPEC.md:174,178-189`: the decision text, accountable roles (`Privacy lead and clinical safety lead`) and evidence phrase (`Approved rules, enrollment rehearsal and access review`) match the pack exactly.
 
 5. "What the repository already supports" link targets re-read for content accuracy (executed `grep`/`sed`, not just existence): `ReleaseKind.java` defines `IMMEDIATE`, `TIMED`, `HOLD` and states a hold never opens by elapsed time; `ReleaseService.java` requires a non-blank hold reason and a future expiry and implements lift/withdraw/correct; `PatientAccessService.java` documents and implements site-verified single-use invitations, recovery with re-verification, lockout, renewed authentication, contact-change ownership preservation and unlinking; `retention-and-offboarding.md` defines binding legal holds and suspended/re-reviewed/re-verified disputed access; `rollout-and-production-access.md` defines approved, attributable, audited, expiring access. All claims in the pack are accurate against these files.
 
@@ -76,7 +76,7 @@ Not applicable: this pass added no production line, branch, method, class, scrip
 
 ## Clinical and architecture review
 
-Not claimed. The pack was prepared for the privacy lead and clinical safety lead and attests to no clinical or human acceptance. The original run recorded a bounded independent `smartclinic-qa-reviewer` review (simulated reviewer evidence) with "no findings" covering the "decides nothing" constraints, link/heading accuracy and requirement-ID validity; this pass independently re-verified those points with tool evidence and reached the same conclusion. No human clinical or privacy feedback was supplied or claimed.
+Not claimed. The pack was prepared for the privacy lead and clinical safety lead and attests to no clinical or human acceptance. The original run recorded a bounded independent `orevia-qa-reviewer` review (simulated reviewer evidence) with "no findings" covering the "decides nothing" constraints, link/heading accuracy and requirement-ID validity; this pass independently re-verified those points with tool evidence and reached the same conclusion. No human clinical or privacy feedback was supplied or claimed.
 
 ## Findings
 

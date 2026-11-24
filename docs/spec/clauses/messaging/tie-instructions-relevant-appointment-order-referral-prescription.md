@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.TieInstructionsRelevantAppointmentOrderReferralPrescriptionTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/TieInstructionsRelevantAppointmentOrderReferralPrescriptionTest.java`),
+Test class `com.aurevia.messaging.clauses.TieInstructionsRelevantAppointmentOrderReferralPrescriptionTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/TieInstructionsRelevantAppointmentOrderReferralPrescriptionTest.java`),
 a synthetic, tenant-keyed service-level suite:
 
 - `sendBindsEachRelevantContextTypeAndIdToThePublishedRevision` — sends one free-text
@@ -32,10 +32,10 @@ a synthetic, tenant-keyed service-level suite:
   tenant sees only its own revision (the other thread is 404).
 
 Production classes exercised by these tests:
-`com.aurevia.smartclinic.messaging.instructions.InstructionContract` (`ContextType`,
+`com.aurevia.messaging.instructions.InstructionContract` (`ContextType`,
 `Template`, `Revision`, `SendRequest`), `InstructionService.send` and `InstructionService.replace`,
 `InstructionInputs.key`, `InstructionActions`, `InstructionStore.InMemory` and
-`com.aurevia.smartclinic.tenant.TenantContext`. The HTTP entry point
+`com.aurevia.tenant.TenantContext`. The HTTP entry point
 `InstructionController.send` is not called by this class; its route is exercised by
 `InstructionControllerTest.everyRoutePublishesReadsReplacesAndWithdraws` in the existing
 instruction controller suite, which is not re-run here.
@@ -59,7 +59,7 @@ and the template/replace/withdraw routes, while `contracts/openapi.yaml` has no 
 the generated client has no corresponding types.
 
 Files that would change: a new migration under `db/migrations` (version reserved by the owner)
-with RLS/FORCE RLS; `apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions/InstructionStore.java`
+with RLS/FORCE RLS; `apps/api/src/main/java/com/aurevia/messaging/instructions/InstructionStore.java`
 plus a new `JdbcInstructionStore`; a new cross-reference port and its five domain adapters
 plus `InstructionService.java` and its tests; an HTTP-level integration test through
 `InstructionController`; `contracts/openapi.yaml` and the regenerated files under

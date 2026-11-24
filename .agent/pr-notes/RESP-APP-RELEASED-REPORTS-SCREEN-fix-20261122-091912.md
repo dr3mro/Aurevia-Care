@@ -11,8 +11,8 @@ I rehydrated the governing context first: `.agent/context-files.txt`,
 `AGENTS.md`, `CODING_STYLE.md`, `README-SETUP.md`, `docs/WORKFLOW.md`, `PROJECT.md`,
 `WORKSPACE.md`, `MEMORY.md`, `TODO.md` (Instructions for every agent + this story's
 entry), `docs/decisions/0005-patient-app-tablets.md`, the patient self-access product
-clause, `.github/pull_request_template.md`, and the `smartclinic-delivery`,
-`smartclinic-senior-mobile` skills. I surveyed `src/features/reports` and confirmed
+clause, `.github/pull_request_template.md`, and the `orevia-delivery`,
+`orevia-senior-mobile` skills. I surveyed `src/features/reports` and confirmed
 reuse of the existing `ReleasedReport` type, `windowClassFor` classifier and
 `patientDesign` tokens.
 
@@ -62,10 +62,10 @@ contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) owns the mobile definition
+Senior React Native and Expo (`orevia-senior-mobile`) owns the mobile definition
 of done, executed and met this pass (`apps/patient-mobile/check.sh` green, typecheck
 final lines and coverage below, zero `error TS…`). Senior TypeScript
-(`smartclinic-senior-typescript`) owns the strict `exactOptionalPropertyTypes` rule
+(`orevia-senior-typescript`) owns the strict `exactOptionalPropertyTypes` rule
 that produced TS2375; the root strict typecheck, the exact failing gate
 `scripts/frontend-check.sh` and `scripts/frontend-typecheck-check.sh` are green.
 Independent QA and the full integration gate belong to the integrator/Delivery.

@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.BeforeSendingShowRecipientPendingFilesRequireTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/BeforeSendingShowRecipientPendingFilesRequireTest.java`).
+Test class `com.aurevia.messaging.clauses.BeforeSendingShowRecipientPendingFilesRequireTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/BeforeSendingShowRecipientPendingFilesRequireTest.java`).
 It is a synthetic, database-free clause test in the `clauses` style used by
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: a public in-memory
 store from `src/test`, a fixed clock and synthetic organization, subject, draft and
@@ -43,27 +43,27 @@ no production code, existing test, contract or migration was changed.
 
 Production classes and files surveyed and exercised by these entry points:
 
-- `com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentService` —
+- `com.aurevia.staffmsg.attachments.StaffAttachmentService` —
   `pending` (the `!sent()` filter and the quarantine audit reason) and `send`
   (the `confirm` gate, named-file validation, all-or-nothing publication and
   `SENT` audit) own the pending-files and explicit-send half of the clause.
-- `com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentContract` —
+- `com.aurevia.staffmsg.attachments.StaffAttachmentContract` —
   `SendRequest(draftId, messageId, attachmentIds, recipients, confirm)` is the
   command that carries the explicit confirmation; `StaffActor`, `StaffAttachment`,
   `ScanRequest`, `UploadRequest` and `View` are the synthetic value types used.
-- `com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentActions` — the
+- `com.aurevia.staffmsg.attachments.StaffAttachmentActions` — the
   action matrix that denies `SEND` to scanner and auditor roles.
-- `com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentController` —
+- `com.aurevia.staffmsg.attachments.StaffAttachmentController` —
   `GET .../pending` and `POST .../send` are the HTTP entry points; `send` injects
   the service and documents the `confirm` flag in the `SendRequest` schema.
-- `com.aurevia.smartclinic.staffmsg.mail.MailService.send`,
+- `com.aurevia.staffmsg.mail.MailService.send`,
   `MailRules.confirmationMatches`, `RecipientDirectory`, `MailContract.DraftView`
   and `MailCommands.SendCommand` — the recipient-confirmation half: `DraftView`
   carries declared `to()`/`cc()` recipients and `send` requires an exact match
   against the subjects resolved at send time.
 - `contracts/openapi.yaml` (routes and the `SendRequest` schema, where `confirm` is
   required) was surveyed as evidence only and was not changed.
-- A second MSG-03 path exists in `com.aurevia.smartclinic.messaging.attachments`
+- A second MSG-03 path exists in `com.aurevia.messaging.attachments`
   (`AttachmentService.publish`, `AttachmentContract.PublishRequest` bound to
   `recipientUnitId`): it implements the "both sides attach" half but has no
   `confirm` flag and no recipient confirmation, so it is not the target of this

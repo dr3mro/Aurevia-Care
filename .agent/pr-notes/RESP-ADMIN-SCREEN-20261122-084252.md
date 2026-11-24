@@ -14,7 +14,7 @@ Routine — contained staff-web presentation change with a new component test; n
 
 ## Review owner
 
-`smartclinic-senior-react` (bounded simulated review, advisory) and `smartclinic-senior-typescript` skill applied to the strict-TypeScript test file. The simulated `smartclinic-senior-react` reviewer returned **no actionable findings** after reading the two scoped files and the rendered child components against `docs/design/responsive-layout.md`, `docs/design/screen-recipe.md` and CODING_STYLE.md; it did not re-run checks and relied on the tool evidence below. Non-blocking observation: the new test sits under `tests/responsive/features-admin/` while older responsive tests sit under `tests/components/`/`tests/app/`; Vitest discovery and coverage are unaffected. Evidence is tool output plus a simulated reviewer; no human, clinical or patient-participant evidence.
+`orevia-senior-react` (bounded simulated review, advisory) and `orevia-senior-typescript` skill applied to the strict-TypeScript test file. The simulated `orevia-senior-react` reviewer returned **no actionable findings** after reading the two scoped files and the rendered child components against `docs/design/responsive-layout.md`, `docs/design/screen-recipe.md` and CODING_STYLE.md; it did not re-run checks and relied on the tool evidence below. Non-blocking observation: the new test sits under `tests/responsive/features-admin/` while older responsive tests sit under `tests/components/`/`tests/app/`; Vitest discovery and coverage are unaffected. Evidence is tool output plus a simulated reviewer; no human, clinical or patient-participant evidence.
 
 ## Data changes
 
@@ -68,7 +68,7 @@ Typecheck final lines (no diagnostics on success):
 
 ```
 cd apps/staff-web && npm run typecheck
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 typecheck exit: 0
 ```
@@ -77,7 +77,7 @@ Lint final lines:
 
 ```
 cd apps/staff-web && npm run lint
-> smartclinic-staff-web@0.1.0 lint
+> orevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 lint exit: 0
 ```

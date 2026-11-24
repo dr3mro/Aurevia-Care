@@ -29,7 +29,7 @@ file), with a simulated UX review because RTL/WCAG is in scope (`docs/WORKFLOW.m
 
 ## Review owner
 
-`smartclinic-senior-react` and `smartclinic-ux-reviewer` — earlier advisory subagent
+`orevia-senior-react` and `orevia-ux-reviewer` — earlier advisory subagent
 reviews, simulated/synthetic evidence only; no human or clinical participant. Senior
 React verdict: no blocking defects. UX verdict: no blocking defect after the
 mixed-script measurement fix. This fix pass re-verified by executed command; no new
@@ -74,7 +74,7 @@ Vitest 5.1.1, Python 3.11.2. `npm ci` was required first (node_modules were abse
    is green.
 5. Typecheck final lines (explicit re-run, frontend definition of done):
    `cd apps/staff-web && npm run typecheck` →
-   `> smartclinic-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`,
+   `> orevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`,
    exit 0, **no `error TS…`**.
 6. Coverage gate: `bash scripts/coverage-check.sh origin/main` → exit 0,
    `coverage check: passed` (runs staff-web typecheck + test:coverage).
@@ -149,7 +149,7 @@ subagent only — synthetic review, not clinical or human acceptance.
    unrelated to this staff-web change, and left untouched. The recorded local Python
    baseline is 3.15, where this mock does not break glob.
 4. **Pre-existing and out of scope (tool evidence):** committed conflict markers
-   remain at HEAD in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+   remain at HEAD in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
    `Hl7Parser.java` and `Hl7Segment.java`; none in `apps/staff-web/`. Left untouched.
 5. **Deliberate decision (earlier UX reviewer, simulated):** the root keeps its
    pre-existing inline `style={{ display:'grid', gap: tokens.spacing.lg }}` next to

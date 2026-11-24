@@ -26,7 +26,7 @@ All links are relative to this file; the repository root is four levels up. Only
 
 The same helpers are independently covered by [notifications.test.ts](../../../../apps/patient-mobile/src/features/appointments/notifications.test.ts), [payload.test.ts](../../../../apps/patient-mobile/src/features/notifications/payload.test.ts) and [delivery.test.ts](../../../../apps/patient-mobile/src/features/notifications/delivery.test.ts).
 
-**API context (read-only, not exercised by the patient-app tests here).** [PatientAppointmentService.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentService.java) sends `GenericPushNotice.appointmentUpdate()` from `notifyStatusChange` and its private `dispatch`, recording the new status only in an audit key; [PatientAppointmentController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentController.java) exposes `POST /api/v1/patient/appointments/{appointmentId}/notify`.
+**API context (read-only, not exercised by the patient-app tests here).** [PatientAppointmentService.java](../../../../apps/api/src/main/java/com/aurevia/messaging/appointments/PatientAppointmentService.java) sends `GenericPushNotice.appointmentUpdate()` from `notifyStatusChange` and its private `dispatch`, recording the new status only in an audit key; [PatientAppointmentController.java](../../../../apps/api/src/main/java/com/aurevia/messaging/appointments/PatientAppointmentController.java) exposes `POST /api/v1/patient/appointments/{appointmentId}/notify`.
 
 ## Gap
 

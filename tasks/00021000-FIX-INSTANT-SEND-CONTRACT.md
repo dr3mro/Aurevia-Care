@@ -1,7 +1,7 @@
 - [ ] FIX-INSTANT-SEND-CONTRACT · Bind instant message sends to the conversation in the URL
   - attempts: 0
   - requirements: MSG-02, ARC-07, WEB-05
-  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts
+  - scope: apps/api/src/main/java/com/aurevia/staffmsg/instant, apps/api/src/test/java/com/aurevia/staffmsg/instant, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts
   - depends: SMSG-03, FIX-OPENAPI-03
   - details:
     Agent brief. Start at `InstantMessagingController.send` on `/{conversationId}/messages`. It currently forwards the body unchanged. Follow `InstantMessagingService.send` to `requireAccess` and the JDBC write. Reuse the Spring HTTP setup in `InstantMessagingIntegrationTest#httpMarkReadUpdatesUnreadCounts` and the persistence assertions in `aRetriedSendPublishesExactlyOneMessage`.

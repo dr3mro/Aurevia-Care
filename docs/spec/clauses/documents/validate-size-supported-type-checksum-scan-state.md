@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.documents.clauses.ValidateSizeSupportedTypeChecksumScanStateTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/ValidateSizeSupportedTypeChecksumScanStateTest.java`).
+Test class: `com.aurevia.documents.clauses.ValidateSizeSupportedTypeChecksumScanStateTest`
+(path: `apps/api/src/test/java/com/aurevia/documents/clauses/ValidateSizeSupportedTypeChecksumScanStateTest.java`).
 All five tests are active (none disabled) and pass against real PostgreSQL with synthetic fixtures only:
 `Tests run: 5, Failures: 0, Errors: 0, Skipped: 0` from
 `mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=ValidateSizeSupportedTypeChecksumScanStateTest test`.
@@ -42,22 +42,22 @@ All five tests are active (none disabled) and pass against real PostgreSQL with 
   with `If-Match: 9` is refused with 412 `STALE_VERSION`, and a missing precondition with 428.
 
 Production classes exercised through the normal HTTP entry point
-`POST/GET /api/v1/documents/artifacts` (`com.aurevia.smartclinic.documents.DocumentArtifactController`,
+`POST/GET /api/v1/documents/artifacts` (`com.aurevia.documents.DocumentArtifactController`,
 which derives tenant and roles from the request context and injects its services):
 
-- `com.aurevia.smartclinic.documents.QuarantineService` — upload validation order, private
+- `com.aurevia.documents.QuarantineService` — upload validation order, private
   quarantine, independent scan verdict, verified-object completion, state guards, stale-version
   guard and mediated download.
-- `com.aurevia.smartclinic.documents.UploadValidation` and
-  `com.aurevia.smartclinic.documents.ArtifactInputs` — the shared 10 MiB bound, SHA-256 checksum,
+- `com.aurevia.documents.UploadValidation` and
+  `com.aurevia.documents.ArtifactInputs` — the shared 10 MiB bound, SHA-256 checksum,
   file name and MIME/leading-byte rules that raise the stable 422 codes.
-- `com.aurevia.smartclinic.documents.DocumentGuard` and
-  `com.aurevia.smartclinic.documents.DocumentActions` — authorization and the 403/404/409/412
+- `com.aurevia.documents.DocumentGuard` and
+  `com.aurevia.documents.DocumentActions` — authorization and the 403/404/409/412
   mapping. The proof asserts that a non-empty fact trail is visible after a completed download;
   append-only enforcement and payload-free fact detail are guaranteed by the guard and V81 triggers
   and are not separately asserted by this clause test.
-- `com.aurevia.smartclinic.documents.JdbcDocumentStore` behind
-  `com.aurevia.smartclinic.documents.DocumentStore` — tenant-scoped persistence of artifacts,
+- `com.aurevia.documents.JdbcDocumentStore` behind
+  `com.aurevia.documents.DocumentStore` — tenant-scoped persistence of artifacts,
   authorizations and verified objects.
 - `db/migrations/V81__document_store.sql` — creates the document tables with row-level security
   enabled and forced; the test applies it with Flyway and seeds only synthetic organizations,

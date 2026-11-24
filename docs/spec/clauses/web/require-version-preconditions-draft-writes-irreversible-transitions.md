@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.web.clauses.RequireVersionPreconditionsDraftWritesIrreversibleTransitionsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/RequireVersionPreconditionsDraftWritesIrreversibleTransitionsTest.java`),
+Test class `com.aurevia.web.clauses.RequireVersionPreconditionsDraftWritesIrreversibleTransitionsTest`
+(`apps/api/src/test/java/com/aurevia/web/clauses/RequireVersionPreconditionsDraftWritesIrreversibleTransitionsTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants.
 The draft is a temporary hold created through the real `POST /api/v1/appointments/holds`
 route; the irreversible transition is the real `POST /api/v1/appointments/{id}/confirm`
@@ -40,24 +40,24 @@ transaction.
   earlier header parse.
 
 Production classes exercised by the entry point:
-`com.aurevia.smartclinic.web.AppointmentController` (the thin HTTP adapter that
+`com.aurevia.web.AppointmentController` (the thin HTTP adapter that
 binds `If-Match` and parses it before entering the domain),
-`com.aurevia.smartclinic.api.IfMatch` (missing 428, malformed 422),
-`com.aurevia.smartclinic.scheduling.AppointmentService` (`authorize` raises 403,
+`com.aurevia.api.IfMatch` (missing 428, malformed 422),
+`com.aurevia.scheduling.AppointmentService` (`authorize` raises 403,
 `loadForUpdate` conceals another tenant's row with 404, `requireVersion` raises
 412 `STALE_VERSION`, the state machine refuses a second confirm with 409, and
 `updateState` bumps the version by exactly one),
-`com.aurevia.smartclinic.scheduling.AppointmentState` and
-`com.aurevia.smartclinic.authz.ActionPolicy` (the role matrix),
-`com.aurevia.smartclinic.scheduling.AppointmentRepository` (the RLS-bounded
-stored snapshot) and `com.aurevia.smartclinic.tenant.TenantContext`, with tenant
+`com.aurevia.scheduling.AppointmentState` and
+`com.aurevia.authz.ActionPolicy` (the role matrix),
+`com.aurevia.scheduling.AppointmentRepository` (the RLS-bounded
+stored snapshot) and `com.aurevia.tenant.TenantContext`, with tenant
 RLS/FORCE RLS supplied by the Flyway migrations under `db/migrations`.
 
 The draft-write half of the clause is also covered at its own API entry points by
-`com.aurevia.smartclinic.finance.clauses.SupportDraftIssuedPaidPartiallyPaidVoidTest`
+`com.aurevia.finance.clauses.SupportDraftIssuedPaidPartiallyPaidVoidTest`
 (a self-pay invoice draft refuses a write without `If-Match`: 428
 `PRECONDITION_REQUIRED`, and advances its version on issue) and
-`com.aurevia.smartclinic.chart.clauses.DraftSignedSeparateAmendmentDraftsSignedAddendaTest`
+`com.aurevia.chart.clauses.DraftSignedSeparateAmendmentDraftsSignedAddendaTest`
 (a chart draft advances its version on sign, amendment and addendum). Those
 suites are not modified here; this story proves the clause through the
 appointment-confirm HTTP entry point and cites them as corroborating evidence.

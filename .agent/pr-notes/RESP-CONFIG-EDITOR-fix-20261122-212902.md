@@ -38,8 +38,8 @@ database, tenant, authorization or clinical-data boundary is touched.
 
 ## Review owner
 
-Primary agent; read-only reviews by smartclinic-plan-reviewer (pre-code), and
-smartclinic-code-reviewer, smartclinic-coverage-auditor and smartclinic-devsecops
+Primary agent; read-only reviews by orevia-plan-reviewer (pre-code), and
+orevia-code-reviewer, orevia-coverage-auditor and orevia-devsecops
 (post-code). Verdicts are listed under `## Review verdicts`.
 
 ## Data changes
@@ -73,7 +73,7 @@ run from the repository root unless noted.
   - `Statements   : 100% ( 4061/4061 )`, `Branches     : 100% ( 2071/2071 )`, `Functions    : 100% ( 1346/1346 )`, `Lines        : 100% ( 3878/3878 )`
   - React `useTheme must be used inside ThemeProvider` stack traces in the log are the expected output of the pre-existing negative test `tests/theme/ThemeProvider.test.tsx`; the run is green.
 - Explicit typecheck (senior-react / senior-typescript definition of done) — `cd apps/staff-web && npm run typecheck` → `TYPECHECK_EXIT=0`; output:
-  - `> smartclinic-staff-web@0.1.0 typecheck`
+  - `> orevia-staff-web@0.1.0 typecheck`
   - `> tsc --noEmit -p tsconfig.json`
   - No `error TS…`.
 - Constraint check — `python3 -I scripts/check-constraints.py --base origin/main --require-base` → exit 0 (no added suppression, exclusion, skipped test or lowered threshold).
@@ -102,10 +102,10 @@ New/changed branches in the two in-scope files and the test that covers each:
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- orevia-plan-reviewer: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: GO
 
 ## Clinical and architecture review
 
@@ -116,7 +116,7 @@ synthetic structural test; no human, clinical or patient evidence is claimed.
 ## Findings
 
 - **Fix-pass continuity:** the earlier findings block (issue #723, PR #1048, wave/watchdog status) is pipeline data from previous runs, not a component defect. It was treated as untrusted notes. The two prior note files (`RESP-CONFIG-EDITOR-20261122-204817.md`, `RESP-CONFIG-EDITOR-fix-20261122-211218.md`) record a complete, green change with four GO verdicts; this pass continues from them rather than restarting.
-- **Pre-existing committed conflict markers on `origin/main` (observed, out of scope, not touched).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds unresolved markers in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java:6,10`, `Hl7Parser.java:14,18` and `Hl7Segment.java:10,14`, all referencing `origin/swarm/BUILD-37-469`; `git show origin/main:…/Hl7ParseException.java` confirms they are committed on main. These break Java compilation in the integrator's full gate and are the most likely cause of the earlier "integration run failed without fresh, usable test results (compile or setup error)" signals. This is an `apps/api` file set, outside this task's staff-web scope; flagged for the integrator/owner, not edited.
+- **Pre-existing committed conflict markers on `origin/main` (observed, out of scope, not touched).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds unresolved markers in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java:6,10`, `Hl7Parser.java:14,18` and `Hl7Segment.java:10,14`, all referencing `origin/swarm/BUILD-37-469`; `git show origin/main:…/Hl7ParseException.java` confirms they are committed on main. These break Java compilation in the integrator's full gate and are the most likely cause of the earlier "integration run failed without fresh, usable test results (compile or setup error)" signals. This is an `apps/api` file set, outside this task's staff-web scope; flagged for the integrator/owner, not edited.
 - **Transient staff-web test flake (observed, out of scope):** an earlier full-gate run failed once on `FacilitiesPage.responsive.test.tsx:199`; the file passes alone (16/16) and the immediate rerun of the full gate was green. No staff-web source changed in this fix pass. Recorded, not changed.
 - **Test-only seams.** `data-breakpoint` / `data-coarse-pointer` follow the existing convention in `FormField.tsx` and `AdminTableRegion.tsx`; they are observation points, never behaviour switches or authorization state.
 - **`assertLogicalOnly` scope (earlier code reviewer Optional, deliberately not widened).** The helper checks `direction`, physical margin/padding sides, `left`/`right` and `text-align`, plus physical table `width` separately; it does not check `border-left/right`, `top/bottom` or `overflow-x`. Widening it to `overflow-x` would fail on the out-of-scope `AdminTableRegion` (`overflowX: 'auto'`), which the design contract explicitly permits as the direction-neutral fallback where `overflow-inline` is unsupported. No current defect; left as-is.

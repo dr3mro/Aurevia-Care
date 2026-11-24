@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.documents.clauses.UseUniqueObjectKeysVerifiedObjectVersionTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/UseUniqueObjectKeysVerifiedObjectVersionTest.java`),
+Test class `com.aurevia.documents.clauses.UseUniqueObjectKeysVerifiedObjectVersionTest`
+(`apps/api/src/test/java/com/aurevia/documents/clauses/UseUniqueObjectKeysVerifiedObjectVersionTest.java`),
 an HTTP-level integration test on real PostgreSQL with synthetic tenants, staff
 and payload metadata. Every command goes through the real controller and the
 production JDBC store against a dedicated database that is dropped, migrated
@@ -48,16 +48,16 @@ and seeded per class. The six tests are active (none disabled) and pass.
 
 Production classes and database objects exercised through the normal HTTP entry
 point `POST /api/v1/documents/artifacts` and its scan, complete and download
-routes (`com.aurevia.smartclinic.documents.DocumentArtifactController`):
+routes (`com.aurevia.documents.DocumentArtifactController`):
 
-- `com.aurevia.smartclinic.documents.QuarantineService` — creates the unique key
+- `com.aurevia.documents.QuarantineService` — creates the unique key
   and version-one binding on upload, copies them unchanged through state changes,
   and calls `verifyObject` before completion and again before download.
-- `com.aurevia.smartclinic.documents.ArtifactInputs` and
-  `com.aurevia.smartclinic.documents.UploadValidation` — build the tenant-scoped
+- `com.aurevia.documents.ArtifactInputs` and
+  `com.aurevia.documents.UploadValidation` — build the tenant-scoped
   `quarantine/<organizationId>/<random-uuid>/v<version>` key and validate positive
   object versions; the alias is a random UUID, not a patient or file-derived value.
-- `com.aurevia.smartclinic.documents.JdbcDocumentStore` — `verifyObject` queries
+- `com.aurevia.documents.JdbcDocumentStore` — `verifyObject` queries
   the full `(organization_id, object_key, object_version, checksum)` tuple.
 - `db/migrations/V81__document_store.sql` — `document_verified_object`, with row
   level security enabled and forced, is the durable authority for that tuple.
@@ -67,10 +67,10 @@ routes (`com.aurevia.smartclinic.documents.DocumentArtifactController`):
 Related implementations observed in the source survey but not reached by this
 HTTP path (they are exercised by the neighbouring storage tests
 `ObjectKeyTest`, `FileSystemObjectStoreTest` and `S3ObjectStoreTest`):
-`com.aurevia.smartclinic.documents.storage.ObjectKey`, `ObjectStorePort`,
+`com.aurevia.documents.storage.ObjectKey`, `ObjectStorePort`,
 `FileSystemObjectStore.getVerified` and `S3ObjectStore.getVerified`, which verify
 the immutable version and checksum at the byte-storage boundary; and
-`com.aurevia.smartclinic.documents.PdfBindingService`, which records a verified
+`com.aurevia.documents.PdfBindingService`, which records a verified
 rendered object version for immutable PDF binding.
 
 Verified locally:

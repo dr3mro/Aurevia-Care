@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.BlockAmbiguousOrdersPatientAccountLinksGrantsTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/BlockAmbiguousOrdersPatientAccountLinksGrantsTest.java`).
+Test class: `com.aurevia.patient.clauses.BlockAmbiguousOrdersPatientAccountLinksGrantsTest`
+(path: `apps/api/src/test/java/com/aurevia/patient/clauses/BlockAmbiguousOrdersPatientAccountLinksGrantsTest.java`).
 All five tests are active (none disabled) and use only synthetic patients, staff and dependencies against a
 migrated PostgreSQL database through the real HTTP entry point `POST /api/v1/duplicate-reviews/{reviewId}/consolidate`.
 
@@ -31,22 +31,22 @@ migrated PostgreSQL database through the real HTTP entry point `POST /api/v1/dup
 
 Production classes exercised (unchanged by this task):
 
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService` — `consolidate` refuses with
+- `com.aurevia.patient.consolidation.ConsolidationService` — `consolidate` refuses with
   `409 UNRESOLVED_DEPENDENCY` ("ambiguous orders, links or grants must be resolved first") when
   `repository.hasUnresolvedBlockers(duplicate.id()) > 0`, after taking the pair lock and before any append.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateRepository` — `hasUnresolvedBlockers` folds the
+- `com.aurevia.patient.consolidation.DuplicateRepository` — `hasUnresolvedBlockers` folds the
   append-only `consolidation_dependency` history to the latest row per `(patient, kind, reference)` and counts
   rows that are `ambiguous AND NOT resolved`; `dependencies` feeds the same fold to the review detail.
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationController` — thin HTTP adapter binding the
+- `com.aurevia.patient.consolidation.ConsolidationController` — thin HTTP adapter binding the
   review identifier, `If-Match` precondition and confirmation body to the service.
-- `com.aurevia.smartclinic.patient.consolidation.ReviewDetail` — the `Dependency` record documents the three
+- `com.aurevia.patient.consolidation.ReviewDetail` — the `Dependency` record documents the three
   blocking kinds `ORDER`, `PATIENT_LINK` and `GRANT` and their `ambiguous`/`resolved` state.
 - `db/migrations/V9__duplicate_review_consolidation.sql` — `public.consolidation_dependency` with a
   `CHECK (kind IN ('ORDER','PATIENT_LINK','GRANT'))`, forced RLS and append-only triggers; the review,
   association and consolidation tables are written in the same tenant-guarded transaction.
 
 Neighbouring implementations observed in the source survey (not changed by this task): the identity-proofing
-package `com.aurevia.smartclinic.patient.identity` owns account-link lifecycle and `IdentityActionPolicy`,
+package `com.aurevia.patient.identity` owns account-link lifecycle and `IdentityActionPolicy`,
 the exchange packages own order creation, and the authorization/configuration packages own grants; none of
 those creation paths is changed here. The existing `ConsolidationIsolationTest` and `ConsolidationServiceTest`
 also cover this rule; this clause-specific class isolates only clause 7 with explicit per-kind and

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.DocumentApprovedAlternateProcessIdentifiersUnavailableTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/DocumentApprovedAlternateProcessIdentifiersUnavailableTest.java`).
+Test class: `com.aurevia.patient.clauses.DocumentApprovedAlternateProcessIdentifiersUnavailableTest`
+(path: `apps/api/src/test/java/com/aurevia/patient/clauses/DocumentApprovedAlternateProcessIdentifiersUnavailableTest.java`).
 All four tests are active (none are disabled) and pass with synthetic fixtures only.
 
 - `documentsAlternateProcessWhenIdentifiersCannotBeConfirmed` — positive proof. Approving a
@@ -32,20 +32,20 @@ All four tests are active (none are disabled) and pass with synthetic fixtures o
 
 Production classes exercised through the normal consolidation command path:
 
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService` — `consolidate(...)` calls
+- `com.aurevia.patient.consolidation.ConsolidationService` — `consolidate(...)` calls
   `confirmationFailure(...)` and, on a valid confirmation, appends
   `CONSOLIDATION_IDENTIFIER_CONFIRM` with `confirmationOutcome(...)` (`ALTERNATE:<code>` or
   `CONFIRMED:<...>`). `confirmationFailure(...)` enforces mutual exclusivity, the bounded
   `[a-z_]{2,32}` alternate-process code, and the two-identifier requirement; its caller
   `consolidate(...)` records `DENIED` on every refusal.
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationController` — `ConsolidationApprovalRequest`
+- `com.aurevia.patient.consolidation.ConsolidationController` — `ConsolidationApprovalRequest`
   binds `confirmedIdentifiers` and `alternateProcess` from the HTTP request and freezes the list;
   `consolidate(...)` passes them to the service and organization and actor are never client input.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateRepository` and `DuplicatePolicy` — the
+- `com.aurevia.patient.consolidation.DuplicateRepository` and `DuplicatePolicy` — the
   RLS-bounded append boundary and the identity-administration action policy used by the command.
 
 Source survey (not changed by this task): the alternate-process behaviour lives in the chart
-consolidation path under `apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation`.
+consolidation path under `apps/api/src/main/java/com/aurevia/patient/consolidation`.
 The HTTP entry is `POST /api/v1/duplicate-reviews/{reviewId}/consolidate`, mapped by
 `ConsolidationController` (it is currently listed in `contracts/openapi.yaml`,
 not documented in `contracts/openapi.yaml`); the append-only `consolidation`, `chart_association`

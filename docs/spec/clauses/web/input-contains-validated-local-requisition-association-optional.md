@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.web.clauses.InputContainsValidatedLocalRequisitionAssociationOptionalTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/InputContainsValidatedLocalRequisitionAssociationOptionalTest.java`),
+Test class `com.aurevia.web.clauses.InputContainsValidatedLocalRequisitionAssociationOptionalTest`
+(`apps/api/src/test/java/com/aurevia/web/clauses/InputContainsValidatedLocalRequisitionAssociationOptionalTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants
 sharing identical local order codes. Every assertion goes through the real
 `POST /api/v1/xch03/orders/{id}/accept` route and reads the persisted projection
@@ -57,21 +57,21 @@ so a successful command yields exactly two history events.
 Production classes and database objects exercised through the controller and
 service (no production file was changed by this proof-only task):
 
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseController` — thin
+- `com.aurevia.exchange.response.ExchangeResponseController` — thin
   HTTP adapter; `accept` parses `If-Match` and delegates the accept payload.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseService` — `accept`
+- `com.aurevia.exchange.response.ExchangeResponseService` — `accept`
   validates the command at the boundary; `run` re-derives authorization, locks
   the order, checks the version, commits the state change, retained copy, event
   and audit together, and translates integrity failures.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseInputs` and
+- `com.aurevia.exchange.response.ExchangeResponseInputs` and
   `ExchangeResponseCommands.AcceptRequest` — trust-boundary validation and the
   immutable input carrying the local association and optional assignee.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseRepository` —
+- `com.aurevia.exchange.response.ExchangeResponseRepository` —
   tenant-scoped JDBC write of `local_patient_id` and `assignee` and the
   append-only ledgers read back through `GET /{id}`.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy` —
+- `com.aurevia.exchange.response.ExchangeResponseActionPolicy` —
   recipient roles fail closed for a read-only auditor.
-- `com.aurevia.smartclinic.api.SqlFailureTranslator` — maps the tenant-local
+- `com.aurevia.api.SqlFailureTranslator` — maps the tenant-local
   patient trigger's SQLSTATE `23503` to `404 NOT_FOUND` without revealing the
   collision.
 - `db/migrations/V21__xch03_order_response.sql` — `xch03_order_patient_check`
@@ -79,7 +79,7 @@ service (no production file was changed by this proof-only task):
   the order and ledger tables.
 
 Verified locally with
-`SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=InputContainsValidatedLocalRequisitionAssociationOptionalTest test`
+`OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=InputContainsValidatedLocalRequisitionAssociationOptionalTest test`
 — `Tests run: 9, Failures: 0, Errors: 0, Skipped: 0`; the Surefire XML for the
 class reports `tests="9"` with no failures, errors or skipped cases. This is a
 test-only change: no production line or branch was added, so there is no new

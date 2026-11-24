@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.web.clauses.UseExplicitPostCommandsSignCorrectAcknowledgeTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/UseExplicitPostCommandsSignCorrectAcknowledgeTest.java`),
+Test class `com.aurevia.web.clauses.UseExplicitPostCommandsSignCorrectAcknowledgeTest`
+(`apps/api/src/test/java/com/aurevia/web/clauses/UseExplicitPostCommandsSignCorrectAcknowledgeTest.java`),
 a real-PostgreSQL HTTP integration test under the `synthetic-auth` profile with a
 fresh Flyway database, `RestClient` and the `X-Synthetic-Subject` /
 `X-Active-Organization` / `If-Match` headers. Every HTTP request goes through the
@@ -58,20 +58,20 @@ synthetic tenants, subjects and revision identifiers are used.
 
 Production classes and routes exercised by this entry point:
 
-- `com.aurevia.smartclinic.api.authorization.CommandCatalog` (`synthetic`,
+- `com.aurevia.api.authorization.CommandCatalog` (`synthetic`,
   `find`, `require`, `commands`) and `CommandDefinition`, the shared command
   registry consumed by `CommandAuthorization` and `CommandClientGenerator`
-  (`apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/`).
-- `com.aurevia.smartclinic.exchange.release.PatientReleaseController`
+  (`apps/api/src/main/java/com/aurevia/api/authorization/`).
+- `com.aurevia.exchange.release.PatientReleaseController`
   (`POST /api/v1/releases`, `POST /api/v1/releases/{id}/correct`,
   `POST /api/v1/releases/{id}/withdraw`, `GET /api/v1/releases/{id}`,
   `GET /api/v1/releases/{id}/history`) and
-  `com.aurevia.smartclinic.exchange.release.ReleaseService`, backed by the
+  `com.aurevia.exchange.release.ReleaseService`, backed by the
   tenant-scoped `ReleaseRepository` and the V24 release tables.
-- `com.aurevia.smartclinic.patient.PatientController`
+- `com.aurevia.patient.PatientController`
   (`GET /api/v1/patients/{id}/released-revisions`) for the visibility read-back.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` binds the tenant from
-  the synthetic headers; `com.aurevia.smartclinic.api.IfMatch` parses the
+- `com.aurevia.web.TenantContextInterceptor` binds the tenant from
+  the synthetic headers; `com.aurevia.api.IfMatch` parses the
   version precondition used by the irreversible command.
 
 ## Gap
@@ -83,21 +83,21 @@ contract drift, not a missing domain workflow:
 
 1. `signInterpretation` — `/api/v1/radiology/interpretations/{id}/sign` has no
    controller. Radiology signing is reached through
-   `com.aurevia.smartclinic.radflow.worklist.WorklistController`
+   `com.aurevia.radflow.worklist.WorklistController`
    (`POST /api/v1/radiology/worklist/orders/{orderId}/report`) and chart-note
-   signing through `com.aurevia.smartclinic.clinical.notes.ClinicalNoteController`
+   signing through `com.aurevia.clinical.notes.ClinicalNoteController`
    (`POST /api/v1/clinical-notes/{id}/sign`).
 2. `acknowledgeCriticalResult` — `/api/v1/critical/{id}/acknowledge` has no
    controller. The live route is
-   `com.aurevia.smartclinic.exchange.critical.CriticalResultController`
+   `com.aurevia.exchange.critical.CriticalResultController`
    (`POST /api/v1/critical-results/{id}/acknowledge`).
 3. `authorizeRelease` — `/api/v1/releases/{id}/authorize` has no controller.
    Authorization is the create route
-   `com.aurevia.smartclinic.exchange.release.PatientReleaseController`
+   `com.aurevia.exchange.release.PatientReleaseController`
    (`POST /api/v1/releases`), whose domain method is `ReleaseService.authorize`.
 4. `acceptOrder` and `rejectOrder` — `/api/v1/orders/{id}/accept` and
    `/api/v1/orders/{id}/reject` have no controller. The live routes are
-   `com.aurevia.smartclinic.exchange.response.ExchangeResponseController`
+   `com.aurevia.exchange.response.ExchangeResponseController`
    (`POST /api/v1/xch03/orders/{id}/accept` and `/reject`).
 
 `CommandClientGenerator` publishes the catalog paths into

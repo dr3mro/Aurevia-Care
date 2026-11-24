@@ -6,7 +6,7 @@ Fix pass on branch `swarm/RESP-SIGNED-OUT-PAGE-973`. The implementation from the
 first worker was already present and committed (`01bc3e5d` plus two
 `origin/main` merges). I re-verified it end to end rather than starting over,
 confirmed the red→green evidence independently, then applied three refinements
-from a bounded read-only `smartclinic-senior-react` review and re-verified the
+from a bounded read-only `orevia-senior-react` review and re-verified the
 full gate.
 
 `SignedOutPage` wraps the shared `SystemNotice` in the existing `page` and
@@ -36,13 +36,13 @@ contract or patient boundary is touched.
 
 ## Review owner
 
-- `smartclinic-senior-react` for the component and view test; its definition of
+- `orevia-senior-react` for the component and view test; its definition of
   done (full `check.sh` incl. typecheck, typecheck final lines in notes) is met.
-- `smartclinic-ux-reviewer` structural concerns are covered by the logical-
+- `orevia-ux-reviewer` structural concerns are covered by the logical-
   property/RTL assertions; real-device, pixel and Arabic-clinician checks remain
   with the separate Playwright/launch stories.
 
-Delegation: `smartclinic-delivery` and `smartclinic-senior-react` skills were
+Delegation: `orevia-delivery` and `orevia-senior-react` skills were
 loaded and applied directly. A bounded read-only senior-react review was
 requested as an advisory subagent; its outcome is recorded in Findings. All
 checks recorded below are **tool evidence executed by this worker**; no human
@@ -96,7 +96,7 @@ Green, scoped:
 Mandatory typecheck (explicit), no `error TS…`:
 
 ```
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 ```
 exit 0.
@@ -166,7 +166,7 @@ Arabic-clinician acceptance, which remains a separate launch gate.
 
 - The first worker's implementation was complete and green. This fix pass added
   the correctly named notes file, an independent re-verification, and three
-  refinements requested by the advisory read-only `smartclinic-senior-react`
+  refinements requested by the advisory read-only `orevia-senior-react`
   review (all applied and re-verified):
   1. **Medium** — the page/stack wrappers carried redundant inline styles that
      also introduced unrequested visual rules (`placeItems: center`,
@@ -186,10 +186,10 @@ Arabic-clinician acceptance, which remains a separate launch gate.
   accepts no `className`/`style` and is shared with other system pages whose
   responsive stories belong to other workers; editing it would exceed scope.
 - Out of scope, observed while reconciling with `origin/main`: committed
-  conflict markers remain in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/`
+  conflict markers remain in `apps/api/src/main/java/com/aurevia/exchange/hl7/`
   (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). Not in this
   change and not edited; the integrator/owner should confirm or repair them.
-- Reviewer evidence source: read-only subagent report from `smartclinic-senior-react`
+- Reviewer evidence source: read-only subagent report from `orevia-senior-react`
   (no files edited by the reviewer). All command results above are tool evidence
   from this worker; no human participant or simulated-user evidence was claimed.
 

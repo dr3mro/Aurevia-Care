@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.events.clauses.RetryTransientErrorsBoundedBackoffTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/events/clauses/RetryTransientErrorsBoundedBackoffTest.java`).
+Test class: `com.aurevia.events.clauses.RetryTransientErrorsBoundedBackoffTest`
+(path: `apps/api/src/test/java/com/aurevia/events/clauses/RetryTransientErrorsBoundedBackoffTest.java`).
 All seven tests are active (none disabled) and pass as deterministic in-memory unit
 tests with a fixed clock (`2026-11-19T12:00:00Z`) and synthetic identifiers only.
 No clinical payload, real identifier or credential appears in any fixture.
@@ -50,19 +50,19 @@ Negative proofs — retry refuses every event it must not touch:
 
 Production classes exercised through the normal service entry point:
 
-- `com.aurevia.smartclinic.events.DurableEventService` — `retry` schedules the
+- `com.aurevia.events.DurableEventService` — `retry` schedules the
   requeue with `clock.instant().plusSeconds(backoffSeconds(nextAttempt))`, dead-letters
   when `nextAttempt > MAX_ATTEMPTS`, and enforces version, state, role and tenant
   preconditions before any write. `backoffSeconds` caps exponential growth at 60 s.
-- `com.aurevia.smartclinic.events.DeliveryActions` — `allows` maps `RETRY_SCHEDULED`
+- `com.aurevia.events.DeliveryActions` — `allows` maps `RETRY_SCHEDULED`
   to the delivery role set (worker, integration_admin, operator); other roles are denied.
-- `com.aurevia.smartclinic.events.DurableEventContract` — `RetryResult`, `OutboxEvent`,
+- `com.aurevia.events.DurableEventContract` — `RetryResult`, `OutboxEvent`,
   `DeadLetterEntry`, `DeliveryState` and `Outcome` carry the result and audit facts.
 
 HTTP entry point (existing end-to-end evidence, not re-tested here):
 `POST /api/v1/delivery/events/{id}/retry`, exercised by
-`com.aurevia.smartclinic.it.JdbcDeliveryStoreIntegrationTest.deadLettersAFailedEventAndListsItInTheRestrictedQueue`
-(`apps/api/src/test/java/com/aurevia/smartclinic/it/JdbcDeliveryStoreIntegrationTest.java:263-294`),
+`com.aurevia.it.JdbcDeliveryStoreIntegrationTest.deadLettersAFailedEventAndListsItInTheRestrictedQueue`
+(`apps/api/src/test/java/com/aurevia/it/JdbcDeliveryStoreIntegrationTest.java:263-294`),
 which asserts a bounded retry records `nextAttemptAt` and returns `200`, and that a
 failed event can be placed in and listed from the restricted dead-letter queue.
 Attempt-budget exhaustion through retry itself is proven by the in-memory test

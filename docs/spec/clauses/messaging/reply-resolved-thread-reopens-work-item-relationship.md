@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.ReplyResolvedThreadReopensWorkItemRelationshipTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ReplyResolvedThreadReopensWorkItemRelationshipTest.java`).
+Test class: `com.aurevia.messaging.clauses.ReplyResolvedThreadReopensWorkItemRelationshipTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/ReplyResolvedThreadReopensWorkItemRelationshipTest.java`).
 All five tests are active (none disabled) and use synthetic fixtures only: a mocked
 `ConversationRepository`, a synchronous `TransactionTemplate`, a mocked `AuditAppender`,
 a real `InMemoryMessagingStore` and `CareUnitDirectoryService` for connection verification,
@@ -47,7 +47,7 @@ at lines 153-154 (`requireVersion` 414-418, `requireWritable` 420-424) by the st
 and closed-thread tests.
 
 Production classes exercised through that entry point:
-`com.aurevia.smartclinic.messaging.conversations.ConversationService` (transactional
+`com.aurevia.messaging.conversations.ConversationService` (transactional
 lifecycle orchestration and the reopen decision), `ConversationContract.State` and
 `ConversationContract.WorkEventType` (`resolved` → `reopened` → `awaiting_staff`),
 `PatientConnectionVerifier` and its `CareUnitDirectoryService` implementation (real
@@ -55,13 +55,13 @@ connection re-verification on every patient reply), `ConversationActions` (bound
 caller-role matrix) and `ConversationRepository` (mocked SQL boundary).
 
 The clause is caller-agnostic. Equivalent staff-side proof already lives in
-`com.aurevia.smartclinic.it.messagingconversations.ConversationServiceTest`:
+`com.aurevia.it.messagingconversations.ConversationServiceTest`:
 `staffReplyReopensAResolvedThreadWhenTheVerifiedLinkIsActive` and
 `staffReplyCannotReopenAResolvedThreadWhenTheVerifiedLinkIsRevoked`. HTTP-level proof of
 the reopen and closed-thread behavior is in
-`com.aurevia.smartclinic.it.messagingconversations.ConversationFlowTest.patientOpenStaffReplyUnreadMarkReadReopenAndClose`
+`com.aurevia.it.messagingconversations.ConversationFlowTest.patientOpenStaffReplyUnreadMarkReadReopenAndClose`
 (lines 305-325), and the tenant/role-scoped HTTP boundary is covered by
-`com.aurevia.smartclinic.it.messaging.ConversationHttpSecurityTest`. Those suites are cited as existing evidence
+`com.aurevia.it.messaging.ConversationHttpSecurityTest`. Those suites are cited as existing evidence
 only; this task did not change them. No OpenAPI contract claim is made here — the OpenAPI
 entry and real-PostgreSQL checks belong to the integration suites and the integrator gate.
 

@@ -24,7 +24,7 @@
        @SuppressFBWarnings that check-wiring.py would reject on the renamed class. -->
   <Match>
     <Bug pattern="EI_EXPOSE_REP"/>
-    <Class name="com.aurevia.smartclinic.messaging.evidence.GateEvidenceService"/>
+    <Class name="com.aurevia.messaging.evidence.GateEvidenceService"/>
     <Method name="ledger"/>
   </Match>
 </FindBugsFilter>

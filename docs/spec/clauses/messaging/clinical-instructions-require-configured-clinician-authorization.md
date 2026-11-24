@@ -10,10 +10,10 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.ClinicalInstructionsRequireConfiguredClinicianAuthorizationTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ClinicalInstructionsRequireConfiguredClinicianAuthorizationTest.java`).
+Test class: `com.aurevia.messaging.clauses.ClinicalInstructionsRequireConfiguredClinicianAuthorizationTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/ClinicalInstructionsRequireConfiguredClinicianAuthorizationTest.java`).
 All six tests are active (none are disabled) and pass with synthetic data only. Every command enters
-through the normal HTTP adapter `com.aurevia.smartclinic.messaging.instructions.InstructionController`
+through the normal HTTP adapter `com.aurevia.messaging.instructions.InstructionController`
 (`send`, `replace`, `withdraw`, `defineTemplate`, `listForPatient`) with an injected
 `InstructionService`, a tenant-keyed synthetic role fold in `InstructionStore.InMemory` and a bound
 `TenantContext`; the context is cleared after each test.
@@ -48,19 +48,19 @@ through the normal HTTP adapter `com.aurevia.smartclinic.messaging.instructions.
 
 Production classes exercised (unchanged by this task):
 
-- `com.aurevia.smartclinic.messaging.instructions.InstructionActions` — `CLINICAL_SEND` maps only to
+- `com.aurevia.messaging.instructions.InstructionActions` — `CLINICAL_SEND` maps only to
   the `clinician` key; `SEND` and `WITHDRAW` map to the wider staff-sender set.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionService` — guards clinical templates
+- `com.aurevia.messaging.instructions.InstructionService` — guards clinical templates
   (`send`), free text (`send`) and replacement text (`replace`) with `CLINICAL_SEND`; `execute`
   re-derives the active tenant and membership roles on every command and records the author role
   with the same gate.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionController` — thin HTTP adapter that
+- `com.aurevia.messaging.instructions.InstructionController` — thin HTTP adapter that
   delegates each route to the injected service and parses the `If-Match` precondition.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionStore.InMemory` — tenant-keyed
+- `com.aurevia.messaging.instructions.InstructionStore.InMemory` — tenant-keyed
   synthetic store providing `activeRoles`, unit assignment, connections, templates and facts.
-- `com.aurevia.smartclinic.api.ApiException` and `com.aurevia.smartclinic.api.IfMatch` — the
+- `com.aurevia.api.ApiException` and `com.aurevia.api.IfMatch` — the
   structured 403/FORBIDDEN denial and the version precondition parsed at the adapter boundary.
-- `com.aurevia.smartclinic.tenant.TenantContext` — binds and clears the synthetic tenant identity.
+- `com.aurevia.tenant.TenantContext` — binds and clears the synthetic tenant identity.
 
 "Configured clinician authorization" is the `clinician` role key in the `InstructionActions` matrix
 evaluated against fresh tenant-configured active membership, together with the tenant-approved

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.ShowVerifiedPatientsTheirEligibleCareUnitsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ShowVerifiedPatientsTheirEligibleCareUnitsTest.java`),
+Test class: `com.aurevia.messaging.clauses.ShowVerifiedPatientsTheirEligibleCareUnitsTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/ShowVerifiedPatientsTheirEligibleCareUnitsTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives
 `GET /api/v1/care-units` over HTTP with two tenants sharing identical local unit,
 chart and relationship identifiers. All fixtures are synthetic; no real patient
@@ -39,22 +39,22 @@ data or credentials are used.
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.messaging.units.CareUnitController` — `units()`, the
+- `com.aurevia.messaging.units.CareUnitController` — `units()`, the
   thin `GET /api/v1/care-units` adapter that injects the service.
-- `com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService` —
+- `com.aurevia.messaging.units.CareUnitDirectoryService` —
   `eligibleUnits()`: context, `UNIT_LIST` authorization, verified-chart fold,
   relationship usability (`active`, not consumed, not expired), active-unit
   filter, tenant-scoped resolution and audit.
-- `com.aurevia.smartclinic.messaging.units.MessagingActions` — the bounded
+- `com.aurevia.messaging.units.MessagingActions` — the bounded
   `UNIT_LIST` action matrix; `patient` is allowed, `reception` is not.
-- `com.aurevia.smartclinic.messaging.units.JdbcMessagingStore` —
+- `com.aurevia.messaging.units.JdbcMessagingStore` —
   `hasActiveMembership`, `activeRoles`, `verifiedPatientCharts`, `relationshipsFor`
   and `findUnit`, the tenant-bound SQL boundary.
-- `com.aurevia.smartclinic.messaging.units.MessagingContract` — `UnitDirectory`
+- `com.aurevia.messaging.units.MessagingContract` — `UnitDirectory`
   and `CareUnit` (`organizationId`, `facilityId`, `name`, `topics`, `active`,
   `unitKey`), the serialized response contract.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` and
-  `com.aurevia.smartclinic.web.TenantContextInterceptor` — the `$.code` error body
+- `com.aurevia.api.ApiErrorHandler` and
+  `com.aurevia.web.TenantContextInterceptor` — the `$.code` error body
   and the synthetic identity headers that bind the request tenant.
 - `db/migrations/V60__care_units.sql` — the `care_unit` and
   `eligible_relationship` tables with forced row-level security; the isolation

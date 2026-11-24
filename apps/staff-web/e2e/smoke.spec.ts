@@ -40,7 +40,7 @@ test('home page has the expected title and the skip link is first in tab order',
   page,
 }) => {
   await page.goto('/');
-  await expect(page).toHaveTitle('SmartClinic Staff Portal');
+  await expect(page).toHaveTitle('Orevia Staff Portal');
 
   const firstTabStopClass = await page.evaluate(
     (selector) => document.querySelector(selector)?.getAttribute('class') ?? null,

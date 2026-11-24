@@ -12,7 +12,7 @@ FAIL unreferenced-service: apps/api/src/main/java/com/x/NewService.java
 FAIL unreferenced-service: apps/api/src/main/java/com/x/OrphanService.java
 FAIL unreferenced-service: apps/api/src/main/java/com/synthetic/OrphanService.java
 npm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > eslint . --max-warnings 0
 npm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
 > patient-mobile@0.1.0 typecheck
@@ -48,11 +48,11 @@ Acceptance mapping:
 
 ## Risk class
 
-Routine — test-only change in one domain package. The underlying MSG-05 slice is cross-boundary (HTTP/service/store) but is unchanged here. An independent `smartclinic-senior-backend` review confirmed no functional defect and identified exactly this test gap.
+Routine — test-only change in one domain package. The underlying MSG-05 slice is cross-boundary (HTTP/service/store) but is unchanged here. An independent `orevia-senior-backend` review confirmed no functional defect and identified exactly this test gap.
 
 ## Review owner
 
-`smartclinic-senior-backend` (bounded read-only review, subagent session `ses_dffcee784ffe8vk2TnelsgzdyB`): "No functional defect found … The actionable gap is a test gap, not a code defect." `smartclinic-test-engineer` and `smartclinic-senior-java-build` skills loaded and applied.
+`orevia-senior-backend` (bounded read-only review, subagent session `ses_dffcee784ffe8vk2TnelsgzdyB`): "No functional defect found … The actionable gap is a test gap, not a code defect." `orevia-test-engineer` and `orevia-senior-java-build` skills loaded and applied.
 
 ## Data changes
 

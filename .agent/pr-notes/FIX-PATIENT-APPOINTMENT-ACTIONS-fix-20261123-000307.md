@@ -16,9 +16,9 @@ Routine repair of a test-only static-typing defect on a cross-boundary story. No
 
 ## Review owner
 
-- smartclinic-senior-mobile / smartclinic-senior-typescript — matching implementation specialists (skills loaded).
-- smartclinic-plan-reviewer — plan reviewed before code (VERDICT: GO).
-- smartclinic-code-reviewer, smartclinic-coverage-auditor, smartclinic-devsecops — independent read-only stages after code.
+- orevia-senior-mobile / orevia-senior-typescript — matching implementation specialists (skills loaded).
+- orevia-plan-reviewer — plan reviewed before code (VERDICT: GO).
+- orevia-code-reviewer, orevia-coverage-auditor, orevia-devsecops — independent read-only stages after code.
 
 ## Data changes
 
@@ -86,7 +86,7 @@ No test skipped, no threshold lowered, no exclusion or coverage-ignore comment a
 ## Findings
 
 - The module-local `apps/patient-mobile/tsconfig.json` does not enable `exactOptionalPropertyTypes`; the repository-root `tsconfig.json` does. A green module `npm run typecheck` or even `bash apps/patient-mobile/check.sh` therefore does not prove the root gate green. This is exactly how the earlier run false-greend and is now captured as a lesson.
-- Pre-existing and out of scope: committed conflict markers remain in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java` (from an earlier `origin/swarm/BUILD-37-469` merge). They were present before this task, are unrelated to the patient app and were not touched.
+- Pre-existing and out of scope: committed conflict markers remain in `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java` (from an earlier `origin/swarm/BUILD-37-469` merge). They were present before this task, are unrelated to the patient app and were not touched.
 - Carried forward from the original note (not fixed here, separate follow-ups already requested): the installed `RootNavigator` supplies no device source so no `revoke-*` control renders in the shipped shell, and the patient device DELETE route is implemented but not yet published in OpenAPI. Neither is in this fix pass's scope and neither causes a gate failure.
 - `scripts/check.sh` was not run: it invokes the long Java verification owned by the integrator. The canonical module gate and the exact failing root typecheck were run instead.
 
@@ -99,6 +99,6 @@ No test skipped, no threshold lowered, no exclusion or coverage-ignore comment a
 
 ## Review verdicts
 
-- smartclinic-code-reviewer: GO (test-only diff; no Critical, Required or Optional finding; types made honest without widening production types or weakening assertions)
-- smartclinic-coverage-auditor: GO (no production branch added or removed; facility fallback and dev-loopback branches still asserted; no skip, exclusion or threshold change)
-- smartclinic-devsecops: GO (test-only diff; no PHI, secrets, dependency, isolation or audit change; OWASP/SpotBugs not applicable to a frontend test-only pass; no tool run by the read-only reviewer)
+- orevia-code-reviewer: GO (test-only diff; no Critical, Required or Optional finding; types made honest without widening production types or weakening assertions)
+- orevia-coverage-auditor: GO (no production branch added or removed; facility fallback and dev-loopback branches still asserted; no skip, exclusion or threshold change)
+- orevia-devsecops: GO (test-only diff; no PHI, secrets, dependency, isolation or audit change; OWASP/SpotBugs not applicable to a frontend test-only pass; no tool run by the read-only reviewer)

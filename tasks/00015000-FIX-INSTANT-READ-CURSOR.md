@@ -3,13 +3,13 @@
   - pr: #1372
   - attempts: 1
   - requirements: MSG-02, ARC-02, ARC-07
-  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant, db/migrations/V96__staff_message_read_cursor.sql
+  - scope: apps/api/src/main/java/com/aurevia/staffmsg/instant, apps/api/src/test/java/com/aurevia/staffmsg/instant, db/migrations/V96__staff_message_read_cursor.sql
   - depends: SMSG-03
   - reserved: V96
   - details:
     Agent brief. Resume from the current claim and latest handoff evidence.
-    Current starting points to inspect are `db/migrations/V96__staff_message_read_cursor.sql`, `apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant/InstantMessagingService.java`.
-    Start with the existing assertions in `apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant/InstantMessagingServiceTest.java`, `apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant/InstantMessagingControllerTest.java` and add a failing case for the acceptance gap.
+    Current starting points to inspect are `db/migrations/V96__staff_message_read_cursor.sql`, `apps/api/src/main/java/com/aurevia/staffmsg/instant/InstantMessagingService.java`.
+    Start with the existing assertions in `apps/api/src/test/java/com/aurevia/staffmsg/instant/InstantMessagingServiceTest.java`, `apps/api/src/test/java/com/aurevia/staffmsg/instant/InstantMessagingControllerTest.java` and add a failing case for the acceptance gap.
     Record the production entry point and integration test, and run `python3 -I scripts/check-wiring.py`.
 
     JdbcInstantConversationStore keeps read cursors in a ConcurrentHashMap even though messages are persisted. The instant controller is already present on main.

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.OutsideHoursShowUnitNextHandlesMessagesTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/OutsideHoursShowUnitNextHandlesMessagesTest.java`).
+Test class: `com.aurevia.messaging.clauses.OutsideHoursShowUnitNextHandlesMessagesTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/OutsideHoursShowUnitNextHandlesMessagesTest.java`).
 All five tests are active (none are disabled) and use synthetic data only.
 
 - `outsideHoursReturnsTheNextHandlingInstantForAConnectedPatient` — positive proof.
@@ -39,7 +39,7 @@ All five tests are active (none are disabled) and use synthetic data only.
 
 This class is clause-focused service-level evidence. The end-to-end HTTP proof that
 the availability route is served through the real controller and durable store is
-the existing `com.aurevia.smartclinic.it.messaging.ServiceProfileHttpIntegrationTest`,
+the existing `com.aurevia.it.messaging.ServiceProfileHttpIntegrationTest`,
 which asserts `200` on `GET /api/v1/care-units/{unitId}/availability`. The thin
 controller delegation is exercised by that integration test and by the route in
 `ServiceProfileController`.
@@ -47,19 +47,19 @@ controller delegation is exercised by that integration test and by the route in
 Production classes exercised through the normal read entry point
 (`ServiceProfileService.availability`):
 
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileService` — re-checks
+- `com.aurevia.messaging.service.ServiceProfileService` — re-checks
   membership, the `AVAILABILITY_VIEW` action, unit access, the effective named-approved
   profile and the audited denial/success pair on every read.
-- `com.aurevia.smartclinic.messaging.service.ServiceHoursCalculator` — computes the
+- `com.aurevia.messaging.service.ServiceHoursCalculator` — computes the
   zone-aware `ServiceAvailability(false, nextHandlingAt, timeZone)` from the published
   service hours at the current instant.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileActions` — grants
+- `com.aurevia.messaging.service.ServiceProfileActions` — grants
   `AVAILABILITY_VIEW` to `patient`, `tenant_admin`, `privacy_auditor` and
   `unit_supervisor`, and withholds it from `reception`.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileContract.ServiceAvailability`
+- `com.aurevia.messaging.service.ServiceProfileContract.ServiceAvailability`
   — the immutable availability projection; `nextHandlingAt` is the absolute instant
   the unit next handles messages.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileController` — the thin HTTP
+- `com.aurevia.messaging.service.ServiceProfileController` — the thin HTTP
   adapter exposing `GET /api/v1/care-units/{unitId}/availability`; its real HTTP
   persistence proof is `ServiceProfileHttpIntegrationTest`.
 

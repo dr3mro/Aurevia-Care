@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.UseSeparateInternalStatesWorkflowRequestedAcceptedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/UseSeparateInternalStatesWorkflowRequestedAcceptedTest.java`),
+Test class `com.aurevia.exchange.clauses.UseSeparateInternalStatesWorkflowRequestedAcceptedTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/UseSeparateInternalStatesWorkflowRequestedAcceptedTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants and
 synthetic clinician, lab-collector and tenant-admin fixtures. Each case owns a
 distinct synthetic `orderRef` (the V20 unique key), quoted `If-Match` ETags are
@@ -56,23 +56,23 @@ through the real REST entry point, not just the domain enums:
 
 Entry-point-to-test trace: HTTP `POST /api/v1/exchange-tasks`,
 `POST /api/v1/exchange-tasks/{id}/{command}` and `GET /api/v1/exchange-tasks/{id}`
-→ `com.aurevia.smartclinic.exchange.task.ExchangeTaskController` (thin adapter,
+→ `com.aurevia.exchange.task.ExchangeTaskController` (thin adapter,
 injected service, parses `If-Match` and the allowlisted command) →
-`com.aurevia.smartclinic.exchange.task.ExchangeTaskService` (tenant-guarded
+`com.aurevia.exchange.task.ExchangeTaskService` (tenant-guarded
 transaction, re-read membership/roles, optimistic version check, audit) →
-`com.aurevia.smartclinic.exchange.task.ExchangeStateMachine` (one channel per
-command) → `com.aurevia.smartclinic.exchange.task.ExchangeTaskRepository` (RLS-bounded
+`com.aurevia.exchange.task.ExchangeStateMachine` (one channel per
+command) → `com.aurevia.exchange.task.ExchangeTaskRepository` (RLS-bounded
 SQL, append-only event ledger) → `db/migrations/V20__exchange_task_states.sql`
 (three CHECK-constrained channels, review-evidence invariant, forced RLS and the
 single-channel transition guard trigger). Wire types are
 `WorkflowState`, `TransmissionState`, `ClinicalReviewState`, `ExchangeDimension`,
 `ExchangeCommand`, `ExchangeTask`, `ExchangeTaskView` and `ExchangeTaskEvent`;
 `ExchangeActionPolicy` separates the role matrix, and
-`com.aurevia.smartclinic.api.IfMatch` / `ApiException` /
+`com.aurevia.api.IfMatch` / `ApiException` /
 `ApiErrorHandler` render the 403/404/409/412/422 contract.
 
 Discovery: this is the only XCH-02 three-channel implementation. The package
-`apps/api/src/main/java/com/aurevia/smartclinic/exchange/task` and migration
+`apps/api/src/main/java/com/aurevia/exchange/task` and migration
 `db/migrations/V20__exchange_task_states.sql` own the states; no other package,
 migration, controller or generated client implements the same three channels or
 routes. The unit suites (`ExchangeStateMachineTest`, `WorkflowStateTest`,
@@ -87,7 +87,7 @@ and `TransmissionAcknowledgmentCannotCloseClinicalTaskTest` and are cited there
 as corroborating evidence rather than re-proven.
 
 Verified locally:
-`SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=UseSeparateInternalStatesWorkflowRequestedAcceptedTest test`
+`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=UseSeparateInternalStatesWorkflowRequestedAcceptedTest test`
 — 11 tests run, 0 failures, 0 errors, 0 skipped; see
 `.agent/pr-notes/SPEC-XCH-02-C01-20261122-153909.md` for the exact final lines.
 

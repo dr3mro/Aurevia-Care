@@ -51,7 +51,7 @@ Entry point to test trace: `EnteredInErrorBanner` is rendered by `apps/staff-web
   - The stderr stack traces in this run come from the pre-existing fail-closed `useI18n`/`useTheme` tests (`tests/i18n/I18nProvider.test.tsx`, `tests/theme/ThemeProvider.test.tsx`) and did not fail the run; all 1903 tests passed.
 - Typecheck final lines (`cd apps/staff-web && npm run typecheck`, exit 0):
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   No `error TS…` output. Lint (`npm run lint`) exit 0. `gen:api:check`, `npm run build` and `scripts/check-bundle-size.mjs` all passed inside the full module gate.
@@ -74,8 +74,8 @@ Presentation-only staff-web change; no signed data, release, prescribing, tenant
 
 ## Findings
 
-- Unrelated to this change: `main` at `HEAD 8c8b589` contains committed Git conflict markers in three API files — `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` — e.g. `<<<<<<< HEAD` / `>>>>>>> origin/swarm/BUILD-37-469`. Verified with `git grep -nE '^(<<<<<<<|>>>>>>>) '` and `git show HEAD:…/Hl7Parser.java`. These are outside this task's scope and were not touched; the integrator/owner should repair them before relying on a Java build.
-- Bounded read-only Senior React review (`smartclinic-senior-react`) found no blocking issue in the production component. It reported three test-only findings, all applied: (1) replaced the brittle `alert.style.minInlineSize === '0'` read with a serialized `min-inline-size:\s*0(?:px)?` assertion; (2) removed the unreachable `?? VIEWPORTS.compact` fallback in `renderBanner`; (3) hardened the "no hidden field" check by asserting no `.hide-compact` or `.only-compact` element at every band. The reviewer could not execute commands in its sandbox; all checks were run by this worker before and after the fixes. No task outside the two scoped files is needed.
+- Unrelated to this change: `main` at `HEAD 8c8b589` contains committed Git conflict markers in three API files — `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` — e.g. `<<<<<<< HEAD` / `>>>>>>> origin/swarm/BUILD-37-469`. Verified with `git grep -nE '^(<<<<<<<|>>>>>>>) '` and `git show HEAD:…/Hl7Parser.java`. These are outside this task's scope and were not touched; the integrator/owner should repair them before relying on a Java build.
+- Bounded read-only Senior React review (`orevia-senior-react`) found no blocking issue in the production component. It reported three test-only findings, all applied: (1) replaced the brittle `alert.style.minInlineSize === '0'` read with a serialized `min-inline-size:\s*0(?:px)?` assertion; (2) removed the unreachable `?? VIEWPORTS.compact` fallback in `renderBanner`; (3) hardened the "no hidden field" check by asserting no `.hide-compact` or `.only-compact` element at every band. The reviewer could not execute commands in its sandbox; all checks were run by this worker before and after the fixes. No task outside the two scoped files is needed.
 
 ## Lessons for workers
 

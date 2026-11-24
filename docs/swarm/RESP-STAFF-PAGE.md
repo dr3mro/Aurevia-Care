@@ -78,7 +78,7 @@ Min-width media queries never change what the server authorizes (ADR-0004).
 
 ## Review owner
 
-`smartclinic-senior-react` — simulated, read-only, bounded review loaded with
+`orevia-senior-react` — simulated, read-only, bounded review loaded with
 story ID, paths, acceptance criteria and the observed red/green evidence.
 Verdict: **no blocking finding**. It confirmed the tests are non-vacuous and
 reach the real entry point, that all new inline styles are logical, and that the
@@ -87,8 +87,8 @@ existing consumers of `AdminTableRegion` are untouched. It raised one LOW,
 non-blocking note: `responsive-layout.md` §5 permits a labelled medium region
 "only when content overflows"; this page never renders one at medium because
 logical wrapping and `inline-size: 100%` prevent overflow. Skills loaded by the
-primary agent: `smartclinic-delivery`, `smartclinic-senior-react`,
-`smartclinic-senior-typescript`, `smartclinic-ux-reviewer`.
+primary agent: `orevia-delivery`, `orevia-senior-react`,
+`orevia-senior-typescript`, `orevia-ux-reviewer`.
 
 ## Data changes
 

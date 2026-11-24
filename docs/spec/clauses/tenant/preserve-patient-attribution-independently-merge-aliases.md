@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.tenant.clauses.PreservePatientAttributionIndependentlyMergeAliasesTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/tenant/clauses/PreservePatientAttributionIndependentlyMergeAliasesTest.java`).
+Test class: `com.aurevia.tenant.clauses.PreservePatientAttributionIndependentlyMergeAliasesTest`
+(path: `apps/api/src/test/java/com/aurevia/tenant/clauses/PreservePatientAttributionIndependentlyMergeAliasesTest.java`).
 All four tests are active (none disabled). They drive the real HTTP entry points with
 synthetic fixtures on real PostgreSQL with forced row-level security, and verify the
 persisted columns with `app.current_org` set in the same session as each query.
@@ -45,14 +45,14 @@ Production classes exercised through the normal HTTP entry points
 `POST /api/v1/duplicate-reviews`, `GET /api/v1/duplicate-reviews/{survivor}/{duplicate}`
 and `POST /api/v1/duplicate-reviews/{reviewId}/consolidate`:
 
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationController`,
-  `com.aurevia.smartclinic.patient.consolidation.ConsolidationService` (`review` and
-  `consolidate`) and `com.aurevia.smartclinic.patient.consolidation.DuplicatePolicy` —
+- `com.aurevia.patient.consolidation.ConsolidationController`,
+  `com.aurevia.patient.consolidation.ConsolidationService` (`review` and
+  `consolidate`) and `com.aurevia.patient.consolidation.DuplicatePolicy` —
   append the association under a pair lock and refuse a wrong role, a peer tenant's
   concealed review and a stale version.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateRepository` — the SQL boundary
+- `com.aurevia.patient.consolidation.DuplicateRepository` — the SQL boundary
   whose `effectivePatientId` fold affects visibility only.
-- `com.aurevia.smartclinic.chart.record.ChartController`, `ChartService` and
+- `com.aurevia.chart.record.ChartController`, `ChartService` and
   `ChartRepository` — write and read the raw `chart_entry.patient_id` without consulting
   the merge alias.
 - Migrations `db/migrations/V7__patient_registration.sql` (immutable `patient_record`),
@@ -64,11 +64,11 @@ and `POST /api/v1/duplicate-reviews/{reviewId}/consolidate`:
 Source survey (unchanged by this task): no alias- or attribution-specific route exists in
 `contracts/openapi.yaml`; the rule is implicit in the persisted columns and the
 visibility-only fold. The implementation lives in the
-`com.aurevia.smartclinic.patient.consolidation` and `com.aurevia.smartclinic.chart.record`
+`com.aurevia.patient.consolidation` and `com.aurevia.chart.record`
 packages and the three migrations above.
 
 Verified locally:
-`SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=PreservePatientAttributionIndependentlyMergeAliasesTest test`
+`OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=PreservePatientAttributionIndependentlyMergeAliasesTest test`
 — 4 tests, 0 failures, 0 errors, 0 skipped.
 
 ## Gap
@@ -108,7 +108,7 @@ void clinicalRecordPatientIdCannotBeRewrittenToSurvivor() throws Exception {
     // When enabling this test, assert the reject-mutation trigger's SQLState/message
     // rather than any failure: an unrelated connection or RLS error must not pass.
     assertThrows(Exception.class, () -> {
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("UPDATE public.chart_entry SET patient_id = CAST('" + pair[0]

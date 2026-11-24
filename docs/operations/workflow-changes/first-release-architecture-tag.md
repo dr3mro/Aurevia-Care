@@ -11,12 +11,12 @@
 
 ### 1. First release fails: the local architecture tag does not exist (blocking)
 
-The `verify` job saves the smoke-tested image as `smartclinic:test` only (line 156). The `release` job loads that tar (line 196) and computes `child="$image-$arch"` (line 200) — for example `ghcr.io/<owner>/<repo>:v1.0.0-amd64` — but never creates that tag locally.
+The `verify` job saves the smoke-tested image as `orevia:test` only (line 156). The `release` job loads that tar (line 196) and computes `child="$image-$arch"` (line 200) — for example `ghcr.io/<owner>/<repo>:v1.0.0-amd64` — but never creates that tag locally.
 
 On the **first** release of a version the child tag is absent from the registry, so:
 
 1. `docker buildx imagetools inspect "$child"` (line 201) fails, so the `else` branch runs.
-2. `docker push "$child"` (line 205) resolves the **reference name**, not the image bits. There is no local `ghcr.io/<owner>/<repo>:v1.0.0-amd64` tag, only `smartclinic:test`.
+2. `docker push "$child"` (line 205) resolves the **reference name**, not the image bits. There is no local `ghcr.io/<owner>/<repo>:v1.0.0-amd64` tag, only `orevia:test`.
 3. Docker reports `An image does not exist locally with the tag: ...`; `set -euo pipefail` (line 191) aborts the step, so no image and no GitHub release are published.
 
 This is exactly the "first release fails for a missing local architecture tag" defect. The `docker pull` on line 202 would create the local tag, but that branch only runs when the tag already exists — i.e. only on a re-run, never on the first release.
@@ -82,7 +82,7 @@ Scenario A reproduces the reported first-release failure. A2 reproduces the re-r
 
 The diff below was produced from a scratch copy of the current file and checked with `git apply --check` against a pristine copy: it applies cleanly. It changes only the `release` step:
 
-1. `docker tag smartclinic:test "$child"` creates the missing local tag in **both** branches.
+1. `docker tag orevia:test "$child"` creates the missing local tag in **both** branches.
 2. Existence is decided by `docker pull`: success means the tag is published; the existing image's version and revision labels are then verified. A failed pull is cross-checked with `imagetools inspect`; if a manifest is nevertheless visible the step fails closed instead of pushing.
 3. The brittle `.Id` equality is replaced by stable provenance-label checks, so a re-run of the same commit succeeds. Different content under the same version fails before any write.
 4. The digest is validated before it is used.
@@ -102,20 +102,20 @@ The diff below was produced from a scratch copy of the current file and checked 
 +          revision_label='{{index .Config.Labels "org.opencontainers.image.revision"}}'
            refs=()
            for arch in amd64 arm64; do
-             docker load -i "smoke-tested-image-$arch/smartclinic-image.tar"
-             test "$(docker image inspect smartclinic:test --format '{{.Architecture}}')" = "$arch"
--            test "$(docker image inspect smartclinic:test --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
--            test "$(docker image inspect smartclinic:test --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$VERSION"
-+            test "$(docker image inspect smartclinic:test --format "$revision_label")" = "$GITHUB_SHA"
-+            test "$(docker image inspect smartclinic:test --format "$version_label")" = "$VERSION"
+             docker load -i "smoke-tested-image-$arch/orevia-image.tar"
+             test "$(docker image inspect orevia:test --format '{{.Architecture}}')" = "$arch"
+-            test "$(docker image inspect orevia:test --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
+-            test "$(docker image inspect orevia:test --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$VERSION"
++            test "$(docker image inspect orevia:test --format "$revision_label")" = "$GITHUB_SHA"
++            test "$(docker image inspect orevia:test --format "$version_label")" = "$VERSION"
              child="$image-$arch"
 -            if docker buildx imagetools inspect "$child" >/dev/null 2>&1; then
 -              docker pull --platform "linux/$arch" "$child"
--              test "$(docker image inspect "$child" --format '{{.Id}}')" = "$(docker image inspect smartclinic:test --format '{{.Id}}')"
-+            # docker load restores only smartclinic:test. The architecture tag
+-              test "$(docker image inspect "$child" --format '{{.Id}}')" = "$(docker image inspect orevia:test --format '{{.Id}}')"
++            # docker load restores only orevia:test. The architecture tag
 +            # must exist locally before it can be pushed: on the first release
 +            # there is no local $child tag and `docker push "$child"` fails.
-+            docker tag smartclinic:test "$child"
++            docker tag orevia:test "$child"
 +            if docker pull --platform "linux/$arch" "$child" >/dev/null 2>&1; then
 +              # Tag already published. Reuse it only when its provenance is
 +              # this exact release; never overwrite a version tag with other
@@ -211,7 +211,7 @@ Then push and re-run the workflow to confirm the old behaviour is restored. **Ca
 
 | Constraint | How the patch satisfies it | Evidence |
 |---|---|---|
-| First release succeeds | `docker tag smartclinic:test "$child"` creates the local tag before the push | Dry-run A (fails) → B (succeeds) |
+| First release succeeds | `docker tag orevia:test "$child"` creates the local tag before the push | Dry-run A (fails) → B (succeeds) |
 | Re-run of the same release succeeds | Provenance labels replace the rebuild-dependent `.Id` check | Dry-run A2 (fails) → C (succeeds) |
 | Never overwrite an existing version tag with different content | Existing children are pulled and label-verified, never pushed; pull/inspect ambiguity fails closed; manifest creation stays guarded | Dry-run D (fails, registry unchanged); fail-closed branch in the patch |
 | `:latest` off pre-release versions | This workflow publishes no `:latest`; `release-app-image.yml` keeps its own `VERSION == *-*` gate and is unchanged | File reads of both workflows; no `:latest` line added |

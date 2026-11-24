@@ -276,13 +276,13 @@ CREATE TRIGGER xch03_order_update_guard
     FOR EACH ROW EXECUTE FUNCTION public.guard_xch03_order_update();
 
 -- Least privilege for the runtime role. No DELETE or TRUNCATE on any table.
-GRANT EXECUTE ON FUNCTION public.xch03_app_org() TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.xch03_order TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.xch03_app_org() TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.xch03_order TO orevia_app;
 GRANT SELECT, INSERT ON public.xch03_revision, public.xch03_retained_copy,
-                       public.xch03_event, public.xch03_notification TO smartclinic_app;
+                       public.xch03_event, public.xch03_notification TO orevia_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON public.xch03_revision, public.xch03_retained_copy,
-                                  public.xch03_event, public.xch03_notification FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.xch03_order FROM smartclinic_app;
+                                  public.xch03_event, public.xch03_notification FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.xch03_order FROM orevia_app;
 REVOKE ALL ON FUNCTION public.set_xch03_actor_from_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.guard_xch03_order_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.reject_xch03_immutable_mutation() FROM PUBLIC;

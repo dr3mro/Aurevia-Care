@@ -10,14 +10,14 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.web.clauses.CommitStatusAcceptanceEventAuditTogetherTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/CommitStatusAcceptanceEventAuditTogetherTest.java`).
+Test class: `com.aurevia.web.clauses.CommitStatusAcceptanceEventAuditTogetherTest`
+(path: `apps/api/src/test/java/com/aurevia/web/clauses/CommitStatusAcceptanceEventAuditTogetherTest.java`).
 All eight tests are active (none skipped or disabled) and use synthetic identifiers, members and
 digests on a dedicated PostgreSQL database migrated from `db/migrations` with forced row-level
 security. They drive the real HTTP controller with the synthetic-auth profile and `X-Synthetic-Subject`,
 `X-Active-Organization`, `X-Correlation-Id` and `If-Match` headers, following the fixture pattern and
 style of
-`com.aurevia.smartclinic.exchange.clauses.RecipientAcceptsRejectsReasonRequestsClarificationTest`.
+`com.aurevia.exchange.clauses.RecipientAcceptsRejectsReasonRequestsClarificationTest`.
 Both organizations seed the same local order codes, so tenant separation is exercised by forced RLS.
 
 - `acceptCommitsStatusEventAndAuditTogether` — positive proof. `POST /api/v1/xch03/orders/{id}/accept`
@@ -56,21 +56,21 @@ Both organizations seed the same local order codes, so tenant separation is exer
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseController` — thin adapter;
+- `com.aurevia.exchange.response.ExchangeResponseController` — thin adapter;
   `POST /api/v1/xch03/orders/{id}/accept` parses `If-Match` and delegates to the service. This is the
   real route; the literal `/api/v1/orders/{id}/accept` in the specification is a `CommandCatalog`
   authorization mapping, not a controller route.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseService` — `accept` → `run` performs
+- `com.aurevia.exchange.response.ExchangeResponseService` — `accept` → `run` performs
   authorization, order locking, version check, state validation, `repository.update`,
   `repository.appendEvent` and `audit.append(..., "EXCHANGE_ACCEPT", "SUCCESS")` inside one
   tenant-guarded `TransactionTemplate`.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseRepository` — RLS-bounded order lookup,
+- `com.aurevia.exchange.response.ExchangeResponseRepository` — RLS-bounded order lookup,
   conditional update and append-only event writes; a zero-row update is a stale-version failure.
-- `com.aurevia.smartclinic.audit.AuditAppender` — appends the fact inside the caller's transaction and
+- `com.aurevia.audit.AuditAppender` — appends the fact inside the caller's transaction and
   stamps `correlation_id` from the tenant context, never from the request body.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` — derives actor, tenant and validated
+- `com.aurevia.web.TenantContextInterceptor` — derives actor, tenant and validated
   correlation id from request headers before the controller runs.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` — renders the 403, 404, 409, 412 and 422 machine-readable
+- `com.aurevia.api.ApiErrorHandler` — renders the 403, 404, 409, 412 and 422 machine-readable
   error bodies asserted by the negative tests.
 - `db/migrations/V21__xch03_order_response.sql` — `xch03_order` and the append-only `xch03_event` ledger,
   with forced RLS and actor-derived authorship.

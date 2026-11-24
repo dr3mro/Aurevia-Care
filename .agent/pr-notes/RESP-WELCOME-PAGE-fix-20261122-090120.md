@@ -35,8 +35,8 @@ safety-critical contract). Classified per `docs/WORKFLOW.md`.
 
 ## Review owner
 
-Primary agent (tool-verified). Prior simulated `smartclinic-senior-react` and
-`smartclinic-ux-reviewer` reviews on the first pass recorded no actionable
+Primary agent (tool-verified). Prior simulated `orevia-senior-react` and
+`orevia-ux-reviewer` reviews on the first pass recorded no actionable
 findings; those subagents had no shell and relied on the primary agent's evidence.
 No new public contract, migration or clinical data is involved, so no new
 cross-boundary or clinical review is required.
@@ -108,7 +108,7 @@ association, prescribing, critical results or cross-organization sharing.
 - Root cause of the draft pull request and issue #707: in the cloud worker, `opencode.json` is the CI profile (`.github/opencode.ci.json`) installed with `skip-worktree` (`git ls-files -v opencode.json` → `S`; worktree equals CI profile and differs from `HEAD:opencode.json`). `scripts/check-pack.py` judges that CI profile against `scripts/gen-opencode.py`, reports it stale, and makes `scripts/check.sh` and `scripts/worker-check.sh` exit 1 at their first policy step. The worker's `checks` status was therefore `failed` and the publish step marked the PR draft and opened a handoff issue. This is environmental and reproduces unchanged on a branch with no code edits; it is not caused by the scoped files. Per AGENTS.md and TODO.md rule 8 the protected file was not regenerated, edited or committed. Integrator/Delivery own the repository-wide gate in a clean checkout.
 - The first worker's notes contained a `## Why this is not finished` section whose body said the story was complete. That heading is reserved for genuine early stops (`scripts/worker_gate.py` uses it to flag handoffs), so this fix pass deliberately omits it.
 - Verification result: the scoped implementation is complete and passes every applicable gate — typecheck, lint, build, WEB-08 bundle budget, 159 test files / 1910 tests, and 100% coverage globally and on the changed production file. No corrective code change was needed.
-- Pre-existing, outside scope and untouched: committed `origin/main` contains literal conflict markers in three `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` Java files (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). The merge reported "Already up to date" and no marker exists in either scoped file.
+- Pre-existing, outside scope and untouched: committed `origin/main` contains literal conflict markers in three `apps/api/src/main/java/com/aurevia/exchange/hl7/` Java files (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). The merge reported "Already up to date" and no marker exists in either scoped file.
 - `EmptyState` renders a nested `section.page[role="status"]`; the outer wrapper also uses `page`. The nesting is intentional and asserted by the tests. Heading queries are scoped by accessible name because the status panel has a second `<h2>`.
 
 ## Lessons for workers

@@ -26,7 +26,7 @@ change itself is documentation only and enables no traffic.
 ## Review owner
 
 Integration lead and partner owner (section 10) are the accountable decision
-makers. `smartclinic-senior-integrations` provided a bounded, simulated advisory
+makers. `orevia-senior-integrations` provided a bounded, simulated advisory
 review; no human, clinical or partner evidence was used or claimed.
 
 ## Data changes
@@ -54,7 +54,7 @@ Exact commands run in the repository root on branch
 1. `python3 -I scripts/check-docs.py` → exit 0, no output. Final line from the
    wrapper: `check-docs exit: 0`. This validates that every relative link in the
    new file resolves and every requirement ID mentioned is defined in
-   `SMARTCLINIC_V1_SPEC.md`.
+   `PROJECT_V1_SPEC.md`.
 2. `git diff --check` → exit 0. Final line: `diff-check exit: 0`.
 3. Heading check: `grep -n '^## ' docs/launch/partner-interfaces.md` confirmed
    all eight required headings at lines 12, 25, 61, 72, 108, 130, 153 and 189.
@@ -67,7 +67,7 @@ No unit or integration tests apply: no production code, SQL or script changed.
 No frontend area was touched, so `apps/patient-mobile/check.sh` and
 `apps/staff-web/check.sh` (and their typecheck steps) were not run for this
 task. Entry point to evidence: `docs/launch/partner-interfaces.md` → section 10
-and G5 of `SMARTCLINIC_V1_SPEC.md` → the linked synthetic contract fixtures and
+and G5 of `PROJECT_V1_SPEC.md` → the linked synthetic contract fixtures and
 evidence templates listed under "What the repository already supports".
 
 ## Coverage
@@ -80,7 +80,7 @@ applicable documentation gate and passed (see Test evidence).
 ## Clinical and architecture review
 
 No clinical or architecture approval is recorded: this pack is the input to
-such a decision. A bounded simulated `smartclinic-senior-integrations` review
+such a decision. A bounded simulated `orevia-senior-integrations` review
 (tool: subagent, session `ses_e014483c1ffe7e4GA1zUF0qcoP`, read-only) returned
 **MET** for all four acceptance criteria (per-partner five artifacts, exact
 headings and structures, chooses/invents nothing with status `Not approved`,

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.lab.clauses.RecordSpecimenTypeSiteCollectorCollectionReceiptTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/RecordSpecimenTypeSiteCollectorCollectionReceiptTest.java`),
+Test class: `com.aurevia.lab.clauses.RecordSpecimenTypeSiteCollectorCollectionReceiptTest`
+(`apps/api/src/test/java/com/aurevia/lab/clauses/RecordSpecimenTypeSiteCollectorCollectionReceiptTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile. It creates a fresh
 database with Flyway, seeds two synthetic organizations with a collector, a verifier and a
 reception subject, and drives the real HTTP entry points `POST /api/v1/lab/accessions`,
@@ -46,18 +46,18 @@ reception subject, and drives the real HTTP entry points `POST /api/v1/lab/acces
 
 Production classes and files exercised by each request path:
 
-- `com.aurevia.smartclinic.lab.accession.LabAccessionController` — thin HTTP adapter binding
+- `com.aurevia.lab.accession.LabAccessionController` — thin HTTP adapter binding
   the commands and mapping the service outcome to a status code.
-- `com.aurevia.smartclinic.lab.accession.LabAccessionService` — validates every field at the
+- `com.aurevia.lab.accession.LabAccessionService` — validates every field at the
   boundary, re-derives membership and role inside the guarded transaction, matches patient and
   accession at collection and receipt, and enforces version, state and audit together.
-- `com.aurevia.smartclinic.lab.accession.LabInputs` — bounded specimen type, site, collector,
+- `com.aurevia.lab.accession.LabInputs` — bounded specimen type, site, collector,
   quality and ISO-8601 instant validation with field-specific error codes.
-- `com.aurevia.smartclinic.lab.accession.LabActionPolicy` — separation of duties: only
+- `com.aurevia.lab.accession.LabActionPolicy` — separation of duties: only
   `lab_collector` collects, only `lab_verifier` receives and verifies.
-- `com.aurevia.smartclinic.lab.accession.AccessionState`, `AccessionCommands`, `LabAccession`
+- `com.aurevia.lab.accession.AccessionState`, `AccessionCommands`, `LabAccession`
   and `AccessionView` — the state machine, command payloads and the returned projection.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` — uniform status and error-code body for the
+- `com.aurevia.api.ApiErrorHandler` — uniform status and error-code body for the
   negative cases.
 - `db/migrations/V26__laboratory_accession.sql` — the `specimen_type`, `site_code`, `collector`,
   `collected_at`, `received_at` and `quality` columns with their state checks, forced row-level

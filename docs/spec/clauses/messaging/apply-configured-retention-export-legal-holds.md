@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.ApplyConfiguredRetentionExportLegalHoldsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ApplyConfiguredRetentionExportLegalHoldsTest.java`).
+Test class: `com.aurevia.messaging.clauses.ApplyConfiguredRetentionExportLegalHoldsTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/ApplyConfiguredRetentionExportLegalHoldsTest.java`).
 It uses the Spring MVC pipeline with a standalone MockMvc setup of the real controller, service,
 action matrix and tenant-scoped test store, the real `TenantContextInterceptor` under the
 `synthetic-auth` profile and the real `ApiErrorHandler`, with a fixed clock and synthetic
@@ -42,25 +42,25 @@ instant; no database setup is needed because the test uses the test-only in-memo
 
 Production classes and files exercised by these requests:
 
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceController` — thin adapter for
+- `com.aurevia.messaging.governance.MessagingGovernanceController` — thin adapter for
   the governance routes under `/api/v1/messaging-governance`; only hold placement, retention
   decisions and export creation are reached over HTTP by this clause.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceService` — `placeHold`,
+- `com.aurevia.messaging.governance.MessagingGovernanceService` — `placeHold`,
   `retentionDecision`, `applyRetention`, `createExport`, `validatedProvenance`, `isHeld`,
   `authorize`, `deny` and `append`; derives actor, organization, outcome and timestamps
   server-side.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceActions` — the role matrix that
+- `com.aurevia.messaging.governance.MessagingGovernanceActions` — the role matrix that
   reserves holds, exports and retention decisions for privacy and administrative roles.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceInputs` — allowlisted scope,
+- `com.aurevia.messaging.governance.MessagingGovernanceInputs` — allowlisted scope,
   purpose, revision and UUID validation before any durable record is written.
-- `com.aurevia.smartclinic.messaging.governance.MessagingAuditContract` — the `RetentionPolicy`,
+- `com.aurevia.messaging.governance.MessagingAuditContract` — the `RetentionPolicy`,
   `MessagingResource`, `LegalHold`, `RetentionDecision`, `ExportProvenance`, `ExportRecord`,
   `AuditAction` and `Outcome` records and enums; all non-sensitive governance facts.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceStore` and its test-only
+- `com.aurevia.messaging.governance.MessagingGovernanceStore` and its test-only
   `InMemoryMessagingGovernanceStore` implementation; production uses
   `JdbcMessagingGovernanceStore` over the forced-RLS tables in
   `db/migrations/V62__messaging_governance.sql`.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` and `com.aurevia.smartclinic.api.ApiErrorHandler`
+- `com.aurevia.web.TenantContextInterceptor` and `com.aurevia.api.ApiErrorHandler`
   — tenant derivation and the uniform error contract through which the negative cases are
   observed.
 
@@ -76,7 +76,7 @@ the eligibility decision, but this repository cannot yet prove that a job actual
 place while deleting an eligible resource and recording deletion evidence.
 
 Closing that gap would change these files: a scheduled executor (new class under
-`apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance` with scheduling enabled in
+`apps/api/src/main/java/com/aurevia/messaging/governance` with scheduling enabled in
 the application configuration), a tenant-scoped removal operation in
 `MessagingGovernanceStore` and `JdbcMessagingGovernanceStore` with a narrow `DELETE` grant and an
 append-only deletion-evidence audit fact in a new Flyway migration following V62, a restricted

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest.java`),
+Test class `com.aurevia.exchange.clauses.CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from
 the production Flyway migrations, with two synthetic organizations, synthetic
 subjects and one synthetic patient per organization:
@@ -51,29 +51,29 @@ subjects and one synthetic patient per organization:
 Production classes exercised through `POST /api/v1/xch04/orders`,
 `POST /api/v1/xch04/results`, `POST /api/v1/xch04/results/{id}/acknowledge` and
 `GET /api/v1/xch04/results/{id}`:
-`com.aurevia.smartclinic.exchange.result.ResultController` (thin HTTP adapter),
-`com.aurevia.smartclinic.exchange.result.ResultRoutingService` (correction
+`com.aurevia.exchange.result.ResultController` (thin HTTP adapter),
+`com.aurevia.exchange.result.ResultRoutingService` (correction
 branch, tip check, prior-recipient lookup, review-reopen audit and the two
-supersession refusals), `com.aurevia.smartclinic.exchange.result.ResultCommands`,
-`com.aurevia.smartclinic.exchange.result.ResultActionPolicy` (lab-verifier-only
-import and tenant membership), `com.aurevia.smartclinic.exchange.result.ResultRepository`
+supersession refusals), `com.aurevia.exchange.result.ResultCommands`,
+`com.aurevia.exchange.result.ResultActionPolicy` (lab-verifier-only
+import and tenant membership), `com.aurevia.exchange.result.ResultRepository`
 (lineage, prior recipients, notifications, review tasks and RLS-bounded reads),
-`com.aurevia.smartclinic.exchange.result.ResultRules` and
-`com.aurevia.smartclinic.exchange.result.ResultModel`. Storage and invariants
+`com.aurevia.exchange.result.ResultRules` and
+`com.aurevia.exchange.result.ResultModel`. Storage and invariants
 come from `db/migrations/V22__result_routing.sql` (tenant RLS and FORCE RLS,
 immutable revision/notification ledgers, linked `previous_id`, and the guarded
 review transition).
 
 Corroborating suites already on `main` (not re-tested here):
-`com.aurevia.smartclinic.it.exchangeresult.ResultRoutingIntegrationTest`
+`com.aurevia.it.exchangeresult.ResultRoutingIntegrationTest`
 (`correctionPreservesTheOriginalReopensReviewAndNotifiesPriorRecipients`),
-`com.aurevia.smartclinic.acceptance.exchange.FinalReportReplayIntegrityAcceptanceTest`
+`com.aurevia.acceptance.exchange.FinalReportReplayIntegrityAcceptanceTest`
 (`correctionReopensReviewAfterHumanAcknowledgment`),
-`com.aurevia.smartclinic.exchange.result.ResultRoutingServiceTest` and
-`com.aurevia.smartclinic.exchange.conformance.PartnerConformanceFixturesTest`
+`com.aurevia.exchange.result.ResultRoutingServiceTest` and
+`com.aurevia.exchange.conformance.PartnerConformanceFixturesTest`
 (`correctionPreservesThePriorRevisionAndReopensReview`).
 
-Verified locally with `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally with `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=CorrectionsPreservePriorVersionsNotifyPriorRecipientsTest test`
 — Surefire XML: `tests="6" errors="0" skipped="0" failures="0"`, matching the six
 `@Test` methods. "Proven by tests" is limited to the clause behaviour above; it

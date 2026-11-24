@@ -1,0 +1,15 @@
+{
+  "comment": "One entry per worker slot. Each slot gets its own prepared image (ghcr.io/<repo>-agent-<slot>) with shared OpenCode config baked in, and its own free account through the repository secret OPENCODE_API_KEY_<slot>. No model is stored here: scripts/model-router.py selects the model at runtime from SWARM_FORCE_MODEL/SWARM_MODEL and the verified zero-cost registry. Credentials are never baked into images.",
+  "slots": [
+    {"slot": 1, "config": {}},
+    {"slot": 2, "config": {}},
+    {"slot": 3, "config": {}},
+    {"slot": 4, "config": {}},
+    {"slot": 5, "config": {}},
+    {"slot": 6, "config": {}},
+    {"slot": 7, "config": {}},
+    {"slot": 8, "config": {}},
+    {"slot": 9, "config": {}},
+    {"slot": 10, "config": {}}
+  ]
+}

@@ -49,14 +49,14 @@ data-flow boundary changed.
 
 ## Review owner
 
-- `smartclinic-senior-react` — **simulated review this pass** (read-only bounded
+- `orevia-senior-react` — **simulated review this pass** (read-only bounded
   subagent, session `ses_dfd0db647ffeAdMYB5Za8SFAlh`): **no actionable in-scope
   findings**. Confirmed `.page`/`.grid-2`/`.touch` are the correct shared classes;
   the `.touch` span inside `Link` is the only in-scope target mechanism because
   `LinkProps` exposes no `className`; the jsdom test asserts mechanisms without
   fabricated pixel claims; 100 % coverage is plausible with both sides of the one
   branch taken; no type/lint/strictness risk.
-- `smartclinic-senior-react` and `smartclinic-ux-reviewer` — **simulated reviews
+- `orevia-senior-react` and `orevia-ux-reviewer` — **simulated reviews
   carried forward from the first pass** as notes: no actionable in-scope or
   blocking structural/semantic findings. Two optional UX suggestions (label the
   patient ID; make duplicate candidates clickable) were not applied because
@@ -105,7 +105,7 @@ Commands actually run in this pass (tool evidence):
    - `Lines        : 100% ( 3556/3556 )`
 3. Typecheck final lines (from the passing `check.sh` run), pasted as required:
    ```
-   > smartclinic-staff-web@0.1.0 typecheck
+   > orevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    No `error TS…` was emitted; `CHECK_EXIT=0` for the run containing it. The
@@ -179,7 +179,7 @@ Playwright work under the RESP-E2E stories and are not claimed here.
   writes the required `-fix-` notes file so the hand-off and commit are complete.
 - Pre-existing defect outside scope, still present on `HEAD` (verified with
   `git grep -nE '^(<<<<<<<|>>>>>>>) '`): unresolved merge-conflict markers in
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `.../Hl7Parser.java` and `.../Hl7Segment.java`, inherited from `origin/main`.
   Not edited here; the integrator/owner should route a repair.
 - `Link` (`src/app/router.tsx`) exposes no `className`/`style` prop, so the

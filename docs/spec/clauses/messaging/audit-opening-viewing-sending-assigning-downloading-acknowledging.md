@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.AuditOpeningViewingSendingAssigningDownloadingAcknowledgingTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/AuditOpeningViewingSendingAssigningDownloadingAcknowledgingTest.java`),
+Test class `com.aurevia.messaging.clauses.AuditOpeningViewingSendingAssigningDownloadingAcknowledgingTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/AuditOpeningViewingSendingAssigningDownloadingAcknowledgingTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from
 the production Flyway migrations, driving the real controller, service and
 JDBC store with synthetic subjects in two tenants. Each method uses a distinct
@@ -41,35 +41,35 @@ synthetic resource identifier because the fixture database is shared:
   (422, `INVALID_RESOURCEID`) and the tenant's audit count is unchanged.
 
 Production classes exercised through the two routes above:
-`com.aurevia.smartclinic.messaging.governance.MessagingGovernanceController`
+`com.aurevia.messaging.governance.MessagingGovernanceController`
 (thin HTTP adapter with an injected service),
-`com.aurevia.smartclinic.messaging.governance.MessagingGovernanceService`
+`com.aurevia.messaging.governance.MessagingGovernanceService`
 (`recordAction`, `auditTrail`, `authorize`, `deny`, `append`),
-`com.aurevia.smartclinic.messaging.governance.MessagingGovernanceInputs`
+`com.aurevia.messaging.governance.MessagingGovernanceInputs`
 (`WORKFLOW_ACTIONS`, `workflowAction`, `uuid`),
-`com.aurevia.smartclinic.messaging.governance.MessagingGovernanceActions`
-(role matrix), `com.aurevia.smartclinic.messaging.governance.MessagingAuditContract`
+`com.aurevia.messaging.governance.MessagingGovernanceActions`
+(role matrix), `com.aurevia.messaging.governance.MessagingAuditContract`
 (the nine `AuditAction` wire keys, `AuditEvent`, `RecordActionRequest`), and the
-production JDBC boundary `com.aurevia.smartclinic.messaging.governance.JdbcMessagingGovernanceStore`
+production JDBC boundary `com.aurevia.messaging.governance.JdbcMessagingGovernanceStore`
 backed by `db/migrations/V62__messaging_governance.sql` (append-only
 `messaging_audit_event` with row-level security and FORCE row-level security).
 
 Corroborating suites already on `main` (not re-tested here):
-`com.aurevia.smartclinic.messaging.governance.MessagingGovernanceServiceTest`
+`com.aurevia.messaging.governance.MessagingGovernanceServiceTest`
 (`recordActionAuditsEveryConversationAndFileAction` loops all nine actions;
 `recordActionRejectsGovernanceCommandsItCannotPerform` covers `hold_place`;
 `recordRevocationCapturesBlockingAndRecordAccessBasis`,
 `attachmentAccessFailsClosedAfterRevocation` and
 `newMessagingIsRefusedThroughARevokedConnection` cover the dedicated RESTRICT,
-DOWNLOAD and SEND paths), `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceControllerHttpTest`
-(MVC pipeline) and `com.aurevia.smartclinic.messaging.governance.it.JdbcMessagingGovernanceStoreIntegrationTest`
+DOWNLOAD and SEND paths), `com.aurevia.messaging.governance.MessagingGovernanceControllerHttpTest`
+(MVC pipeline) and `com.aurevia.messaging.governance.it.JdbcMessagingGovernanceStoreIntegrationTest`
 (`auditFactsAreOrderedTenantScopedAndImmutable` and
 `appendOnlyFactsAreImmutableForTheMigrationOwnerToo` prove scope and immutability).
 The new HTTP test adds the real entry point, the interceptor-derived tenant
 context, an actual server on a random port, real PostgreSQL and V62's forced
 row-level security on the exact nine clause actions.
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=AuditOpeningViewingSendingAssigningDownloadingAcknowledgingTest test` —
 `tests="5" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim

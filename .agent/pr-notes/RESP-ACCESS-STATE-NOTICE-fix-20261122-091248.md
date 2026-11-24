@@ -27,7 +27,7 @@ Routine (docs/WORKFLOW.md): one contained staff-web presentation change with an 
 
 ## Review owner
 
-`smartclinic-senior-react` (staff React/Vite), supported by `smartclinic-senior-typescript` (strict TS) and `smartclinic-ux-reviewer` (RTL/keyboard). A bounded read-only `smartclinic-senior-react` review was routed again in this pass; its outcome is recorded under Clinical and architecture review and Findings. A previous bounded UX review (source: **reviewer, simulated**) found no blocking findings.
+`orevia-senior-react` (staff React/Vite), supported by `orevia-senior-typescript` (strict TS) and `orevia-ux-reviewer` (RTL/keyboard). A bounded read-only `orevia-senior-react` review was routed again in this pass; its outcome is recorded under Clinical and architecture review and Findings. A previous bounded UX review (source: **reviewer, simulated**) found no blocking findings.
 
 ## Data changes
 
@@ -73,7 +73,7 @@ Evidence source: **executed tool commands** (git, npm, Vitest, tsc, ESLint, Vite
   exit 0. (The `useI18n/useTheme must be used inside …Provider` stack traces in the output come from the existing intentional fail-closed tests in `tests/i18n/I18nProvider.test.tsx` and `tests/theme/ThemeProvider.test.tsx`; the suite and coverage gate passed.)
 - TYPECHECK (mandatory, standalone) — `cd apps/staff-web && npm run typecheck`, final lines (no `error TS…`):
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   exit 0 (no diagnostics).
@@ -98,7 +98,7 @@ New/changed branches and the test that takes each side:
 
 ## Clinical and architecture review
 
-Not required: display-only change to a synthetic access-state notice. No signed data, cross-organization sharing, patient association, prescribing or critical result is involved; no migration, state machine, event contract or system boundary changed. Risk class is routine. A bounded `smartclinic-senior-react` review was routed in this pass (source: **reviewer, simulated**): **no blocking findings**; it confirmed both conditionals have both sides asserted, strict TS (no `any`/`@ts-ignore`), logical/RTL/safe-area/zoom handling and TSDoc compliance. Advisories are non-blocking and recorded under Findings.
+Not required: display-only change to a synthetic access-state notice. No signed data, cross-organization sharing, patient association, prescribing or critical result is involved; no migration, state machine, event contract or system boundary changed. Risk class is routine. A bounded `orevia-senior-react` review was routed in this pass (source: **reviewer, simulated**): **no blocking findings**; it confirmed both conditionals have both sides asserted, strict TS (no `any`/`@ts-ignore`), logical/RTL/safe-area/zoom handling and TSDoc compliance. Advisories are non-blocking and recorded under Findings.
 
 ## Findings
 
@@ -106,11 +106,11 @@ Not required: display-only change to a synthetic access-state notice. No signed 
 - **Earlier hand-offs, preserved:** `.agent/pr-notes/RESP-ACCESS-STATE-NOTICE-20261122-084247.md` (first worker) and `.agent/pr-notes/RESP-ACCESS-STATE-NOTICE-fix-20261122-090205.md` (fix attempt 1). I did not edit or delete either; this file is the hand-off for the current pass only.
 - **Cause of the earlier "local checks: failed" verdict (most likely, with evidence):** the worktree arrives with no `node_modules` and with `opencode.json` as a skip-worktree CI profile. Before `npm ci`, every JS gate fails with a missing-binary error; `scripts/quick-check.sh` calls `check-pack.py`, which fails on the CI-profile `opencode.json`. After `npm ci` every applicable gate on the current tree passed, and the committed config was proven identical to the generator output. No change to this task is implicated; the integrator's trusted checkout (real local profile) is not affected. Exact next step if the integrator still sees red: confirm which command failed and check whether it is `check-pack.py` on a CI-profile worktree (OPS-CW-003-01) before treating it as a task defect.
 - **`check-pack.py` false positive (recorded, not edited):** see Test evidence; no protected file was changed or committed.
-- **Out-of-scope pre-existing defect (observed, untouched):** committed conflict markers remain in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` (verified present in `HEAD`). They predate this task, are outside this story's scope, and would fail a full Java build; the integrator/owner should route a separate repair.
+- **Out-of-scope pre-existing defect (observed, untouched):** committed conflict markers remain in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` (verified present in `HEAD`). They predate this task, are outside this story's scope, and would fail a full Java build; the integrator/owner should route a separate repair.
 - **Pre-existing behaviour retained, not a defect introduced here:** the reviewed `label` run is rendered by `MixedScriptText` with `lang="en"` hard-coded in the component, independent of the active locale, while the translated message run carries `lang={locale}`. An Arabic label is isolated (`dir="auto"`) and wraps but carries `lang="en"`. Left unchanged because the story forbids changing behaviour/text; a localization follow-up could type the label's language.
 - **Non-applicable acceptance items:** the notice has no input and no interactive control, so the 16 px input-text rule and the 44×44 coarse-pointer target rule do not apply here (owned by the responsive Form/FormField/Button stories); it adds no tab stop.
 - **Pixel checks deferred:** per the story, jsdom asserts classes, attributes and structure only; pixel-level no-scroll/no-overlap/zoom checks remain with the Playwright responsive tasks.
-- **Non-blocking advisories from the bounded `smartclinic-senior-react` reviewer (not changed):** inline `gap: tokens.spacing.sm` (4 px) supersedes the `.stack`/`.cluster` utility gaps and bypasses the responsive spacing scale; the pre-existing `border: 1px solid ${tokens.border}` uses a literal pixel instead of `var(--sc-border-width-thin, 1px)`; `useBreakpoint()` is also subscribed inside `StateBadge`/`MixedScriptText`, so a notice holds multiple `matchMedia` listeners (functionally correct, only minor resize churn); and the test verifies padding via inline-style string matching, which is sensitive to React serialization changes. All are cosmetic/structural, none affect correctness or acceptance, and the story forbids behaviour/styling changes beyond responsiveness.
+- **Non-blocking advisories from the bounded `orevia-senior-react` reviewer (not changed):** inline `gap: tokens.spacing.sm` (4 px) supersedes the `.stack`/`.cluster` utility gaps and bypasses the responsive spacing scale; the pre-existing `border: 1px solid ${tokens.border}` uses a literal pixel instead of `var(--sc-border-width-thin, 1px)`; `useBreakpoint()` is also subscribed inside `StateBadge`/`MixedScriptText`, so a notice holds multiple `matchMedia` listeners (functionally correct, only minor resize churn); and the test verifies padding via inline-style string matching, which is sensitive to React serialization changes. All are cosmetic/structural, none affect correctness or acceptance, and the story forbids behaviour/styling changes beyond responsiveness.
 
 ## Lessons for workers
 

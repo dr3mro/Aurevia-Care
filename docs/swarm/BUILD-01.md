@@ -12,7 +12,7 @@ Swarm worker 6. Local checks: passed. Agent result: ok.
 
 Implemented IAM-02 staff invitations inside the declared scope. A tenant administrator issues an invitation carrying bounded roles, a facility and an expiry; only the SHA-256 hash of a cryptographically random one-time token is persisted, and the raw token is returned once in the issue response. The invitee accepts inside an authenticated tenant context; one database function atomically consumes the token, creates the membership, appends one role assignment per invited role, and records the inviter as grantor with an effective date. Pending invitations can be listed and unused ones revoked. All unusable tokens (expired, reused, revoked, unknown, wrong tenant) return the same 409 outcome.
 
-Delivered in `apps/api/src/main/java/com/aurevia/smartclinic/staff` (8 new classes, one one-line visibility change to reuse the canonical role set), matching tests under `apps/api/src/test/java/com/aurevia/smartclinic/staff`, and `db/migrations/V70__build_01.sql`. No dependency, no file outside scope, no tracker file, no push/tag/gh.
+Delivered in `apps/api/src/main/java/com/aurevia/staff` (8 new classes, one one-line visibility change to reuse the canonical role set), matching tests under `apps/api/src/test/java/com/aurevia/staff`, and `db/migrations/V70__build_01.sql`. No dependency, no file outside scope, no tracker file, no push/tag/gh.
 
 ## Affected requirements
 
@@ -20,7 +20,7 @@ IAM-02 (primary). Supporting: ARC-01 (opaque tenant-owned keys), ARC-02 (forced 
 
 ## Risk class
 
-Safety-critical (identity/permission lifecycle). Static specialist review from `smartclinic-senior-backend` and `smartclinic-senior-database` (simulated reviewers; their findings were applied: DB-side admin guard on issue/revoke, column-scoped UPDATE, composite FKs, same-outcome concealment, secure grantor GUC, distinct-role trigger, generic failure for unusable tokens). No clinical, human or patient-participant evidence is claimed.
+Safety-critical (identity/permission lifecycle). Static specialist review from `orevia-senior-backend` and `orevia-senior-database` (simulated reviewers; their findings were applied: DB-side admin guard on issue/revoke, column-scoped UPDATE, composite FKs, same-outcome concealment, secure grantor GUC, distinct-role trigger, generic failure for unusable tokens). No clinical, human or patient-participant evidence is claimed.
 
 ## Review owner
 

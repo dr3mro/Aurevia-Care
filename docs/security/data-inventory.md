@@ -34,11 +34,11 @@
   `prescription/rx/RxActions.java`, `authz/specialty/SpecialtyActions.java`,
   `therapy/TherapyService.java`, `scheduling/checkin/WorklistPolicy.java` and the
   `messaging/**/*Actions.java` classes, all under
-  `apps/api/src/main/java/com/aurevia/smartclinic/`. All paths in this document
+  `apps/api/src/main/java/com/aurevia/`. All paths in this document
   are relative to that directory. A role can read a row only inside its active
   organization and, where the code says so, only within an assigned facility,
   care team, unit or verified patient link.
-- **Append-only** means the runtime role `smartclinic_app` has no `UPDATE`,
+- **Append-only** means the runtime role `orevia_app` has no `UPDATE`,
   `DELETE` or `TRUNCATE` path (enforced by revokes and/or
   `reject_immutable_mutation()` triggers). "No — state in place" means the row
   is mutated through a bounded state machine, typically with an immutable event
@@ -277,7 +277,7 @@ wish to treat it as staff personal data; it is listed here for that decision.
 - Schema, keys, RLS, grants and append-only triggers: every file in
   `db/migrations/V1__tenant_schema.sql` … `V90__onboarding_import.sql`.
 - Retention/export implementation:
-  `apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/`
+  `apps/api/src/main/java/com/aurevia/messaging/governance/`
   (`MessagingGovernanceService`, `MessagingGovernanceController`,
   `MessagingAuditContract`, `MessagingGovernanceActions`), V62 migration, and
   `infra/s_g5_08/tenant_lifecycle_evidence.py` (synthetic artifact evaluator).
@@ -288,5 +288,5 @@ wish to treat it as staff personal data; it is listed here for that decision.
   `STAFF_ADMIN`, `PATIENT_IDENTITY`, `CLINICAL_DOC`, `DOCUMENT_READ`,
   `LAB_ACCESSION`, `RELEASE_ADMIN`, `MSG_GOVERNANCE`, `DELIVERY`) and the V3
   `audit_event` hash chain.
-- Requirement IDs: `SMARTCLINIC_V1_SPEC.md` sections 6 (PAT-03), 7 (ARC-02,
+- Requirement IDs: `PROJECT_V1_SPEC.md` sections 6 (PAT-03), 7 (ARC-02,
   ARC-03) and 8 (OPS-01, OPS-02, OPS-07).

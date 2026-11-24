@@ -10,7 +10,7 @@ Not built
 
 ## Evidence
 
-The would-prove API test is `apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/FacilityScopeFurtherNarrowAccessTest.java`. It is disabled (`@Disabled("GAP: ...")`) because the behaviour is absent, so the branch stays green. When enabled it contains:
+The would-prove API test is `apps/api/src/test/java/com/aurevia/authz/clauses/FacilityScopeFurtherNarrowAccessTest.java`. It is disabled (`@Disabled("GAP: ...")`) because the behaviour is absent, so the branch stays green. When enabled it contains:
 
 - `facilityScopeAllowsAccessToTheAssignedFacility` — a reception membership issued with a facility assignment reads that facility's worklist and gets HTTP 200 (rule met).
 - `facilityScopeDeniesAccessToAnotherFacilityOfTheSameOrganization` — the same role and membership are refused HTTP 403 for a second facility of the same organization (negative test). Today this answers HTTP 200, which is the gap.
@@ -19,13 +19,13 @@ The test uses the same synthetic PostgreSQL setup as `it/StaffLifecycleIsolation
 
 Production classes surveyed (none of them narrow access by facility today):
 
-- `com.aurevia.smartclinic.authz.ActionPolicy` and `scheduling.checkin.WorklistPolicy` — role/action matrices with no facility input.
-- `com.aurevia.smartclinic.scheduling.checkin.CheckInService.authorize` — checks active membership and role permission only; `worklist` passes the caller-supplied facility code straight to the repository.
-- `com.aurevia.smartclinic.authz.access.EmergencyAccessService` — records a `facilityCode` on the grant for the audit scope, but `active()` checks membership, clinician role, revocation and expiry only.
-- `com.aurevia.smartclinic.authz.access.AccessRepository` — `facilityExists(code)` only checks that a facility belongs to the active organization.
-- `com.aurevia.smartclinic.staff.StaffInvitationService` and `V70__build_01.sql` `accept_staff_invitation` — the invitation carries `facility_id`, but acceptance inserts a facility-free `membership` row.
+- `com.aurevia.authz.ActionPolicy` and `scheduling.checkin.WorklistPolicy` — role/action matrices with no facility input.
+- `com.aurevia.scheduling.checkin.CheckInService.authorize` — checks active membership and role permission only; `worklist` passes the caller-supplied facility code straight to the repository.
+- `com.aurevia.authz.access.EmergencyAccessService` — records a `facilityCode` on the grant for the audit scope, but `active()` checks membership, clinician role, revocation and expiry only.
+- `com.aurevia.authz.access.AccessRepository` — `facilityExists(code)` only checks that a facility belongs to the active organization.
+- `com.aurevia.staff.StaffInvitationService` and `V70__build_01.sql` `accept_staff_invitation` — the invitation carries `facility_id`, but acceptance inserts a facility-free `membership` row.
 - `V1__tenant_schema.sql` defines the tenant-owned `facility` table; there is no `staff_facility`, `user_facility`, `membership_facility` or `facility_assignment` table, and `membership`/`role_assignment` have no facility column.
-- `com.aurevia.smartclinic.web.FacilityController`, `FacilityService` — facility CRUD, not an authorization scope.
+- `com.aurevia.web.FacilityController`, `FacilityService` — facility CRUD, not an authorization scope.
 - No contract under `contracts/` describes a facility-scope claim or input.
 
 ## Gap

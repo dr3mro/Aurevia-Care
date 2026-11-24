@@ -9,7 +9,7 @@ base="${1:-origin/main}"
 changed=$( { git diff --name-only "$base" 2>/dev/null; git ls-files --others --exclude-standard; } | sort -u)
 status=0
 if grep -q '^apps/api/' <<<"$changed" || grep -q '^db/' <<<"$changed"; then
-  export SMARTCLINIC_PG_ADMIN="${SMARTCLINIC_PG_ADMIN:-postgres}"
+  export OREVIA_PG_ADMIN="${OREVIA_PG_ADMIN:-postgres}"
   if ! pg_isready -q -h 127.0.0.1 -p 5432 && command -v start-postgres >/dev/null; then start-postgres; fi
   printf 'coverage check: java (JaCoCo 100%%)\n'
   mvn -q -B -f apps/api/pom.xml -Pno-security verify || status=1

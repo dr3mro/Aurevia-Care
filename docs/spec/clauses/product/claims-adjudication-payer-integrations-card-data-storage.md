@@ -17,7 +17,7 @@ absence, so the clause is not claimed as "Built and verified".
 ## Evidence
 
 Source of the clause: the PRD-04 boundary cell in
-[SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) and the associated
+[PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) and the associated
 self-pay requirement FIN-01 in the same file.
 
 Repository survey (tool evidence, executed on this branch; tracker files,
@@ -34,31 +34,31 @@ clause and this table are not counted as implementation):
 Files that could be mistaken for the prohibited capabilities, examined and
 ruled out:
 
-- [web/ClaimsTenantResolver.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/web/ClaimsTenantResolver.java)
+- [web/ClaimsTenantResolver.java](../../../../apps/api/src/main/java/com/aurevia/web/ClaimsTenantResolver.java)
   and its test
-  [ClaimsTenantResolverTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/web/ClaimsTenantResolverTest.java):
+  [ClaimsTenantResolverTest.java](../../../../apps/api/src/test/java/com/aurevia/web/ClaimsTenantResolverTest.java):
   "claims" are already-verified JWT token claims (`sub`, `orgs`, `iss`) used to
   derive the active tenant under IAM-01/ARC-02. It parses no token and has no
   payer or insurance meaning.
-- [finance/FinanceContract.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceContract.java):
+- [finance/FinanceContract.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceContract.java):
   `LedgerEntry` is an append-only self-pay invoice entry with `EntryType`
   `PAYMENT`, `REFUND` or `CREDIT`. Its Javadoc states item descriptions are
   non-clinical catalogue-style labels and no clinical table is joined into a
   finance read. It is not a double-entry account ledger: there is no chart of
   accounts, debit/credit account posting, period close or general-ledger
   account.
-- [api/contract/IdempotencyLedger.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/api/contract/IdempotencyLedger.java),
-  [messaging/evidence/EvidenceLedger.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence/EvidenceLedger.java)
-  and [exchange/conformance/ConformanceLedger.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/conformance/ConformanceLedger.java):
+- [api/contract/IdempotencyLedger.java](../../../../apps/api/src/main/java/com/aurevia/api/contract/IdempotencyLedger.java),
+  [messaging/evidence/EvidenceLedger.java](../../../../apps/api/src/main/java/com/aurevia/messaging/evidence/EvidenceLedger.java)
+  and [exchange/conformance/ConformanceLedger.java](../../../../apps/api/src/main/java/com/aurevia/exchange/conformance/ConformanceLedger.java):
   technical decision, evidence and conformance records, not accounting.
 
 Implementation that respects the boundary (self-pay FIN-01 only):
 
-- [finance/FinanceService.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceService.java),
-  [finance/FinanceController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceController.java),
-  [finance/FinanceActions.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceActions.java),
-  [finance/FinanceInputs.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceInputs.java)
-  and [finance/FinanceRepository.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceRepository.java):
+- [finance/FinanceService.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceService.java),
+  [finance/FinanceController.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceController.java),
+  [finance/FinanceActions.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceActions.java),
+  [finance/FinanceInputs.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceInputs.java)
+  and [finance/FinanceRepository.java](../../../../apps/api/src/main/java/com/aurevia/finance/FinanceRepository.java):
   the only money workflow. Routes are invoice create/list/issue/payment/credit/
   refund/void/get and reconciliation; amounts are integer minor units in exactly
   one currency per invoice. No route accepts a payer, an insurance claim or card
@@ -76,18 +76,18 @@ Implementation that respects the boundary (self-pay FIN-01 only):
   `/api/v1/invoices` (`FINANCE_INVOICE_CREATE`) and contains no payer, claim,
   card or accounting schema or path. See [contracts/openapi/README.md](../../../../contracts/openapi/README.md)
   for the generated-contract policy.
-- [FinanceLedgerTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/finance/FinanceLedgerTest.java)
+- [FinanceLedgerTest.java](../../../../apps/api/src/test/java/com/aurevia/finance/FinanceLedgerTest.java)
   (`fixedPrecisionMinorUnitsNeverRoundLineAmountsOrTotals`,
   `everyLinkedEntrySnapshotsTheInvoicesSingleCurrency`, `replayIsANoOpAndAChangedPayloadWithTheSameReferenceConflicts`),
-  [FinanceFlowTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/finance/FinanceFlowTest.java)
+  [FinanceFlowTest.java](../../../../apps/api/src/test/java/com/aurevia/it/finance/FinanceFlowTest.java)
   (`fullLifecyclePostsItemizedPaymentsAndNumberedReceipts`,
   `reconciliationIsFinanceOnlyAndStableAcrossReplay`) and
-  [FinanceHttpSecurityTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/finance/FinanceHttpSecurityTest.java)
+  [FinanceHttpSecurityTest.java](../../../../apps/api/src/test/java/com/aurevia/it/finance/FinanceHttpSecurityTest.java)
   (`unauthorizedRoleReturnsForbidden`, `allowedSubjectReachesSuccessStatusOnEveryRoute`)
   exercise only self-pay behavior. `reconciliationIsFinanceOnlyAndStableAcrossReplay`
   asserts a synthetic clinical marker is absent from finance responses. Contract
-  coverage is in [FinanceContractTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/finance/FinanceContractTest.java)
-  and [InvoiceListIntegrationTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/finance/InvoiceListIntegrationTest.java).
+  coverage is in [FinanceContractTest.java](../../../../apps/api/src/test/java/com/aurevia/it/finance/FinanceContractTest.java)
+  and [InvoiceListIntegrationTest.java](../../../../apps/api/src/test/java/com/aurevia/it/finance/InvoiceListIntegrationTest.java).
 
 No workflow run, human approval, partner artifact or cloud account is cited as
 evidence for this clause; none was inspected or found in the repository.
@@ -106,7 +106,7 @@ Closing that gap needs **one** bounded task: add a static/architecture check and
 a test that fails when a prohibited package, route, column or dependency
 appears. Files that task would change (none changed here): a new policy check
 under `scripts/` plus its test under `scripts/tests/`, or a new Java
-architecture test under `apps/api/src/test/java/com/aurevia/smartclinic/`, and
+architecture test under `apps/api/src/test/java/com/aurevia/`, and
 this note's `## Evidence` and `## Status` updated to point at the guard. The
 `scripts/` and `.github/workflows/` paths are maintainer-owned; a worker puts
 the proposal in its notes rather than editing them.
@@ -127,7 +127,7 @@ grep -rniE 'adjudicat|payer|insurance|clearinghouse|credit card|debit card|card 
 Confirm the published money surface is self-pay only:
 
 ```
-grep -nE '@(Get|Post)Mapping' apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceController.java
+grep -nE '@(Get|Post)Mapping' apps/api/src/main/java/com/aurevia/finance/FinanceController.java
 grep -n '/api/v1/invoices' contracts/openapi/generated/openapi.yaml
 ```
 

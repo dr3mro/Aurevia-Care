@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.patient.clauses.ConfirmIdentifiersHighRiskTransitionsAvailableIncludingTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/ConfirmIdentifiersHighRiskTransitionsAvailableIncludingTest.java`),
+Test class `com.aurevia.patient.clauses.ConfirmIdentifiersHighRiskTransitionsAvailableIncludingTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/ConfirmIdentifiersHighRiskTransitionsAvailableIncludingTest.java`),
 an HTTP-level integration test on a fresh PostgreSQL database with synthetic tenant
 data, using the same fixtures, headers and Flyway setup as the neighbouring clause
 tests:
@@ -30,34 +30,34 @@ tests:
 
 Production classes exercised by the consolidation entry point:
 
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationController`
+- `com.aurevia.patient.consolidation.ConsolidationController`
   (`POST /api/v1/duplicate-reviews/{reviewId}/consolidate`, binding
   `ConsolidationApprovalRequest.confirmedIdentifiers` and `alternateProcess`);
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService`
+- `com.aurevia.patient.consolidation.ConsolidationService`
   (`consolidate`, `confirmationFailure`, `confirmationOutcome`), which checks the
   two distinct issuer-scoped identifiers against both locked patient records,
   accepts one bounded coded alternate process only when identifiers are absent,
   and audits the decision basis;
-- `com.aurevia.smartclinic.patient.consolidation.DuplicatePolicy` (second-reviewer
+- `com.aurevia.patient.consolidation.DuplicatePolicy` (second-reviewer
   and role gate), `DuplicateRepository` (pair lock, append-only association and
-  consolidation, RLS-bounded reads), `com.aurevia.smartclinic.patient.Patient`,
-  `com.aurevia.smartclinic.tenant.TenantContext` and the Flyway migrations under
+  consolidation, RLS-bounded reads), `com.aurevia.patient.Patient`,
+  `com.aurevia.tenant.TenantContext` and the Flyway migrations under
   `db/migrations` (forced row level security).
 
 Supporting evidence already on the branch, not duplicated here:
-`com.aurevia.smartclinic.it.patientidentity.ConsolidationServiceTest` covers every
+`com.aurevia.it.patientidentity.ConsolidationServiceTest` covers every
 branch of `confirmationFailure` and `confirmationOutcome` as unit tests, and
-`com.aurevia.smartclinic.it.patientidentity.ConsolidationIsolationTest.identifierConfirmationIsEnforcedAgainstTheTwoRecords`
+`com.aurevia.it.patientidentity.ConsolidationIsolationTest.identifierConfirmationIsEnforcedAgainstTheTwoRecords`
 covers the same HTTP route including the documented `ALTERNATE:site_witness`
 outcome. The route is currently baselined as missing from the OpenAPI contract in
 `contracts/openapi.yaml`; no public contract entry proves it yet.
 
-Survey result for the collection half: `com.aurevia.smartclinic.web.PatientController`
-(`POST /api/v1/patients`) and `com.aurevia.smartclinic.patient.PatientService.register`
+Survey result for the collection half: `com.aurevia.web.PatientController`
+(`POST /api/v1/patients`) and `com.aurevia.patient.PatientService.register`
 collect a name, one issuer-scoped MRN, an optional unknown-DOB reason, contacts,
 identifiers and consents, and warn on likely duplicates, but never require two
 confirmed identifiers and never record an alternate-process code. No other class
-under `apps/api/src/main/java/com/aurevia/smartclinic/patient` or its neighbours
+under `apps/api/src/main/java/com/aurevia/patient` or its neighbours
 implements collection-time confirmation.
 
 ## Gap
@@ -70,8 +70,8 @@ confirmation contract to `PatientController.RegisterRequest`, enforce it in
 `PatientService.register` inside the tenant-guarded transaction, audit the basis,
 add the failing-then-green tests (including the disabled test above) and document
 the route in the OpenAPI contract. Files that task would change (none changed
-here): `apps/api/src/main/java/com/aurevia/smartclinic/web/PatientController.java`,
-`apps/api/src/main/java/com/aurevia/smartclinic/patient/PatientService.java`,
+here): `apps/api/src/main/java/com/aurevia/web/PatientController.java`,
+`apps/api/src/main/java/com/aurevia/patient/PatientService.java`,
 their tests under `apps/api/src/test`, `contracts/openapi.yaml` and the generated
 client; no migration is needed because the existing patient tables already store
 issuer-scoped identifiers and the audit event carries the outcome.

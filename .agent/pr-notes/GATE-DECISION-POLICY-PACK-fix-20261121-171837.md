@@ -42,7 +42,7 @@ Acceptance mapping (task step 2 → `docs/launch/policy-pack.md`):
 | Decide nothing / invent nothing | archetypes only ("one named jurisdiction", "the named region"); no real jurisdiction, region, partner, name or date; record empty |
 
 Verified section 10 (six decision rows and accountable roles) and the section 9 G5 row
-of `SMARTCLINIC_V1_SPEC.md` against the document; they match verbatim in substance.
+of `PROJECT_V1_SPEC.md` against the document; they match verbatim in substance.
 
 ## Risk class
 
@@ -84,7 +84,7 @@ the repository root; results are tool evidence (commands executed in this sessio
   This is the task's required step-6 check for a Markdown edit. It resolved every
   relative link in `docs/launch/policy-pack.md` against files present on
   `origin/main` (all 21 link targets verified OK by a separate `git ls-tree` scan) and
-  confirmed every requirement ID mentioned is defined in `SMARTCLINIC_V1_SPEC.md`.
+  confirmed every requirement ID mentioned is defined in `PROJECT_V1_SPEC.md`.
 - `python3 -I scripts/check-secrets.py` → exit 0.
 - `python3 -I scripts/check-names.py` → exit 0.
 - `git ls-tree -r --name-only origin/main docs/spec/clauses/` → three product clause

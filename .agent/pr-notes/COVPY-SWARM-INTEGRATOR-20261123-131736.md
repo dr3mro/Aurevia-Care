@@ -33,11 +33,11 @@ behaviour, contract, tenant boundary or clinical workflow is touched.
 
 ## Review owner
 
-`smartclinic-senior-python` is the area routing named in TODO.md step 2 for Python tooling. The
+`orevia-senior-python` is the area routing named in TODO.md step 2 for Python tooling. The
 brief additionally named read-only specialists, which were consulted in stage order:
-`smartclinic-context-optimizer` (which lines remain uncovered and which sibling tests cover them),
-`smartclinic-plan-reviewer` (before deciding), `smartclinic-code-reviewer` and
-`smartclinic-coverage-auditor`. `smartclinic-devsecops` was dropped per the brief (test-only change;
+`orevia-context-optimizer` (which lines remain uncovered and which sibling tests cover them),
+`orevia-plan-reviewer` (before deciding), `orevia-code-reviewer` and
+`orevia-coverage-auditor`. `orevia-devsecops` was dropped per the brief (test-only change;
 no credential, identity, tenant, audit or workflow-control code). All reviewers were bounded
 simulated/static subagents; their verdicts are copied under `## Review verdicts`.
 
@@ -151,11 +151,11 @@ data, cross-organization sharing, patient association, prescribing or critical r
 
 ## Review verdicts
 
-- smartclinic-context-optimizer: GO
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: omitted per brief (test-only; no code change)
+- orevia-context-optimizer: GO
+- orevia-plan-reviewer: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: omitted per brief (test-only; no code change)
 
 ## Findings
 

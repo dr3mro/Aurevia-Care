@@ -10,14 +10,14 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.configuration.clauses.ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/configuration/clauses/ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest.java`).
+Test class: `com.aurevia.configuration.clauses.ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest`
+(path: `apps/api/src/test/java/com/aurevia/configuration/clauses/ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest.java`).
 It is an active real-PostgreSQL acceptance test tagged `integration`, using the
-synthetic-auth profile, a dedicated `smartclinic_adm01_clause2_it` database and two
+synthetic-auth profile, a dedicated `orevia_adm01_clause2_it` database and two
 synthetic tenants. All six tests are active (none disabled) and use synthetic data only.
 It follows the fixtures and database setup of
-`com.aurevia.smartclinic.it.ConfigurationIsolationTest` and
-`com.aurevia.smartclinic.authz.clauses.RecordGrantedRoleEffectiveDatesTest`.
+`com.aurevia.it.ConfigurationIsolationTest` and
+`com.aurevia.authz.clauses.RecordGrantedRoleEffectiveDatesTest`.
 
 Test methods (one positive rule proof, five negative refusals):
 
@@ -44,15 +44,15 @@ Test methods (one positive rule proof, five negative refusals):
 
 Production classes and objects exercised through the normal HTTP entry point:
 
-- Controller: `com.aurevia.smartclinic.web.ConfigurationController` —
+- Controller: `com.aurevia.web.ConfigurationController` —
   `POST /api/v1/configuration`, `POST /api/v1/configuration/{key}/versions/{version}/approve`,
   `GET /api/v1/configuration/{key}` and `GET /api/v1/configuration/{key}/history`.
-- Domain and boundary: `com.aurevia.smartclinic.configuration.ConfigurationService`,
-  `com.aurevia.smartclinic.configuration.ConfigurationRepository`,
-  `com.aurevia.smartclinic.configuration.ConfigEntry`,
-  `com.aurevia.smartclinic.configuration.ConfigHistory`,
-  `com.aurevia.smartclinic.authz.ActionPolicy` and
-  `com.aurevia.smartclinic.tenant.TenantContext`.
+- Domain and boundary: `com.aurevia.configuration.ConfigurationService`,
+  `com.aurevia.configuration.ConfigurationRepository`,
+  `com.aurevia.configuration.ConfigEntry`,
+  `com.aurevia.configuration.ConfigHistory`,
+  `com.aurevia.authz.ActionPolicy` and
+  `com.aurevia.tenant.TenantContext`.
 - Schema: `db/migrations/V5__tenant_configuration.sql` defines `config_entry` and
   `config_approval`, forces row-level security, derives author and approver from the
   authenticated actor, allocates versions under a tenant-and-key advisory lock, folds

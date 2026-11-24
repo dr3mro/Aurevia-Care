@@ -1,7 +1,7 @@
 # Recovery drill runbook (OPS-04)
 
 This runbook is the procedure for rehearsing, or conducting under authorization,
-the clean-environment restore required by [OPS-04](../../../SMARTCLINIC_V1_SPEC.md).
+the clean-environment restore required by [OPS-04](../../../.opencode/config/PROJECT_V1_SPEC.md).
 It is a *procedure*, not evidence that any restore happened. Observed times,
 results, evidence links and approvals are recorded in the
 [drill evidence template](drill-evidence.md), which starts empty.
@@ -205,7 +205,7 @@ in the evidence template.
 
 ## 8. Related material
 
-- Product specification: [OPS-04](../../../SMARTCLINIC_V1_SPEC.md).
+- Product specification: [OPS-04](../../../.opencode/config/PROJECT_V1_SPEC.md).
 - Production readiness evidence: [checklist](../production-readiness/README.md).
 - Deployment handoff: [DEPLOYMENT.md](../../../infra/DEPLOYMENT.md).
 - The existing engineering handoff for recovery targets, the fail-closed

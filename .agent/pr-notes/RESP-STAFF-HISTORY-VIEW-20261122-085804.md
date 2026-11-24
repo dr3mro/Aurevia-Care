@@ -42,13 +42,13 @@ touched. Assessment via `docs/WORKFLOW.md` and simulated review only.
 
 ## Review owner
 
-Senior React and Vite specialist (skill `smartclinic-senior-react` loaded),
-Senior TypeScript specialist (`smartclinic-senior-typescript` loaded) and UX
-reviewer (`smartclinic-ux-reviewer` loaded) for the accessibility/RTL rules.
+Senior React and Vite specialist (skill `orevia-senior-react` loaded),
+Senior TypeScript specialist (`orevia-senior-typescript` loaded) and UX
+reviewer (`orevia-ux-reviewer` loaded) for the accessibility/RTL rules.
 A bounded read-only specialist review was requested and returned **no blocking
 findings** after checking card semantics/full column set, logical-only styling
 and RTL, branch/test alignment, and unchanged behaviour/text/exports (evidence
-source: reviewer, `smartclinic-senior-react` subagent; it did not re-run commands
+source: reviewer, `orevia-senior-react` subagent; it did not re-run commands
 or edit files). All review evidence is simulated; no human clinical or unit
 participant was involved.
 
@@ -75,7 +75,7 @@ Commands run (all exit 0 unless noted):
 
 - `cd apps/staff-web && npm ci --no-audit --no-fund` → added 486 packages.
 - `cd apps/staff-web && node_modules/.bin/vitest run tests/responsive/features-admin/StaffHistoryView.responsive.test.tsx src/features/admin/admin-components.test.tsx` → `Test Files 2 passed (2)`, `Tests 34 passed (34)`.
-- `cd apps/staff-web && npm run typecheck` → `tsc --noEmit -p tsconfig.json`; no output, exit 0. **Typecheck final lines:** the command prints only the npm script header (`> smartclinic-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`) and exits 0 — no `error TS…` diagnostics.
+- `cd apps/staff-web && npm run typecheck` → `tsc --noEmit -p tsconfig.json`; no output, exit 0. **Typecheck final lines:** the command prints only the npm script header (`> orevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`) and exits 0 — no `error TS…` diagnostics.
 - `cd apps/staff-web && npm run lint` → `eslint . --max-warnings 0`; no output, exit 0.
 - `cd apps/staff-web && npm run test:coverage` → `Test Files 159 passed (159)`, `Tests 1899 passed (1899)`, `207 files fully covered`, `Coverage summary: Statements 100% (3734/3734), Branches 100% (1898/1898), Functions 100% (1263/1263), Lines 100% (3568/3568)`. The `useTheme must be used inside ThemeProvider` stack traces are the expected negative path of the pre-existing `tests/theme/ThemeProvider.test.tsx` and do not fail the run.
 - `cd apps/staff-web && bash check.sh` → completed all stages (generated-client check, typecheck, lint, build, bundle-size budget, coverage) and ended with the same 100% coverage summary; exit 0.
@@ -142,7 +142,7 @@ No threshold, exclusion or skip was added; no test was disabled or weakened.
   `touch` and `field` utilities own them for views that have controls.
 - Observed repo state (tool evidence, out of scope, not modified): committed
   `main` already contains unresolved conflict markers in
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java` and `Hl7Segment.java` (lines 6/10, 14/18 and 10/14). My
   working tree contains only the two scoped source/test files and this note;
   the merge of `origin/main` reported `Already up to date`. These markers

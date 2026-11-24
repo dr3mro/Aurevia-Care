@@ -10,12 +10,12 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.authz.clauses.ApiCallsUsingExpiredRemovedMembershipFailTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/ApiCallsUsingExpiredRemovedMembershipFailTest.java`).
+Test class: `com.aurevia.authz.clauses.ApiCallsUsingExpiredRemovedMembershipFailTest`
+(path: `apps/api/src/test/java/com/aurevia/authz/clauses/ApiCallsUsingExpiredRemovedMembershipFailTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic organizations, following the fixtures and database setup of the
 neighbouring clause tests (`InviteDeactivateStaffAssignBoundedRolesConfigureTest`) and
-`com.aurevia.smartclinic.it.StaffLifecycleIsolationTest`. All four tests are active (none
+`com.aurevia.it.StaffLifecycleIsolationTest`. All four tests are active (none
 are disabled) and pass with synthetic data only.
 
 Test methods (one positive rule proof, three negative refusals):
@@ -44,15 +44,15 @@ Test methods (one positive rule proof, three negative refusals):
 
 Production classes exercised through the normal HTTP entry points:
 
-- Controllers: `com.aurevia.smartclinic.web.FacilityController` and
-  `com.aurevia.smartclinic.web.StaffController`.
-- Domain services and boundaries: `com.aurevia.smartclinic.tenancy.FacilityService`
+- Controllers: `com.aurevia.web.FacilityController` and
+  `com.aurevia.web.StaffController`.
+- Domain services and boundaries: `com.aurevia.tenancy.FacilityService`
   (re-checks membership and permission inside the tenant-guarded transaction via
-  `authorize`), `com.aurevia.smartclinic.staff.StaffService`,
-  `com.aurevia.smartclinic.staff.StaffRepository`
-  (`hasActiveMembership` / `activeRoles`), `com.aurevia.smartclinic.authz.ActionPolicy`,
-  `com.aurevia.smartclinic.tenant.TenantContext` and
-  `com.aurevia.smartclinic.web.TenantContextInterceptor`.
+  `authorize`), `com.aurevia.staff.StaffService`,
+  `com.aurevia.staff.StaffRepository`
+  (`hasActiveMembership` / `activeRoles`), `com.aurevia.authz.ActionPolicy`,
+  `com.aurevia.tenant.TenantContext` and
+  `com.aurevia.web.TenantContextInterceptor`.
 
 Where the clause is implemented today (source survey result):
 

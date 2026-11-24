@@ -22,8 +22,8 @@ safety-critical contract). Classified per `docs/WORKFLOW.md`.
 
 ## Review owner
 
-Primary agent. Simulated reviews: `smartclinic-senior-react` (no actionable
-findings) and `smartclinic-ux-reviewer` (no actionable findings); both were
+Primary agent. Simulated reviews: `orevia-senior-react` (no actionable
+findings) and `orevia-ux-reviewer` (no actionable findings); both were
 static reviews that relied on the primary agent's tool evidence because those
 subagents had no shell. No human or clinical participant.
 
@@ -102,10 +102,10 @@ association, prescribing, critical results or cross-organization sharing.
 - `EmptyState` renders a nested `<section class="page" role="status">` with its own `data-breakpoint`; the outer welcome wrapper also uses `page`. The nesting is intentional (outer = centred reading measure and safe-area padding, inner = centred state panel) and is asserted by the tests. Because the panel contains a second `<h2>` ("Nothing to show" / "لا يوجد شيء لعرضه"), heading queries are scoped by accessible name to stay unambiguous.
 - No class was missing from `apps/staff-web/src/theme/responsive.css`: `page` already supplies safe-area-aware logical padding, a centred reading measure and a single `minmax(0, 1fr)` column. Only shrink-to-fit, wrapping of long labels and a logical text start needed inline styles, and no dedicated class exists for those on a section wrapper, so logical inline styles were used per the task rule. The stylesheet was not edited.
 - This placeholder route has no inputs and no interactive controls, so the 16 px input-text and 44 × 44 coarse-pointer target rules are not applicable here; they are owned by the shared `Form`/`FormField` and `Button` components. The keyboard-order test asserts no forced `tabindex` and the heading-before-status DOM order.
-- Pre-existing, outside scope and not touched: committed `origin/main` contains literal conflict markers in three `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` Java files (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). The merge with `origin/main` reported "Already up to date"; no marker exists in either scoped file.
+- Pre-existing, outside scope and not touched: committed `origin/main` contains literal conflict markers in three `apps/api/src/main/java/com/aurevia/exchange/hl7/` Java files (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). The merge with `origin/main` reported "Already up to date"; no marker exists in either scoped file.
 - `scripts/check.sh` cannot complete in this cloud worker: verified `git ls-files -v opencode.json` → `S` (skip-worktree), `opencode.json` is byte-identical to `.github/opencode.ci.json`, and `opencode.json` is absent from my diff. `check-pack.py` therefore judges the CI profile rather than the HEAD/local profile and reports it stale. Per AGENTS.md/TODO rule 8 the protected file was not regenerated, edited or committed; the canonical module gate `bash apps/staff-web/check.sh` passed in full instead. Integrator/Delivery own the repository-wide gate.
-- Simulated `smartclinic-senior-react` review: no actionable findings; confirmed the change is presentational, follows the established `data-breakpoint` convention, uses logical properties only, and that no behaviour/text/export changed. It could not re-run checks (no shell) and relied on primary-agent evidence.
-- Simulated `smartclinic-ux-reviewer` review: no actionable findings; confirmed RTL mirroring with no local direction override, wrapping, no hidden content, DOM/keyboard order and safe-area via `page`. Its non-blocking observation — outer `.page` nesting the `EmptyState` `StatePanel` also uses `.page` and applies safe-area padding twice — is an existing shared pattern (`Form.tsx`, `ApiPage.tsx`) outside this scope, not introduced here.
+- Simulated `orevia-senior-react` review: no actionable findings; confirmed the change is presentational, follows the established `data-breakpoint` convention, uses logical properties only, and that no behaviour/text/export changed. It could not re-run checks (no shell) and relied on primary-agent evidence.
+- Simulated `orevia-ux-reviewer` review: no actionable findings; confirmed RTL mirroring with no local direction override, wrapping, no hidden content, DOM/keyboard order and safe-area via `page`. Its non-blocking observation — outer `.page` nesting the `EmptyState` `StatePanel` also uses `.page` and applies safe-area padding twice — is an existing shared pattern (`Form.tsx`, `ApiPage.tsx`) outside this scope, not introduced here.
 
 ## Lessons for workers
 

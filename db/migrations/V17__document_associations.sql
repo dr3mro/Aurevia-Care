@@ -21,7 +21,7 @@
 CREATE OR REPLACE FUNCTION public.app_org() RETURNS uuid
 LANGUAGE sql STABLE SET search_path = pg_catalog
 AS $$ SELECT NULLIF(current_setting('app.current_org', true), '')::uuid $$;
-GRANT EXECUTE ON FUNCTION public.app_org() TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.app_org() TO orevia_app;
 
 CREATE OR REPLACE FUNCTION public.reject_immutable_mutation()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
@@ -260,15 +260,15 @@ CREATE TRIGGER document_association_no_truncate
     FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation();
 
 GRANT SELECT, INSERT ON public.document_association, public.document_association_event,
-                         public.rendered_document TO smartclinic_app;
-GRANT UPDATE (status, version, void_reason) ON public.document_association TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.document_association FROM smartclinic_app;
+                         public.rendered_document TO orevia_app;
+GRANT UPDATE (status, version, void_reason) ON public.document_association TO orevia_app;
+REVOKE DELETE, TRUNCATE ON public.document_association FROM orevia_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON public.document_association_event,
-                                  public.rendered_document FROM smartclinic_app;
+                                  public.rendered_document FROM orevia_app;
 
 REVOKE ALL ON FUNCTION public.set_document_original_digest() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_document_created_by_from_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_document_event_actor_from_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.guard_document_association_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.next_render_version(text, uuid, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.next_render_version(text, uuid, text) TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.next_render_version(text, uuid, text) TO orevia_app;

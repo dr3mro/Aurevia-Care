@@ -20,7 +20,7 @@ Routine — contained staff-web presentation change with a new component test; n
 
 ## Review owner
 
-`smartclinic-senior-react` (bounded simulated review, advisory) plus the `smartclinic-senior-typescript` rules for the strict-TypeScript test. The reviewer returned **Approve, no actionable findings** after reading the two scoped files and the theme/design context; it did not run checks and relied on the tool evidence below. Non-blocking observations: the residual table inline styles are logical so they do not violate the shared-class rule; the `display:none` assertions inspect inline styles only (the component applies no hiding class). Evidence is tool reads plus a simulated reviewer; no human, clinical or patient-participant evidence.
+`orevia-senior-react` (bounded simulated review, advisory) plus the `orevia-senior-typescript` rules for the strict-TypeScript test. The reviewer returned **Approve, no actionable findings** after reading the two scoped files and the theme/design context; it did not run checks and relied on the tool evidence below. Non-blocking observations: the residual table inline styles are logical so they do not violate the shared-class rule; the `display:none` assertions inspect inline styles only (the component applies no hiding class). Evidence is tool reads plus a simulated reviewer; no human, clinical or patient-participant evidence.
 
 ## Data changes
 
@@ -85,7 +85,7 @@ Typecheck final lines (explicitly re-run and pasted as required):
 
 ```
 cd apps/staff-web && npm run typecheck
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 typecheck exit: 0
 ```
@@ -94,7 +94,7 @@ Lint final lines:
 
 ```
 cd apps/staff-web && npm run lint
-> smartclinic-staff-web@0.1.0 lint
+> orevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 ```
 
@@ -121,7 +121,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 
 ## Findings
 
-- **Pre-existing, out-of-scope defect observed at HEAD (`1a4ac855`)**: literal conflict markers are committed in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` (for example `git show HEAD:.../Hl7Parser.java | grep -nE '^(<<<<<<<|>>>>>>>) '` returns lines 14 and 18). They were present before this task, are unrelated to staff-web, and were not touched; recorded here so the integrator can route them (likely to BUGS.md / the owning BUILD-37 worker). `git status` for this task shows only the two in-scope paths.
+- **Pre-existing, out-of-scope defect observed at HEAD (`1a4ac855`)**: literal conflict markers are committed in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` (for example `git show HEAD:.../Hl7Parser.java | grep -nE '^(<<<<<<<|>>>>>>>) '` returns lines 14 and 18). They were present before this task, are unrelated to staff-web, and were not touched; recorded here so the integrator can route them (likely to BUGS.md / the owning BUILD-37 worker). `git status` for this task shows only the two in-scope paths.
 - The three labelled table regions/child components (`AdminTableRegion`, `Form`, `FormField`, `MixedScriptText`) are owned by their own RESP stories and were not modified; their shared classes are asserted here through the rendered output.
 - No missing layout class blocked this story: `.page`, `.stack` and `.grid-2` all exist in `responsive.css`, so no side-aware inline style was needed for layout.
 

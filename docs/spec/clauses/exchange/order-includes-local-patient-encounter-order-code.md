@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.OrderIncludesLocalPatientEncounterOrderCodeTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/OrderIncludesLocalPatientEncounterOrderCodeTest.java`),
+Test class `com.aurevia.exchange.clauses.OrderIncludesLocalPatientEncounterOrderCodeTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/OrderIncludesLocalPatientEncounterOrderCodeTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from
 the production Flyway migrations, with synthetic organizations A (sender) and B
 (destination), synthetic members and patients, and one approved exchange
@@ -51,27 +51,27 @@ authorization:
 
 Production classes exercised through `POST /api/v1/orders`,
 `GET /api/v1/orders/{id}` and `GET /api/v1/exchange/work-items`:
-`com.aurevia.smartclinic.exchange.order.OrderController` (thin HTTP adapter),
-`com.aurevia.smartclinic.exchange.order.OrderService` (validates the command,
+`com.aurevia.exchange.order.OrderController` (thin HTTP adapter),
+`com.aurevia.exchange.order.OrderService` (validates the command,
 derives `sourceActor` from the tenant context and commits the order, snapshot,
 disclosure and work item in one tenant-guarded transaction),
-`com.aurevia.smartclinic.exchange.order.OrderRequest`,
-`com.aurevia.smartclinic.exchange.order.OrderView`,
-`com.aurevia.smartclinic.exchange.order.WorkItemView`,
-`com.aurevia.smartclinic.exchange.order.OrderInputs` (priority, UUID and text
-validation), `com.aurevia.smartclinic.exchange.order.OrderRepository` (the
+`com.aurevia.exchange.order.OrderRequest`,
+`com.aurevia.exchange.order.OrderView`,
+`com.aurevia.exchange.order.WorkItemView`,
+`com.aurevia.exchange.order.OrderInputs` (priority, UUID and text
+validation), `com.aurevia.exchange.order.OrderRepository` (the
 `Jdbc*` store behind the exchange boundary) and the tenant RLS/FORCE RLS plus
 actor-stamping triggers supplied by `db/migrations/V19__exchange_orders.sql`.
 
 Corroborating suites already on `main` (not re-tested here):
-`com.aurevia.smartclinic.it.exchangeorder.OrderServiceTest` (service-level
+`com.aurevia.it.exchangeorder.OrderServiceTest` (service-level
 assertion of every `OrderView` field and the full `insertOrder`/`insertWorkItem`
-arguments), `com.aurevia.smartclinic.it.exchangeorder.OrderExchangeIntegrationTest`
+arguments), `com.aurevia.it.exchangeorder.OrderExchangeIntegrationTest`
 (real-PostgreSQL release, snapshot, disclosure and work-item flow), and
-`com.aurevia.smartclinic.it.exchangeorder.OrderRecordsTest` (record value
+`com.aurevia.it.exchangeorder.OrderRecordsTest` (record value
 semantics).
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
 -Pno-security -Dtest=OrderIncludesLocalPatientEncounterOrderCodeTest test` —
 `tests="6" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim

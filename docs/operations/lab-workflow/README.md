@@ -11,7 +11,7 @@
 - All names, accessions, subjects and reasons below are synthetic. No real
   patient, credential or identifier is used in the guide or the browser test.
 
-The approved clauses are in the [product specification](../../../SMARTCLINIC_V1_SPEC.md)
+The approved clauses are in the [product specification](../../../.opencode/config/PROJECT_V1_SPEC.md)
 (LAB-01 and LAB-02 in section 5; WEB-09 in section 6). The executable journey is
 [`apps/staff-web/e2e/labflow/lab-journey.spec.ts`](../../../apps/staff-web/e2e/labflow/lab-journey.spec.ts);
 its deterministic API stand-in is in the same folder.

@@ -60,4 +60,4 @@ BEGIN
 END $fn$;
 
 REVOKE ALL ON FUNCTION public.guard_rx02_prescription_update() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.guard_rx02_prescription_update() TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.guard_rx02_prescription_update() TO orevia_app;

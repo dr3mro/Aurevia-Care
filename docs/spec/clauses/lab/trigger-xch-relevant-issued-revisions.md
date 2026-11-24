@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.lab.clauses.TriggerXchRelevantIssuedRevisionsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/TriggerXchRelevantIssuedRevisionsTest.java`),
+Test class `com.aurevia.lab.clauses.TriggerXchRelevantIssuedRevisionsTest`
+(`apps/api/src/test/java/com/aurevia/lab/clauses/TriggerXchRelevantIssuedRevisionsTest.java`),
 an HTTP-level integration test under the `synthetic-auth` profile against a fresh real-PostgreSQL
 database created from the production Flyway migrations, with synthetic subjects, accessions and
 patients only. The test drives the real routes `POST /api/v1/patients`,
@@ -68,7 +68,7 @@ same tests.
 Local verification (tool evidence):
 
 ```
-SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=TriggerXchRelevantIssuedRevisionsTest test
+OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=TriggerXchRelevantIssuedRevisionsTest test
 ```
 
 Surefire report: `tests="7" errors="0" skipped="0" failures="0"`.

@@ -34,7 +34,7 @@ def synthetic_record(record_id="rec-synthetic-1", checksum=CHECKSUM_A,
     record = {
         "id": record_id,
         "checksum": checksum,
-        "provenance": ({"source_system": "smartclinic", "source_id": "src-synthetic-1",
+        "provenance": ({"source_system": "orevia", "source_id": "src-synthetic-1",
                         "version": 3} if with_provenance else None),
         "documents": ([{"id": "doc-synthetic-1", "checksum": CHECKSUM_B,
                         "authorization": "release_policy",
@@ -265,9 +265,9 @@ class ExportRecordsTest(unittest.TestCase):
                 self.assertIn("export.record_checksums", failures(report))
 
     def test_record_provenance_must_be_complete(self):
-        for value in (None, {}, {"source_system": "smartclinic"},
-                      {"source_system": "smartclinic", "source_id": "src", "version": 0},
-                      {"source_system": "smartclinic", "source_id": "src", "version": True}):
+        for value in (None, {}, {"source_system": "orevia"},
+                      {"source_system": "orevia", "source_id": "src", "version": 0},
+                      {"source_system": "orevia", "source_id": "src", "version": True}):
             with self.subTest(value=value):
                 record = synthetic_record()
                 record["provenance"] = value

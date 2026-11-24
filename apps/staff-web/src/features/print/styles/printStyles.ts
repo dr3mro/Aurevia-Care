@@ -34,4 +34,4 @@ export const printStylesheet = `@media print {
 `;
 
 /** Stable id so the injected stylesheet can be located and asserted. */
-export const printStyleId = 'smartclinic-print-preview-styles';
+export const printStyleId = 'orevia-print-preview-styles';

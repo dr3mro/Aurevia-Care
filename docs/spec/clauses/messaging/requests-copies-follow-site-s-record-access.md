@@ -14,8 +14,8 @@ Tool evidence: four HTTP-level tests were executed with
 `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RequestsCopiesFollowSiteSRecordAccessTest test`
 (Surefire: 4 tests, 0 failures, 0 errors, 0 skipped).
 
-Test class `com.aurevia.smartclinic.messaging.clauses.RequestsCopiesFollowSiteSRecordAccessTest`
-([source](../../../../apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/RequestsCopiesFollowSiteSRecordAccessTest.java))
+Test class `com.aurevia.messaging.clauses.RequestsCopiesFollowSiteSRecordAccessTest`
+([source](../../../../apps/api/src/test/java/com/aurevia/messaging/clauses/RequestsCopiesFollowSiteSRecordAccessTest.java))
 drives the real controller, service and tenant-scoped store through the Spring
 MVC pipeline (`TenantContextInterceptor`, `ApiErrorHandler`) with synthetic
 subjects, a synthetic resource and a fixed clock:
@@ -40,26 +40,26 @@ subjects, a synthetic resource and a fixed clock:
 Production classes and objects exercised by those entry points:
 
 - `MessagingGovernanceController`
-  ([source](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceController.java))
+  ([source](../../../../apps/api/src/main/java/com/aurevia/messaging/governance/MessagingGovernanceController.java))
   — thin HTTP adapter whose `POST /copy-requests` delegates to the service.
 - `MessagingGovernanceService.requestCopy`
-  ([source](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceService.java))
+  ([source](../../../../apps/api/src/main/java/com/aurevia/messaging/governance/MessagingGovernanceService.java))
   — validates the command, re-checks active membership and the `COPY_REQUEST`
   allowlist, creates the `CopyRequest` with status `ROUTED`, persists it and
   appends a separate audit fact.
 - `MessagingGovernanceActions`
-  ([source](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceActions.java))
+  ([source](../../../../apps/api/src/main/java/com/aurevia/messaging/governance/MessagingGovernanceActions.java))
   — the `COPY_REQUEST` allowlist: patient, tenant_admin and privacy_auditor.
 - `MessagingGovernanceInputs`
-  ([source](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceInputs.java))
+  ([source](../../../../apps/api/src/main/java/com/aurevia/messaging/governance/MessagingGovernanceInputs.java))
   — `uuid` and `text` validation at the trust boundary.
 - `MessagingAuditContract`
-  ([source](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingAuditContract.java))
+  ([source](../../../../apps/api/src/main/java/com/aurevia/messaging/governance/MessagingAuditContract.java))
   — `RequestCopyRequest`, `CopyRequest`, `AuditEvent`, the `COPY_REQUEST` action
   and the `SUCCESS`/`DENIED` outcomes.
 - `MessagingGovernanceStore` and `JdbcMessagingGovernanceStore`
-  ([interface](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceStore.java),
-  [JDBC store](../../../../apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/JdbcMessagingGovernanceStore.java))
+  ([interface](../../../../apps/api/src/main/java/com/aurevia/messaging/governance/MessagingGovernanceStore.java),
+  [JDBC store](../../../../apps/api/src/main/java/com/aurevia/messaging/governance/JdbcMessagingGovernanceStore.java))
   — tenant-keyed persistence; the in-memory fake used by the test mirrors its
   tenant scoping, and the existing JDBC store integration test covers the real
   PostgreSQL round-trip and cross-tenant isolation.

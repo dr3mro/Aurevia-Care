@@ -10,11 +10,11 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.authz.clauses.RecordGrantedRoleEffectiveDatesTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RecordGrantedRoleEffectiveDatesTest.java`).
+Test class: `com.aurevia.authz.clauses.RecordGrantedRoleEffectiveDatesTest`
+(path: `apps/api/src/test/java/com/aurevia/authz/clauses/RecordGrantedRoleEffectiveDatesTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic tenants, following the fixtures and database setup of the
-neighbouring clause tests and `com.aurevia.smartclinic.authz.history.RoleHistoryIntegrationTest`.
+neighbouring clause tests and `com.aurevia.authz.history.RoleHistoryIntegrationTest`.
 All five tests are active (none disabled) and use synthetic data only.
 
 Test methods (one positive rule proof, four negative refusals):
@@ -38,13 +38,13 @@ Test methods (one positive rule proof, four negative refusals):
 
 Production classes and objects exercised through the normal HTTP entry point:
 
-- Controller: `com.aurevia.smartclinic.authz.history.RoleHistoryController`
+- Controller: `com.aurevia.authz.history.RoleHistoryController`
   (`GET /api/v1/authz/role-history/{subject}`).
-- Domain and boundary: `com.aurevia.smartclinic.authz.history.RoleHistoryService`,
-  `com.aurevia.smartclinic.authz.history.RoleHistoryStore`,
-  `com.aurevia.smartclinic.authz.history.JdbcRoleHistoryStore`,
-  `com.aurevia.smartclinic.authz.history.RoleHistory`,
-  `com.aurevia.smartclinic.authz.ActionPolicy` and `com.aurevia.smartclinic.tenant.TenantContext`.
+- Domain and boundary: `com.aurevia.authz.history.RoleHistoryService`,
+  `com.aurevia.authz.history.RoleHistoryStore`,
+  `com.aurevia.authz.history.JdbcRoleHistoryStore`,
+  `com.aurevia.authz.history.RoleHistory`,
+  `com.aurevia.authz.ActionPolicy` and `com.aurevia.tenant.TenantContext`.
 
 Where the clause is implemented today (source survey result):
 
@@ -56,8 +56,8 @@ Where the clause is implemented today (source survey result):
   triggers and a `capture_role_change()` trigger function that records the actor
   (from `app.actor` or the `granted_by` foreign key) and the effective window for
   every `GRANT`, `CHANGE` and `REVOKE`.
-- Code: the `com.aurevia.smartclinic.authz.history` package holds the read model,
-  service, `Jdbc*` store and controller; `com.aurevia.smartclinic.authz.ActionPolicy`
+- Code: the `com.aurevia.authz.history` package holds the read model,
+  service, `Jdbc*` store and controller; `com.aurevia.authz.ActionPolicy`
   gates the read to `tenant_admin`.
 - Contract: the read route `GET /api/v1/authz/role-history/{subject}` is currently
   baselined in `contracts/openapi.yaml` rather than declared in

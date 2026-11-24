@@ -11,8 +11,8 @@ Proven by tests
 ## Evidence
 
 Test class
-`com.aurevia.smartclinic.chart.clauses.SupportLocalProcedureCodesVersionedMarketDiagnosisTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/SupportLocalProcedureCodesVersionedMarketDiagnosisTest.java`),
+`com.aurevia.chart.clauses.SupportLocalProcedureCodesVersionedMarketDiagnosisTest`
+(`apps/api/src/test/java/com/aurevia/chart/clauses/SupportLocalProcedureCodesVersionedMarketDiagnosisTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants and
 synthetic catalog codes only. Catalog drafts and approvals are written through
 `POST /api/v1/catalogs/{family}/entries`, a chart PROBLEM is recorded through
@@ -39,40 +39,40 @@ from that HTTP response:
 
 Production classes exercised by these entry points:
 
-- `com.aurevia.smartclinic.web.CatalogController` and
-  `com.aurevia.smartclinic.catalog.CatalogService` — bounded catalog families and
-  tenant-local codes (`com.aurevia.smartclinic.api.contract.CatalogCode`),
+- `com.aurevia.web.CatalogController` and
+  `com.aurevia.catalog.CatalogService` — bounded catalog families and
+  tenant-local codes (`com.aurevia.api.contract.CatalogCode`),
   append-only drafts and named approvals through
-  `com.aurevia.smartclinic.configuration.ConfigurationService`.
-- `com.aurevia.smartclinic.catalog.CatalogRepository`,
-  `com.aurevia.smartclinic.chart.record.ChartRepository` — read the single
+  `com.aurevia.configuration.ConfigurationService`.
+- `com.aurevia.catalog.CatalogRepository`,
+  `com.aurevia.chart.record.ChartRepository` — read the single
   effective approved version of `catalog.<family>.<code>` through the
   `public.effective_config` / `public.effective_catalog_family` folds in
   `db/migrations/V5__tenant_configuration.sql` and
   `db/migrations/V6__catalog_fold.sql`, under forced tenant RLS.
-- `com.aurevia.smartclinic.chart.record.ChartController`,
-  `com.aurevia.smartclinic.chart.record.ChartService`,
-  `com.aurevia.smartclinic.chart.record.RecordEntryCommand`,
-  `com.aurevia.smartclinic.chart.record.ChartEntry`,
-  `com.aurevia.smartclinic.chart.record.ChartActionPolicy` — authorize recording,
+- `com.aurevia.chart.record.ChartController`,
+  `com.aurevia.chart.record.ChartService`,
+  `com.aurevia.chart.record.RecordEntryCommand`,
+  `com.aurevia.chart.record.ChartEntry`,
+  `com.aurevia.chart.record.ChartActionPolicy` — authorize recording,
   snapshot the effective catalog mapping into `mappedCode` / `mappedText` /
   `catalogVersion`, and retain `originalCode` / `originalText` / `codeSystem`
   verbatim.
-- `com.aurevia.smartclinic.catalog.dictionary.DiagnosisCatalogService`,
-  `com.aurevia.smartclinic.catalog.dictionary.DiagnosisCode` and
-  `com.aurevia.smartclinic.catalog.dictionary.ClinicalCatalogController` — the
+- `com.aurevia.catalog.dictionary.DiagnosisCatalogService`,
+  `com.aurevia.catalog.dictionary.DiagnosisCode` and
+  `com.aurevia.catalog.dictionary.ClinicalCatalogController` — the
   versioned diagnosis/procedure catalogue domain and its HTTP adapter, whose
   mapping keeps original code and text unchanged. Related evidence is in
-  `apps/api/src/test/java/com/aurevia/smartclinic/catalog/dictionary/CatalogCodeValidationTest.java`,
-  `apps/api/src/test/java/com/aurevia/smartclinic/it/catalog/dictionary/ClinicalCatalogAcceptanceTest.java`
+  `apps/api/src/test/java/com/aurevia/catalog/dictionary/CatalogCodeValidationTest.java`,
+  `apps/api/src/test/java/com/aurevia/it/catalog/dictionary/ClinicalCatalogAcceptanceTest.java`
   and `ClinicalCatalogHttpIntegrationTest.java` in the same directory.
 - Persistence and isolation are supplied by the production Flyway migrations in
   `db/migrations` (V1–V95), including `V13__longitudinal_chart.sql` with
   `ENABLE`/`FORCE ROW LEVEL SECURITY` on `chart_entry`.
 
 Discovery survey (files read while locating today's implementation): the chart
-package `apps/api/src/main/java/com/aurevia/smartclinic/chart/record`, its
-controllers under `apps/api/src/main/java/com/aurevia/smartclinic/web` and
+package `apps/api/src/main/java/com/aurevia/chart/record`, its
+controllers under `apps/api/src/main/java/com/aurevia/web` and
 `.../catalog/dictionary`, the catalog tables/folds in `db/migrations/V5` and
 `V6` plus `V13__longitudinal_chart.sql`, and the catalog routes in
 `contracts/openapi.yaml`. The clause is implemented across `ChartService` /

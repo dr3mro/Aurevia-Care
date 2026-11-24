@@ -123,10 +123,10 @@ BEGIN
         FOR EACH ROW EXECUTE FUNCTION public.pharmacy_substitution_close_transition()$d$;
 END $$;
 
-GRANT SELECT, INSERT ON public.pharmacy_substitution_proposal TO smartclinic_app;
-GRANT SELECT, INSERT ON public.pharmacy_substitution_revision TO smartclinic_app;
-GRANT SELECT, INSERT ON public.pharmacy_substitution_decision TO smartclinic_app;
-GRANT UPDATE (state, version, decided_at, snapshot) ON public.pharmacy_substitution_proposal TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.pharmacy_substitution_proposal FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.pharmacy_substitution_revision FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.pharmacy_substitution_decision FROM smartclinic_app;
+GRANT SELECT, INSERT ON public.pharmacy_substitution_proposal TO orevia_app;
+GRANT SELECT, INSERT ON public.pharmacy_substitution_revision TO orevia_app;
+GRANT SELECT, INSERT ON public.pharmacy_substitution_decision TO orevia_app;
+GRANT UPDATE (state, version, decided_at, snapshot) ON public.pharmacy_substitution_proposal TO orevia_app;
+REVOKE DELETE, TRUNCATE ON public.pharmacy_substitution_proposal FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.pharmacy_substitution_revision FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.pharmacy_substitution_decision FROM orevia_app;

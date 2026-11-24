@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.audit.clauses.EmergencyAccessApprovedLimitedQualifiedCliniciansScopedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/audit/clauses/EmergencyAccessApprovedLimitedQualifiedCliniciansScopedTest.java`),
+Test class `com.aurevia.audit.clauses.EmergencyAccessApprovedLimitedQualifiedCliniciansScopedTest`
+(`apps/api/src/test/java/com/aurevia/audit/clauses/EmergencyAccessApprovedLimitedQualifiedCliniciansScopedTest.java`),
 a real-PostgreSQL acceptance test tagged `integration`, using the `synthetic-auth`
 profile, the same fresh-database/flyway/seed fixture style as the neighbouring
 `authz.clauses` tests, and synthetic subjects, facilities and justifications only.
@@ -46,24 +46,24 @@ Positive rule proof (one test) and negative refusals (five tests):
   row is written (reasoned).
 
 Entry-point-to-test trace: `POST /api/v1/access/emergency` →
-`com.aurevia.smartclinic.authz.access.AccessController.grant` →
-`com.aurevia.smartclinic.authz.access.EmergencyAccessService.grant` →
-`com.aurevia.smartclinic.authz.access.AccessRepository` (forced-RLS tables);
+`com.aurevia.authz.access.AccessController.grant` →
+`com.aurevia.authz.access.EmergencyAccessService.grant` →
+`com.aurevia.authz.access.AccessRepository` (forced-RLS tables);
 `GET /api/v1/access/emergency/active` → `AccessController.active` →
 `EmergencyAccessService.active`; `POST /api/v1/access/emergency/{id}/review` →
 `AccessController.review` → `EmergencyAccessService.review`. Production classes the
 test exercises: `AccessController`, `EmergencyAccessService`, `AccessRepository`,
-`AccessRules`, `AccessContracts`, plus `com.aurevia.smartclinic.tenant.TenantContext`.
+`AccessRules`, `AccessContracts`, plus `com.aurevia.tenant.TenantContext`.
 
 Source survey result (where the clause is implemented today):
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/authz/access/EmergencyAccessService.java`
+- `apps/api/src/main/java/com/aurevia/authz/access/EmergencyAccessService.java`
   enforces approval, clinician role, facility scope, expiry, reason validation, the
   alert audit event and the independent review inside tenant-guarded transactions.
-- `apps/api/src/main/java/com/aurevia/smartclinic/authz/access/AccessRules.java` and
+- `apps/api/src/main/java/com/aurevia/authz/access/AccessRules.java` and
   `AccessContracts.java` hold the bounded validation and the immutable command and
   projection records; `AccessRepository.java` is the single forced-RLS SQL boundary.
-- `apps/api/src/main/java/com/aurevia/smartclinic/authz/access/AccessController.java`
+- `apps/api/src/main/java/com/aurevia/authz/access/AccessController.java`
   is the thin HTTP adapter under `/api/v1/access`.
 - `db/migrations/V11__emergency_and_support_access.sql` creates `emergency_access_grant`
   with a composite tenant+facility foreign key, checks, `ENABLE` and `FORCE ROW LEVEL
@@ -71,7 +71,7 @@ Source survey result (where the clause is implemented today):
   `emergency_access_review`, also with FORCE RLS and a tenant policy, so a grant opens
   exactly one review that only an independent reviewer can close.
 - Neighbouring corroborating suites already on the branch (not re-run here):
-  `com.aurevia.smartclinic.authz.access.EmergencyAccessReviewIntegrationTest`,
+  `com.aurevia.authz.access.EmergencyAccessReviewIntegrationTest`,
   `EmergencyAccessReviewTest`, `AccessReviewRulesTest` and `AccessReviewRepositoryTest`.
 - The `audit` package (`AuditEvent`, `AuditAppender`, `AuditService`, `AuditRepository`,
   `AuditPage`) supplies the append-only OPS-02 chain to which `AccessRepository.appendAudit`

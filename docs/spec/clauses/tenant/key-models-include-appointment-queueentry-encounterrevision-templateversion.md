@@ -10,12 +10,12 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.tenant.clauses.KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenant/clauses/KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest.java`).
+Test class: `com.aurevia.tenant.clauses.KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest`
+(`apps/api/src/test/java/com/aurevia/tenant/clauses/KeyModelsIncludeAppointmentQueueentryEncounterrevisionTemplateversionTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic tenants that reuse one opaque id, following the Flyway
 and database harness of `IsolationAcrossSurfacesTest`. A dedicated database
-(`smartclinic_arc01_keymodels_it`) is migrated from `db/migrations`; all proof
+(`orevia_arc01_keymodels_it`) is migrated from `db/migrations`; all proof
 reads use read-only `information_schema` / `pg_class` metadata and forced-RLS
 row reads. No production file, migration, existing test or contract is changed.
 
@@ -82,8 +82,8 @@ and reads as the non-owner runtime role, which is provisioned with `NOBYPASSRLS`
 by `infra/app/start.sh` (and recreated with the same option in the test harness).
 `V2__rls_roles_policies.sql` defines `app_org()` and grants privileges to that
 pre-existing role; it does not create the role. The in-application half —
-`com.aurevia.smartclinic.tenant.TenantContext` and
-`com.aurevia.smartclinic.tenant.TenantGuardTransactionManager`, which bind the
+`com.aurevia.tenant.TenantContext` and
+`com.aurevia.tenant.TenantGuardTransactionManager`, which bind the
 same GUC per transaction and fail closed when no context exists — is exercised
 by the neighbouring HTTP isolation acceptance tests, not directly by this
 schema-evidence test.

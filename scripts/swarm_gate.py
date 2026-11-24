@@ -33,12 +33,14 @@ WORKER, INTEGRATION, RECONCILIATION, HUMAN, UNKNOWN = "worker", "integration", "
 # Mirrored from scripts/swarm.py. Kept local so a worker PR cannot edit the
 # policy copy used to judge it; a test asserts the two sets stay in sync.
 GATE_CONFIG = ("apps/api/spotbugs-exclude.xml", "scripts/wiring-baseline.json",
-               "CODING_STYLE.md", "apps/staff-web/vite.config.ts",
+               ".opencode/setup/CODING_STYLE.md", "apps/staff-web/vite.config.ts",
                "apps/staff-web/eslint.config.ts", "apps/patient-mobile/jest.config.ts",
                "apps/patient-mobile/eslint.config.mjs")
-PROTECTED = (".github/*", ".opencode/*", "opencode.json", "scripts/*", "AGENTS.md",
-             "check.sh", "*/check.sh", "compose.yaml", "Dockerfile", "apps/api/pom.xml", *GATE_CONFIG)
-TRACKERS = ("TODO.md", "tasks/*", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md", "docs/swarm/*")
+PROTECTED = (".github/*", ".opencode/*", ".opencode/opencode.json", "scripts/*",
+             ".opencode/setup/AGENTS.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile",
+             "apps/api/pom.xml", *GATE_CONFIG)
+TRACKERS = ("tasks/*", ".opencode/config/MEMORY.md", ".opencode/config/WORKSPACE.md",
+            ".opencode/config/BUGS.md", ".opencode/config/PROJECT.md", "docs/swarm/*")
 
 TASK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*$")
 SHA = re.compile(r"^[0-9a-f]{40}$")

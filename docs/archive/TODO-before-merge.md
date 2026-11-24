@@ -1,4 +1,4 @@
-# SmartClinic V1 queue
+# Orevia V1 queue
 
 Check the repository against each gate before marking work ready. Split items into verifiable WIP-one slices. Gates are delivery checkpoints and may have independent slices. `PLAN.md` is the canonical index of every story and its done state; keep this file aligned with it.
 
@@ -17,7 +17,7 @@ Use `planned → in progress → verified → done`. Record `blocked` with reaso
 
 Raised by the dispatch-3 run-3 verification (report-only, no edits made). Address in the next authorized change to the owning file.
 
-- Delivery skill note (owner: `.opencode/skills/smartclinic-delivery/SKILL.md`, requires regenerating `opencode.json` in the same commit): inside a cloud worker the worktree `opencode.json` is the CI profile under `skip-worktree`, so `scripts/check.sh`, `scripts/gen-opencode.py --check` and `scripts/check-pack.py` results seen by the agent are not HEAD truth. Use `git show HEAD:opencode.json`, or state the profile in evidence. This trap produced the false OPS-CW-003-01 finding.
+- Delivery skill note (owner: `.opencode/skills/orevia-delivery/SKILL.md`, requires regenerating `opencode.json` in the same commit): inside a cloud worker the worktree `opencode.json` is the CI profile under `skip-worktree`, so `scripts/check.sh`, `scripts/gen-opencode.py --check` and `scripts/check-pack.py` results seen by the agent are not HEAD truth. Use `git show HEAD:opencode.json`, or state the profile in evidence. This trap produced the false OPS-CW-003-01 finding.
 - Pin the worker CLI and image (owner: `.github/agent-image/Dockerfile`, `.github/workflows/agent-image.yml`): `ARG OPENCODE_VERSION=latest` and the `:latest` base tag make the exact cloud CLI version unreproducible from the repository; record the observed digest and version in each publish run. Tracked as OPS-CW-003-02.
 
 ## Current story

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.finance.clauses.RecordPaymentRefundCreditLinkedImmutableEntriesTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/finance/clauses/RecordPaymentRefundCreditLinkedImmutableEntriesTest.java`),
+Test class `com.aurevia.finance.clauses.RecordPaymentRefundCreditLinkedImmutableEntriesTest`
+(`apps/api/src/test/java/com/aurevia/finance/clauses/RecordPaymentRefundCreditLinkedImmutableEntriesTest.java`),
 an HTTP-level integration test against a fresh real-PostgreSQL database created from the production
 Flyway migrations, with synthetic organizations, members and patients and the `synthetic-auth` profile:
 
@@ -42,7 +42,7 @@ Production exercised: `FinanceService.postEntry` and `FinanceService.approvalFai
 and refund routes, `FinanceActions`, `FinanceRepository.insertEntry`/`nextReceiptNo`/`findByReference`,
 and `db/migrations/V45__finance.sql` (forced RLS, append-only ledger triggers, currency guard and
 per-tenant receipt counter). The requirement and its boundary are defined in
-[SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md), FIN-01.
+[PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md), FIN-01.
 
 This note proves the HTTP behaviour only. The published OpenAPI contract documents the finance list
 route; the POST entry routes are baselined in `contracts/openapi.yaml` as pre-existing

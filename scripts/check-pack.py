@@ -16,18 +16,18 @@ FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 # Worker roles named in docs/WORKFLOW.md and the orchestrator prompt. Each must
 # resolve to a real agent definition; keep the mapping in sync with those docs.
 ROLE_AGENTS = {
-    "Product Manager": "smartclinic-product-manager",
-    "Product Owner": "smartclinic-product-owner",
-    "Architect": "smartclinic-software-architect",
-    "Scrum Master": "smartclinic-scrum-master",
-    "Senior Software Engineer": "smartclinic-software-engineer",
-    "Tester": "smartclinic-test-engineer",
-    "QA": "smartclinic-qa-reviewer",
-    "Debugger": "smartclinic-debugger",
-    "UI/UX": "smartclinic-ux-reviewer",
-    "System Designer": "smartclinic-system-designer",
-    "DevSecOps": "smartclinic-devsecops",
-    "GitHub Workflow Expert": "smartclinic-github-workflow",
+    "Product Manager": "product-manager",
+    "Product Owner": "product-owner",
+    "Architect": "software-architect",
+    "Scrum Master": "scrum-master",
+    "Senior Software Engineer": "software-engineer",
+    "Tester": "test-engineer",
+    "QA": "qa-reviewer",
+    "Debugger": "debugger",
+    "UI/UX": "ux-reviewer",
+    "System Designer": "system-designer",
+    "DevSecOps": "devsecops",
+    "GitHub Workflow Expert": "github-workflow",
 }
 
 
@@ -38,10 +38,10 @@ PROCESS_SECTIONS = ("Common rationalizations", "Red flags", "Verification")
 # Skills that play a simulated user or plan and track work have no engineering process to
 # check; every other skill must carry the process sections.
 NO_PROCESS_SECTIONS = {
-    "smartclinic-clinic-assistant", "smartclinic-laboratory-user", "smartclinic-patient-user",
-    "smartclinic-pharmacy-user", "smartclinic-physical-therapy-user", "smartclinic-radiology-user",
-    "smartclinic-product-manager", "smartclinic-product-owner", "smartclinic-scrum-master",
-    "smartclinic-system-designer", "smartclinic-memory-manager", "smartclinic-context-optimizer",
+    "orevia-clinic-assistant", "orevia-laboratory-user", "orevia-patient-user",
+    "orevia-pharmacy-user", "orevia-physical-therapy-user", "orevia-radiology-user",
+    "orevia-product-manager", "orevia-product-owner", "orevia-scrum-master",
+    "orevia-system-designer", "orevia-memory-manager", "orevia-context-optimizer",
 }
 
 
@@ -71,27 +71,28 @@ def load_config(path):
     """Return (config, duplicate agent names) parsed from an opencode.json.
 
     json.loads keeps only the last of duplicate keys, so an object hook records
-    names that appear more than once in the agents inventory before they are
-    silently collapsed.
+    repeated names before they are silently collapsed. Only names that are agents
+    in this config matter; duplicates in unrelated objects are not agent names.
     """
-    duplicates = []
+    repeated = set()
 
     def object_pairs(pairs):
         result = {}
         for key, value in pairs:
-            if key in result and key.startswith("smartclinic-"):
-                duplicates.append(key)
+            if key in result:
+                repeated.add(key)
             result[key] = value
         return result
 
     config = json.loads(path.read_text(), object_pairs_hook=object_pairs)
+    duplicates = [name for name in repeated if name in config.get("agents", {})]
     return config, duplicates
 
 
 def check(root=ROOT):
     """Return a list of human-readable problems for the pack under root."""
     errors = []
-    config, duplicates = load_config(root / "opencode.json")
+    config, duplicates = load_config(root / ".opencode/opencode.json")
     agents = config["agents"]
     primary = config["default_agent"]
     definitions = {p.stem: p.read_text()
@@ -124,7 +125,7 @@ def check(root=ROOT):
             errors.append(f"agent {name}: description is required")
         if not NAME.fullmatch(name):
             errors.append(f"agent {name}: name must be kebab-case")
-        loaded = set(re.findall(r"Load (?:the )?`?(smartclinic-[a-z0-9-]+)`?", text))
+        loaded = set(re.findall(r"Load (?:the )?`?(orevia-[a-z0-9-]+)`?", text))
         if not loaded or not loaded <= set(skills):
             errors.append(
                 f"agent .opencode/agents/{name}.md must load an existing skill "
@@ -165,9 +166,12 @@ def check(root=ROOT):
         for heading in PROCESS_SECTIONS:
             if not re.search(rf"(?mi)^##\s+{re.escape(heading)}\s*$", text):
                 errors.append(f"skill {name}: missing the section \"## {heading}\"")
-    if specialists | {"smartclinic-delivery"} != set(skills):
-        errors.append("skills differ from specialists plus smartclinic-delivery: "
-                      f"{sorted((specialists | {'smartclinic-delivery'}) ^ set(skills))}")
+    # Agent files are short names; each specialist loads the skill of the same
+    # name with the orevia- prefix, and the primary loads the delivery skill.
+    expected_skills = {f"orevia-{name}" for name in specialists} | {"orevia-delivery"}
+    if expected_skills != set(skills):
+        errors.append("skills differ from specialists plus orevia-delivery: "
+                      f"{sorted(expected_skills ^ set(skills))}")
 
     workflow = root / "docs/WORKFLOW.md"
     role_sources = definitions.get(primary, "")

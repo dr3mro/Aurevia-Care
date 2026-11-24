@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.ShowIdentitiesConflictingDemographicsDependenciesDryRunTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/ShowIdentitiesConflictingDemographicsDependenciesDryRunTest.java`),
+Test class: `com.aurevia.patient.clauses.ShowIdentitiesConflictingDemographicsDependenciesDryRunTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/ShowIdentitiesConflictingDemographicsDependenciesDryRunTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives
 the HTTP entry point `GET /api/v1/duplicate-reviews/{survivorId}/{duplicateId}`
 against two synthetic same-tenant patients with the same normalized name and date
@@ -35,19 +35,19 @@ ambiguous unresolved order dependency.
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationController` — the
+- `com.aurevia.patient.consolidation.ConsolidationController` — the
   thin HTTP adapter binding `GET /api/v1/duplicate-reviews/{survivorId}/{duplicateId}`.
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService.review` —
+- `com.aurevia.patient.consolidation.ConsolidationService.review` —
   authorizes the read, loads both patients, folds the conflicts, dependencies and
   dry run, and appends the audit event; it does not change patient data.
-- `com.aurevia.smartclinic.patient.consolidation.ReviewDetail` — the immutable
+- `com.aurevia.patient.consolidation.ReviewDetail` — the immutable
   view carrying both patients, `Conflict` and `Dependency` lists, `dryRun` and
   `chartVisibilityId`.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicatePolicy` — bounds the
+- `com.aurevia.patient.consolidation.DuplicatePolicy` — bounds the
   review action to `tenant_admin` and `privacy_auditor`.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateRepository` — the
+- `com.aurevia.patient.consolidation.DuplicateRepository` — the
   RLS-bounded SQL boundary for patients, dependencies and effective visibility.
-- `com.aurevia.smartclinic.patient.Patient` — the identity record whose original
+- `com.aurevia.patient.Patient` — the identity record whose original
   spelling, MRN and issuer are preserved in the conflicts and dry run.
 - `db/migrations/V9__duplicate_review_consolidation.sql` — the forced-RLS tables
   and append-only folds backing the review. The

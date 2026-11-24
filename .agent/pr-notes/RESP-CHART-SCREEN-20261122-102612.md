@@ -23,7 +23,7 @@ only; no dependency added; no file outside the declared scope changed.
 - WEB-07 — responsive supported clients from 320 px; three layout breakpoints.
 - UX-01 — English/Arabic, RTL, mixed clinical text, WCAG 2.2 AA reflow and keyboard access.
 - Design evidence: `docs/design/responsive-layout.md` §2, §5, §7, §11, §13;
-  `docs/decisions/0004-responsive-staff-web.md`; `SMARTCLINIC_V1_SPEC.md` WEB-07 line 155, UX-01 line 90.
+  `docs/decisions/0004-responsive-staff-web.md`; `PROJECT_V1_SPEC.md` WEB-07 line 155, UX-01 line 90.
 
 Acceptance mapping:
 
@@ -47,8 +47,8 @@ simulated UX/RTL review was requested because the component composes clinical da
 
 ## Review owner
 
-- `smartclinic-senior-react` and `smartclinic-senior-typescript` skills loaded; module gate owns typecheck/lint/build/coverage.
-- `smartclinic-ux-reviewer` bounded simulated review: **no blocking finding; do not hold the task**
+- `orevia-senior-react` and `orevia-senior-typescript` skills loaded; module gate owns typecheck/lint/build/coverage.
+- `orevia-ux-reviewer` bounded simulated review: **no blocking finding; do not hold the task**
   (reviewer evidence, static read, not human or clinical acceptance).
 
 ## Data changes
@@ -81,9 +81,9 @@ human participant or clinical evidence is claimed.
 - Canonical frontend gate (includes typecheck):
   - `bash apps/staff-web/check.sh` → exit 0.
   - `gen:api:check`: `gen:api: generated client matches the contract`.
-  - Typecheck final lines: `> smartclinic-staff-web@0.1.0 typecheck` /
+  - Typecheck final lines: `> orevia-staff-web@0.1.0 typecheck` /
     `> tsc --noEmit -p tsconfig.json` / (no output — no `error TS…`) /
-    `> smartclinic-staff-web@0.1.0 lint`.
+    `> orevia-staff-web@0.1.0 lint`.
   - Lint: `eslint . --max-warnings=0` clean. Build: `tsc --noEmit -p tsconfig.json && vite build` clean;
     `node scripts/check-bundle-size.mjs` clean.
   - Tests: `Test Files  159 passed (159)`, `Tests  1904 passed (1904)`.
@@ -161,9 +161,9 @@ patient data or credential appears in code, tests, logs or this note.
    for their composed output and hides nothing. No class was missing from
    `responsive.css`, so no stylesheet edit was needed.
 3. **Pre-existing repository defect, not introduced here:** three committed files under
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` still contain Git
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/` still contain Git
    conflict markers on HEAD/`origin/main` (`Hl7ParseException.java`, `Hl7Parser.java`,
-   `Hl7Segment.java`). Evidence: `git grep -nE '^(<<<<<<<|>>>>>>>) ' HEAD -- apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7`.
+   `Hl7Segment.java`). Evidence: `git grep -nE '^(<<<<<<<|>>>>>>>) ' HEAD -- apps/api/src/main/java/com/aurevia/exchange/hl7`.
    They are outside this story's scope and were left untouched; the integrator/owner
    must resolve them. `git merge --no-edit origin/main` itself was clean.
 4. `scripts/check.sh` was not run end to end because it invokes the full API Maven

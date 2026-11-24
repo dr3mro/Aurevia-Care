@@ -12,7 +12,7 @@ Routine — presentation-only styling of an existing shared component. No data, 
 
 ## Review owner
 
-`smartclinic-senior-mobile` and `smartclinic-ux-reviewer` (simulated specialist reviews, both returned; senior-mobile reported no actionable findings, UX reported one out-of-scope pre-existing text gap and three low/evidence items). No human, clinical or real-patient review; that remains a G5 gate.
+`orevia-senior-mobile` and `orevia-ux-reviewer` (simulated specialist reviews, both returned; senior-mobile reported no actionable findings, UX reported one out-of-scope pre-existing text gap and three low/evidence items). No human, clinical or real-patient review; that remains a G5 gate.
 
 ## Data changes
 
@@ -80,7 +80,7 @@ New/changed branches and the test that takes each side:
 
 ## Clinical and architecture review
 
-No signed data, cross-organization sharing, patient association, prescribing or critical result is touched; no clinical sign-off is required for this presentation-only change. `smartclinic-senior-mobile` (no actionable findings) and `smartclinic-ux-reviewer` (findings below) reviewed the two files against `docs/decisions/0005-patient-app-tablets.md`, `docs/design/accessibility-patterns.md` §9 and `docs/design/rtl-and-localization.md`. These are simulated reviews; real VoiceOver/TalkBack passes on device remain a G5 gate.
+No signed data, cross-organization sharing, patient association, prescribing or critical result is touched; no clinical sign-off is required for this presentation-only change. `orevia-senior-mobile` (no actionable findings) and `orevia-ux-reviewer` (findings below) reviewed the two files against `docs/decisions/0005-patient-app-tablets.md`, `docs/design/accessibility-patterns.md` §9 and `docs/design/rtl-and-localization.md`. These are simulated reviews; real VoiceOver/TalkBack passes on device remain a G5 gate.
 
 ## Findings
 
@@ -91,7 +91,7 @@ No signed data, cross-organization sharing, patient association, prescribing or 
 - **UX review F3 (addressed).** Accessibility roles are now asserted for `loading`, `empty`, `offline` and `session-expired` in the "same container" test.
 - **UX review F4 (pre-existing, out of scope).** `messages.signIn` is defined but the session-expired placeholder offers no sign-in control; a global session-expiry flow may own that recovery. No behaviour change was permitted here.
 - **Unrelated lint warnings.** Two `import/no-duplicates` warnings in `src/features/tracker/presentation.test.ts` pre-date this change; lint reports 0 errors.
-- **Pre-existing conflict markers on `main` (integrator attention).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds committed markers in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java` at HEAD (`d345f387`); `git show HEAD:<path>` confirms they are committed, not a working-tree artifact of this merge (`Already up to date`). My three scoped files contain no markers. Out of scope here; flagged for the integrator/owner.
+- **Pre-existing conflict markers on `main` (integrator attention).** `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds committed markers in `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java` at HEAD (`d345f387`); `git show HEAD:<path>` confirms they are committed, not a working-tree artifact of this merge (`Already up to date`). My three scoped files contain no markers. Out of scope here; flagged for the integrator/owner.
 
 ## Lessons for workers
 

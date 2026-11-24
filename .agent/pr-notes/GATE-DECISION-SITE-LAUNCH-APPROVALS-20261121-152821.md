@@ -34,7 +34,7 @@ The decisions it prepares remain human G5 gates.
 ## Review owner
 
 Product owner with clinical safety lead, privacy lead and integration lead as the
-section-10 accountable roles. One bounded simulated `smartclinic-product-owner`
+section-10 accountable roles. One bounded simulated `orevia-product-owner`
 review was run against the acceptance criteria (session
 `ses_e014465b9ffeNEzLKAO5cowNOL`); it **passed with no actionable findings** and
 made no file edits. No human, clinical or real site review was performed.
@@ -75,7 +75,7 @@ apply. Commands executed (tool evidence):
 Baseline `python3 -I scripts/check-docs.py` was also run before editing → exit 0,
 so the green result is not masking a pre-existing failure.
 
-Entry-point-to-evidence trace: `SMARTCLINIC_V1_SPEC.md` §8/§9 G5 row/§10 and
+Entry-point-to-evidence trace: `PROJECT_V1_SPEC.md` §8/§9 G5 row/§10 and
 `docs/operations/production-readiness/{README,launch-checklist}.md` →
 `docs/launch/site-launch-approvals.md` decisions/evidence checklist →
 `python3 -I scripts/check-docs.py` → exit 0.

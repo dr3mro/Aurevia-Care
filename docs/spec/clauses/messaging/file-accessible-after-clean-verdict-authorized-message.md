@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.FileAccessibleAfterCleanVerdictAuthorizedMessageTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/FileAccessibleAfterCleanVerdictAuthorizedMessageTest.java`).
+Test class: `com.aurevia.messaging.clauses.FileAccessibleAfterCleanVerdictAuthorizedMessageTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/FileAccessibleAfterCleanVerdictAuthorizedMessageTest.java`).
 All eight tests are active (none disabled) and pass. "Proven by tests" is scoped to the patient-file
 download entry point proved here: the clean-verdict and explicit-publication gating conditions and the
 tenant, role and version refusals are exercised through HTTP. The limitations in `## Gap` are not
@@ -52,23 +52,23 @@ as supporting, not executed, evidence.
 
 Production classes exercised through the entry point and its transaction:
 
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentController` — thin adapter binding
+- `com.aurevia.messaging.attachments.AttachmentController` — thin adapter binding
   `GET /api/v1/patient/files/{id}/download` to the domain service; it loads the tenant-scoped
   attachment, derives a fresh actor and parses `If-Match`. Upload and scan on the same controller
   create the preconditions.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentService` — `download` authorizes
+- `com.aurevia.messaging.attachments.AttachmentService` — `download` authorizes
   `ATTACHMENT_DOWNLOAD`, loads the file, checks the version precondition, rejects any state whose
   `downloadable()` is false with `NOT_PUBLISHED`, checks the participant, returns a
   `MediatedDownload` with no bytes, file name or URL, and records the download fact. `scan` records
   the independent verdict and `publish` requires `CLEAN` state before binding a message and
   recipient unit.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentContract` — `AttachmentState.downloadable()`
+- `com.aurevia.messaging.attachments.AttachmentContract` — `AttachmentState.downloadable()`
   is true only for `PUBLISHED`; `MediatedDownload` carries only the private object handle and
   integrity metadata.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentActions` — bounds `DOWNLOAD` to message
+- `com.aurevia.messaging.attachments.AttachmentActions` — bounds `DOWNLOAD` to message
   sender roles and excludes the scanner, auditor and other non-participant roles.
-- `com.aurevia.smartclinic.api.IfMatch`, `com.aurevia.smartclinic.web.TenantContextInterceptor` and
-  `com.aurevia.smartclinic.api.ApiErrorHandler` — version precondition, synthetic tenant context and
+- `com.aurevia.api.IfMatch`, `com.aurevia.web.TenantContextInterceptor` and
+  `com.aurevia.api.ApiErrorHandler` — version precondition, synthetic tenant context and
   the uniform machine-readable error body asserted by the negative cases.
 
 Supporting, not executed by this servlet-level test: `db/migrations/V82__attachment_store.sql`
@@ -78,7 +78,7 @@ connection, unit, patient, checksum and object key, and append-only event trigge
 `contracts/openapi.yaml` publishes the staff-side `/api/v1/staff/attachments/*` flow, whose
 `scan` and `send` operations express the same clean-then-publish ordering for staff messages.
 
-The existing domain suite `com.aurevia.smartclinic.messaging.attachments.AttachmentAcceptanceTest`
+The existing domain suite `com.aurevia.messaging.attachments.AttachmentAcceptanceTest`
 independently covers the service-level participant and tenant denials for download
 (`refusesDownloadBeforeCleanVerdictAndPublication`,
 `deniesDownloadToWrongUnitWrongPatientAndNonDownloader`,

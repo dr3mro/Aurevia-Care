@@ -1,6 +1,6 @@
 # Partner integration guide — exchange API
 
-Audience: an engineer connecting a laboratory or imaging partner to SmartClinic to
+Audience: an engineer connecting a laboratory or imaging partner to Orevia to
 receive orders and return results. This guide describes what the service does
 today. Every path, state, header and error code below is taken from the committed
 contract or the running application code; links point at the exact source.
@@ -17,8 +17,8 @@ this document or in the examples. Use synthetic data in every test environment.
 | Shared wire conventions (headers, error body, `If-Match`) | [cross-cutting contract fragment](../../contracts/contract/openapi.yaml) |
 | Catalog-generated command contract | [generated OpenAPI](../../contracts/openapi/generated/openapi.yaml) |
 | Durable delivery, dedup and retry contract | [delivery contract](../../contracts/events/README.md) |
-| Requirement text | [specification, sections 4 and 7–8.1](../../SMARTCLINIC_V1_SPEC.md) |
-| Exchange implementation | [exchange package](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange) |
+| Requirement text | [specification, sections 4 and 7–8.1](../../.opencode/config/PROJECT_V1_SPEC.md) |
+| Exchange implementation | [exchange package](../../apps/api/src/main/java/com/aurevia/exchange) |
 
 The catalog-generated contract is emitted from the Java command catalog, not
 hand-authored. Its own [README](../../contracts/openapi/README.md) states that it
@@ -39,9 +39,9 @@ header being enforced merely because it appears in the generated file.
 Use the versioned prefix `/api/v1` under the base URL given by the site. Only v1
 exists; an optional `X-Api-Version` header selects v1 (absent, blank, `v1` or
 `V1` are accepted) but cannot create a new route prefix. The version helper lives
-in [ApiVersion.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/contract/ApiVersion.java);
+in [ApiVersion.java](../../apps/api/src/main/java/com/aurevia/api/contract/ApiVersion.java);
 the protected interceptor registers `/api/v1/**` only
-([TenantContextInterceptor.java](../../apps/api/src/main/java/com/aurevia/smartclinic/web/TenantContextInterceptor.java)).
+([TenantContextInterceptor.java](../../apps/api/src/main/java/com/aurevia/web/TenantContextInterceptor.java)).
 Transport encryption, HSTS, WAF and edge rate limiting are deployment-level
 requirements of WEB-01 and WEB-04 in the specification; they are not implemented
 by the application code described here and must be confirmed with the site owner.
@@ -49,15 +49,15 @@ by the application code described here and must be confirmed with the site owner
 ## 2. Authentication
 
 In every non-synthetic profile the API is a stateless OIDC resource server
-([SecurityConfiguration.java](../../apps/api/src/main/java/com/aurevia/smartclinic/web/SecurityConfiguration.java)):
+([SecurityConfiguration.java](../../apps/api/src/main/java/com/aurevia/web/SecurityConfiguration.java)):
 
 - Send `Authorization: Bearer <access-token>` on every protected request.
   A missing or unverified bearer token is rejected with `401 UNAUTHENTICATED`.
   Startup fails closed when no OIDC issuer is configured.
-- The [tenant interceptor](../../apps/api/src/main/java/com/aurevia/smartclinic/web/TenantContextInterceptor.java)
+- The [tenant interceptor](../../apps/api/src/main/java/com/aurevia/web/TenantContextInterceptor.java)
   reads the already-verified claims. It requires a non-blank `sub` and a non-empty
   `orgs` claim whose entries are UUIDs
-  ([ClaimsTenantResolver.java](../../apps/api/src/main/java/com/aurevia/smartclinic/web/ClaimsTenantResolver.java)).
+  ([ClaimsTenantResolver.java](../../apps/api/src/main/java/com/aurevia/web/ClaimsTenantResolver.java)).
 - A partner credential must be scoped by the identity provider. The policy for
   issuing and rotating partner credentials is
   `PLANNED: SPEC-LAYER-IDENTITY-4`; until it is delivered, agree the credential
@@ -68,7 +68,7 @@ In every non-synthetic profile the API is a stateless OIDC resource server
 - Client-supplied role, permission, actor or scope fields carry no authority.
   The generated client keeps such fields inert, and the server re-derives
   membership and roles from the active organization on every protected action
-  ([CommandAuthorization.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandAuthorization.java)).
+  ([CommandAuthorization.java](../../apps/api/src/main/java/com/aurevia/api/authorization/CommandAuthorization.java)).
 
 ## 3. Tenant selection
 
@@ -84,7 +84,7 @@ The active tenant is explicit and per request:
    services open a guarded transaction that binds the tenant locally with
    `set_config(..., true)` and forced row-level security, so a pooled connection
    cannot leak one tenant's context into another request
-   ([PROJECT.md decision for ARC-02](../../PROJECT.md)).
+   ([PROJECT.md decision for ARC-02](../../.opencode/config/PROJECT.md)).
 4. Membership and roles are re-read on every protected operation. A deactivated
    subject is denied on the next request with `403 FORBIDDEN`; resources outside
    the active tenant are concealed with `404 NOT_FOUND`, not distinguished from
@@ -98,7 +98,7 @@ either ignored for tenant scope or denied; it never grants cross-tenant access.
 | Header / value | Required where | Exact behavior |
 |---|---|---|
 | `X-Correlation-Id` | optional | Pattern `[A-Za-z0-9._-]{1,128}`; an invalid value is `422 INVALID_CORRELATION_ID`. When absent a UUID is generated. It is echoed on the response and carried in the error body. Use a fresh one for each retry. |
-| `If-Match` | every irreversible transition | Positive integer version; bare `3`, quoted `"3"` and weak `W/"3"` are accepted. Absent is `428 PRECONDITION_REQUIRED`; malformed or < 1 is `422 INVALID_IF_MATCH`; a version that no longer matches is `412 STALE_VERSION` ([IfMatch.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/IfMatch.java)). |
+| `If-Match` | every irreversible transition | Positive integer version; bare `3`, quoted `"3"` and weak `W/"3"` are accepted. Absent is `428 PRECONDITION_REQUIRED`; malformed or < 1 is `422 INVALID_IF_MATCH`; a version that no longer matches is `412 STALE_VERSION` ([IfMatch.java](../../apps/api/src/main/java/com/aurevia/api/IfMatch.java)). |
 | `Idempotency-Key` | documented on protected POST commands | Bounded `[A-Za-z0-9._:-]{1,255}`, scoped to tenant + subject + command; absent is `428`, malformed `422 INVALID_IDEMPOTENCY_KEY`. **The exchange controllers parse `If-Match` but do not parse this header today.** See [Idempotency and replay](#7-idempotency-and-replay). |
 | `cursor`, `limit` | list endpoints | Cursor is the opaque canonical `<createdAt>:<id>` of the previous page's last row; `limit` is 1–200, default 50. Malformed values are `422 INVALID_CURSOR` / `INVALID_LIMIT`. |
 
@@ -116,7 +116,7 @@ acknowledgment (XCH-02, XCH-06).
 
 ### 5.1 Exchange task channels (XCH-02)
 
-An [exchange task](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/task)
+An [exchange task](../../apps/api/src/main/java/com/aurevia/exchange/task)
 carries three channels and one shared `version` that increments on every command.
 Read the task again before each command; do not reuse an earlier `If-Match`.
 
@@ -126,14 +126,14 @@ Read the task again before each command; do not reuse an earlier `If-Match`.
 | Transmission | `pending → sent → delivered` or `failed` | `send`, `deliver`, `fail`. `delivered` and `failed` are terminal; a retry is a new work item, not a reversal. |
 | Clinical review | `unreviewed → acknowledged → action_pending → resolved` | `acknowledge`, `request-action`, `resolve`. Only an authorized clinician may act; the actor is derived from the authenticated subject, and the revision and timestamp are bound to the command. |
 
-Sources: [WorkflowState.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/WorkflowState.java),
-[TransmissionState.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/TransmissionState.java),
-[ClinicalReviewState.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ClinicalReviewState.java),
-[ExchangeCommand.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeCommand.java),
-[ExchangeStateMachine.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeStateMachine.java).
+Sources: [WorkflowState.java](../../apps/api/src/main/java/com/aurevia/exchange/task/WorkflowState.java),
+[TransmissionState.java](../../apps/api/src/main/java/com/aurevia/exchange/task/TransmissionState.java),
+[ClinicalReviewState.java](../../apps/api/src/main/java/com/aurevia/exchange/task/ClinicalReviewState.java),
+[ExchangeCommand.java](../../apps/api/src/main/java/com/aurevia/exchange/task/ExchangeCommand.java),
+[ExchangeStateMachine.java](../../apps/api/src/main/java/com/aurevia/exchange/task/ExchangeStateMachine.java).
 Commands are explicit POSTs to `/api/v1/exchange-tasks/{id}/{command}` with an
 `If-Match` header
-([ExchangeTaskController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskController.java)).
+([ExchangeTaskController.java](../../apps/api/src/main/java/com/aurevia/exchange/task/ExchangeTaskController.java)).
 A reason for `reject`/`cancel` is required (`422 REASON_REQUIRED`) and bounded to
 500 characters; an illegal transition is `409 INVALID_TRANSITION`. Workflow is
 available to `lab_collector` and `clinician`, transmission also to `tenant_admin`,
@@ -147,7 +147,7 @@ purpose and duration and still be inside its validity window; otherwise the
 service returns `403 DISCLOSURE_NOT_AUTHORIZED`. The service snapshots the exact
 released content with a deterministic fingerprint, writes a disclosure ledger
 row and projects a bounded work item to the destination
-([OrderService.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/order/OrderService.java)).
+([OrderService.java](../../apps/api/src/main/java/com/aurevia/exchange/order/OrderService.java)).
 Sharing an order grants **no general chart access**.
 
 The receiver sees `GET /api/v1/exchange/work-items`. A work item is `awaiting_local_patient`
@@ -155,11 +155,11 @@ until a receiver clinician binds a locally verified patient through
 `POST /api/v1/exchange/work-items/{id}/verify-patient`; it then becomes `ready`.
 The MRN and issuer are checked against the local patient and the work item; a
 mismatch is `403 IDENTITY_MISMATCH`, a repeat bind is `409 ALREADY_VERIFIED`
-([WorkItemView.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/order/WorkItemView.java)).
+([WorkItemView.java](../../apps/api/src/main/java/com/aurevia/exchange/order/WorkItemView.java)).
 
 Recipient-side state for an exchanged order moved by
-[ExchangeResponseController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/ExchangeResponseController.java)
-and [ExchangeState.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/ExchangeState.java):
+[ExchangeResponseController.java](../../apps/api/src/main/java/com/aurevia/exchange/response/ExchangeResponseController.java)
+and [ExchangeState.java](../../apps/api/src/main/java/com/aurevia/exchange/response/ExchangeState.java):
 
 | From | Command | To |
 |---|---|---|
@@ -174,7 +174,7 @@ and [ExchangeState.java](../../apps/api/src/main/java/com/aurevia/smartclinic/ex
 
 `retrieve` returns the current released revision on every call and re-checks
 revocation: a revoked release returns `410 RETRIEVAL_REVOKED`
-([ExchangeResponseService.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/ExchangeResponseService.java)).
+([ExchangeResponseService.java](../../apps/api/src/main/java/com/aurevia/exchange/response/ExchangeResponseService.java)).
 A proposed change is held in the revision ledger until the recipient responds;
 refusing it never serves unretained content.
 
@@ -188,8 +188,8 @@ report to the reconciliation queue and return `202` with a reconciliation entry
 instead of importing it. A matched report is routed to the named owner and
 coverage queue and returns `201` with an immutable revision and an `unreviewed`
 review task
-([ResultRoutingService.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRoutingService.java),
-[ResultRules.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRules.java)).
+([ResultRoutingService.java](../../apps/api/src/main/java/com/aurevia/exchange/result/ResultRoutingService.java),
+[ResultRules.java](../../apps/api/src/main/java/com/aurevia/exchange/result/ResultRules.java)).
 
 | Value | Meaning |
 |---|---|
@@ -206,8 +206,8 @@ owner and due time **before** `verify`: verification with no owner or due time i
 `409 OWNER_REQUIRED`. The subsequent commands are
 `assign → verify → escalate → read-back → acknowledge → follow-up`, each a
 separate POST with an `If-Match` precondition
-([CriticalResultController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalResultController.java),
-[CriticalResultService.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalResultService.java)).
+([CriticalResultController.java](../../apps/api/src/main/java/com/aurevia/exchange/critical/CriticalResultController.java),
+[CriticalResultService.java](../../apps/api/src/main/java/com/aurevia/exchange/critical/CriticalResultService.java)).
 The state channel is `unverified → awaiting_ack → acknowledged → closed`; each
 step emits its own append-only event (owner assigned, verification, escalation
 attempt, read-back, acknowledgment, follow-up, roster gap, patient release).
@@ -219,13 +219,13 @@ re-derives the role from the active tenant. `report` surfaces overdue items,
 roster gaps and failed notifications. A delivery receipt, a transmission
 acknowledgment or a patient release does **not** acknowledge the alert; only an
 authorized clinician's read-back / acknowledgment can
-([CriticalContract.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalContract.java)).
+([CriticalContract.java](../../apps/api/src/main/java/com/aurevia/exchange/critical/CriticalContract.java)).
 
 ## 6. What errors look like
 
 All protected failures use one machine-readable body with no stack trace, SQL,
 other tenant's data or internal class name
-([ApiErrorHandler.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/ApiErrorHandler.java)):
+([ApiErrorHandler.java](../../apps/api/src/main/java/com/aurevia/api/ApiErrorHandler.java)):
 
 ```json
 { "code": "STALE_VERSION", "message": "the exchange task changed since it was read", "correlationId": "corr-synthetic-01" }
@@ -256,12 +256,12 @@ Two distinct mechanisms exist. Use them as follows.
   stored revision returns that exact revision (`201`) and creates no duplicate
   report or notification. The same key with different clinical content is `409
   PAYLOAD_CONFLICT`, never a silently discarded finding
-  ([ResultRoutingService.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRoutingService.java)).
+  ([ResultRoutingService.java](../../apps/api/src/main/java/com/aurevia/exchange/result/ResultRoutingService.java)).
   Version and supersession fields are lineage metadata and are deliberately not
   part of the fingerprint.
 - **Header-based idempotency that is specified but not yet wired into these
   controllers.** The contract documents `Idempotency-Key` scoped to tenant,
-  caller and command, and the shared [IdempotencyLedger contract](../../apps/api/src/main/java/com/aurevia/smartclinic/api/contract/IdempotencyLedger.java)
+  caller and command, and the shared [IdempotencyLedger contract](../../apps/api/src/main/java/com/aurevia/api/contract/IdempotencyLedger.java)
   defines claim → replay → complete semantics with re-authorization on replay.
   The shipped implementation is `InMemoryIdempotencyLedger`, a single-process
   synthetic reference that is not durable and is used by no exchange controller.
@@ -270,7 +270,7 @@ Two distinct mechanisms exist. Use them as follows.
   replay above and on the version precondition.
 
 For event-driven partners, the [delivery contract](../../contracts/events/README.md)
-and the [conformance ledger](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/conformance/ConformanceLedger.java)
+and the [conformance ledger](../../apps/api/src/main/java/com/aurevia/exchange/conformance/ConformanceLedger.java)
 define the receiver rules: deduplicate external events inside the
 `(sender, event type, external event id)` namespace; hold lower revisions rather
 than writing over a later one; retry transient failures with bounded backoff and

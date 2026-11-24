@@ -10,14 +10,14 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.CommitPublicationAuditQueueUpdateNotificationOutboxTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/CommitPublicationAuditQueueUpdateNotificationOutboxTest.java`).
+Test class: `com.aurevia.messaging.clauses.CommitPublicationAuditQueueUpdateNotificationOutboxTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/CommitPublicationAuditQueueUpdateNotificationOutboxTest.java`).
 Nine active tests, none skipped, on a dedicated PostgreSQL database migrated from
 `db/migrations` with forced row-level security. They drive the real HTTP entry point
 with the synthetic-auth profile and the same directory fixtures, headers and database
-seeding style as `com.aurevia.smartclinic.it.messagingconversations.ConversationFlowTest`.
+seeding style as `com.aurevia.it.messagingconversations.ConversationFlowTest`.
 Every durable fact is then read back with a tenant-bound JDBC session, in the style of
-`com.aurevia.smartclinic.scheduling.clauses.RescheduleAtomicallyRetainHistoryTest`.
+`com.aurevia.scheduling.clauses.RescheduleAtomicallyRetainHistoryTest`.
 
 - `replyCommitsPublicationStateAndAuditInOneTransaction` — positive proof of the
   ordinary staff reply through `POST /api/v1/conversations/{id}/reply` under an
@@ -59,20 +59,20 @@ Every durable fact is then read back with a tenant-bound JDBC session, in the st
 
 Production classes and schema exercised through that entry point:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController` — the thin
+- `com.aurevia.messaging.conversations.ConversationController` — the thin
   adapter for `POST /api/v1/conversations/{id}/reply`, parsing `If-Match` and delegating.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService` — `reply`
+- `com.aurevia.messaging.conversations.ConversationService` — `reply`
   performs authorization, row lock, version and state checks, `insertMessage`,
   `updateState`, the conditional reopen `appendEvent` and `success` inside the single
   `TransactionTemplate.execute` in `execute`; `requireAccess`, `requireVersion` and
   `requireWritable` hold the negative paths.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationRepository` —
+- `com.aurevia.messaging.conversations.ConversationRepository` —
   `insertMessage` (`public.conversation_message`), `updateState` (`public.conversation`),
   `appendEvent` (`public.work_item_event`) and `workQueue`. The staff work queue is a
   **derived** projection (`state <> 'closed'`), not a stored table; a reply changes the
   state and version that drive it but does not change queue membership, so the clause
   proof asserts the durable state/version and the work-item fact directly instead.
-- `com.aurevia.smartclinic.audit.AuditAppender` — `append` writes `public.audit_event`
+- `com.aurevia.audit.AuditAppender` — `append` writes `public.audit_event`
   inside the caller's transaction, so the success fact commits or rolls back with the
   publication and state change.
 - `db/migrations/V33__conversation_lifecycle.sql` — the conversation, message and
@@ -94,8 +94,8 @@ or migration was changed.
 The outbox leg of the clause is **not built**. `ConversationService.reply` commits
 publication, audit and the queue/state update in one transaction, but never inserts a
 `public.delivery_outbox` row. The table exists (V55) and is written only by
-`com.aurevia.smartclinic.events.JdbcDeliveryStore.publishAtomically`, reached through
-`com.aurevia.smartclinic.events.DurableEventService`; nothing under `messaging` imports
+`com.aurevia.events.JdbcDeliveryStore.publishAtomically`, reached through
+`com.aurevia.events.DurableEventService`; nothing under `messaging` imports
 or calls that path. Publication, audit and state are therefore committed together, and
 the notification-outbox row is not.
 

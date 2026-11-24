@@ -62,15 +62,17 @@ LABELS = {
 # Files that set what the gates accept. Nobody loosens a gate without a person: not an
 # ordinary story and not a repair (a repair is judged by a lighter gate, so it could
 # otherwise turn main green by relaxing the check that failed).
-GATE_CONFIG = ["apps/api/spotbugs-exclude.xml", "scripts/wiring-baseline.json", "CODING_STYLE.md",
+GATE_CONFIG = ["apps/api/spotbugs-exclude.xml", "scripts/wiring-baseline.json",
+               ".opencode/setup/CODING_STYLE.md",
                "apps/staff-web/vite.config.ts", "apps/staff-web/eslint.config.ts",
                "apps/patient-mobile/jest.config.ts", "apps/patient-mobile/eslint.config.mjs"]
-PROTECTED = [".github/*", ".opencode/*", "opencode.json", "scripts/*",
-             "AGENTS.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile",
+PROTECTED = [".github/*", ".opencode/*", ".opencode/opencode.json", "scripts/*",
+             ".opencode/setup/AGENTS.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile",
              "apps/api/pom.xml", *GATE_CONFIG]
 # Shared trackers are written only by the integrator, one merge at a time, so
 # parallel workers never conflict on them.
-TRACKERS = ["TODO.md", "tasks/*", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md", "docs/swarm/*"]
+TRACKERS = ["tasks/*", ".opencode/config/MEMORY.md", ".opencode/config/WORKSPACE.md",
+            ".opencode/config/BUGS.md", ".opencode/config/PROJECT.md", "docs/swarm/*"]
 # TODO.md marks: [ ] open, [-] taken by an agent, [x] done.
 BOXES = {"todo": " ", "taken": "-", "done": "x"}
 STATUS = {box: name for name, box in BOXES.items()}
@@ -78,10 +80,14 @@ ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · (.*)$")
 FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
 
 
-# Tasks live in tasks/<sequence>-<ID>.md once scripts/taskstore.py has moved them (the integrator
-# did that by itself on its first run). TODO.md is then a local copy that git ignores. Until then,
-# and in every test that works in a temporary folder, TODO.md is read and written directly.
+# Tasks live in tasks/<sequence>-<ID>.md. A caller may pass an explicit path for a
+# synthetic fixture; the empty path means the real task-file tracker.
 _store = None
+
+
+def uses_store(path):
+    """True when the caller wants the tracked task files rather than a fixture path."""
+    return not path or path == "TODO.md"
 
 
 def store():
@@ -91,23 +97,22 @@ def store():
     return _store
 
 
-def todo_read(path="TODO.md"):
-    """The task text: from the task files when they are in use, otherwise from the file."""
-    if path == "TODO.md" and store().active():
-        return store().read()
-    return Path(path).read_text()
+def todo_read(path=""):
+    """The task text from the tracked task files, or from an explicit fixture path."""
+    return store().read() if uses_store(path) else Path(path).read_text()
 
 
 def todo_write(path, text):
-    if path == "TODO.md" and store().active():
+    """Store task text in the tracked task files, or in an explicit fixture path."""
+    if uses_store(path):
         store().save(text)
     else:
         Path(path).write_text(text)
 
 
-def todo_paths(path="TODO.md"):
+def todo_paths(path=""):
     """What to `git add` after a task edit."""
-    return [store().ROOT] if path == "TODO.md" and store().active() else [path]
+    return [store().ROOT] if uses_store(path) else [path]
 
 
 def is_issue_call(args):
@@ -668,7 +673,7 @@ def swarm_idle():
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
     red = main_is_red()
-    ready = plan_workers(5, [{"slot": n, "model": ""} for n in range(1, 6)], text, prs, red=red)
+    ready = plan_workers(5, [{"slot": n} for n in range(1, 6)], text, prs, red=red)
     work = bool(ready) or red
     recent = [f"{r['status']}/{r['conclusion'] or '-'}" for r in runs[:5]]
     facts = (f"{len(active)} wave(s) running or queued; the last wave started {idle} minutes ago. Ready now: "
@@ -680,7 +685,7 @@ def swarm_idle():
 def sync_issues():
     """Close issues whose pull request is merged or closed, or whose task is done."""
     closed = []
-    todo = todo_read() if store().active() or Path("TODO.md").exists() else ""
+    todo = todo_read()
     done = {t["id"] for t in parse_tasks(todo) if t["status"] == "done"}
     issues = trusted_issues()
     # One list call for every pull request state instead of one view call per issue: this
@@ -1101,7 +1106,7 @@ def reset_attempts(text, task_id):
     return "\n".join(lines) + "\n"
 
 
-def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", triaged=(), reset=(), close=()):
+def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="", triaged=(), reset=(), close=()):
     """Turn triage answers into tasks and act on the other selected issues. Returns a summary.
 
     Only issues the trusted select step chose are read: the worker cannot add a task for
@@ -1228,9 +1233,14 @@ def load_slots(path):
 
 
 def slot_config(slots, number):
-    """The opencode.json baked into one slot's image. Never holds credentials."""
+    """The opencode.json baked into one slot's image: config defaults only.
+
+    The model is deliberately absent: scripts/model-router.py selects it at run
+    time from the verified zero-cost registry, so no image can pin a model. The
+    slot's free-account credential is injected at run time and never stored here.
+    """
     slot = next(s for s in slots if s["slot"] == number)
-    return {"$schema": "https://opencode.ai/config.json", "model": slot["model"],
+    return {"$schema": "https://opencode.ai/config.json",
             "autoupdate": False, "share": "disabled", **slot.get("config", {})}
 
 
@@ -1417,7 +1427,7 @@ def images_ready_command(slots=None, generations=None):
     rather than pulling a stale or half-written ``:latest`` image.
     """
     runs = image_runs()
-    manifests = slot_manifests_exist(load_slots(slots or ".github/swarm/slots.json"))
+    manifests = slot_manifests_exist(load_slots(slots or ".opencode/config/slots.json"))
     ready, reason, dispatch = images_ready(runs, manifests)
     if generations is None:
         emit("generation", "")
@@ -1567,12 +1577,12 @@ def archive_done(text):
     return "".join(keep), moved
 
 
-def archive_todo(todo="TODO.md", archive=ARCHIVE):
+def archive_todo(todo="", archive=ARCHIVE):
     """Move done entries from TODO.md to the archive file. Returns how many moved."""
     remaining, moved = archive_done(todo_read(todo))
     if not moved:
         return 0
-    if todo == "TODO.md" and store().active():
+    if uses_store(todo):
         # One file per finished task under tasks/done; they still satisfy `depends`.
         store().archive(moved)
         todo_write(todo, re.sub(r"\n{3,}", "\n\n", remaining))
@@ -1724,7 +1734,7 @@ def redact_secrets(text):
     return text
 
 
-def docs_safe(text, spec_path="SMARTCLINIC_V1_SPEC.md"):
+def docs_safe(text, spec_path=".opencode/config/PROJECT_V1_SPEC.md"):
     """Agent text written into TODO.md must pass the docs check (scripts/check-docs.py) that
     Delivery runs on main. A relative link becomes plain text; when the text cites a requirement
     ID the spec does not define, IDs with that prefix lose their hyphen (still readable, no
@@ -1784,7 +1794,7 @@ def audit_entries(findings, text, today, prefix="AUD", source="the daily audit")
     return entries
 
 
-def add_audit_tasks(findings_path, path="TODO.md", today=None, prefix="AUD", source="the daily audit"):
+def add_audit_tasks(findings_path, path="", today=None, prefix="AUD", source="the daily audit"):
     """Append validated audit findings to TODO.md on main for the swarm to take."""
     today = today or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
     try:
@@ -1816,7 +1826,7 @@ DAILY_ROLES = {
 }
 
 
-def daily_publish(role, findings_path, path="TODO.md"):
+def daily_publish(role, findings_path, path=""):
     """Add a daily reviewer's valid tasks to the task files and put its suggestions in one issue.
 
     Tasks get the role's own id prefix and open-task cap, so a busy QA backlog never blocks the
@@ -1881,7 +1891,7 @@ def review_lines(items, fields):
     return lines
 
 
-def strategy_publish(findings_path, path="TODO.md"):
+def strategy_publish(findings_path, path=""):
     """New tasks go to the task files like audit findings; order and workflow suggestions go
     to one issue for a person, because they change what runs and in what order."""
     try:
@@ -1908,7 +1918,7 @@ def strategy_publish(findings_path, path="TODO.md"):
     return {"tasks": added, "issue": number}
 
 
-def task_field(task_id, field, path="TODO.md"):
+def task_field(task_id, field, path=""):
     """Title or full task text of one TODO.md entry; empty when it is not there."""
     try:
         tasks = parse_tasks(todo_read(path))
@@ -2005,7 +2015,7 @@ def release_claim(task_id, reason):
         f"Release {task_id}: {reason}")
 
 
-def update_todo(edit, message, path="TODO.md", attempts=8):
+def update_todo(edit, message, path="", attempts=8):
     """Apply `edit(text)` to TODO.md on main and push. Reapplied on fresh main if the push races."""
     for attempt in range(attempts):
         text = todo_read(path)
@@ -2232,7 +2242,9 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
     urgent = [t for t in plan if first(t)][:slots_left]
     stories = [t for t in plan if t not in urgent and not first(t)]
     chosen = urgent + stories[:max(0, min(slots_left - len(urgent), slots_left if story_wave is None else story_wave))]
-    return [{**t, "slot": s["slot"], "model": s["model"]} for t, s in zip(chosen, slots)]
+    # The matrix carries only slot identity; model selection belongs to the
+    # worker's router, not to a value baked into the image or the planner output.
+    return [{**t, "slot": s["slot"]} for t, s in zip(chosen, slots)]
 
 
 def release(task, result, commits, pr=""):
@@ -2417,7 +2429,7 @@ NOTES_DIR = ".agent/pr-notes"
 NOTES_ARCHIVE = "docs/archive/pr-notes"
 DAILY_NOTE = re.compile(r"\d{4}-\d{2}-\d{2}\.md")
 NOTE_STAMP = re.compile(r"-(\d{8})-(\d{6})\.md$")
-RULES_ALLOWED = (re.compile(r"AGENTS\.md"), re.compile(r"\.opencode/.+\.md"), re.compile(r"docs/[^/]+\.md"))
+RULES_ALLOWED = (re.compile(r"\.opencode/setup/AGENTS\.md"), re.compile(r"\.opencode/.+\.md"), re.compile(r"docs/[^/]+\.md"))
 MAX_NOTE_DAYS = 7
 MAX_NOTE_FILES = 80
 # Input per night, so the reconciler's context never overflows on a free model. Files over
@@ -3059,7 +3071,7 @@ def repair_entry(task):
             "    never weaken, skip or delete a test; record results in your notes file (the path in your prompt).")
 
 
-def add_repair_task(run_id, path="TODO.md"):
+def add_repair_task(run_id, path=""):
     """Turn a failed run on main into a repair task in TODO.md. Returns True when added.
 
     Bounded like the old watchdog: nothing while a repair pull request or task is
@@ -3116,7 +3128,7 @@ def failing_runs_on_main():
     return failing
 
 
-def add_latest_repair_task(path="TODO.md"):
+def add_latest_repair_task(path=""):
     """Queue a repair for the newest failing pipeline run on main. Returns True when added.
 
     The scheduler calls this at the start of every plan, so a red main becomes a
@@ -3203,7 +3215,7 @@ def top_up(finished_id):
     everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                          "--json", "number,headRefName,state,labels") or []
     text = reclaim(todo_read(), everything, live)
-    if not plan_workers(1, [{"slot": 1, "model": ""}], text, prs, live=live, red=main_is_red()):
+    if not plan_workers(1, [{"slot": 1}], text, prs, live=live, red=main_is_red()):
         return False
     gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
     return True
@@ -3639,6 +3651,14 @@ def guard(pr, repair=False):
     a repair never auto-merges a change to GATE_CONFIG.
     """
     files = gh("pr", "diff", str(pr), "--name-only").split()
+    # Shared trackers are checked before protected paths: a tracker file may live
+    # under a protected tree, but a worker edit to it is always sent back as a
+    # tracker violation rather than a human-review "needs-human" label.
+    trackers = [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in TRACKERS)]
+    if trackers:
+        fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(trackers[:10])
+             + " and put the evidence in your notes file (the path in your prompt, never .agent/pr-notes.md)", simple=True)
+        return trackers
     touched = [f for f in files if f in GATE_CONFIG] if repair else protected_files(files)
     if touched and protected_override():
         gh("pr", "comment", str(pr), "--body",
@@ -3656,11 +3676,6 @@ def guard(pr, repair=False):
                         "It changes workflow, agent or script files, which are never merged "
                         "automatically: " + ", ".join(f"`{f}`" for f in touched[:15]), review=True)
         return touched
-    trackers = [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in TRACKERS)]
-    if trackers:
-        fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(trackers[:10])
-             + " and put the evidence in your notes file (the path in your prompt, never .agent/pr-notes.md)", simple=True)
-        return trackers
     if len(files) > MAX_PR_FILES:
         add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
@@ -3767,7 +3782,7 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     entries = request_entries(merged_requests(task_id), updated, pr, archived_done_ids())
     if entries:
         updated = insert_after_task(updated, task_id, entries)
-    todo_write("TODO.md", updated)
+    todo_write("", updated)
     added = ", ".join(re.match(r"- \[ \] (\S+)", e).group(1) for e in entries)
     return (f"Merged to main by the integrator after {gate} passed on the merge result."
             + (f" Added the follow-up task(s) this worker asked for: {added}." if added else ""))
@@ -3780,7 +3795,7 @@ def dispatch_delivery():
 
 def continue_swarm(text, prs, red=False):
     """Keep eligible workers busy while the independent integrator runs."""
-    return bool(plan_workers(1, [{"slot": 1, "model": ""}], text, prs, red=red))
+    return bool(plan_workers(1, [{"slot": 1}], text, prs, red=red))
 
 
 def pending_note_days():
@@ -3817,7 +3832,7 @@ def daily_can_start():
     if any(not p["isCrossRepository"] and "needs-debug" in label_names(p)
            and not {"needs-human", "needs-review"} & label_names(p) for p in prs):
         return False
-    if plan_workers(1, [{"slot": 1, "model": ""}], todo_read(), prs, live=live):
+    if plan_workers(1, [{"slot": 1}], todo_read(), prs, live=live):
         return False
     mergeable = [p for p in prs if not p["isCrossRepository"] and not p["isDraft"]
                  and not {"needs-fix", "needs-debug", "needs-human", "needs-review"} & label_names(p)]
@@ -3879,36 +3894,6 @@ def run_gate(gate, extra_env=None):
     done = subprocess.run(["bash", gate], capture_output=True, text=True, env=env)
     log = (done.stdout + "\n" + done.stderr).strip()
     return done.returncode == 0, log
-
-
-def migrate_tasks(attempts=4):
-    """Move TODO.md into one file per task, once, in one commit pushed to main.
-
-    The integrator is the only job that merges, so this cannot race a merge. A plan job may
-    push a claim meanwhile: then the move is redone on fresh main, which is safe because
-    the move is exact and repeatable. Returns how many tasks moved."""
-    if os.environ.get("SWARM_TASK_FILES", "on").lower() in ("off", "0", "false", "no") \
-            or store().active() or not Path("TODO.md").exists():
-        return 0
-    attempt = 0
-    while True:
-        attempt += 1
-        moved = store().migrate()
-        git("add", store().ROOT)
-        git("rm", "--cached", "-q", "--ignore-unmatch", "TODO.md")
-        git(*IDENTITY, "commit", "-qm", f"Move {moved} task(s) into one file each [skip ci]")
-        try:
-            authed_git("push", "origin", "HEAD:main")
-            print(f"Moved {moved} task(s) into {store().ROOT}/.")
-            return moved
-        except subprocess.CalledProcessError:
-            if attempt >= attempts:
-                raise
-            time.sleep(random.uniform(1, 4))
-            authed_git("fetch", "origin", "main")
-            git("reset", "-q", "--hard", "origin/main")
-            if store().active():
-                return 0
 
 
 def refresh_wiring_baseline(checker, base):
@@ -3997,7 +3982,6 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     require_evidence = (os.environ.get("GITHUB_ACTIONS") == "true") \
         if check_delivery is None else check_delivery
     wiring_checker = _checker("check-wiring")
-    migrate_tasks()
     for pr in queue:
         blocked = guard(pr, is_repair(pr))
         if blocked:
@@ -4210,9 +4194,8 @@ def main(argv=None):
     for name in ("ensure-labels", "plan-integration", "slot-matrix"):
         sub.add_parser(name)
     sub.add_parser("archive-todo")
-    sub.add_parser("migrate-tasks")
     p = sub.add_parser("images-ready")
-    p.add_argument("--slots", default=".github/swarm/slots.json")
+    p.add_argument("--slots", default=".opencode/config/slots.json")
     p.add_argument("--generations", default="", help="JSON array of published generation records")
     p = sub.add_parser("budget-gate")
     p.add_argument("--cap", type=int, default=DEFAULT_MONTHLY_MINUTES)
@@ -4223,12 +4206,12 @@ def main(argv=None):
     p.add_argument("--dir", required=True)
     p = sub.add_parser("slot-config")
     p.add_argument("--slot", type=int, required=True)
-    p.add_argument("--slots", default=".github/swarm/slots.json")
+    p.add_argument("--slots", default=".opencode/config/slots.json")
     p = sub.add_parser("plan-workers")
     p.add_argument("--max", type=int, default=STORY_WAVE_WORKERS)
     p.add_argument("--capacity", type=int, default=MAX_ACTIVE_WORKERS)
-    p.add_argument("--slots", default=".github/swarm/slots.json")
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--slots", default=".opencode/config/slots.json")
+    p.add_argument("--file", default="")
     p.add_argument("--repair-run", default="")
     p.add_argument("--task", default="")
     sub.add_parser("watchdog")
@@ -4240,7 +4223,7 @@ def main(argv=None):
     p.add_argument("--out", default=".agent/swarm-state.md")
     p = sub.add_parser("strategy-publish")
     p.add_argument("--findings", required=True)
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--file", default="")
     p = sub.add_parser("pr-context")
     p.add_argument("--pr", type=int, required=True)
     p.add_argument("--out", default=".agent/issue-context.md")
@@ -4255,22 +4238,22 @@ def main(argv=None):
     p = sub.add_parser("task-field")
     p.add_argument("--id", required=True)
     p.add_argument("--field", choices=("title", "body"), required=True)
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--file", default="")
     p = sub.add_parser("continue")
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--file", default="")
     p = sub.add_parser("top-up")
     p.add_argument("--id", required=True)
     p = sub.add_parser("daily-publish")
     p.add_argument("--role", required=True, choices=sorted(DAILY_ROLES))
     p.add_argument("--findings", required=True)
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--file", default="")
     p = sub.add_parser("add-audit-tasks")
     p.add_argument("--findings", required=True)
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--file", default="")
     p = sub.add_parser("monitor-select")
     p.add_argument("--mode", choices=("now", "hourly", "daily"), required=True)
     p.add_argument("--out", required=True)
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--file", default="")
     p = sub.add_parser("reconcile-tasks")
     p.add_argument("--dir", default="tasks")
     p.add_argument("--file", default="")
@@ -4278,7 +4261,7 @@ def main(argv=None):
     p = sub.add_parser("monitor-assign")
     p.add_argument("--selection", required=True)
     p.add_argument("--triage", default="triage")
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--file", default="")
     p = sub.add_parser("notes-collect")
     p.add_argument("--out", required=True)
     p = sub.add_parser("notes-publish")
@@ -4290,7 +4273,7 @@ def main(argv=None):
     p.add_argument("--run", default="")
     p.add_argument("--latest", action="store_true",
                    help="repair the newest failing pipeline run on main")
-    p.add_argument("--file", default="TODO.md")
+    p.add_argument("--file", default="")
     for name in ("release", "publish"):
         p = sub.add_parser(name)
         p.add_argument("--task", required=True, help="task JSON")
@@ -4318,7 +4301,7 @@ def main(argv=None):
     elif a.cmd == "images-ready":
         images_ready_command(a.slots, parse_generations(a.generations))
     elif a.cmd == "slot-matrix":
-        emit("matrix", json.dumps({"slot": [s["slot"] for s in load_slots(".github/swarm/slots.json")]},
+        emit("matrix", json.dumps({"slot": [s["slot"] for s in load_slots(".opencode/config/slots.json")]},
                                   separators=(",", ":")))
     elif a.cmd == "slot-config":
         print(json.dumps(slot_config(load_slots(a.slots), a.slot), separators=(",", ":")))
@@ -4499,8 +4482,6 @@ def main(argv=None):
             return 0
     elif a.cmd == "draft-triage":
         emit("drafts", draft_triage())
-    elif a.cmd == "migrate-tasks":
-        print(f"moved {migrate_tasks()} task(s)")
     elif a.cmd == "integrate-batch":
         integrate_batch(json.loads(a.queue), a.gate)
     elif a.cmd == "resolve-publish":

@@ -41,8 +41,8 @@ migration or clinical-policy surface was touched.
 
 ## Review owner
 
-Senior React and Vite (`smartclinic-senior-react`) and UX reviewer
-(`smartclinic-ux-reviewer`), both simulated bounded reviews recorded in the
+Senior React and Vite (`orevia-senior-react`) and UX reviewer
+(`orevia-ux-reviewer`), both simulated bounded reviews recorded in the
 prior worker's notes and addressed there. No simulated-user or human-participant
 evidence is claimed for this pass.
 
@@ -156,7 +156,7 @@ change is presentation only and touched no domain contract or state machine.
 - **Pre-existing, out of scope — committed conflict markers.** `git grep` shows
   conflict-marker lines (`HEAD` / `origin/swarm/BUILD-37-469`) already committed
   on `origin/main` inside
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java` and `Hl7Segment.java` (a BUILD-37 merge artifact). They sit
   inside Javadoc comments, so they do not break compilation, and they are
   outside this task's scope. No file was edited.

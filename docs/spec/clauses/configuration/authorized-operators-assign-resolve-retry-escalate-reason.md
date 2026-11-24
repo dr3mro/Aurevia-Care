@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.configuration.clauses.AuthorizedOperatorsAssignResolveRetryEscalateReasonTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/configuration/clauses/AuthorizedOperatorsAssignResolveRetryEscalateReasonTest.java`).
+Test class `com.aurevia.configuration.clauses.AuthorizedOperatorsAssignResolveRetryEscalateReasonTest`
+(`apps/api/src/test/java/com/aurevia/configuration/clauses/AuthorizedOperatorsAssignResolveRetryEscalateReasonTest.java`).
 It is a synthetic, database-free clause test in the `clauses` style of
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: opaque tenant,
 operator and item identifiers, a fixed `Instant`, a synthetic `TenantContext`
@@ -48,26 +48,26 @@ under `## Gap` below:
 
 Production classes surveyed and exercised by the active tests:
 
-- `com.aurevia.smartclinic.config.queues.OperationalQueueItem` — `open` (`:59`),
+- `com.aurevia.config.queues.OperationalQueueItem` — `open` (`:59`),
   `assign` (`:75`), `resolve` (`:96`), `requireActionable` (`:106`) and
   `requireText` (`:115`) own the only built part of this clause: tenant-scoped,
   immutable work items with mandatory actor, owner and reason, a frozen
   append-only action history, and terminal resolution.
-- `com.aurevia.smartclinic.config.queues.OperationalWorkState` (`OPEN`,
+- `com.aurevia.config.queues.OperationalWorkState` (`OPEN`,
   `ASSIGNED`, `RESOLVED`) and `QueueAction` (`type`, `actor`, `reason`, `at`) —
   the state model and the single action verb pair `assign`/`resolve`.
   `QueueAction`'s own Javadoc (`:10-11`) states that operator authorization and
   durable audit references belong at a command boundary outside this model.
-- `com.aurevia.smartclinic.api.ApiException` — the `INVALID_TRANSITION` (409)
+- `com.aurevia.api.ApiException` — the `INVALID_TRANSITION` (409)
   and `REASON_REQUIRED` (422) refusals asserted above, plus `OWNER_REQUIRED`,
   `ACTOR_REQUIRED` and `INVALID_ACTION_TIME`.
-- `com.aurevia.smartclinic.tenant.TenantContext` — the synthetic tenant scope
+- `com.aurevia.tenant.TenantContext` — the synthetic tenant scope
   used by the clause fixtures.
-- Derivations that create the items: `com.aurevia.smartclinic.clinical.queues.UnsignedEncounterQueue.query`
-  and `com.aurevia.smartclinic.config.rosters.MissingCoverageQueue.query`. Both
+- Derivations that create the items: `com.aurevia.clinical.queues.UnsignedEncounterQueue.query`
+  and `com.aurevia.config.rosters.MissingCoverageQueue.query`. Both
   emit only `OPEN` items; neither assigns or resolves anything.
 
-Survey result: `com.aurevia.smartclinic.configuration` holds ADM-01
+Survey result: `com.aurevia.configuration` holds ADM-01
 administration (`ConfigurationService.create/approve/get/history`, `ConfigEntry`,
 `ConfigHistory`, `ConfigurationRepository`) and is not this rule. No controller,
 service, store, request type, migration, table, RLS policy, audit writer or
@@ -97,7 +97,7 @@ action or audit store. Closing that gap needs **two** bounded tasks:
    migration using the reserved version, `FORCE ROW LEVEL SECURITY`, append-only
    grants, a `Jdbc*Store` under `src/main` and PostgreSQL transaction tests.
    Files it would change (none changed here): `db/migrations/`, the new store
-   under `apps/api/src/main/java/com/aurevia/smartclinic/config/queues/`, its
+   under `apps/api/src/main/java/com/aurevia/config/queues/`, its
    test under `apps/api/src/test/` and `db/check.sh` coverage.
 2. An API task: an injected operator command service enforcing role, tenant,
    reason and version inside the tenant-guarded transaction, adding `retry` and

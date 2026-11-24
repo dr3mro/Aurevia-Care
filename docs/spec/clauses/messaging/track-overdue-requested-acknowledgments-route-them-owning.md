@@ -10,10 +10,10 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.TrackOverdueRequestedAcknowledgmentsRouteThemOwningTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/TrackOverdueRequestedAcknowledgmentsRouteThemOwningTest.java`).
+Test class: `com.aurevia.messaging.clauses.TrackOverdueRequestedAcknowledgmentsRouteThemOwningTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/TrackOverdueRequestedAcknowledgmentsRouteThemOwningTest.java`).
 All seven tests are active (none disabled). The suite recreates its own PostgreSQL
-database (`smartclinic_overdue_followups_it`) from the authoritative Flyway migrations,
+database (`orevia_overdue_followups_it`) from the authoritative Flyway migrations,
 seeds two isolated tenants with synthetic memberships, roles, a verified patient chart,
 an active patient-unit connection and owning-unit staff assignments, and drives the real
 HTTP entry point under the `synthetic-auth` profile with `X-Synthetic-Subject` and
@@ -48,24 +48,24 @@ credentials are used.
 
 Production classes exercised through the entry point and its tenant-guarded transaction:
 
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactController` — thin adapter
+- `com.aurevia.messaging.acknowledgment.InstructionFactController` — thin adapter
   binding `POST /api/v1/instructions/publish`, `POST /api/v1/instructions/acknowledge`,
   `POST /api/v1/instructions/follow-up/resolve` and `GET /api/v1/instructions/overdue-follow-ups`.
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactService` — `overdueFollowUps`
+- `com.aurevia.messaging.acknowledgment.InstructionFactService` — `overdueFollowUps`
   authorizes the reader, creates one `ROUTED` follow-up per overdue candidate and filters the
   open queue by unit, state, acknowledgment, request flag and latest revision; `publish`,
   `acknowledge` and `resolveFollowUp` supply the state transitions the queue observes.
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactActions` and
+- `com.aurevia.messaging.acknowledgment.InstructionFactActions` and
   `InstructionFactInputs` — bound the `FOLLOW_UP_LIST` action to owning-unit staff roles and
   validate the `unitId` at the trust boundary.
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts` — immutable `FollowUp`,
+- `com.aurevia.messaging.acknowledgment.InstructionFacts` — immutable `FollowUp`,
   `PublishCommand`, `AcknowledgeCommand` and `ResolveCommand` records and the `FollowUpState`
   wire values (`routed` on the wire for `ROUTED`).
-- `com.aurevia.smartclinic.messaging.acknowledgment.JdbcInstructionFactStore` — reads and writes
+- `com.aurevia.messaging.acknowledgment.JdbcInstructionFactStore` — reads and writes
   the V63 tables inside the guarded transaction; `overdueCandidates` selects only latest,
   unacknowledged, unrouted revisions whose requested due instant is in the past.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` and
-  `com.aurevia.smartclinic.web.TenantContextInterceptor` — stable error codes and the
+- `com.aurevia.api.ApiErrorHandler` and
+  `com.aurevia.web.TenantContextInterceptor` — stable error codes and the
   synthetic subject/organization binding used by every request.
 - `db/migrations/V63__instruction_facts.sql` — owns `instruction_fact_instruction`,
   `instruction_fact_acknowledgment`, `instruction_fact_follow_up` and

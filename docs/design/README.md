@@ -37,7 +37,7 @@ Related material: the [maintainer guide](../reference/maintainer.md) for the
 per-module trace, the [delivery workflow](../WORKFLOW.md) for review routing, the
 [decision-record template](../decisions/template.md) for a consequential design
 decision, and the approved
-[product specification](../../SMARTCLINIC_V1_SPEC.md) for the requirement text
+[product specification](../../.opencode/config/PROJECT_V1_SPEC.md) for the requirement text
 itself. The implemented subset today is in
 `apps/staff-web/src/theme/tokens.ts` and `apps/staff-web/src/i18n/format.ts`.
 

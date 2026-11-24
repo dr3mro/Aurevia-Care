@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.CriticalFindingsRequireVerificationResponsibleOwnerDueTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/CriticalFindingsRequireVerificationResponsibleOwnerDueTest.java`).
+Test class `com.aurevia.exchange.clauses.CriticalFindingsRequireVerificationResponsibleOwnerDueTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/CriticalFindingsRequireVerificationResponsibleOwnerDueTest.java`).
 It is a synthetic, database-free clause test in the same `clauses` style as
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: a mocked
 `CriticalResultRepository` and `AuditAppender`, a transaction template that runs
@@ -46,7 +46,7 @@ is changed.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.exchange.critical.CriticalResultService` — owns the
+- `com.aurevia.exchange.critical.CriticalResultService` — owns the
   clause. `register` creates an unverified finding; `assign` validates the owner
   and a future due time, snapshots the approved escalation policy and appends
   `OWNER_ASSIGNED`; `verify` refuses without owner/due and appends `VERIFIED`;
@@ -55,17 +55,17 @@ Production classes and files surveyed and exercised by the entry point:
   own fact; `acknowledge` and `release` are separate commands. `authorize`,
   `isActiveClinician`, `requiredPolicy`, `requireVersion` and `requireState`
   re-derive permissions and invariants inside the guarded transaction.
-- `com.aurevia.smartclinic.exchange.critical.CriticalContract` — `Result` carries
+- `com.aurevia.exchange.critical.CriticalContract` — `Result` carries
   the owner, due time and stamped channels; `State` and `EventType` keep
   verification, assignment, escalation and acknowledgment as distinct facts.
   `CriticalActions` is the role/action matrix and `CriticalInputs` validates the
   subject, channel, note and future deadline. `CriticalResultRepository` is the
   single SQL boundary and appends to the immutable event ledger.
-- `com.aurevia.smartclinic.exchange.critical.CriticalResultController` —
+- `com.aurevia.exchange.critical.CriticalResultController` —
   `POST /api/v1/critical-results` and the `POST /api/v1/critical-results/{id}/assign`,
   `/verify`, `/escalate`, `/acknowledge` and `/release` sub-routes are the HTTP
   entry points; the controller injects the service and parses `If-Match`.
-- `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/CriticalResultControllerHttpTest`
+- `apps/api/src/test/java/com/aurevia/it/exchangeresult/CriticalResultControllerHttpTest`
   — the broader HTTP-plus-PostgreSQL proof of every critical-result route,
   including authorization denials and the chained success workflow.
 - `db/migrations/V23__critical_results.sql` — creates `public.critical_result`

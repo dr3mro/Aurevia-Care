@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.ClosedThreadsReadAuthorizedViewersTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ClosedThreadsReadAuthorizedViewersTest.java`).
+Test class `com.aurevia.messaging.clauses.ClosedThreadsReadAuthorizedViewersTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/ClosedThreadsReadAuthorizedViewersTest.java`).
 It is a synthetic, database-free clause test in the same `clauses` style as
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: mocked
 `ConversationRepository`, `PatientConnectionVerifier` and `AuditAppender`, the
@@ -50,7 +50,7 @@ the HTTP controller delegates to; all fixtures use synthetic subjects and text.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService`
+- `com.aurevia.messaging.conversations.ConversationService`
   owns the rule: `requireWritable` raises `ApiException(409, "CLOSED_THREAD")`
   for a `CLOSED` row. It is called from `reply`, `reassign` (`assign` and
   `transfer`) and `transitionWithReason` (`resolve` and `close`), after
@@ -60,7 +60,7 @@ Production classes and files surveyed and exercised by the entry point:
   `ConversationActions`, `ConversationRepository`, `ConversationInputs` and
   `ApiException` — the state machine, bounded role/unit matrix, SQL boundary,
   input guards and structured failure used by those commands.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController` —
+- `com.aurevia.messaging.conversations.ConversationController` —
   `POST /api/v1/conversations/{id}/reply|assign|transfer|resolve|close|read`
   and `GET /api/v1/conversations/{id}|/inbox|/work-queue` are the HTTP entry
   points, with version passed in `If-Match` on every mutating command.

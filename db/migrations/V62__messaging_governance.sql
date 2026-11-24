@@ -195,26 +195,26 @@ END $$;
 -- role. The tracked-resource reference has no V62 writer: it is read-only and
 -- must be seeded by an authorized setup path before hold and retention commands
 -- can act on a resource.
-GRANT SELECT, INSERT ON public.messaging_audit_event TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.messaging_retention_policy TO smartclinic_app;
-GRANT SELECT ON public.messaging_resource TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.messaging_retention_duty TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.messaging_legal_hold TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.messaging_record_access_policy TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.messaging_connection TO smartclinic_app;
-GRANT SELECT, INSERT ON public.messaging_provenance_link TO smartclinic_app;
-GRANT SELECT, INSERT ON public.messaging_export TO smartclinic_app;
-GRANT SELECT, INSERT ON public.messaging_copy_request TO smartclinic_app;
-GRANT SELECT, INSERT ON public.messaging_revocation_effect TO smartclinic_app;
+GRANT SELECT, INSERT ON public.messaging_audit_event TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.messaging_retention_policy TO orevia_app;
+GRANT SELECT ON public.messaging_resource TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.messaging_retention_duty TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.messaging_legal_hold TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.messaging_record_access_policy TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.messaging_connection TO orevia_app;
+GRANT SELECT, INSERT ON public.messaging_provenance_link TO orevia_app;
+GRANT SELECT, INSERT ON public.messaging_export TO orevia_app;
+GRANT SELECT, INSERT ON public.messaging_copy_request TO orevia_app;
+GRANT SELECT, INSERT ON public.messaging_revocation_effect TO orevia_app;
 
-REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_audit_event FROM smartclinic_app;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.messaging_resource FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.messaging_retention_policy FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.messaging_retention_duty FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.messaging_legal_hold FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.messaging_record_access_policy FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.messaging_connection FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_provenance_link FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_export FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_copy_request FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_revocation_effect FROM smartclinic_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_audit_event FROM orevia_app;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.messaging_resource FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.messaging_retention_policy FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.messaging_retention_duty FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.messaging_legal_hold FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.messaging_record_access_policy FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.messaging_connection FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_provenance_link FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_export FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_copy_request FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.messaging_revocation_effect FROM orevia_app;
