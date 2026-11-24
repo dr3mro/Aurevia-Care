@@ -126,7 +126,10 @@ async function expectNavigation(page: Page, context: string, band: Breakpoint): 
 /** Assert the persistent shell and route landmarks are present and visible. */
 async function expectLandmarks(page: Page, context: string): Promise<void> {
   await expect(page.locator('main#main'), `${context}: main landmark missing`).toBeVisible();
-  await expect(page.locator('header h1'), `${context}: header heading missing`).toBeVisible();
+  await expect(
+    page.locator('header[role="banner"] > h1'),
+    `${context}: shell banner heading missing`,
+  ).toBeVisible();
   await expect(
     page.locator('main#main h1, main#main h2').first(),
     `${context}: route page has no visible heading`,
@@ -142,10 +145,11 @@ async function expectShellMounted(page: Page, context: string): Promise<void> {
 }
 
 /**
- * Wait for the lazily imported route page, not the Suspense fallback. The
- * fallback is a `p[role=status]` with no heading, so a heading inside `main`
- * proves a real screen (including its loading, empty and error states) mounted
- * before the width is measured.
+ * Wait for the lazily imported route page, not the Suspense fallback. A
+ * heading inside `main` proves a real screen mounted, and the network settle
+ * waits out an API loading skeleton so the width is measured on the settled
+ * screen rather than on its transient placeholder. This app has no polling or
+ * long-lived request, so the settle has a finite end.
  */
 async function expectPageReady(page: Page, context: string): Promise<void> {
   await expectShellMounted(page, context);
@@ -153,6 +157,7 @@ async function expectPageReady(page: Page, context: string): Promise<void> {
     page.locator('main#main h1, main#main h2').first(),
     `${context}: route page did not render a heading (Suspense fallback still mounted)`,
   ).toBeVisible();
+  await page.waitForLoadState('networkidle');
 }
 
 /**
