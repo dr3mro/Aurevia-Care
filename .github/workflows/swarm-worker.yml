@@ -14,8 +14,8 @@ on:
       # No model travels in this input; the router selects the model at run time.
       task: {type: string, required: true}
     secrets:
-      GITHUB_TOKEN:
-        required: false
+      # GITHUB_TOKEN is system-reserved: a workflow_call that declares it fails
+      # GitHub validation. It is supplied automatically to the called workflow.
       SWARM_TOKEN:
         required: false
       OPENCODE_API_KEY:

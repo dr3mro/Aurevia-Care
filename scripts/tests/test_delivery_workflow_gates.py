@@ -137,7 +137,9 @@ class WorkflowGateWiringTest(unittest.TestCase):
             workflow = yaml.safe_load((WORKFLOWS / name).read_text(encoding="utf-8"))
             declared = workflow[True]["workflow_call"].get("secrets", {})
             self.assertIn("SWARM_TOKEN", declared, name)
-            self.assertIn("GITHUB_TOKEN", declared, name)
+            # GITHUB_TOKEN is system-reserved and available automatically;
+            # declaring it in workflow_call is a GitHub validation error.
+            self.assertNotIn("GITHUB_TOKEN", declared, name)
 
     def test_integrator_validation_has_no_write_token_and_publication_binds_shas(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))

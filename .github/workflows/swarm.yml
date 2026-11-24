@@ -163,7 +163,6 @@ jobs:
       issues: write
     uses: ./.github/workflows/swarm-worker.yml
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       SWARM_TOKEN: ${{ secrets.SWARM_TOKEN }}
       OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
       OPENCODE_API_KEY_1: ${{ secrets.OPENCODE_API_KEY_1 }}
@@ -196,7 +195,6 @@ jobs:
       packages: read
     uses: ./.github/workflows/swarm-integrator.yml
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       SWARM_TOKEN: ${{ secrets.SWARM_TOKEN }}
       OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
       OPENCODE_API_KEY_3: ${{ secrets.OPENCODE_API_KEY_3 }}
