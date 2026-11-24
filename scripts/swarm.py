@@ -4007,7 +4007,8 @@ def close_integrated_pr(pr, task_id):
             pass
 
 
-def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None):
+def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None,
+                      report_decisions=False):
     """Merge and gate each ready PR locally without writing to GitHub.
 
     Returns a manifest-ready dict with ``accepted``, ``rejected``, ``already``,
@@ -4039,8 +4040,11 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
             tid = task_id_of(pr_view.get("headRefName", "") or "")
             result["already"].append({"pr": pr, "task_id": tid})
             continue
-        verdict = delivery_gate(pr, head, report=False)
-        if require_evidence and verdict != "merge":
+        verdict = "merge"
+        if require_evidence:
+            verdict = (delivery_gate(pr, head) if report_decisions
+                       else delivery_gate(pr, head, report=False))
+        if verdict != "merge":
             result["rejected"].append({"pr": pr, "kind": "evidence", "verdict": verdict,
                                        "head_sha": head})
             continue
@@ -4080,7 +4084,7 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
     return result
 
 
-def report_validation(result):
+def report_validation(result, report_evidence=True):
     """Replay the decisions made by validation, using the publication token.
 
     Every call here writes to GitHub or to shared trackers, so it belongs to
@@ -4091,7 +4095,7 @@ def report_validation(result):
         kind = item["kind"]
         if kind in ("tracker", "protected", "files", "lines", "override"):
             guard(pr, is_repair(pr))
-        elif kind == "evidence":
+        elif kind == "evidence" and report_evidence:
             delivery_gate(pr, item.get("head_sha"))
         elif kind == "already":
             close_integrated_pr(pr, item.get("task_id", ""))
@@ -4135,9 +4139,9 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     publication job. GitHub uses ``integrate-validate`` / ``integrate-publish``
     so candidate code never runs with a write token.
     """
-    result = integrate_prepare(queue, gate, check_delivery)
+    result = integrate_prepare(queue, gate, check_delivery, report_decisions=True)
     emit("conflicted", json.dumps(result["conflicted"]))
-    report_validation(result)
+    report_validation(result, report_evidence=False)
     if not result["accepted"]:
         emit("merged", 0)
         return 0
