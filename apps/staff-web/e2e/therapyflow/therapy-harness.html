@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Physical therapy browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only harness for the bilingual therapy journey (WEB-10, PT-01).
+         Vite dev serves this at /e2e/therapyflow/therapy-harness.html. No
+         production therapy screen or route exists yet, so this mounts a small
+         workstation with the real locale and theme providers. Every patient
+         alias, plan word and identifier here is synthetic. -->
+    <main>
+      <div id="therapy-harness" data-testid="therapy-harness"></div>
+    </main>
+    <script type="module" src="./therapy-harness.tsx"></script>
+  </body>
+</html>
