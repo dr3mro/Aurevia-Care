@@ -151,6 +151,7 @@
 - aurevia-coverage-auditor: first NO-GO listed nine unmapped fail-closed branches; ten named tests added; re-review GO (simulated static reviewer; canonical percentage still unmeasured under no-Git directive).
 - aurevia-senior-python: first NO-GO found the same-pass readiness tuple mismatch; fixed; re-review GO (simulated static reviewer).
 - Coverage follow-up (tool): `test_task_requests.py` 25/25, `test_swarm_schedule_coverage.py` 27/27, `test_swarm_delivery_state.py` 59/59, literal `py_compile` and `check-docs.py` green.
+- aurevia-qa-reviewer: HOLD on acceptance — source-complete with no new Phase 4 product defect, but requires final re-run evidence, post-fix GOs, transfer/fix of the pre-existing tracker-details defect, and either authorized full coverage/live evidence or an explicit owner waiver. All four review GOs and final suite re-runs are now recorded above; coverage/live evidence remains an explicit blocker.
 - Tool: `python3 -I scripts/check-docs.py` → exit 0 after the Phase 4 plan corrections.
 - No Phase 4 finding is marked fixed until the correction plan is reviewed, red/green evidence is recorded, and each reviewer returns GO.
 
