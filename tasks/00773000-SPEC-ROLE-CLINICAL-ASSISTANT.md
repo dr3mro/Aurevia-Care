@@ -1,5 +1,4 @@
-- [-] SPEC-ROLE-CLINICAL-ASSISTANT · Spec section 2 role matrix (API test): Clinical assistant
-  - agent: swarm-8
+- [ ] SPEC-ROLE-CLINICAL-ASSISTANT · Spec section 2 role matrix (API test): Clinical assistant
   - attempts: 2
   - requirements: IAM-01, CLN-02
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleClinicalAssistantTest.java, docs/spec/clauses/authz/role-clinical-assistant.md
