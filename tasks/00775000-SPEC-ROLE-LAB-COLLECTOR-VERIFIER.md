@@ -1,4 +1,6 @@
-- [-] SPEC-ROLE-LAB-COLLECTOR-VERIFIER · Spec section 2 role matrix (API test): Lab collector / verifier
+- [x] SPEC-ROLE-LAB-COLLECTOR-VERIFIER · Spec section 2 role matrix (API test): Lab collector / verifier
+  - evidence: PR #1567 merged to main (auto-reconciled)
+  - pr: #1567
   - agent: swarm-10
   - attempts: 2
   - requirements: IAM-01, LAB-02
