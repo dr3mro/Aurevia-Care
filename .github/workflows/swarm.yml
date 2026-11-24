@@ -57,6 +57,7 @@ jobs:
     concurrency:
       group: agent-swarm-plan
       cancel-in-progress: false
+      queue: max
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -163,7 +164,20 @@ jobs:
       # The work job reads earlier findings; the publish job writes hand-off issues.
       issues: write
     uses: ./.github/workflows/swarm-worker.yml
-    secrets: inherit
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SWARM_TOKEN: ${{ secrets.SWARM_TOKEN }}
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      OPENCODE_API_KEY_1: ${{ secrets.OPENCODE_API_KEY_1 }}
+      OPENCODE_API_KEY_2: ${{ secrets.OPENCODE_API_KEY_2 }}
+      OPENCODE_API_KEY_3: ${{ secrets.OPENCODE_API_KEY_3 }}
+      OPENCODE_API_KEY_4: ${{ secrets.OPENCODE_API_KEY_4 }}
+      OPENCODE_API_KEY_5: ${{ secrets.OPENCODE_API_KEY_5 }}
+      OPENCODE_API_KEY_6: ${{ secrets.OPENCODE_API_KEY_6 }}
+      OPENCODE_API_KEY_7: ${{ secrets.OPENCODE_API_KEY_7 }}
+      OPENCODE_API_KEY_8: ${{ secrets.OPENCODE_API_KEY_8 }}
+      OPENCODE_API_KEY_9: ${{ secrets.OPENCODE_API_KEY_9 }}
+      OPENCODE_API_KEY_10: ${{ secrets.OPENCODE_API_KEY_10 }}
     with:
       image: ${{ needs.plan.outputs.image_prefix }}-${{ matrix.slot }}:latest
       slot: ${{ format('{0}', matrix.slot) }}
@@ -183,7 +197,11 @@ jobs:
       actions: write
       packages: read
     uses: ./.github/workflows/swarm-integrator.yml
-    secrets: inherit
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SWARM_TOKEN: ${{ secrets.SWARM_TOKEN }}
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      OPENCODE_API_KEY_3: ${{ secrets.OPENCODE_API_KEY_3 }}
   # Keep the loop going while work remains, even if another PR is waiting to merge.
   # Never queue another wave while one is already waiting. A task a
   # worker fails three times waits for a person, so this cannot spin forever.

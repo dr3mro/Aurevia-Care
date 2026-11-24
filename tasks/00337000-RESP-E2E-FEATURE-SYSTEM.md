@@ -1,4 +1,6 @@
-- [ ] RESP-E2E-FEATURE-SYSTEM · Staff web end-to-end: the system screens work on phone, tablet and desktop
+- [x] RESP-E2E-FEATURE-SYSTEM · Staff web end-to-end: the system screens work on phone, tablet and desktop
+  - evidence: Swarm gate reconciliation on main 2026-11-24; worker note docs/pr/notes/RESP-E2E-FEATURE-SYSTEM-20261124-041525.md; PR #1623. Conflict resolution adopted the verified WEB-08 test from main; vitest 3/3 passed locally. Tool evidence (Actions logs, vitest); no simulated user or human feedback.
+  - pr: #1623
   - attempts: 5
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/responsive-system.spec.ts
@@ -13,6 +15,24 @@
     1. Read the `system` feature under `apps/staff-web/src/features` (forbidden, not found, signed out, session expired and unsupported browser pages) and `e2e/playwright.config.ts`.
     2. Write `e2e/responsive-system.spec.ts`: for every screen of the feature, at the phone, tablet and desktop projects, perform the main task of that screen with the keyboard and with touch (tap), and check no horizontal scroll, every value that is visible on desktop is still reachable on phone (cards or scroll region), and the screen works in English and Arabic.
     3. A real defect becomes a `test.fixme` with the reason and is listed under `## Why this is not finished`. Never weaken an assertion.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.- [x] RESP-README · Staff web README: how to test and develop responsive layouts
+  - evidence: PR #1399 merged to main (reconciled 2026-11-23)
+  - pr: #1399
+  - agent: swarm-2
+  - attempts: 1
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/README.md
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    Agent brief. Use the acceptance criteria below to select the smallest change that meets the task outcome.
+    Current starting points to inspect are `docs/design/responsive-layout.md`, `scripts/check-docs.py`.
+    Identify the nearest integration or feature test and reproduce the acceptance gap before writing production code.
+    Run `bash apps/staff-web/check.sh` and confirm 100% coverage on changed source files.
+
+    1. Read `apps/staff-web/README.md` and `docs/design/responsive-layout.md`.
+    2. Add one section "Responsive layout": the three width classes, the stylesheet and hook, how to run the device projects (`npm run e2e -- --project=phone-portrait`), how to emulate a phone in a desktop browser, and the rule that no feature may hide a clinical field on a small screen. Keep every other line.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

@@ -10,6 +10,15 @@ name: Swarm integrator
 # workflow_run chain) and runnable by hand.
 on:
   workflow_call:
+    secrets:
+      GITHUB_TOKEN:
+        required: false
+      SWARM_TOKEN:
+        required: false
+      OPENCODE_API_KEY:
+        required: false
+      OPENCODE_API_KEY_3:
+        required: false
   workflow_dispatch:
 permissions:
   contents: read
