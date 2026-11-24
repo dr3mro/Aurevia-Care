@@ -1,16 +1,16 @@
 /**
  * WEB-08 clause 3 — "Each route chunk is at most 250 KB gzip, enforced in CI."
  *
- * Evidence for this clause is split. The behavioural proof that the budget
+ * Evidence for this clause is complete. The behavioural proof that the budget
  * refuses an oversized built chunk already lives in the existing
  * `scripts/check-bundle-size.test.mjs` suite and the real post-build gate at
- * `check.sh:18-19`. This file pins the checked-in ceiling, measurement and
- * refusal message of that gate so a silent change to the budget is caught, and
- * holds the CI-enforcement half as an ACTIVE tripwire: the required
- * `Frontend standards` job delegates to frontend-check.sh, which never builds
- * and never invokes the budget script. The repository forbids skipped tests,
- * so on the day CI wires the gate this case must be replaced with a positive
- * proof of enforcement and the clause status flipped to proven.
+ * `apps/staff-web/check.sh:18-19`. This file pins the checked-in ceiling,
+ * measurement and refusal message of that gate so a silent change to the
+ * budget is caught, and proves the CI-enforcement half: the required
+ * `Frontend standards` job runs the canonical staff-web check, which builds
+ * the app and invokes the budget script on the real emitted chunks. The exact
+ * run-step pin is load-bearing, so dropping an enforcement step fails this case
+ * instead of silently removing the gate.
  *
  * Synthetic buffers only: no network, database, fixture or patient data.
  */
@@ -89,23 +89,28 @@ describe('WEB-08 clause 3 — route chunks at most 250 KB gzip, enforced in CI',
   });
 
   /**
-   * GAP tripwire: the required CI frontend job does not run the gzip budget
-   * gate. It is an active test because the repository forbids skipped tests.
-   * The two exact arrays are load-bearing: every change to the frontend job's
-   * run steps or to frontend-check.sh's per-module commands — including a
-   * switch to `bash apps/staff-web/check.sh`, which DOES enforce the budget —
-   * fails this case. The follow-up task that wires the gate must replace this
-   * case with a positive proof of enforcement and flip the clause to proven.
+   * Positive proof of CI enforcement. The required `Frontend standards` job
+   * runs the canonical staff-web check, which builds the app and then invokes
+   * the WEB-08 budget gate on the real emitted chunks (`check.sh:18-19`). The
+   * exact run-step pin is load-bearing: a dropped enforcement step, or a
+   * removal of the build/budget commands from the canonical check, fails this
+   * case instead of silently dropping enforcement.
    */
-  it('GAP: the required CI frontend job never runs the gzip budget gate', () => {
+  it('CI Frontend standards job enforces the gzip budget through the canonical check', () => {
     const frontendJob = workflowJob(read(DELIVERY_WORKFLOW), 'frontend');
     expect(frontendJob).toContain('name: Frontend standards');
 
-    // The required job delegates entirely to the shared frontend script.
-    const runSteps = linesStarting(frontendJob, '- run:');
-    expect(runSteps).toEqual(['- run: bash scripts/frontend-check.sh']);
+    // The required job runs the canonical staff-web check, not only the shared
+    // policy script. Pinning the exact steps makes a dropped step visible.
+    const runSteps = linesStarting(frontendJob, 'run:');
+    expect(runSteps).toEqual([
+      'run: bash scripts/frontend-check.sh',
+      'run: bash apps/staff-web/check.sh',
+      'run: bash apps/patient-mobile/check.sh',
+    ]);
 
-    // That script's per-module commands run typecheck, lint and test only.
+    // The shared script still pins typecheck, lint and test only; the budget
+    // gate is applied by the canonical check above.
     const commands = moduleCommands(read(FRONTEND_CHECK));
     expect(commands).toEqual([
       'npm ci --no-audit --no-fund',
@@ -114,10 +119,10 @@ describe('WEB-08 clause 3 — route chunks at most 250 KB gzip, enforced in CI',
       'npm test',
     ]);
 
-    // Narrow absence check: neither the delegated job nor the delegated
-    // command list can produce a build or invoke the budget gate today.
-    const enforcedPath = `${frontendJob}\n${commands.join('\n')}`;
-    expect(enforcedPath).not.toContain('check-bundle-size');
-    expect(enforcedPath).not.toContain('npm run build');
+    // The canonical check builds first, then measures the real emitted chunks
+    // with the budget script, so a stale asset cannot bypass the gate.
+    const checkScript = read('apps/staff-web/check.sh');
+    expect(checkScript).toContain('npm run build');
+    expect(checkScript).toContain('node scripts/check-bundle-size.mjs');
   });
 });
