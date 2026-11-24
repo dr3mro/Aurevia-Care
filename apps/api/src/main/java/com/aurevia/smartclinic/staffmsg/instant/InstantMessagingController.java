@@ -94,17 +94,20 @@ public class InstantMessagingController {
     }
 
     /**
-     * Publish a message, using the header key to deduplicate retries.
+     * Publish a message to the conversation in the route, using the header key to
+     * deduplicate retries. The path id is forwarded as the authorization and write
+     * target; the body is passed through unchanged so the service can reject a
+     * mismatched client id before any state changes.
      *
-     * @param conversationId owning conversation
-     * @param request        facility and body
+     * @param conversationId owning conversation from the path
+     * @param request        facility, matching conversation id and body
      * @param idempotencyKey durable client message id
      * @return the published message
      */
     @PostMapping("/{conversationId}/messages")
     public MessageView send(@PathVariable String conversationId, @RequestBody SendRequest request,
                             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
-        return service.send(request, idempotencyKey);
+        return service.send(conversationId, request, idempotencyKey);
     }
 
     /**
