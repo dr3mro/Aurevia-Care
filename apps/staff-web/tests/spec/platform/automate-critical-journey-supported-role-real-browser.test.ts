@@ -84,12 +84,16 @@ const e2eSpecs = (): string[] =>
   filesBelow(resolve(moduleRoot, 'e2e')).filter((path) => path.endsWith('.spec.ts'));
 
 /**
+ * The exact e2e spec set committed today; a new journey must replace this pin.
+ *
+ * Keeping the whole set (not only the recognised journeys) is what makes the
+ * tripwire below notice any newly added journey spec. Six specs landed after
+ * this pin was first written — five per-role journeys from sibling work and
+ * the cross-cutting `reflowAndZoom.spec.ts` — so the pin is refreshed here.
  * The exact e2e spec set committed today; adding or removing a spec must
  * replace this pin. Visibility here keeps the GAP tripwire honest: a new spec
  * cannot slip past unnoticed, and the GAP itself stays active until the
  * all-role, staging-RC and light/dark evidence actually lands.
- * The exact e2e spec set committed today; a new journey must replace this pin.
- *
  * This is the GAP tripwire's inventory half: it pins the whole committed spec
  * set so any added or removed e2e spec forces a reviewer to re-check whether
  * WEB-10 clause 2 evidence has landed. It intentionally lists every spec, not
@@ -133,9 +137,10 @@ const currentSpecs: readonly string[] = [
   'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
-  'rightToLeftResponsive.spec.ts',
+  'reflowAndZoom.spec.ts',
   'smoke.spec.ts',
   'therapyflow/therapy-journey.spec.ts',
+  'rightToLeftResponsive.spec.ts',
   'touchTargets.spec.ts',
   'responsive-chart.spec.ts',
   'responsive-patients.spec.ts',
@@ -244,6 +249,12 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
         readModule(`e2e/${path}`),
       ),
     );
+    // Pin the whole matched set, as above, so a genuinely new visual-evidence
+    // spec still trips this wire. `reflowAndZoom.spec.ts` matches only because
+    // it reads computed styles to measure reflow, zoom and text spacing; it
+    // contains no screenshot/snapshot or light/dark theme assertion, so the
+    // clause's light/dark evidence half is still genuinely absent.
+    expect(visualChecks.sort()).toEqual(['reflowAndZoom.spec.ts']);
     // Pin the single computed-style visual check carried by the RTL responsive
     // spec. Light/dark theme evidence is still absent; this is layout evidence.
     expect(visualChecks.sort()).toEqual(['rightToLeftResponsive.spec.ts']);
