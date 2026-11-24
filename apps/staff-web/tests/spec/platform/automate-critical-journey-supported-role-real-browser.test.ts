@@ -84,6 +84,10 @@ const e2eSpecs = (): string[] =>
   filesBelow(resolve(moduleRoot, 'e2e')).filter((path) => path.endsWith('.spec.ts'));
 
 /**
+ * The exact e2e spec set committed today; adding or removing a spec must
+ * replace this pin. Visibility here keeps the GAP tripwire honest: a new spec
+ * cannot slip past unnoticed, and the GAP itself stays active until the
+ * all-role, staging-RC and light/dark evidence actually lands.
  * The exact e2e spec set committed today; a new journey must replace this pin.
  *
  * This is the GAP tripwire's inventory half: it pins the whole committed spec
@@ -131,10 +135,11 @@ const currentSpecs: readonly string[] = [
   'reception/reception-journey.spec.ts',
   'rightToLeftResponsive.spec.ts',
   'smoke.spec.ts',
+  'therapyflow/therapy-journey.spec.ts',
+  'touchTargets.spec.ts',
   'responsive-chart.spec.ts',
   'responsive-patients.spec.ts',
   'softKeyboardAndForms.spec.ts',
-  'therapyflow/therapy-journey.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {
