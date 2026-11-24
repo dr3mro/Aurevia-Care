@@ -2276,6 +2276,7 @@ class ResolveConflictTests(unittest.TestCase):
         fake = FakeGh(pr_view=self.view())
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
              mock.patch.object(swarm, "fail") as failed, \
@@ -2290,6 +2291,7 @@ class ResolveConflictTests(unittest.TestCase):
         fake = FakeGh(pr_view=self.view(comments=swarm.MAX_RESOLVE))
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
              mock.patch.object(swarm, "fail") as failed, \
@@ -2302,6 +2304,7 @@ class ResolveConflictTests(unittest.TestCase):
         fake = FakeGh(pr_view={"headRefOid": "new-sha"})
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=("old-sha", "CW-001", [])), \
              mock.patch.object(swarm, "git", return_value="base-sha\n") as local, \
@@ -3115,6 +3118,7 @@ class TwoTierTests(unittest.TestCase):
 
                     with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": head}), \
                          mock.patch.object(swarm, "guard", return_value=[]), \
+                         mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
                          mock.patch.object(swarm, "is_repair", return_value=False), \
                          mock.patch.object(swarm, "merge_local", side_effect=merge), \
                          mock.patch.object(swarm, "gate_for", return_value=("gate", {})), \
@@ -3164,6 +3168,7 @@ class TwoTierTests(unittest.TestCase):
                 return super().__call__(*args, check=check)
         with mock.patch.object(swarm, "gh", Gh()) as fake, \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
@@ -3195,6 +3200,7 @@ class TwoTierTests(unittest.TestCase):
             return "merged comment"
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "merge_local", side_effect=lambda *a, **k: next(order)), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "record_merge", side_effect=record), \
@@ -3236,6 +3242,7 @@ class TwoTierTests(unittest.TestCase):
 
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")) as gate, \
@@ -3284,6 +3291,7 @@ class TwoTierTests(unittest.TestCase):
 
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
@@ -3333,6 +3341,7 @@ class TwoTierTests(unittest.TestCase):
         results = iter([(True, "ok"), (False, "FAIL tests/app/AppShell.test.tsx")])
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", side_effect=lambda *a, **k: next(results)), \
@@ -3375,6 +3384,7 @@ class TwoTierTests(unittest.TestCase):
 
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \

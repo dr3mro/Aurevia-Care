@@ -488,6 +488,7 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=["scripts/swarm.py"]), \
+                mock.patch.object(swarm, "guard_blockers", return_value=("protected", ["scripts/swarm.py"], 0)), \
                 mock.patch.object(swarm, "merge_local", merged), \
                 mock.patch.object(swarm, "emit"):
             self.assertEqual(swarm.integrate_batch([7], check_delivery=False), 0)
@@ -500,6 +501,7 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
                 mock.patch.object(swarm, "git", return_value="main-sha"), \
                 mock.patch.object(swarm, "pr_already_in_main", return_value=True), \
                 mock.patch.object(swarm, "close_integrated_pr") as closed, \
@@ -528,6 +530,7 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
                 mock.patch.object(swarm, "git", side_effect=git), \
                 mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
                 mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
@@ -550,6 +553,7 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
                 mock.patch.object(swarm, "git", return_value="main-sha"), \
                 mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
                 mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
@@ -586,6 +590,7 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "gh_json", return_value=self.view()), \
                 mock.patch.object(swarm, "is_repair", return_value=False), \
                 mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
                 mock.patch.object(swarm, "git", side_effect=git), \
                 mock.patch.object(swarm, "authed_git", side_effect=authed), \
                 mock.patch.object(swarm, "pr_already_in_main", return_value=False), \

@@ -284,6 +284,7 @@ class IntegratorWiringTest(unittest.TestCase):
         fake = mock.Mock(return_value=json.dumps({"headRefOid": HEAD}))
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "delivery_gate", return_value="wait") as gate, \
              mock.patch.object(swarm, "merge_local") as merged, \
@@ -296,6 +297,7 @@ class IntegratorWiringTest(unittest.TestCase):
         fake = mock.Mock(return_value=json.dumps({"headRefOid": HEAD}))
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "delivery_gate", return_value="merge"), \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
@@ -313,6 +315,7 @@ class IntegratorWiringTest(unittest.TestCase):
         with mock.patch.dict(swarm.os.environ, {"GITHUB_ACTIONS": "true"}), \
              mock.patch.object(swarm, "gh", return_value=json.dumps({"headRefOid": HEAD})), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "delivery_gate", return_value="request") as gate, \
              mock.patch.object(swarm, "merge_local") as merged, \
@@ -325,6 +328,7 @@ class IntegratorWiringTest(unittest.TestCase):
         with mock.patch.dict(swarm.os.environ, {}, clear=True), \
              mock.patch.object(swarm, "gh", return_value=json.dumps({"headRefOid": HEAD})), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "delivery_gate") as gate, \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
@@ -343,6 +347,7 @@ class IntegratorWiringTest(unittest.TestCase):
         with mock.patch.dict(swarm.os.environ, {"GITHUB_ACTIONS": "true"}), \
              mock.patch.object(swarm, "gh", return_value=json.dumps({"headRefOid": HEAD})), \
              mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "delivery_gate") as gate, \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
