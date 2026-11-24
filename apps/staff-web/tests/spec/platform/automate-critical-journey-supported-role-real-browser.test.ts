@@ -84,6 +84,9 @@ const e2eSpecs = (): string[] =>
 
 /**
  * The exact e2e spec set committed today; a new journey must replace this pin.
+ * Re-pinned to include the per-role journeys and the soft-keyboard/forms spec
+ * that now ship, so the tripwire keeps pinning the whole set rather than a
+ * stale subset. The clause-level GAP assertions below remain active.
  *
  * The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
  * journeys were added by commit 4698687f (BUILD-60), and the device-orientation
@@ -108,6 +111,7 @@ const currentSpecs: readonly string[] = [
   'reception/reception-journey.spec.ts',
   'responsive-patients.spec.ts',
   'smoke.spec.ts',
+  'softKeyboardAndForms.spec.ts',
   'therapyflow/therapy-journey.spec.ts',
 ];
 
