@@ -1,5 +1,4 @@
-- [-] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
-  - agent: swarm-6
+- [ ] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
   - attempts: 3
   - evidence: PR #1569 merged to main (auto-reconciled)
   - requirements: IAM-01, CLN-05
