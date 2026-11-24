@@ -545,3 +545,55 @@ class AgentRunTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DeterministicRoutingE2ETests(__import__("test_agent_run", fromlist=["AgentRunTests"]).AgentRunTests):
+    """Real agent-run.sh + real model-router.py + controlled provider fixture.
+
+    Asserts the actual sequence of --model values passed to opencode run,
+    not merely configuration values.
+    """
+
+    def test_forced_mode_uses_only_configured_model(self):
+        prompts = self.tmp / "forced-prompts.log"
+        result = self.run_cmd("implement", FAKE_MODE="commit",
+                              SWARM_FORCE_MODEL="1", SWARM_MODEL="opencode/test",
+                              PROMPT_LOG=str(prompts))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = [line for line in prompts.read_text().splitlines() if "--model" in line]
+        self.assertTrue(calls)
+        for line in calls:
+            self.assertIn("--model opencode/test", line)
+        self.assertNotIn("ok\n", result.stdout[-20:])
+
+    def test_intelligent_mode_rotates_on_rate_limit_to_next_candidate(self):
+        # Fixture registry has two verified free models; make the first return a
+        # 429 so the real wrapper must rotate to the next verified candidate.
+        pricing = self.repo / ".github/swarm/test-pricing.json"
+        pricing.write_text(json.dumps({"models": {
+            "opencode/test": {"input": 0, "output": 0, "pricing_source": "fixture",
+                              "verified_at": "2026-01-01", "score": 99},
+            "opencode/second": {"input": 0, "output": 0, "pricing_source": "fixture",
+                                "verified_at": "2026-01-01", "score": 50}}}))
+        fake = """#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
+case "$*" in
+  *--model\\ opencode/test*) echo "429 rate limit exceeded"; exit 1 ;;
+esac
+echo done
+"""
+        (self.bin_dir / "opencode").write_text(fake)
+        (self.bin_dir / "opencode").chmod(0o755)
+        prompts = self.tmp / "rotate-prompts.log"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_FORCE_MODEL="0",
+                              PROMPT_LOG=str(prompts))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        calls = [line for line in prompts.read_text().splitlines() if "--model" in line]
+        self.assertIn("--model opencode/test", calls[0])
+        self.assertIn("--model opencode/second", calls[1])
+
+    def test_invalid_force_value_fails_safely(self):
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_FORCE_MODEL="true")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("configuration_error", self.outputs()["result"])
