@@ -82,17 +82,33 @@ const axeGateConsumers: readonly string[] = [
 const e2eSpecs = (): string[] =>
   filesBelow(resolve(moduleRoot, 'e2e')).filter((path) => path.endsWith('.spec.ts'));
 
-/** The exact e2e spec set committed today; a new journey must replace this pin. */
+/**
+ * The exact e2e spec set committed today; a new journey must replace this pin.
+ *
+ * This is the GAP tripwire's inventory half: it pins the whole committed spec
+ * set so any added or removed e2e spec forces a reviewer to re-check whether
+ * WEB-10 clause 2 evidence has landed. It intentionally lists every spec, not
+ * only the journeys recognised above, so a new per-role journey cannot slip
+ * past unnoticed. The other half of the tripwire is asserted below: no
+ * playwright workflow yet and exactly one computed-style layout check, which
+ * keeps all-role, staging-RC and light/dark theme evidence pinned as absent.
+ */
 const currentSpecs: readonly string[] = [
+  'adminflow/admin-journey.spec.ts',
   'clinicalnote/clinicalnote-journey.spec.ts',
+  'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
+  'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
+  'rightToLeftResponsive.spec.ts',
   'smoke.spec.ts',
+  'therapyflow/therapy-journey.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {
@@ -158,6 +174,12 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
    * compile-time tripwire: it is enforced by the typecheck gate in check.sh,
    * not at runtime. The recognised visual-check vocabulary is screenshot and
    * snapshot comparators plus theme attributes and computed-style reads.
+   *
+   * The RTL responsive spec now lands one such visual check: it reads computed
+   * styles to detect overlapping clinical text while proving Arabic layout.
+   * That is layout evidence, not the light/dark theme evidence the clause still
+   * lacks, so this half of the tripwire is pinned to that one spec instead of
+   * remaining empty. Any added or removed visual-check spec still trips it.
    */
   it('GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded', () => {
     // Pin the whole spec set, not just the seven names we recognise: a new
@@ -175,7 +197,9 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
         readModule(`e2e/${path}`),
       ),
     );
-    expect(visualChecks.sort()).toEqual([]);
+    // Pin the single computed-style visual check carried by the RTL responsive
+    // spec. Light/dark theme evidence is still absent; this is layout evidence.
+    expect(visualChecks.sort()).toEqual(['rightToLeftResponsive.spec.ts']);
 
     expectTypeOf<Role>().toEqualTypeOf<
       | 'staff'

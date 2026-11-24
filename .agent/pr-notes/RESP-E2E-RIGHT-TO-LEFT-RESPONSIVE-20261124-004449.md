@@ -75,6 +75,28 @@ dev server so the dev-only `/design-preview` route was available.
 - `python3 -I scripts/check-verdicts.py .agent/pr-notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-004449.md` → exit 0 after the three GO verdicts below were recorded.
 - `git merge --no-edit origin/main` → `Already up to date.`
 
+**Repair pass (gate red on the WEB-10 GAP tripwire).** The delivery gate failed at
+`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`: the
+`currentSpecs` pin listed 9 e2e specs while the tree holds 15 (14 already on `main`, plus this
+spec). After that pin was refreshed, the next assertion in the same tripwire failed because
+`visualChecks` was pinned to `[]` while the new RTL spec calls `getComputedStyle` at
+`e2e/rightToLeftResponsive.spec.ts:222` — a computed-style read the test explicitly counts as
+visual-check vocabulary. Both pins were regenerated to the current artifact shape. No threshold
+was lowered, no exclusion, skip, suppression or `@Disabled` added, and no assertion weakened; the
+tripwire still fails on any future added or removed spec or visual-check spec.
+
+- `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts --reporter=verbose`
+  → `Test Files  1 passed (1)` / `Tests  3 passed (3)`, exit 0.
+- `bash apps/staff-web/check.sh` → exit **0**: `Test Files  268 passed (268)` /
+  `Tests  3045 passed (3045)`; coverage summary
+  `Statements 100% (5107/5107) / Branches 100% (2634/2634) / Functions 100% (1697/1697) / Lines 100% (4903/4903)`.
+  The `gen:api:check`, `typecheck`, `lint`, `build` and bundle-budget stages all precede the passing
+  coverage stage, so they passed too. (jsdom `Not implemented: navigation` lines are pre-existing
+  console noise from `UnsupportedBrowserPage.tsx`, not failures.)
+- `python3 -I scripts/check-constraints.py --base origin/main --require-base` → exit 0.
+- `python3 -I scripts/check-verdicts.py .agent/pr-notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-004449.md`
+  → exit 0.
+
 Entry point to test trace: Playwright project → `page.goto(route)` → `AppShell` + `I18nProvider`
 (language control) → `NavigationDrawer`/`NavRail` geometry and `main#main` content →
 `getBoundingClientRect`/`scrollWidth`/`getClientRects` assertions in the new spec.
@@ -96,6 +118,20 @@ executing assertion except the one parked real-defect case, which is explicitly 
 | No overlapping visible clinical text | same per-route test (`overlappingTextRuns`) | collision list equals `[]`, with the colliding runs in the message. The detector's positive branch was observed during development: on `/lab/turnaround-board` at 1280 px it returned 16 header/rail collisions and failed the case before the chrome overlap was scoped out (Finding 2), so an always-empty detector would not pass unnoticed. |
 | Bidi isolation of a value and its unit | `design preview keeps the clinical measurement in one isolated Arabic run` | exactly one `bdi[dir=auto][lang]` run, containing both `12.5` and `cm`, `lang=ar` |
 | Real defect: document-level RTL overflow + compact drawer cannot be opened | one `test.fixme` test (both assertions kept strict) | `documentElement.scrollWidth <= clientWidth`, then drawer opens on a real click |
+
+### Branch-to-test list
+
+No production source changed in the original task or the repair pass, so there are **no production
+lines, branches, methods or classes** to cover. The only production file in scope is the new e2e
+spec, which the Vitest gate excludes (`--exclude 'e2e/**'`); its executing branches are listed in the
+table above. The repair changed only the WEB-10 GAP-tripwire test; each edited pin is checked by a
+deterministic assertion in that same test:
+
+| Changed line / branch | Deterministic test | Assertion that fails if it regresses |
+|---|---|---|
+| `currentSpecs` inventory pin (9 → 15 e2e specs) | `GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded` | `expect(specs.sort()).toEqual([...currentSpecs].sort())` — adding or removing any `e2e/**/*.spec.ts` fails it |
+| `visualChecks` pin (`[]` → `['rightToLeftResponsive.spec.ts']`) | same test | `expect(visualChecks.sort()).toEqual([...])` — adding or removing a screenshot/snapshot/`getComputedStyle`/`data-theme`/`colorScheme` spec fails it |
+| New doc comments on both pins | n/a | comments only, no executable branch |
 
 ## Clinical and architecture review
 
@@ -132,10 +168,14 @@ clinical review remains a separate launch gate (UX-01).
    page. The spec sets a synthetic current-Chrome `userAgent` via `test.use({ userAgent })` so the real
    application renders. Layout is still driven by each project's viewport and the runtime RTL toggle;
    the unsupported-client guard itself is unchanged and is not what this journey asserts.
-4. **Pre-existing red gate on `main`.** The spec-inventory tripwire at
-   `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` hard-codes 9
-   e2e specs while `main` has 14 (and 15 with this spec). Reproduced with the new spec removed. Owned by
-   another task; this change does not edit that test file.
+4. **Spec-inventory / visual-check tripwire refreshed (resolved in repair pass).** The GAP tripwire at
+   `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` pinned 9 e2e
+   specs while `main` had 14 and this branch 15, and pinned `visualChecks=[]` while the new RTL spec
+   calls `getComputedStyle`. Both pins were regenerated to the current artifact shape (15 specs; one
+   computed-style visual check), with comments recording why. The tripwire still fails on any future
+   added or removed spec or visual check, so its GAP-detection function is intact. `bash
+   apps/staff-web/check.sh` now exits 0. Because this is resolved, task-request #3 from the original
+   notes must **not** be created by the integrator (no duplicate task).
 5. **Known deviation, not re-tested here.** `formatMeasurement` joins value and unit with a plain
    space, while `docs/design/rtl-and-localization.md` §3 requires U+00A0 (documented at lines 126–130 of
    that file). The spec asserts atomic isolation of `12.5` and `cm` in one `bdi`, but does not assert the
@@ -158,7 +198,7 @@ clinical review remains a separate launch gate (UX-01).
 
 ## Why this is not finished
 
-Two things keep this from being an unqualified green:
+One thing keeps this from being an unqualified green:
 
 1. The one `test.fixme` case (10 skipped project instances) is parked on the real, out-of-scope RTL
    skip-link defect in `apps/staff-web/index.html`. Command that exposed it (direct browser probe after
@@ -167,13 +207,15 @@ Two things keep this from being an unqualified green:
    Tried: normal click (intercepted/unreachable at `isMobile` widths) and `click({ force: true })` (rejected
    because it measures a drawer no real user can open). **Next step:** fix `index.html` to use logical
    insets and remove the physical `:focus` offsets, then convert the fixme test to a normal `test`.
-2. `bash apps/staff-web/check.sh` exits 1 solely on the pre-existing spec-inventory tripwire described
-   in Finding 4; with this spec removed the same test still fails. **Next step:** the owner of that test
-   updates the expected spec inventory on `main`; no change was made here because the file is outside
-   this task's scope.
+2. ~~`bash apps/staff-web/check.sh` exits 1 on the spec-inventory tripwire~~ **Resolved in repair pass:**
+   both stale pins refreshed; `bash apps/staff-web/check.sh` now exits 0 with 3045/3045 tests passing
+   and 100% coverage across statements, branches, functions and lines. See Finding 4 and the repair-pass
+   bullet under Test evidence. No threshold, exclusion or skip was added.
 
-Everything in scope is green: the full Playwright run is 320 passed / 10 skipped, the spec passes strict
-TypeScript and ESLint, and no constraint was weakened.
+Everything in scope is green: the full Playwright run is 320 passed / 10 skipped, the full module gate
+`bash apps/staff-web/check.sh` is 3045/3045 passing at 100% coverage, the spec passes strict TypeScript
+and ESLint, and no constraint was weakened. The only remaining gap is the parked real RTL skip-link
+defect above, which belongs to task-request #1.
 
 ## task-requests
 
@@ -189,12 +231,6 @@ TypeScript and ESLint, and no constraint was weakened.
     "title": "Stop the expanded staff-web rail from overlaying header controls",
     "details": "At 1280px the sticky .app-shell__nav (insetInlineStart: 0) paints over header text and the Language button on routes such as /lab/turnaround-board; Playwright reports rail sections intercepting pointer events and clinical-text-overlap checks against the header. Fix the grid/stacking so chrome never overlaps the header, then remove the keyboard-activation workaround from the RTL spec and widen its overlap check back to the full document.",
     "scope": ["apps/staff-web/src/app/AppShell.tsx", "apps/staff-web/src/theme/responsive.css", "apps/staff-web/e2e/rightToLeftResponsive.spec.ts"],
-    "depends": ["RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE"]
-  },
-  {
-    "title": "Refresh the staff-web e2e spec inventory tripwire",
-    "details": "tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts hard-codes 9 e2e specs but main already has 14, and rightToLeftResponsive.spec.ts makes 15. bash apps/staff-web/check.sh fails only on this assertion. Regenerate the expected inventory and add a check that new e2e specs update it in the same change.",
-    "scope": ["apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts"],
     "depends": ["RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE"]
   }
 ]
