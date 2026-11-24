@@ -86,8 +86,9 @@ const e2eSpecs = (): string[] =>
  * The exact e2e spec set committed today; a new journey must replace this pin.
  *
  * The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
- * journeys were added by commit 4698687f (BUILD-60). Pinning them keeps the
- * tripwire honest: the remaining GAP assertions (no staging-RC report, no
+ * journeys were added by commit 4698687f (BUILD-60), and the device-orientation
+ * journey is pinned here as an intentional harness change. Pinning them keeps
+ * the tripwire honest: the remaining GAP assertions (no staging-RC report, no
  * light/dark visual checks) still fail the day that evidence actually lands.
  */
 const currentSpecs: readonly string[] = [
@@ -98,6 +99,7 @@ const currentSpecs: readonly string[] = [
   'labflow/lab-journey.spec.ts',
   'navigationDrawerFlow.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'orientationChange.spec.ts',
   'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
