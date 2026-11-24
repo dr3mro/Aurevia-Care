@@ -1,5 +1,6 @@
-- [ ] RESP-E2E-TOUCH-TARGETS · Staff web end-to-end: touchTargets across phone, tablet and desktop
-  - attempts: 2
+- [-] RESP-E2E-TOUCH-TARGETS · Staff web end-to-end: touchTargets across phone, tablet and desktop
+  - agent: swarm-1
+  - attempts: 3
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/touchTargets.spec.ts
   - depends: RESP-E2E-PROJECTS
