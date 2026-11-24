@@ -2,9 +2,10 @@
 
 CODING_STYLE.md says to name packages and folders by business domain, never by
 an ID such as s_g1_08, x_01, DLV-02 or CW-004. Workers kept copying the task ID,
-so the rule is enforced here. The legacy names below exist today and are being
-renamed by REFACTOR-PACKAGES-02 and AUD-20261120-05; delete each entry when its
-folder is renamed. Nothing new may be added to this list.
+so the rule is enforced here. There are no repository exemptions: the old
+allow-list was removed once the last story-ID folders were renamed. The
+``legacy`` argument is only a fixture seam for the comparison, not a way to
+tolerate a path in this repository.
 """
 import os
 import re
@@ -19,15 +20,6 @@ ID_NAME = re.compile(
 JAVA_PACKAGE = re.compile(r"^\s*package\s+([\w.]+)\s*;", re.MULTILINE)
 SKIP = {".git", "node_modules", ".agent", "target", "__pycache__"}
 SKIP_PREFIXES = ("docs/archive/", "docs/swarm/")
-LEGACY = {
-    "contracts/x_01", "contracts/x_02", "contracts/x_03",
-    "apps/api/src/main/java/com/aurevia/api/x_01",
-    "apps/api/src/main/java/com/aurevia/api/x_02",
-    "apps/api/src/main/java/com/aurevia/api/x_03",
-    "apps/api/src/test/java/com/aurevia/api/x_01",
-    "apps/api/src/test/java/com/aurevia/api/x_02",
-    "apps/api/src/test/java/com/aurevia/api/x_03",
-}
 
 
 def tracked_files(root):
@@ -42,7 +34,7 @@ def tracked_files(root):
         return found
 
 
-def violations(root, files=None, legacy=LEGACY):
+def violations(root, files=None, legacy=()):
     bad = set()
     for path in files if files is not None else tracked_files(root):
         if path.startswith(SKIP_PREFIXES) or SKIP & set(path.split("/")):

@@ -28,6 +28,15 @@ class CheckNamesTest(unittest.TestCase):
         files = ["contracts/x_01/a.yaml", "contracts/x_09/a.yaml"]
         self.assertEqual(self.found(files, {"contracts/x_01"}), ["contracts/x_09"])
 
+    def test_repository_default_rejects_former_legacy_paths(self):
+        """The repository-wide check must not exempt folders from a completed rename."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "contracts/x_01/a.yaml")
+            path.parent.mkdir(parents=True)
+            path.write_text("x")
+            self.assertEqual(check_names.violations(tmp, ["contracts/x_01/a.yaml"]),
+                             ["contracts/x_01"])
+
     def test_java_package_segment_is_checked(self):
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp, "src/Foo.java"); p.parent.mkdir()
