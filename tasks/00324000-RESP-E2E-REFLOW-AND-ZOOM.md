@@ -1,5 +1,4 @@
-- [-] RESP-E2E-REFLOW-AND-ZOOM · Staff web end-to-end: reflowAndZoom across phone, tablet and desktop
-  - agent: swarm-1
+- [ ] RESP-E2E-REFLOW-AND-ZOOM · Staff web end-to-end: reflowAndZoom across phone, tablet and desktop
   - attempts: 2
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/reflowAndZoom.spec.ts

@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createElement } from 'react';
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TransportError } from '../../../src/api/transport';
 import type { TransportErrorKind } from '../../../src/api/transport';
@@ -237,17 +237,26 @@ describe('WEB-09 clause 1 — resilient screens', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByTestId('settings-compare')).toBeNull();
     expect(replyField().value).toBe(outOfOfficeSettings.outOfOfficeReply);
-    const reloadedLeave = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(reloadedLeave);
-    expect(reloadedLeave.defaultPrevented).toBe(false);
+    // The passive effect that removes the listener can run after the status
+    // paints, so poll the observable guard state instead of racing one dispatch.
+    await waitFor(() => {
+      const reloadedLeave = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(reloadedLeave);
+      expect(reloadedLeave.defaultPrevented).toBe(false);
+    });
 
     onSave.mockResolvedValue(undefined);
     fireEvent.change(replyField(), { target: { value: 'Synthetic corrected reply' } });
     submitSettings();
     expect(await screen.findByText(settingsText('en', 'saved'))).toBeTruthy();
-    const savedLeave = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(savedLeave);
-    expect(savedLeave.defaultPrevented).toBe(false);
+    // The save resolves in a microtask; its setDirty(false) cleanup is a
+    // passive effect that may land after 'saved' is visible. Match the
+    // SettingsPage pattern and wait for the guard to be observably gone.
+    await waitFor(() => {
+      const savedLeave = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(savedLeave);
+      expect(savedLeave.defaultPrevented).toBe(false);
+    });
   });
 
   it('logsOnlyTheCorrelationIdAndErrorNameFromTheGlobalBoundary', () => {

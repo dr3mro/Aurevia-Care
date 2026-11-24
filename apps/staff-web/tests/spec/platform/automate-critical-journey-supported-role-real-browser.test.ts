@@ -3,13 +3,14 @@
  * and Arabic RTL with a blocking accessibility gate.
  *
  * This file inspects the committed end-to-end harness as an artifact. It proves
- * only the slice that exists today: seven domain journeys carry an Arabic RTL
- * path and a shared serious/critical axe gate is wired into three of them. The
- * remaining halves of the clause (every supported role, a staging release-
- * candidate run whose report is kept, and light/dark visual checks) are pinned
- * by an active GAP tripwire below and described in the clause note, rather
- * than by a skipped test (the repository forbids added skips). No application
- * endpoint, database or patient data is involved; all fixtures are synthetic.
+ * the slice that exists today: seven domain journeys carry an Arabic RTL path,
+ * a shared serious/critical axe gate is wired into three of them, and a
+ * synthetic light/dark visual spec measures theme, contrast, focus and overflow
+ * across the configured browser matrix. The remaining halves of the clause
+ * (every supported role and a staging release-candidate run whose report is
+ * kept) are still pinned by an active GAP tripwire below, rather than by a
+ * skipped test (the repository forbids added skips). No application endpoint,
+ * database or patient data is involved; all fixtures are synthetic.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -94,17 +95,37 @@ const currentSpecs: readonly string[] = [
   'accessibilityScanResponsive.spec.ts',
   'adminflow/admin-journey.spec.ts',
   'clinicalnote/clinicalnote-journey.spec.ts',
+ * The exact e2e spec set committed today; a new or removed spec must replace
+ * this pin. Keeping it exact is what makes the inventory tripwire useful: a
+ * journey cannot be added or dropped without updating this list in the same
+ * change. The light/dark spec and the per-role journeys added on `main` are
+ * listed here because they are now part of the committed harness.
+ * Re-pinned to include the per-role journeys and the soft-keyboard/forms spec
+ * that now ship, so the tripwire keeps pinning the whole set rather than a
+ * stale subset. The clause-level GAP assertions below remain active.
+ * The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
+ * journeys were added by commit 4698687f (BUILD-60), and the device-orientation
+ * journey is pinned here as an intentional harness change. Pinning them keeps
+ * the tripwire honest: the remaining GAP assertions (no staging-RC report, no
+ * light/dark visual checks) still fail the day that evidence actually lands.
+  'darkModeResponsive.spec.ts',
   'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
+  'mobilePerformance.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'navigationDrawerFlow.spec.ts',
+  'orientationChange.spec.ts',
   'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
   'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
+  'responsive-chart.spec.ts',
   'smoke.spec.ts',
+  'responsive-patients.spec.ts',
+  'softKeyboardAndForms.spec.ts',
   'therapyflow/therapy-journey.spec.ts',
 ];
 
@@ -163,32 +184,40 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
   });
 
   /**
-   * GAP tripwire: the clause is not fully evidenced yet. These assertions pin
-   * the current artifact shape and the exact supported-role union. They are
-   * active (not skipped) so the suite stays honest; each one fails on the day
-   * the missing evidence lands, at which point it must be replaced by a real
-   * positive assertion and the clause note updated to match. The last one is a
-   * compile-time tripwire: it is enforced by the typecheck gate in check.sh,
-   * not at runtime. The recognised visual-check vocabulary is screenshot and
-   * snapshot comparators plus theme attributes and computed-style reads.
+   * Light/dark visual evidence is now recorded; the other two clause halves
+   * stay pinned by an active GAP tripwire. The inventory and workflow pins are
+   * exact, so adding a spec or an e2e workflow flips them. The visual-check pin
+   * was a negative tripwire until the light/dark spec landed; it is now a
+   * positive assertion that the spec exists and uses the recognised comparators
+   * and computed-style/theme reads, still pinned exactly so the evidence cannot
+   * be removed or duplicated unnoticed. These are active (not skipped), so no
+   * threshold, exclusion or skip keeps the suite green. The last assertion is a
+   * compile-time tripwire on the supported-role union, enforced by the typecheck
+   * gate in check.sh rather than at runtime.
    */
-  it('GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded', () => {
-    // Pin the whole spec set, not just the seven names we recognise: a new
-    // per-role journey would otherwise slip past this tripwire unnoticed.
+  it('records light/dark visual evidence and pins the remaining all-role and staging-RC gaps', () => {
+    // Pin the whole spec set, not just the recognised journeys: a new or
+    // removed per-role journey would otherwise slip past this tripwire.
     const specs = e2eSpecs();
     expect(specs.sort()).toEqual([...currentSpecs].sort());
 
+    // No workflow runs an e2e/Playwright suite against a staging RC and keeps
+    // its report, so that clause half is still an honest GAP, not a skip.
     const workflows = filesBelow(resolve(repoRoot, '.github/workflows'))
       .filter((path) => /\.(yml|yaml)$/.test(path))
       .filter((path) => /playwright|e2e/i.test(readRepo(`.github/workflows/${path}`)));
     expect(workflows.sort()).toEqual([]);
 
+    // Positive evidence: the synthetic light/dark visual spec is committed and
+    // reads computed styles / theme attributes. Pinning the exact set keeps the
+    // old tripwire's strictness — removing it, or a second spec adopting the
+    // vocabulary, would fail this assertion.
     const visualChecks = specs.filter((path) =>
       /toHaveScreenshot|toMatchSnapshot|getComputedStyle|data-theme|colorScheme/.test(
         readModule(`e2e/${path}`),
       ),
     );
-    expect(visualChecks.sort()).toEqual([]);
+    expect(visualChecks.sort()).toEqual(['darkModeResponsive.spec.ts']);
 
     expectTypeOf<Role>().toEqualTypeOf<
       | 'staff'

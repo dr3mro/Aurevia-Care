@@ -214,8 +214,8 @@ class InstantMessagingIntegrationTest {
     @Test
     void aRetriedSendPublishesExactlyOneMessage() {
         String conversation = direct();
-        var first = service.send(new SendRequest(FACILITY, conversation, "one"), "retry-key");
-        var retry = service.send(new SendRequest(FACILITY, conversation, "different body"), "retry-key");
+        var first = service.send(conversation, new SendRequest(FACILITY, conversation, "one"), "retry-key");
+        var retry = service.send(conversation, new SendRequest(FACILITY, conversation, "different body"), "retry-key");
 
         assertEquals(first.id(), retry.id());
         assertEquals(first.sequence(), retry.sequence());
@@ -224,14 +224,111 @@ class InstantMessagingIntegrationTest {
         assertEquals(1L, first.sequence());
     }
 
+    /**
+     * The URL conversation is the authorization and write target. A body that names a
+     * different, equally accessible conversation must be refused before either thread
+     * is touched; two permitted conversations stop a permission denial masking the bug.
+     */
+    @Test
+    void anHttpBodyConversationMismatchWritesToNeitherConversation() throws Exception {
+        String direct = mvc.perform(headers(post(BASE + "/direct"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new OpenDirectRequest(FACILITY, PEER))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String directId = mapper.readTree(direct).get("id").asText();
+        String group = mvc.perform(headers(post(BASE + "/groups"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(
+                                new CreateGroupRequest(FACILITY, "handover", java.util.List.of(PEER)))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String groupId = mapper.readTree(group).get("id").asText();
+        // Seed both threads through the matching URL so a later mismatch cannot
+        // hide behind an empty history.
+        mvc.perform(headers(post(BASE + "/{id}/messages", directId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "seed-direct")
+                        .content(mapper.writeValueAsString(new SendRequest(FACILITY, directId, "direct seed"))))
+                .andExpect(status().isOk());
+        mvc.perform(headers(post(BASE + "/{id}/messages", groupId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "seed-group")
+                        .content(mapper.writeValueAsString(new SendRequest(FACILITY, groupId, "group seed"))))
+                .andExpect(status().isOk());
+
+        mvc.perform(headers(post(BASE + "/{id}/messages", directId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "mismatch-direct")
+                        .content(mapper.writeValueAsString(new SendRequest(FACILITY, groupId, "to the group"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        mvc.perform(headers(post(BASE + "/{id}/messages", groupId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "mismatch-group")
+                        .content(mapper.writeValueAsString(new SendRequest(FACILITY, directId, "to the direct"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+
+        assertEquals(1, store.messages(ORG_A, directId, 0L, null).size());
+        assertEquals(1, store.messages(ORG_A, groupId, 0L, null).size());
+        assertEquals("direct seed", store.messages(ORG_A, directId, 0L, null).get(0).body());
+        assertEquals("group seed", store.messages(ORG_A, groupId, 0L, null).get(0).body());
+        assertTrue(store.messageByClientId(ORG_A, directId, "mismatch-direct").isEmpty());
+        assertTrue(store.messageByClientId(ORG_A, groupId, "mismatch-direct").isEmpty());
+        assertTrue(store.messageByClientId(ORG_A, directId, "mismatch-group").isEmpty());
+        assertTrue(store.messageByClientId(ORG_A, groupId, "mismatch-group").isEmpty());
+    }
+
+    /** The same key replayed through the matching URL returns the original message. */
+    @Test
+    void aSameKeyRetryThroughTheMatchingUrlPublishesOneMessage() throws Exception {
+        String conversation = direct();
+        String first = mvc.perform(headers(post(BASE + "/{id}/messages", conversation))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "http-retry-key")
+                        .content(mapper.writeValueAsString(new SendRequest(FACILITY, conversation, "one"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String retry = mvc.perform(headers(post(BASE + "/{id}/messages", conversation))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "http-retry-key")
+                        .content(mapper.writeValueAsString(new SendRequest(FACILITY, conversation, "different body"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals(mapper.readTree(first).get("id").asText(), mapper.readTree(retry).get("id").asText());
+        assertEquals(mapper.readTree(first).get("sequence").asLong(), mapper.readTree(retry).get("sequence").asLong());
+        assertEquals(1L, mapper.readTree(first).get("sequence").asLong());
+        assertEquals("one", mapper.readTree(retry).get("body").asText());
+        assertEquals(1, store.messages(ORG_A, conversation, 0L, null).size());
+    }
+
+    /** Deduplication is per conversation, so one key cannot suppress another thread's message. */
+    @Test
+    void oneKeyInTwoMatchingUrlsPublishesOneMessagePerConversation() throws Exception {
+        String first = direct();
+        String second = service.createGroup(
+                new CreateGroupRequest(FACILITY, "handover", java.util.List.of(PEER))).id();
+        for (String conversation : java.util.List.of(first, second)) {
+            mvc.perform(headers(post(BASE + "/{id}/messages", conversation))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header("Idempotency-Key", "shared-key")
+                            .content(mapper.writeValueAsString(new SendRequest(FACILITY, conversation, "body"))))
+                    .andExpect(status().isOk());
+        }
+        assertEquals(1, store.messages(ORG_A, first, 0L, null).size());
+        assertEquals(1, store.messages(ORG_A, second, 0L, null).size());
+    }
+
     @Test
     void aRemovedMemberKeepsHistoryButCannotReadLaterMessages() throws Exception {
         String conversation = service.createGroup(
                 new CreateGroupRequest(FACILITY, "handover", java.util.List.of(PEER))).id();
-        service.send(new SendRequest(FACILITY, conversation, "before leave"), "before");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "before leave"), "before");
         service = new InstantMessagingService(store, Clock.fixed(NOW.plusSeconds(5), ZoneOffset.UTC));
         service.removeParticipant(FACILITY, conversation, PEER);
-        service.send(new SendRequest(FACILITY, conversation, "after leave"), "after");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "after leave"), "after");
 
         assertEquals(2, store.messages(ORG_A, conversation, 0L, null).size());
         context(PEER);
@@ -239,14 +336,14 @@ class InstantMessagingIntegrationTest {
         assertEquals(1, visible.size());
         assertEquals("before leave", visible.get(0).body());
         assertEquals(403, assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(FACILITY, conversation, "reply"), "blocked")).status());
+                () -> service.send(conversation, new SendRequest(FACILITY, conversation, "reply"), "blocked")).status());
     }
 
     @Test
     void unreadCountsArePerPersonAndASeenMessageIsNoLongerUnread() throws Exception {
         String conversation = direct();
-        service.send(new SendRequest(FACILITY, conversation, "first"), "m1");
-        service.send(new SendRequest(FACILITY, conversation, "second"), "m2");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "first"), "m1");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "second"), "m2");
 
         context(PEER);
         assertEquals(2L, service.unreadCounts(FACILITY).get(0).unreadCount());
@@ -264,8 +361,8 @@ class InstantMessagingIntegrationTest {
     @Test
     void staleAndRepeatedMarkReadDoNotMoveTheCursorBackwards() {
         String conversation = direct();
-        service.send(new SendRequest(FACILITY, conversation, "first"), "m1");
-        service.send(new SendRequest(FACILITY, conversation, "second"), "m2");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "first"), "m1");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "second"), "m2");
 
         context(PEER);
         service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
@@ -280,8 +377,8 @@ class InstantMessagingIntegrationTest {
     @Test
     void aHigherReadAcknowledgementRaisesTheCursor() {
         String conversation = direct();
-        service.send(new SendRequest(FACILITY, conversation, "first"), "raise-1");
-        service.send(new SendRequest(FACILITY, conversation, "second"), "raise-2");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "first"), "raise-1");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "second"), "raise-2");
 
         context(PEER);
         service.markRead(new MarkReadRequest(FACILITY, conversation, 1L));
@@ -297,8 +394,8 @@ class InstantMessagingIntegrationTest {
     @Test
     void readCursorSurvivesANewStoreInstance() {
         String conversation = direct();
-        service.send(new SendRequest(FACILITY, conversation, "first"), "persist-1");
-        service.send(new SendRequest(FACILITY, conversation, "second"), "persist-2");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "first"), "persist-1");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "second"), "persist-2");
 
         context(PEER);
         service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
@@ -313,14 +410,14 @@ class InstantMessagingIntegrationTest {
     @Test
     void futureCursorIsClampedSoTheNextMessageBecomesUnread() {
         String conversation = direct();
-        service.send(new SendRequest(FACILITY, conversation, "first"), "clamp-1");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "first"), "clamp-1");
 
         context(PEER);
         service.markRead(new MarkReadRequest(FACILITY, conversation, Long.MAX_VALUE));
         assertEquals(1L, store.readSequence(ORG_A, conversation, PEER));
 
         context(ACTOR);
-        service.send(new SendRequest(FACILITY, conversation, "second"), "clamp-2");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "second"), "clamp-2");
         context(PEER);
         assertEquals(1L, service.unreadCounts(FACILITY).get(0).unreadCount());
     }
@@ -334,7 +431,7 @@ class InstantMessagingIntegrationTest {
         assertEquals(0L, store.readSequence(ORG_A, conversation, PEER));
 
         context(ACTOR);
-        service.send(new SendRequest(FACILITY, conversation, "later"), "clamp-empty");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "later"), "clamp-empty");
         context(PEER);
         assertEquals(1L, service.unreadCounts(FACILITY).get(0).unreadCount());
     }
@@ -346,8 +443,8 @@ class InstantMessagingIntegrationTest {
     @Test
     void cursorIsIsolatedByTenantAndParticipant() throws Exception {
         String conversation = direct();
-        service.send(new SendRequest(FACILITY, conversation, "first"), "iso-1");
-        service.send(new SendRequest(FACILITY, conversation, "second"), "iso-2");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "first"), "iso-1");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "second"), "iso-2");
 
         context(PEER);
         service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
@@ -374,8 +471,8 @@ class InstantMessagingIntegrationTest {
     @Test
     void markReadDenialsDoNotMoveTheCursor() throws Exception {
         String conversation = direct();
-        service.send(new SendRequest(FACILITY, conversation, "first"), "deny-1");
-        service.send(new SendRequest(FACILITY, conversation, "second"), "deny-2");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "first"), "deny-1");
+        service.send(conversation, new SendRequest(FACILITY, conversation, "second"), "deny-2");
 
         mvc.perform(headersFor(post(BASE + "/read"), PEER)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -445,7 +542,7 @@ class InstantMessagingIntegrationTest {
     void aWrongFacilityOrTenantIsRefused() throws Exception {
         String conversation = direct();
         assertEquals(403, assertThrows(ApiException.class,
-                () -> service.send(new SendRequest(OTHER_FACILITY, conversation, "body"), "wrong-facility"))
+                () -> service.send(conversation, new SendRequest(OTHER_FACILITY, conversation, "body"), "wrong-facility"))
                 .status());
 
         try (Connection connection = dataSource.getConnection();
