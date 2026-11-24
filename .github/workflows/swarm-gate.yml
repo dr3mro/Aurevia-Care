@@ -14,12 +14,10 @@ permissions:
   contents: read
   pull-requests: read
 
-# Never cancel a verdict for a commit that can be merged: branch protection
-# checks the exact SHA. queue:max keeps one pending run per ref.
+# Gate runs are independent: each pushed commit gets its own exact-SHA verdict.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: swarm-gate-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
 
 jobs:
   swarm-gate:

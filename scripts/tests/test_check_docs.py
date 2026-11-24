@@ -11,21 +11,39 @@ PREFIXES = {"MSG", "IAM", "ARC"}
 
 class IdTests(unittest.TestCase):
     def test_ranges_and_slashes_expand(self):
-        self.assertEqual(docs.mentioned_ids("MSG-01–03 and IAM-01/02", PREFIXES),
-                         {"MSG-01", "MSG-02", "MSG-03", "IAM-01", "IAM-02"})
+        self.assertEqual(
+            docs.mentioned_ids("MSG-01–03 and IAM-01/02", PREFIXES),
+            {"MSG-01", "MSG-02", "MSG-03", "IAM-01", "IAM-02"},
+        )
 
     def test_hyphen_range_and_longer_numbers(self):
-        self.assertEqual(docs.mentioned_ids("MSG-01-02", PREFIXES), {"MSG-01", "MSG-02"})
+        self.assertEqual(
+            docs.mentioned_ids("MSG-01-02", PREFIXES), {"MSG-01", "MSG-02"}
+        )
         self.assertEqual(docs.mentioned_ids("ARC-123", PREFIXES), set())
 
     def test_spec_ids_ignore_appendix(self):
-        text = "| IAM-01 | x |\n**ARC-02 · Isolation.**\n## Appendix A\n| IAM-99 | y |\n"
+        text = (
+            "| IAM-01 | x |\n**ARC-02 · Isolation.**\n## Appendix A\n| IAM-99 | y |\n"
+        )
         self.assertEqual(docs.spec_ids(text), {"IAM-01", "ARC-02"})
 
 
 class RepositoryTests(unittest.TestCase):
     def test_repository_docs_are_consistent(self):
         self.assertEqual(docs.check(ROOT), [])
+
+    def test_agent_notes_and_reports_are_not_enumerated_as_docs(self):
+        tmp = self.make_repo("IAM-01 clean\n")
+        for rel in (".agents/notes/N.md", ".agents/reports/2026-11-24.md",
+                    ".agents/notes/archive/x.md"):
+            path = tmp / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("bad | ragged | table\n")
+        names = [p.relative_to(tmp).as_posix() for p in docs.markdown_files(tmp)]
+        self.assertNotIn(".agents/notes/N.md", names)
+        self.assertNotIn(".agents/reports/2026-11-24.md", names)
+        self.assertNotIn(".agents/notes/archive/x.md", names)
 
     def make_repo(self, note):
         tmp = Path(tempfile.mkdtemp())
@@ -37,7 +55,9 @@ class RepositoryTests(unittest.TestCase):
         return tmp
 
     def test_unknown_id_and_broken_link_are_reported(self):
-        errors = docs.check(self.make_repo("See IAM-09 and [x](missing.md) and [y](https://a.b)"))
+        errors = docs.check(
+            self.make_repo("See IAM-09 and [x](missing.md) and [y](https://a.b)")
+        )
         self.assertEqual(len(errors), 2)
         self.assertTrue(any("IAM-09" in e for e in errors))
         self.assertTrue(any("missing.md" in e for e in errors))
@@ -48,19 +68,25 @@ class RepositoryTests(unittest.TestCase):
 
     def test_broken_link_to_a_moved_config_doc_is_reported(self):
         """Active links to a moved tracker must fail instead of being ignored."""
-        errors = docs.check(self.make_repo("IAM-01 [setup](README-SETUP.md) [memory](MEMORY.md)"))
+        errors = docs.check(
+            self.make_repo("IAM-01 [setup](README-SETUP.md) [memory](MEMORY.md)")
+        )
         self.assertEqual(len(errors), 2)
         self.assertTrue(any("README-SETUP.md" in e for e in errors), errors)
         self.assertTrue(any("MEMORY.md" in e for e in errors), errors)
 
     def test_broken_link_to_a_generated_view_is_reported(self):
         """TODO.md is generated and untracked, so a link to it breaks a clean checkout."""
-        errors = docs.check(self.make_repo("IAM-01 [tasks](TODO.md) [up](../../TODO.md#x)"))
+        errors = docs.check(
+            self.make_repo("IAM-01 [tasks](TODO.md) [up](../../TODO.md#x)")
+        )
         self.assertEqual(len(errors), 2)
 
     def test_broken_link_to_a_missing_task_file_is_reported(self):
         """Task files are tracked; a link to a nonexistent one is a real broken reference."""
-        errors = docs.check(self.make_repo("IAM-01 [t](../../tasks/00299000-GATE-X.md)"))
+        errors = docs.check(
+            self.make_repo("IAM-01 [t](../../tasks/00299000-GATE-X.md)")
+        )
         self.assertEqual(len(errors), 1)
 
     def test_historical_report_links_are_not_checked(self):
@@ -171,20 +197,27 @@ class StructureTests(unittest.TestCase):
 
     # File selection and combined document ----------------------------------
     def test_generated_files_exclude_records_and_notes(self):
-        root = self.repo("IAM-01 clean\n", extra={
-            "docs/swarm/REC.md": "# Record\n",
-            "docs/pr/notes/N.md": "# Note\n",
-            "docs/pr/reports/OLD.md": "# Old\n",
-            "docs/GOOD.md": "# Good\n",
-        })
-        names = sorted(p.relative_to(root).as_posix()
-                       for p in docs.generated_markdown_files(root))
-        self.assertEqual(names,
-                         [".opencode/config/PROJECT_V1_SPEC.md", "NOTE.md", "docs/GOOD.md"])
+        root = self.repo(
+            "IAM-01 clean\n",
+            extra={
+                "docs/swarm/REC.md": "# Record\n",
+                ".agents/notes/N.md": "# Note\n",
+                ".agents/reports/OLD.md": "# Old\n",
+                "docs/GOOD.md": "# Good\n",
+            },
+        )
+        names = sorted(
+            p.relative_to(root).as_posix() for p in docs.generated_markdown_files(root)
+        )
+        self.assertEqual(
+            names, [".opencode/config/PROJECT_V1_SPEC.md", "NOTE.md", "docs/GOOD.md"]
+        )
 
     def test_clean_document_passes_all_rules(self):
-        doc = ("# Title\n\n## Section\n\ntext\n\n```python\nx = 1\n```\n\n"
-               "| A | B |\n|---|---|\n| 1 | 2 |\n\n<!-- swarm-task:X -->\n")
+        doc = (
+            "# Title\n\n## Section\n\ntext\n\n```python\nx = 1\n```\n\n"
+            "| A | B |\n|---|---|\n| 1 | 2 |\n\n<!-- swarm-task:X -->\n"
+        )
         self.assertEqual(self.errors(doc), [])
 
     def test_cells_ignores_escaped_pipes(self):

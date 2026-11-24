@@ -15,9 +15,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: daily-devsecops
+  group: daily-devsecops-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
   # Keep every waiting run: without this a newer trigger replaces a waiting one,
   # so a failure event or the 2 AM run could be dropped.
 env:
@@ -78,7 +77,7 @@ jobs:
         if: always()
         with:
           name: daily-devsecops
-          path: .agent/daily-devsecops.json
+          path: .agents/daily-devsecops.json
           if-no-files-found: ignore
           retention-days: 1
   publish:

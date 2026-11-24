@@ -8,9 +8,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: pr-rebase-${{ github.event.pull_request.number }}
+  group: pr-rebase-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
 jobs:
   rebase:
     name: Rebase ${{ github.event.pull_request.head.ref }} onto main

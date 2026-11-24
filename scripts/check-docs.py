@@ -9,6 +9,7 @@
   control characters, unmasked tokens and unclosed HTML comments or markers.
   Report the file and line so the generator or the worker can fix it.
 """
+
 import re
 import sys
 from pathlib import Path
@@ -31,7 +32,8 @@ TABLE_PIPE = re.compile(r"(?<!\\)\|")
 CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 TOKEN = re.compile(
     r"(?<![A-Za-z0-9])(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
-    r"sk-[A-Za-z0-9_-]{20,})")
+    r"sk-[A-Za-z0-9_-]{20,})"
+)
 # docs/swarm holds immutable merge records built from clipped worker logs (one
 # ends inside a code fence). Structural rules never rewrite that history; links
 # and requirement IDs are still checked there exactly as before.
@@ -41,8 +43,9 @@ RECORD_PREFIXES = ("docs/swarm/",)
 def spec_ids(text):
     """Requirement IDs defined as table rows or bold paragraph leads."""
     body = text.split("## Appendix A")[0]
-    return set(re.findall(r"(?m)^\| ([A-Z]{2,4}-\d{2}) \|", body)) | \
-        set(re.findall(r"\*\*([A-Z]{2,4}-\d{2}) ·", body))
+    return set(re.findall(r"(?m)^\| ([A-Z]{2,4}-\d{2}) \|", body)) | set(
+        re.findall(r"\*\*([A-Z]{2,4}-\d{2}) ·", body)
+    )
 
 
 def mentioned_ids(text, prefixes):
@@ -50,7 +53,8 @@ def mentioned_ids(text, prefixes):
     found = set()
     pattern = re.compile(
         r"\b(" + "|".join(sorted(prefixes)) + r")-(\d{2})(?!\d)"
-        r"(?:[–-](\d{2})(?!\d)|((?:/\d{2})+))?")
+        r"(?:[–-](\d{2})(?!\d)|((?:/\d{2})+))?"
+    )
     for prefix, first, last, slashes in pattern.findall(text):
         numbers = [int(first)]
         if last:
@@ -61,20 +65,27 @@ def mentioned_ids(text, prefixes):
     return found
 
 
-# Worker notes and archives are records, not specs: agent-written text there must
-# not turn main red. Historical pull-request reports were moved from
-# docs/pr/notes/ to docs/pr/reports/; they stay records at the new location.
-SKIP_PREFIXES = (".agent/", "docs/archive/", "docs/pr/")
+# Worker notes and reconciled reports are records, not specs: agent-written text
+# there must not turn main red. They live under .agents/; docs/pr/ remains
+# skipped for older checkouts that still carry notes at the former location.
+SKIP_PREFIXES = (".agent/", ".agents/", "docs/archive/", "docs/pr/")
 
 
 def markdown_files(root):
     # The specification moved under .opencode/config; it must still be
     # enumerated so its links, IDs and structure are checked, even though the
     # rest of .opencode is skipped (instruction and tracker files).
-    return [p for p in root.rglob("*.md")
-            if (p.relative_to(root).as_posix() == SPEC
-                or (not SKIP & set(p.relative_to(root).parts)
-                    and not p.relative_to(root).as_posix().startswith(SKIP_PREFIXES)))]
+    return [
+        p
+        for p in root.rglob("*.md")
+        if (
+            p.relative_to(root).as_posix() == SPEC
+            or (
+                not SKIP & set(p.relative_to(root).parts)
+                and not p.relative_to(root).as_posix().startswith(SKIP_PREFIXES)
+            )
+        )
+    ]
 
 
 def generated_markdown_files(root):
@@ -83,8 +94,11 @@ def generated_markdown_files(root):
     Immutable merge records are excluded so an old clipped log cannot fail a
     commit; links and requirement IDs are still checked in them by ``check``.
     """
-    return [p for p in markdown_files(root)
-            if not p.relative_to(root).as_posix().startswith(RECORD_PREFIXES)]
+    return [
+        p
+        for p in markdown_files(root)
+        if not p.relative_to(root).as_posix().startswith(RECORD_PREFIXES)
+    ]
 
 
 def _cells(line):
@@ -131,7 +145,9 @@ def markdown_errors(text, rel):
         if match:
             level = len(match.group(1))
             if previous and level > previous + 1:
-                errors.append(f"{rel}:{number}: heading jumps from {previous} to {level}")
+                errors.append(
+                    f"{rel}:{number}: heading jumps from {previous} to {level}"
+                )
             previous = level
 
     # In a GFM table the header, the separator and every data row have the same
@@ -147,7 +163,8 @@ def markdown_errors(text, rel):
             actual = _cells(lines[row])
             if actual != expected:
                 errors.append(
-                    f"{rel}:{row + 1}: table row has {actual} cells, expected {expected}")
+                    f"{rel}:{row + 1}: table row has {actual} cells, expected {expected}"
+                )
             row += 1
 
     for number, line in enumerate(lines, 1):
@@ -178,7 +195,9 @@ def check(root=ROOT):
             if re.match(r"[a-z]+:|#", target):
                 continue
             file_part = target.split("#")[0]
-            if rel.parts[:2] == ("docs", "reference") and file_part.startswith(GENERATED):
+            if rel.parts[:2] == ("docs", "reference") and file_part.startswith(
+                GENERATED
+            ):
                 continue
             if file_part and not (path.parent / file_part).exists():
                 errors.append(f"{rel}: broken link {target}")

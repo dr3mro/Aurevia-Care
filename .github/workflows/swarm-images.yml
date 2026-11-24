@@ -16,11 +16,10 @@ on:
 permissions:
   contents: read
   packages: write
-# Queue: a cancelled slot-image publish leaves workers on a stale base.
+# Slot-image publishes are independent of other workflow runs.
 concurrency:
-  group: swarm-images
+  group: swarm-images-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}

@@ -2,12 +2,12 @@
   - agent: orca
   - branch: main
   - requirements: OPS-06
-  - scope: docs/pr/notes, docs/pr/reports, .agent, .gitignore, .github/workflows, .opencode, scripts, scripts/tests, tasks, docs
-  - details: The user moved all 990 `docs/pr/notes/*` files verbatim into `docs/pr/reports/` and deleted `docs/archive/`. Decision: raw worker notes (`<task-id>-<timestamp>.md`, fix variants and hand-off notes) live in `docs/pr/notes/`; reconciled daily reports (`<YYYY-MM-DD>.md`) live in `docs/pr/reports/`. Move the raw notes, then update every reference in notes, instruction files, skills, scripts, tests, workflows and trackers. Repair links to deleted `docs/archive/*` files without weakening checks. Verify with docs, Python tooling, coverage and workflow checks.
+  - scope: .agents/notes, .agents/reports, .agent, .gitignore, .github/workflows, .opencode, scripts, scripts/tests, tasks, docs
+  - details: The user moved all 990 `.agents/notes/*` files verbatim into `.agents/reports/` and deleted `docs/archive/`. Decision: raw worker notes (`<task-id>-<timestamp>.md`, fix variants and hand-off notes) live in `.agents/notes/`; reconciled daily reports (`<YYYY-MM-DD>.md`) live in `.agents/reports/`. Move the raw notes, then update every reference in notes, instruction files, skills, scripts, tests, workflows and trackers. Repair links to deleted `docs/archive/*` files without weakening checks. Verify with docs, Python tooling, coverage and workflow checks.
 
 ## Progress
 - [x] New path and file mapping verified (byte-identical moves)
-- [ ] Raw notes sorted into docs/pr/notes/
+- [ ] Raw notes sorted into .agents/notes/
 - [ ] References updated
 - [ ] Checks green
 - [ ] Reviews recorded
@@ -15,7 +15,7 @@
 ## `.agent/pr-notes` fix evidence (orca, interactive, 2026-11-24)
 
 Scoped fix: the last worker note still tracked under the old scratch path was moved
-byte-identically to `docs/pr/notes/START-18-20261124-041536.md` (`cmp` against
+byte-identically to `.agents/notes/START-18-20261124-041536.md` (`cmp` against
 `git show HEAD:<old>` → identical); `.gitignore` gained an explicit
 `/.agent/pr-notes/` rule and a comment; `scripts/agent-run.sh` no longer tells
 workers to create the old folder; `scripts/tests/test_notes_files.py` gained two
@@ -40,7 +40,7 @@ Review verdicts (reviewer evidence, bounded to this diff):
 
 The code reviewer and coverage auditor asked for one Optional tightening: the
 `assertIn` for the new path was also satisfied by a pre-existing comment, so it now
-asserts the exact prompt fragment `(under docs/pr/notes/; the file is named after
+asserts the exact prompt fragment `(under .agents/notes/; the file is named after
 your story`. No threshold, exclusion, skip or suppression was added. Evidence
 sources: executed tool commands and reviewer reports; no simulated user or human
 participant.

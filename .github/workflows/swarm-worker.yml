@@ -45,9 +45,8 @@ permissions:
 # Not the swarm's own group: the calling wave already holds it, so reusing it
 # here would wait on itself forever. One group per task of this run.
 concurrency:
-  group: swarm-worker-${{ github.run_id }}-${{ fromJSON(inputs.task).id }}
+  group: swarm-worker-${{ github.run_id }}-${{ inputs.slot }}
   cancel-in-progress: false
-  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}

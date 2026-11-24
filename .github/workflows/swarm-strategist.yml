@@ -11,9 +11,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: swarm-strategist
+  group: swarm-strategist-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -78,7 +77,7 @@ jobs:
         if: always()
         with:
           name: strategy-review
-          path: .agent/strategy.json
+          path: .agents/strategy.json
           if-no-files-found: ignore
           retention-days: 1
   publish:

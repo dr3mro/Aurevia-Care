@@ -18,9 +18,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: swarm-watchdog
+  group: swarm-watchdog-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
   # Keep every waiting run: without this a newer trigger replaces a waiting one,
   # so a failure event or the 2 AM run could be dropped.
 env:

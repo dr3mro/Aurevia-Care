@@ -42,9 +42,8 @@ permissions:
 # below is serialized, so two waves can never claim the same task, and the plan
 # job caps the workers running across all waves at 20 (scripts/swarm.py).
 concurrency:
-  group: ${{ format('agent-swarm-{0}', github.run_id) }}
+  group: swarm-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -55,9 +54,8 @@ jobs:
     # Planning reads tasks/ and claims tasks, so it never overlaps another
     # plan, whichever wave it belongs to.
     concurrency:
-      group: agent-swarm-plan
+      group: swarm-plan-${{ github.run_id }}
       cancel-in-progress: false
-      queue: max
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5

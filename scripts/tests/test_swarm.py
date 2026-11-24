@@ -1073,16 +1073,15 @@ class PlanTests(unittest.TestCase):
         self.assertIn('if [[ "$GITHUB_EVENT_NAME" == schedule ]]', gate)
         self.assertIn('scripts/swarm.py daily-admission', gate)
 
-    def test_waves_overlap_but_planning_stays_serial(self):
+    def test_waves_and_planning_run_independently_per_run(self):
         import yaml
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         config = yaml.safe_load(text)
         self.assertEqual(config[True]["workflow_dispatch"]["inputs"]["now"]["type"], "boolean")
-        group = config["concurrency"]["group"]
-        self.assertIn("github.run_id", group)
+        self.assertIn("github.run_id", config["concurrency"]["group"])
         self.assertIs(config["concurrency"]["cancel-in-progress"], False)
         plan = config["jobs"]["plan"]["concurrency"]
-        self.assertEqual(plan["group"], "agent-swarm-plan")
+        self.assertIn("github.run_id", plan["group"])
         self.assertIs(plan["cancel-in-progress"], False)
 
     def test_wave_is_capped_by_the_remaining_budget(self):
@@ -1883,6 +1882,19 @@ class AuditTests(unittest.TestCase):
         audit = text.split("  audit:")[1].split("  append:")[0]
         self.assertNotIn("GH_TOKEN", audit)
         self.assertNotIn("contents: write", audit)
+
+    def test_scheduled_reviews_publish_their_findings_from_agents(self):
+        expected = {
+            "daily-audit.yml": ".agents/audit-findings.json",
+            "daily-qa.yml": ".agents/daily-qa.json",
+            "daily-devsecops.yml": ".agents/daily-devsecops.json",
+            "swarm-strategist.yml": ".agents/strategy.json",
+        }
+        for name, path in expected.items():
+            with self.subTest(workflow=name):
+                text = (ROOT / ".github/workflows" / name).read_text()
+                self.assertIn(f"path: {path}", text)
+                self.assertNotIn("path: .agent/", text)
 
 
 class ScriptModeTests(unittest.TestCase):

@@ -22,9 +22,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: swarm-pr-flow
+  group: swarm-pr-flow-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
 env:
   SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
 

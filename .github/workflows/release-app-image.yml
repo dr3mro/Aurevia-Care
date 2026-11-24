@@ -9,9 +9,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: release-app-image-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
 
 jobs:
   build:

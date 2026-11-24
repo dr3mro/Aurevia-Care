@@ -32,7 +32,7 @@
     `python3 -I scripts/check-wiring.py` exit 0, no output.
     Tool: active references updated in `docs/reference/data-dictionary.md` and
     `docs/spec/clauses/**`; `git grep ... build_(01|...|16)` over active dirs
-    returns nothing. Historical records (tasks/, docs/swarm/, docs/pr/notes/)
+    returns nothing. Historical records (tasks/, docs/swarm/, .agents/notes/)
     left untouched by owner choice.
     Documented: `flyway repair` operator step in `db/migrations/README.md`; owner
     decision and date in `.opencode/config/MEMORY.md`.
@@ -43,7 +43,7 @@
     failed.
     Blocker (environment, not this change): `python3 -I scripts/check-docs.py`
     exit 1 with 151 lines from concurrent sessions moving `docs/pr-notes/` into
-    `docs/pr/reports/` and deleting `docs/archive/`; zero errors reference any
+    `.agents/reports/` and deleting `docs/archive/`; zero errors reference any
     file changed here and the same command on a clean `git archive HEAD` copy
     exits 0. A later run crashed in `scripts/check-docs.py` with
     `NameError: name 'MOVED_DOCS' is not defined` while another session edited
