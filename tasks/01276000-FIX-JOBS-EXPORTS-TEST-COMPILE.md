@@ -33,5 +33,8 @@
     → empty. No Java delta, threshold, pom or migration change remains on the
     branch. The compile fix is already on `main`; this entry records the
     diagnosis and verification only.
-    Reviewers: aurevia-senior-java-build GO; aurevia-code-reviewer required the
-    exact Java-conventions command and final line, added above.
+    Reviewers: aurevia-senior-java-build GO; aurevia-code-reviewer NO-GO on a
+    missing exact Java-conventions command, then GO after it was added above.
+  - ci-status: the same compile fix landed on main independently before
+    this branch was refreshed; the exact-SHA Delivery run for main is still
+    queued behind the runner backlog (see task 01273000).
