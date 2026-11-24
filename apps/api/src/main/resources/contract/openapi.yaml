@@ -2116,6 +2116,11 @@ paths:
     post:
       operationId: sendInstantMessage
       summary: Publish one message, deduplicating retries by the client message key
+      description: >-
+        Publishes to the conversation named by the path parameter. The body
+        `conversationId` is retained for client compatibility and must equal the
+        path `{conversationId}`. A mismatch is rejected with 422 `INVALID_INPUT`
+        before any write, so neither conversation is changed.
       tags: [staff-instant-messaging]
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
@@ -11168,11 +11173,14 @@ components:
         subject: { type: string }
     InstantSendRequest:
       type: object
+      description: Body of a send command; the conversation id must match the request path.
       required: [facilityId, conversationId, body]
       additionalProperties: false
       properties:
         facilityId: { type: string }
-        conversationId: { type: string }
+        conversationId:
+          type: string
+          description: Must equal the path conversationId; a mismatch returns 422 INVALID_INPUT and writes to neither conversation.
         body: { type: string, minLength: 1 }
     InstantMarkReadRequest:
       type: object
