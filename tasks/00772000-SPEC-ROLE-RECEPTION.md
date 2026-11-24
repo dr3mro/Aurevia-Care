@@ -1,5 +1,4 @@
-- [-] SPEC-ROLE-RECEPTION · Spec section 2 role matrix (API test): Reception
-  - agent: swarm-7
+- [ ] SPEC-ROLE-RECEPTION · Spec section 2 role matrix (API test): Reception
   - attempts: 1
   - requirements: IAM-01
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleReceptionTest.java, docs/spec/clauses/authz/role-reception.md
