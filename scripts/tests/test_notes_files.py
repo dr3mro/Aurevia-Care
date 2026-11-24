@@ -37,7 +37,7 @@ class NotesFileTests(unittest.TestCase):
     def test_worker_prompt_points_to_the_new_notes_directory(self):
         script = (ROOT / "scripts/agent-run.sh").read_text()
         self.assertNotIn("create the pr-notes folder", script)
-        self.assertIn("under docs/pr/notes/", script)
+        self.assertIn("(under docs/pr/notes/; the file is named after your story", script)
 
 
 if __name__ == "__main__":
