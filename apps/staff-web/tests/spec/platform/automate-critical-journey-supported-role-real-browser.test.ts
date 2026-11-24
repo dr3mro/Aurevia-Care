@@ -87,6 +87,12 @@ const e2eSpecs = (): string[] =>
  * Re-pinned to include the per-role journeys and the soft-keyboard/forms spec
  * that now ship, so the tripwire keeps pinning the whole set rather than a
  * stale subset. The clause-level GAP assertions below remain active.
+ *
+ * The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
+ * journeys were added by commit 4698687f (BUILD-60), and the device-orientation
+ * journey is pinned here as an intentional harness change. Pinning them keeps
+ * the tripwire honest: the remaining GAP assertions (no staging-RC report, no
+ * light/dark visual checks) still fail the day that evidence actually lands.
  */
 const currentSpecs: readonly string[] = [
   'adminflow/admin-journey.spec.ts',
@@ -94,13 +100,16 @@ const currentSpecs: readonly string[] = [
   'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
+  'navigationDrawerFlow.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'orientationChange.spec.ts',
   'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
   'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
+  'responsive-patients.spec.ts',
   'smoke.spec.ts',
   'softKeyboardAndForms.spec.ts',
   'therapyflow/therapy-journey.spec.ts',
