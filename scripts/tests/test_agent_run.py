@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import stat
@@ -51,6 +52,7 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / ".github").mkdir()
         shutil.copy(ROOT / "scripts/agent-run.sh", self.repo / "scripts/agent-run.sh")
         shutil.copy(ROOT / "scripts/route-task.py", self.repo / "scripts/route-task.py")
+        shutil.copy(ROOT / "scripts/model-router.py", self.repo / "scripts/model-router.py")
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
         (self.repo / "scripts/coverage-check.sh").write_text(
             "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
@@ -61,6 +63,10 @@ class AgentRunTests(unittest.TestCase):
             "#!/usr/bin/env bash\necho q >> \"${QUALITY_LOG:-/dev/null}\"\n"
             "echo \"$*\" >> \"${QUALITY_ARGS:-/dev/null}\"\nexit ${QUALITY_EXIT:-0}\n")
         (self.repo / ".github/pull_request_template.md").write_text("## Summary\n")
+        (self.repo / ".github/swarm").mkdir(parents=True, exist_ok=True)
+        (self.repo / ".github/swarm/test-pricing.json").write_text(json.dumps({"models": {
+            "opencode/test": {"input": 0, "output": 0, "cache_read": 0,
+                              "pricing_source": "fixture", "verified_at": "2026-01-01"}}}))
         (self.repo / ".github/opencode.ci.json").write_text('{"ci": true}')
         (self.repo / "opencode.json").write_text('{"real": true}')
         (self.repo / ".gitignore").write_text("/.agent/\n")
@@ -86,6 +92,7 @@ class AgentRunTests(unittest.TestCase):
                     "HOME": str(tmp / "home"), "GITHUB_WORKSPACE": str(self.repo),
                     "GITHUB_OUTPUT": str(tmp / "output"), "GITHUB_RUN_NUMBER": "9",
                     "GH_LOG": str(self.gh_log), "SEEN": str(tmp / "seen.json"), "MODEL": "opencode/test",
+            "SWARM_REGISTRY": ".github/swarm/test-pricing.json",
                     "OPENCODE_API_KEY": "k-test", "STORY_ID": "issue-5",
                     "STORY_TITLE": "Add login", "STORY_BODY": "body", "ISSUE_NUMBER": "5",
                     "GH_TOKEN": "t-test", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",

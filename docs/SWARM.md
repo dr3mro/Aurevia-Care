@@ -142,7 +142,34 @@ Two native GitHub checks guard a protected merge, and they answer different ques
 
 The worker image installs Debian's `python3-yaml` and checks the import with `python3 -I` during the build. The hosted Delivery tooling, fix-PR validation and integrator jobs use `.github/actions/setup-tooling-python` before running the same script tests. For local runs, `python3 -I -c 'import yaml'` verifies that PyYAML is available to the interpreter used by the gates.
 
-The optional repository variable `SWARM_MODEL` overrides the agent model at runtime for every workflow that runs OpenCode, including the swarm worker. When it is unset, the worker uses the model configured for its slot in `.github/swarm/slots.json` and the daily workflows use their compiled default. Set it to a model identifier supported by the OpenCode CLI and the configured slot API keys; it changes the `--model` argument only and does not rewrite the baked slot configuration, which the agent pack check validates.
+### Centralized, zero-cost model routing
+
+Every production `opencode run` obtains its model from `scripts/model-router.py`, invoked by the single wrapper in `scripts/agent-run.sh`. Workflows pass a *base-model hint* (the slot model or compiled default); they no longer put `SWARM_MODEL` first in the `MODEL` expression. Two repository variables control the router:
+
+- **`SWARM_FORCE_MODEL`** — a strict Boolean. `0` (the default when unset or empty) selects intelligent routing; `1` forces the exact configured model everywhere. Any other value is a configuration error that fails safely rather than being interpreted as true.
+- **`SWARM_MODEL`** — a provider-qualified model identifier. In intelligent mode it is reserved strictly for the **final fallback**, after all eligible primary models are exhausted; it never overrides an eligible primary. In forced mode it is the *only* model used for every role and phase, with no alternative selection. A forced configuration missing `SWARM_MODEL`, or one that names a paid, unauthorized or unverified model, is rejected.
+
+The router classifies each task deterministically (L1–L4; security/auth/tenant/clinical paths are always critical), ranks verified zero-cost primary models by agent role and execution phase, and returns a bounded candidate list. A rate-limited model rotates to the next verified candidate; a timeout or implementation failure is terminal. `agent-run.sh` preserves task state across a rotation and never retries an exhausted model within one run.
+
+Zero-cost eligibility is a **hard constraint** enforced from the checked-in registry `.github/swarm/model-pricing.json`. A model is eligible only with $0.00/M input, output, cache, reasoning, tool and request prices, no subscription or automatic overage, and a verified pricing source. A `free` substring in a model id, or presence in OpenCode's inventory, never implies eligibility. If no verified zero-cost model is available, the task defers — a paid model is never selected. The registry is not a worker-editable file; changes require authorized maintenance review.
+
+Configure:
+
+```bash
+# Intelligent routing (default): SWARM_MODEL is the final fallback
+gh variable set SWARM_FORCE_MODEL --body "0" -R dr3mro/Aurevia-Care
+gh variable set SWARM_MODEL --body "opencode-go/hy4-flash-free" -R dr3mro/Aurevia-Care
+
+# Forced single-model routing
+gh variable set SWARM_FORCE_MODEL --body "1" -R dr3mro/Aurevia-Care
+
+# Intelligent routing with no designated fallback
+gh variable set SWARM_FORCE_MODEL --body "0" -R dr3mro/Aurevia-Care
+gh variable delete SWARM_MODEL -R dr3mro/Aurevia-Care
+gh variable list -R dr3mro/Aurevia-Care
+```
+
+The model id in these examples must still pass availability, capability and zero-cost validation. Do not change repository variables without authorization.
 
 ### Two independent gates
 
