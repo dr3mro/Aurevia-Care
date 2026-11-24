@@ -28,8 +28,7 @@
   ],
   "store-without-durable": [
     "apps/api/src/main/java/com/aurevia/messaging/appointments/DeviceTokenStore.java",
-    "apps/api/src/main/java/com/aurevia/messaging/appointments/PatientAppointmentStore.java",
-    "apps/api/src/main/java/com/aurevia/messaging/instructions/InstructionStore.java"
+    "apps/api/src/main/java/com/aurevia/messaging/appointments/PatientAppointmentStore.java"
   ],
   "unreferenced-service": [
     "apps/api/src/main/java/com/aurevia/clinical/templates/TemplateService.java"
