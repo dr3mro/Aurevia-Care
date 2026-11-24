@@ -107,24 +107,24 @@ const e2eSpecs = (): string[] =>
 const currentSpecs: readonly string[] = [
   'adminflow/admin-journey.spec.ts',
   'clinicalnote/clinicalnote-journey.spec.ts',
- * Every committed `*.spec.ts` under `e2e/` belongs here, not only the seven
- * journeys recognised above. A contributor adding a spec must add it here in
- * the same change, so a new per-role journey cannot slip past the tripwire
- * unnoticed. Order is irrelevant: the assertion compares sorted sets.
+  // Every committed `*.spec.ts` under `e2e/` belongs here, not only the seven
+  // journeys recognised above. A contributor adding a spec must add it here in
+  // the same change, so a new per-role journey cannot slip past the tripwire
+  // unnoticed. Order is irrelevant: the assertion compares sorted sets.
   'accessibilityScanResponsive.spec.ts',
- * The exact e2e spec set committed today; a new or removed spec must replace
- * this pin. Keeping it exact is what makes the inventory tripwire useful: a
- * journey cannot be added or dropped without updating this list in the same
- * change. The light/dark spec and the per-role journeys added on `main` are
- * listed here because they are now part of the committed harness.
- * Re-pinned to include the per-role journeys and the soft-keyboard/forms spec
- * that now ship, so the tripwire keeps pinning the whole set rather than a
- * stale subset. The clause-level GAP assertions below remain active.
- * The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
- * journeys were added by commit 4698687f (BUILD-60), and the device-orientation
- * journey is pinned here as an intentional harness change. Pinning them keeps
- * the tripwire honest: the remaining GAP assertions (no staging-RC report, no
- * light/dark visual checks) still fail the day that evidence actually lands.
+  // The exact e2e spec set committed today; a new or removed spec must replace
+  // this pin. Keeping it exact is what makes the inventory tripwire useful: a
+  // journey cannot be added or dropped without updating this list in the same
+  // change. The light/dark spec and the per-role journeys added on `main` are
+  // listed here because they are now part of the committed harness.
+  // Re-pinned to include the per-role journeys and the soft-keyboard/forms spec
+  // that now ship, so the tripwire keeps pinning the whole set rather than a
+  // stale subset. The clause-level GAP assertions below remain active.
+  // The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
+  // journeys were added by commit 4698687f (BUILD-60), and the device-orientation
+  // journey is pinned here as an intentional harness change. Pinning them keeps
+  // the tripwire honest: the remaining GAP assertions (no staging-RC report, no
+  // light/dark visual checks) still fail the day that evidence actually lands.
   'darkModeResponsive.spec.ts',
   'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
@@ -140,6 +140,7 @@ const currentSpecs: readonly string[] = [
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
   'responsive-scheduling.spec.ts',
+  'responsiveLayout.spec.ts',
   'smoke.spec.ts',
   'therapyflow/therapy-journey.spec.ts',
   'reflowAndZoom.spec.ts',
@@ -252,16 +253,17 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
         readModule(`e2e/${path}`),
       ),
     );
-    // Pin the whole matched set, as above, so a genuinely new visual-evidence
-    // spec still trips this wire. `reflowAndZoom.spec.ts` matches only because
-    // it reads computed styles to measure reflow, zoom and text spacing; it
-    // contains no screenshot/snapshot or light/dark theme assertion, so the
-    // clause's light/dark evidence half is still genuinely absent.
-    expect(visualChecks.sort()).toEqual(['reflowAndZoom.spec.ts']);
-    // Pin the single computed-style visual check carried by the RTL responsive
-    // spec. Light/dark theme evidence is still absent; this is layout evidence.
-    expect(visualChecks.sort()).toEqual(['rightToLeftResponsive.spec.ts']);
-    expect(visualChecks.sort()).toEqual(['darkModeResponsive.spec.ts']);
+    // Pin the whole matched set so a genuinely new visual-evidence spec still
+    // trips this wire. `reflowAndZoom.spec.ts` and `rightToLeftResponsive.spec.ts`
+    // match through computed-style layout reads, while `darkModeResponsive.spec.ts`
+    // supplies the light/dark theme evidence; all three are committed and active.
+    expect(visualChecks.sort()).toEqual(
+      [
+        'darkModeResponsive.spec.ts',
+        'reflowAndZoom.spec.ts',
+        'rightToLeftResponsive.spec.ts',
+      ].sort(),
+    );
 
     expectTypeOf<Role>().toEqualTypeOf<
       | 'staff'
