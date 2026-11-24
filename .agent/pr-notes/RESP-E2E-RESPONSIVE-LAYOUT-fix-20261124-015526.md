@@ -128,6 +128,35 @@ tripwire failure. Re-verified from the working tree:
   deleted, and no threshold, exclusion, skip or suppression changed in this
   repair pass.
 
+Repair attempt 2 (2026-11-24, executed tool evidence in this checkout, HEAD
+`d7e4ba06`): I re-derived every claim above from the working tree rather than
+trusting the notes.
+
+- `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`
+  (in `apps/staff-web`) -> exit 1, `Test Files  1 failed (1)`,
+  `Tests  1 failed | 2 passed (3)`, `expected [ …(15) ] to deeply equal [ …(9) ]`
+  at line 166 — the same GAP tripwire; no production coverage is involved.
+- `find apps/staff-web/e2e -name '*.spec.ts' -type f | wc -l` -> 15 on the tree;
+  `git ls-tree -r --name-only origin/main apps/staff-web/e2e | grep '\.spec\.ts$' | wc -l`
+  -> 14 on `origin/main`. The pin lists 9, so the tripwire was already red on the
+  base commit, before this task's spec existed.
+- `python3 -I` + `worker_gate.parse_scope` on this task's scope line ->
+  `['apps/staff-web/e2e/responsiveLayout.spec.ts']`; `changed_paths()` -> the
+  deliverable plus two notes files; `validate_candidate(..., finished=False)` on
+  the current tree -> `[]`, but adding the pin file to the changed list ->
+  `[{'file': 'apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts', 'rule': 'scope'}]`.
+  The only edit that greens the gate is rejected by the integrator's own gate.
+- `npm run -s test:coverage` (full suite) -> exit 1,
+  `Test Files  2 failed | 269 passed (271)`, `Tests  2 failed | 3049 passed (3051)`.
+  The extra failure is `src/components/ApiPage.test.tsx > ApiPage recovery
+  actions > uses the session onSignIn action without re-notifying expiry on click`
+  (`expected "vi.fn()" to be called 1 times, but got 0 times` at :211), a
+  timing-sensitive flake under full-suite load: `npx vitest run
+  src/components/ApiPage.test.tsx` passed `22 passed (22)` twice in isolation.
+  No coverage table is printed on the failing run; neither failure is a
+  threshold, exclusion or ignore directive. That behavior is already owned by
+  the open task `AUD-20261122-16`, so no duplicate task-request is filed here.
+
 Entry-point-to-test trace: `playwright.config.ts` starts the Vite dev server ->
 `page.goto('/route')` -> `src/main.tsx` browser-support guard ->
 `src/app/routes.tsx` and feature `routes.ts` glob -> `AppShell.tsx` renders
@@ -181,6 +210,33 @@ No `.skip`, `.only`, `test.fixme`, exclusion, lowered threshold or
 coverage-ignore comment was added; no assertion was weakened. A live browser
 run would be required to convert this enumeration into executed green results;
 it is blocked by the absent browser binaries recorded above.
+
+**Branch-to-test list for repair attempt 2 (required by this repair request).**
+The gate did not fail on an uncovered production line or branch:
+`git diff --name-only origin/main...HEAD` contains only the new e2e spec and
+notes files, no production source. The two failing checks are the out-of-scope
+spec-set pin and the flaky `ApiPage` timer test; neither is a coverage gap, so
+no deterministic unit test, deletion of unreachable code, threshold change or
+exclusion can close them. Adding a test to "cover" either would be fabrication.
+The deliverable's own branches remain enumerated and asserted as in the
+attempt-1 table, repeated here for the hand-off:
+
+| Branch | Test (assertion in `e2e/responsiveLayout.spec.ts`) |
+|---|---|
+| compact band: drawer button present, rail absent | `expectNavigation` (`:110-113`) on both phone-portrait projects |
+| medium band: `[data-rail="icon"]` | `expectNavigation` (`:115-119`) on phone-landscape and both tablet-portrait projects |
+| expanded band: `[data-rail="full"]` | `expectNavigation` (`:115-119`) on both tablet-landscape projects, laptop, desktop and `chromium` |
+| non-compact drawer button absent | `expectNavigation` (`:120-123`) |
+| overflow true/false | `expectNoHorizontalScroll` (`:80-89`) in every per-route test and the RTL test |
+| RTL compact user-menu branch | RTL test (`:199-201`) on compact projects |
+| RTL medium/expanded direct Language button | RTL test (`:202`) on the other projects |
+| lazy page mounted vs Suspense fallback; API skeleton settled | `expectPageReady` (`:154-161`) in every per-route test and the RTL test |
+| shell banner heading vs page heading | `expectLandmarks` (`:127-137`) in every per-route test and the RTL test |
+
+No threshold, exclusion, coverage-ignore comment, `.skip`, `.only`,
+`test.fixme` or suppression was added or lowered in this pass, and no assertion
+was weakened. Executing these branches green still needs a runner with
+Playwright browsers installed.
 
 ## Clinical and architecture review
 
@@ -264,6 +320,13 @@ acceptance.
   required a page heading inside `main` as well, which was added without
   removing the shell heading check. The axe scan is owned by the separate
   `RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE` story and was not duplicated.
+- **Repair attempt 2 (tool evidence, NOT resolved in scope):** re-ran the
+  isolated tripwire (15 vs 9), the full coverage suite (two failing tests, no
+  coverage table), the e2e file counts (15 tree / 14 `origin/main` / 9 pin) and
+  the worker-gate validator (editing the pin -> `scope` violation). The
+  `ApiPage.test.tsx` failure is a timing flake that passes 22/22 in isolation
+  and belongs to the open `AUD-20261122-16` task. No in-scope edit can green the
+  gate; no test, deletion, threshold, exclusion or skip was changed.
 
 ## Lessons for workers
 
@@ -314,6 +377,22 @@ and a `scope` violation for the only gate-greening edit. No in-scope test,
 deletion, threshold, exclusion, skip or suppression can close this gap. The next
 step is unchanged: the owning task refreshes the pin in its own scope (the
 `task-requests` entry below); this task stays `[-]` and is not releasable here.
+
+Repair attempt 2 conclusion (2026-11-24): the integrator's second coverage
+re-check is still red. The full suite now reports two failing tests — the
+pre-existing out-of-scope GAP tripwire (15 spec paths vs the 9-name pin) and a
+flaky `ApiPage.test.tsx` timer assertion that passes 22/22 in isolation and is
+owned by `AUD-20261122-16`. Neither is a coverage-threshold failure: no coverage
+table is emitted for the failing run, and no production source changed in this
+task. The only edit that would green the gate (refreshing the pin) is outside
+this task's scope, and the integrator's own `worker_gate.validate_candidate`
+returns a `scope` violation for it. Adding a test for an uncovered line,
+deleting unreachable code, lowering a threshold or adding an exclusion is not
+applicable here and would break the rules. The deliverable
+`e2e/responsiveLayout.spec.ts` is complete and byte-identical. Exact next step:
+the owning task below refreshes the pin in its own scope and `AUD-20261122-16`
+stabilises the flaky test; then a runner with Playwright browsers executes the
+responsive spec. This task stays `[-]` and is not releasable here.
 
 ```task-requests
 [
