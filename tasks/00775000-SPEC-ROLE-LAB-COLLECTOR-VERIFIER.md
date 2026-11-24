@@ -1,6 +1,7 @@
-- [ ] SPEC-ROLE-LAB-COLLECTOR-VERIFIER · Spec section 2 role matrix (API test): Lab collector / verifier
+- [-] SPEC-ROLE-LAB-COLLECTOR-VERIFIER · Spec section 2 role matrix (API test): Lab collector / verifier
+  - agent: swarm-7
+  - attempts: 3
   - evidence: PR #1567 merged to main (auto-reconciled)
-  - attempts: 2
   - requirements: IAM-01, LAB-02
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleLabCollectorVerifierTest.java, docs/spec/clauses/authz/role-lab-collector-verifier.md
   - details:

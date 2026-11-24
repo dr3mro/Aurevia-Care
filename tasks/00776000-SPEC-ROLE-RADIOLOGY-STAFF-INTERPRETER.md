@@ -1,5 +1,6 @@
-- [ ] SPEC-ROLE-RADIOLOGY-STAFF-INTERPRETER · Spec section 2 role matrix (API test): Radiology staff / interpreter
-  - attempts: 1
+- [-] SPEC-ROLE-RADIOLOGY-STAFF-INTERPRETER · Spec section 2 role matrix (API test): Radiology staff / interpreter
+  - agent: swarm-8
+  - attempts: 2
   - requirements: IAM-01, RAD-01
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleRadiologyStaffInterpreterTest.java, docs/spec/clauses/authz/role-radiology-staff-interpreter.md
   - details:
