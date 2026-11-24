@@ -33,6 +33,18 @@ class RepositoryTests(unittest.TestCase):
     def test_repository_docs_are_consistent(self):
         self.assertEqual(docs.check(ROOT), [])
 
+    def test_agent_notes_and_reports_are_not_enumerated_as_docs(self):
+        tmp = self.make_repo("IAM-01 clean\n")
+        for rel in (".agents/notes/N.md", ".agents/reports/2026-11-24.md",
+                    ".agents/notes/archive/x.md"):
+            path = tmp / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("bad | ragged | table\n")
+        names = [p.relative_to(tmp).as_posix() for p in docs.markdown_files(tmp)]
+        self.assertNotIn(".agents/notes/N.md", names)
+        self.assertNotIn(".agents/reports/2026-11-24.md", names)
+        self.assertNotIn(".agents/notes/archive/x.md", names)
+
     def make_repo(self, note):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp)
