@@ -1073,17 +1073,18 @@ class PlanTests(unittest.TestCase):
         self.assertIn('if [[ "$GITHUB_EVENT_NAME" == schedule ]]', gate)
         self.assertIn('scripts/swarm.py daily-admission', gate)
 
-    def test_waves_overlap_but_planning_stays_serial(self):
+    def test_waves_and_planning_keep_one_run_per_branch(self):
         import yaml
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         config = yaml.safe_load(text)
         self.assertEqual(config[True]["workflow_dispatch"]["inputs"]["now"]["type"], "boolean")
+        expected = "${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}"
         group = config["concurrency"]["group"]
-        self.assertIn("github.run_id", group)
-        self.assertIs(config["concurrency"]["cancel-in-progress"], False)
+        self.assertEqual(group, expected)
+        self.assertIs(config["concurrency"]["cancel-in-progress"], True)
         plan = config["jobs"]["plan"]["concurrency"]
-        self.assertEqual(plan["group"], "agent-swarm-plan")
-        self.assertIs(plan["cancel-in-progress"], False)
+        self.assertEqual(plan["group"], expected)
+        self.assertIs(plan["cancel-in-progress"], True)
 
     def test_wave_is_capped_by_the_remaining_budget(self):
         self.assertGreaterEqual(swarm.affordable_workers(0, 10000), 10)
