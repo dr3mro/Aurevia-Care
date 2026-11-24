@@ -74,7 +74,7 @@ service (no production file was changed by this proof-only task):
 - `com.aurevia.api.SqlFailureTranslator` — maps the tenant-local
   patient trigger's SQLSTATE `23503` to `404 NOT_FOUND` without revealing the
   collision.
-- `db/migrations/V21__xch03_order_response.sql` — `xch03_order_patient_check`
+- `db/migrations/V21__exchange_response_order_response.sql` — `exchange_response_order_patient_check`
   resolves the local patient inside the active organization, plus FORCE RLS on
   the order and ledger tables.
 

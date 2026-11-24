@@ -18,7 +18,7 @@ synthetic patient:
 
 - `verifyingAbsentBeforeRetryResubmitsWithTheSameSubmissionId` — an ambiguous
   send is reconciled with `absent`, then the retry returns 200 with state
-  `submitted`, the same stable submission id, exactly one `rx02_submission` row,
+  `submitted`, the same stable submission id, exactly one `prescription_submission` row,
   two `submitted` facts and a `partner_status_verified` fact whose outcome is
   `absent`; the retry is recorded as `attempt=2`.
 - `retryBeforeVerificationIsRefusedWithoutSendingAgain` — a retry on an
@@ -61,8 +61,8 @@ covered by the corroborating suites named below),
 `VerifyRequest`, `RetryRequest`, `PARTNER_STATUS_VERIFIED` event),
 `com.aurevia.prescription.rx.RxRepository` (`reconcile`,
 `retrySubmission`, `submissionAttempts`) and the tenant RLS/FORCE RLS plus the
-guarded state machine in `db/migrations/V44__rx02_prescription_transmission.sql`
-and `db/migrations/V59__rx02_ambiguous_transition.sql`.
+guarded state machine in `db/migrations/V44__prescription_transmission_transmission.sql`
+and `db/migrations/V59__prescription_ambiguous_transition.sql`.
 
 Corroborating suites already on `main` (not re-tested here):
 `com.aurevia.it.prescription.RxTransmissionFlowTest`

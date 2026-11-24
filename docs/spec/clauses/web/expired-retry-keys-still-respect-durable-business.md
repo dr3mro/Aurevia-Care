@@ -80,7 +80,7 @@ Production classes and objects exercised through the normal HTTP entry point:
 Read-only evidence reviewed for the gap: `IdempotencyLedger.java:14-21,109-115`,
 `IdempotencyLedgerTest.java:79-87,113-120`, `events/DurableEventService.java:98-124`,
 `api/contract/IdempotencyKey.java`, and migrations `V55__durable_event_outbox.sql:53`,
-`V19__exchange_orders.sql:122`, `V22__result_routing.sql:33,68`, `V44__rx02_prescription_transmission.sql:76`,
+`V19__exchange_orders.sql:122`, `V22__result_routing.sql:33,68`, `V44__prescription_transmission_transmission.sql:76`,
 `V45__finance.sql`, `V91__staff_messaging.sql` and `V95__durable_staff_mail.sql`.
 
 This proof is scoped to the pharmacy substitution action. It does not claim that every
@@ -118,5 +118,5 @@ Closing the gap needs **one** cross-boundary implementation task:
 
 A later survey may decide whether the schema-level business identities in
 `V19__exchange_orders.sql:122`, `V22__result_routing.sql:33,68` and
-`V44__rx02_prescription_transmission.sql:76` need the same retry-key coupling; those
+`V44__prescription_transmission_transmission.sql:76` need the same retry-key coupling; those
 routes do not currently bind an expiring retry key, so they are a separate scope.

@@ -81,8 +81,8 @@ Production classes and files surveyed and exercised by the entry points:
 - `com.aurevia.exchange.response.ExchangeResponseController` —
   `POST /api/v1/xch03/orders/{id}/accept` and the change-response route are the
   HTTP entry points; the controller injects the service and parses `If-Match`.
-- `db/migrations/V21__xch03_order_response.sql` — creates
-  `public.xch03_retained_copy` with tenant keys, purpose and policy checks, a
+- `db/migrations/V21__exchange_response_order_response.sql` — creates
+  `public.exchange_response_retained_copy` with tenant keys, purpose and policy checks, a
   sha-256 checksum check, a uniqueness constraint on the retained revision, an
   index on `(organization_id, order_id, revision)`, ENABLE and FORCE ROW LEVEL
   SECURITY with a fail-closed tenant policy, and append-only grants (no UPDATE,

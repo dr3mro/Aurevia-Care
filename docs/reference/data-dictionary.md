@@ -1139,7 +1139,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 **Isolation / writes.** Forced RLS; append-only for every role; `SELECT, INSERT` only.
 **Migration.** Created V20 (XCH-02, ARC-01, ARC-02, ARC-03, ARC-04, OPS-02).
 
-### `xch03_order`
+### `exchange_response_order`
 
 **Purpose.** Recipient-side current projection of one exchanged order, advanced by state transitions only.
 
@@ -1163,10 +1163,10 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 | updated_at | timestamptz | Last transition instant, set trigger-side. |
 
 **Keys/constraints.** PK `(organization_id, id)`; CHECKs on checksum format, trimmed text and code patterns; a trigger validates `local_patient_id` against `patient_record` in the active tenant; update guard pins ownership/content and forbids leaving a terminal state.
-**Isolation / writes.** Forced RLS declared here (uses the local `xch03_app_org()` equivalent); bounded UPDATE via the state guard; DELETE/TRUNCATE rejected by triggers.
-**Migration.** Created V21__xch03_order_response.sql (XCH-03, XCH-01, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); conditional DDL.
+**Isolation / writes.** Forced RLS declared here (uses the local `exchange_response_app_org()` equivalent); bounded UPDATE via the state guard; DELETE/TRUNCATE rejected by triggers.
+**Migration.** Created V21__exchange_response_order_response.sql (XCH-03, XCH-01, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); conditional DDL.
 
-### `xch03_revision`
+### `exchange_response_revision`
 
 **Purpose.** Immutable released-content revision with a same-tenant, same-order lineage link.
 
@@ -1186,7 +1186,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 **Isolation / writes.** Forced RLS; append-only for every role; `SELECT, INSERT` only.
 **Migration.** Created V21 (XCH-03, XCH-01, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02).
 
-### `xch03_retained_copy`
+### `exchange_response_retained_copy`
 
 **Purpose.** Immutable retained recipient copy capturing purpose and retention policy at acceptance time.
 
@@ -1207,7 +1207,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 **Isolation / writes.** Forced RLS; append-only for every role; `SELECT, INSERT` only.
 **Migration.** Created V21 (XCH-03, XCH-01, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02).
 
-### `xch03_event`
+### `exchange_response_event`
 
 **Purpose.** Append-only response history, one event per order version.
 
@@ -1228,7 +1228,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 **Isolation / writes.** Forced RLS; append-only for every role; `SELECT, INSERT` only.
 **Migration.** Created V21 (XCH-03, XCH-01, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02).
 
-### `xch03_notification`
+### `exchange_response_notification`
 
 **Purpose.** Durable downstream notification emitted by revocation, deduplicated by event id.
 
@@ -1738,7 +1738,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 **Isolation / writes.** Forced RLS; append-only for every role; `SELECT, INSERT` only.
 **Migration.** Created V43 (RX-01, ARC-01, ARC-02, ARC-03, OPS-02); conditional DDL.
 
-### `rx02_prescription`
+### `prescription_transmission`
 
 **Purpose.** Prescriber-attested prescription with a guarded transmission state machine and at most one submission id.
 
@@ -1765,9 +1765,9 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 
 **Keys/constraints.** PK `(organization_id, id)`; `UNIQUE (organization_id, submission_id)` so a replay cannot create a second downstream prescription; FKs to patient and author. Update guard pins clinical columns, freezes channel/submission id once set, requires `version + 1` and enumerates transitions. V59 widened the guard to allow `attested → ambiguous` and `submitted → ambiguous`.
 **Isolation / writes.** Forced RLS declared here (conditional DDL); bounded UPDATE via the state machine; DELETE/TRUNCATE rejected by triggers.
-**Migration.** Created V44__rx02_prescription_transmission.sql (RX-02, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); guard last changed V59.
+**Migration.** Created V44__prescription_transmission_transmission.sql (RX-02, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); guard last changed V59.
 
-### `rx02_submission`
+### `prescription_submission`
 
 **Purpose.** Immutable one-row-per-prescription submission record keyed by the stable submission id.
 
@@ -1784,7 +1784,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 **Isolation / writes.** Forced RLS; append-only for every role; `SELECT, INSERT` only.
 **Migration.** Created V44 (RX-02, ARC-01, ARC-02, ARC-03, ARC-05, OPS-02); conditional DDL.
 
-### `rx02_event`
+### `prescription_event`
 
 **Purpose.** Append-only prescription transmission fact ledger.
 

@@ -18,11 +18,11 @@ entry points `POST /api/v1/prescriptions`, `/attest`, `/transmit`, `/verify-part
 disabled) and uses synthetic fixtures only. The suite recreates its own database
 (`aurevia_use_stable_submission_ids_it`) from the authoritative Flyway migrations, seeds two
 tenants with bounded roles, market/entitlement/channel policies and one synthetic patient each, and
-asserts against both the HTTP response and the persisted `rx02_submission` ledger.
+asserts against both the HTTP response and the persisted `prescription_submission` ledger.
 
 - `electronicSubmissionKeepsOneStableIdAcrossRetryAndRenewal` — positive proof. Transmitting
   `E_PRESCRIBE` with an ambiguous outcome returns a lowercase canonical UUID `submissionId`; the
-  single `rx02_submission` ledger row is bound to that id and channel. After the partner reports the
+  single `prescription_submission` ledger row is bound to that id and channel. After the partner reports the
   submission `absent`, a retry reuses the same id, leaves exactly one ledger row and two `submitted`
   facts that both carry the id, and a renewal keeps the prescription's id and links its own fact to
   it. The partner-status fact also carries the stable id.
@@ -44,7 +44,7 @@ asserts against both the HTTP response and the persisted `rx02_submission` ledge
 Entry-point-to-assertion trace: `POST /api/v1/prescriptions/{id}/transmit` →
 `RxController.transmit` → `RxService.transmit` (`RxInputs.newSubmissionId`,
 `RxRepository.insertSubmission` with `ON CONFLICT DO NOTHING`, `repository.transmit`) →
-`db/migrations/V44__rx02_prescription_transmission.sql` (`rx02_submission` with
+`db/migrations/V44__prescription_transmission_transmission.sql` (`prescription_submission` with
 `UNIQUE (organization_id, submission_id)`, forced RLS and an immutability guard). The retry and
 mismatch paths reach `RxService.retry` and `RxService.requireSubmission`, which reuses or refuses
 the same id.

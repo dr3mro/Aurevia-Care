@@ -143,11 +143,11 @@ column.
 | `exchange_work_item` | Destination work item with local patient id/MRN, verification and clinical question | `lab_collector`, `lab_verifier`, `radiology_staff`, `pt_clinician`, `pharmacy_staff`, `clinician`, `tenant_admin`, `privacy_auditor` | No — state updated | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event` |
 | `exchange_task` | Workflow/transmission/review states and reviewer revision | `tenant_admin`, `clinician`, `lab_collector`, `reception` (EXCHANGE_READ) | No — versioned state updates, no delete | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event`, `exchange_task_transition` |
 | `exchange_task_transition` | Immutable transition history with actor and reason | Same as `exchange_task` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `exchange_task_transition` |
-| `xch03_order` | Recipient-side order with local patient id, assignee, question and permitted purpose | `lab_collector`, `lab_verifier`, `radiology_staff`, `pt_clinician`, `pharmacy_staff`, `clinician`, `reception`, `tenant_admin`, `privacy_auditor` (EXCHANGE_READ) | No — state updated | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event`, `xch03_event` |
-| `xch03_revision` | Immutable revision lineage of a recipient order | Same as `xch03_order` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `xch03_event` |
-| `xch03_retained_copy` | Retained recipient copy: checksum, permitted purpose, retention policy and legal hold | Same as `xch03_order` | Yes | NOT YET: TASK-EXPORT | Retention/legal-hold fields are *declared* here, no enforcement job (see TASK-RETENTION) | `xch03_event`, `audit_event` |
-| `xch03_event` | Immutable recipient order event history | Same as `xch03_order` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `xch03_event` |
-| `xch03_notification` | Notification target, channel and outcome | `tenant_admin`, `privacy_auditor`, owning unit roles | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `xch03_notification`, `xch03_event` |
+| `exchange_response_order` | Recipient-side order with local patient id, assignee, question and permitted purpose | `lab_collector`, `lab_verifier`, `radiology_staff`, `pt_clinician`, `pharmacy_staff`, `clinician`, `reception`, `tenant_admin`, `privacy_auditor` (EXCHANGE_READ) | No — state updated | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event`, `exchange_response_event` |
+| `exchange_response_revision` | Immutable revision lineage of a recipient order | Same as `exchange_response_order` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `exchange_response_event` |
+| `exchange_response_retained_copy` | Retained recipient copy: checksum, permitted purpose, retention policy and legal hold | Same as `exchange_response_order` | Yes | NOT YET: TASK-EXPORT | Retention/legal-hold fields are *declared* here, no enforcement job (see TASK-RETENTION) | `exchange_response_event`, `audit_event` |
+| `exchange_response_event` | Immutable recipient order event history | Same as `exchange_response_order` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `exchange_response_event` |
+| `exchange_response_notification` | Notification target, channel and outcome | `tenant_admin`, `privacy_auditor`, owning unit roles | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `exchange_response_notification`, `exchange_response_event` |
 | `xch04_expected_order` | Expected order with patient id, accession, owner and coverage queue | `lab_verifier`, `clinician`, `tenant_admin`, `privacy_auditor` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event` |
 | `xch04_report_revision` | Imported report revision with patient, accession, kind, effective time and checksum | `lab_verifier`, `clinician` (RESULT_READ); `tenant_admin`, `privacy_auditor` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event`, `xch04_review` |
 | `xch04_reconciliation` | Unmatched/conflicting report details and status | `lab_verifier`, `tenant_admin`, `privacy_auditor` (RECONCILIATION_READ) | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event` |
@@ -170,9 +170,9 @@ column.
 | `patient_allergy` | Patient allergy substance/group, verification state and effective date | `clinician`, `tenant_admin`, `privacy_auditor` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event` |
 | `prescription_draft` | Patient, selected drug, dose/route/frequency/quantity, instructions and prescriber | `clinician`, `tenant_admin`, `privacy_auditor` (RX_READ_DRAFT) | No — draft state updated, no delete | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event` |
 | `prescription_override` | Allergy/interaction override reason, matched snapshot and author | `clinician`, `tenant_admin`, `privacy_auditor` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event` |
-| `rx02_prescription` | Prescription details, prescriber, destination pharmacy, channel and submission id | `clinician`, `pharmacy_staff`, `tenant_admin`, `privacy_auditor` (RX_READ) | No — transmission state updated | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event`, `rx02_event` |
-| `rx02_submission` | Stable submission id, channel and creator | Same as `rx02_prescription` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `rx02_event` |
-| `rx02_event` | Immutable transmission/status event history | Same as `rx02_prescription` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `rx02_event` |
+| `prescription_transmission` | Prescription details, prescriber, destination pharmacy, channel and submission id | `clinician`, `pharmacy_staff`, `tenant_admin`, `privacy_auditor` (RX_READ) | No — transmission state updated | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `audit_event`, `prescription_event` |
+| `prescription_submission` | Stable submission id, channel and creator | Same as `prescription_transmission` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `prescription_event` |
+| `prescription_event` | Immutable transmission/status event history | Same as `prescription_transmission` | Yes | NOT YET: TASK-EXPORT | NOT YET: TASK-RETENTION | `prescription_event` |
 
 ## 7. Finance
 
@@ -256,7 +256,7 @@ wish to treat it as staff personal data; it is listed here for that decision.
   shape. Suggested task: **TASK-EXPORT** (title in the legend).
 - **Retention and legal hold (OPS-07):** no live job deletes active data or
   expires backups for the tables above. Retention decisions/apply and holds work
-  only for the synthetic messaging-resource family. `xch03_retained_copy`
+  only for the synthetic messaging-resource family. `exchange_response_retained_copy`
   declares a retention policy and legal-hold field but has no enforcement job.
   Suggested task: **TASK-RETENTION** (title in the legend).
 - **Retention periods themselves:** OPS-01 requires the approved policy pack to
