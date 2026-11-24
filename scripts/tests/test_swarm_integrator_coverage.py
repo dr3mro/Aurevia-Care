@@ -666,3 +666,23 @@ class IntegratorIssueCloseTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ValidatorReportTest(unittest.TestCase):
+    """Validation emits every decision that the trusted publisher must replay."""
+
+    def test_integrate_validate_emits_decisions_needing_publication(self):
+        result = {"accepted": [], "rejected": [{"pr": 7, "kind": "moved"}],
+                  "already": [{"pr": 8, "task_id": "CW-001"}], "conflicted": [],
+                  "conflict_details": [{"pr": 9, "reason": "conflict", "tries": 5}],
+                  "gates": {}}
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(swarm, "integrate_prepare", return_value=result), \
+             mock.patch.object(swarm, "git", return_value="tip"), \
+             mock.patch.object(swarm, "emit") as emitted:
+            swarm.integrate_validate([7, 8, 9], "gate.sh", str(Path(directory) / "validated"))
+        reports = [json.loads(call.args[1]) for call in emitted.call_args_list
+                   if call.args[0] == "report"]
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(len(reports[0]), 3)
+        self.assertEqual({item["pr"] for item in reports[0]}, {7, 8, 9})
