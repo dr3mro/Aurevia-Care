@@ -49,21 +49,23 @@ jobs:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py plan-integration
 
-  integrate:
-    name: Integrate the ready batch
+  # Candidate code is merged and gated here with NO write token and NO secrets.
+  # It emits the validated tip and PR head SHAs plus a bundle; the publish job
+  # below runs trusted scripts only and re-checks every SHA before any write.
+  validate:
+    name: Validate the ready batch (no secrets)
     needs: pick
     if: needs.pick.outputs.count != '0'
     runs-on: ubuntu-24.04
     # Up to ten PRs, each with the full gate, so 45 minutes cut batches short.
     timeout-minutes: 120
     outputs:
-      conflicted: ${{ steps.merge.outputs.conflicted }}
+      conflicted: ${{ steps.candidate.outputs.conflicted }}
+      accepted: ${{ steps.candidate.outputs.accepted }}
     permissions:
-      contents: write
-      pull-requests: write
-      # Labels are written through the Issues API, so PR write alone is not enough.
-      issues: write
-      actions: write
+      contents: read
+      pull-requests: read
+      actions: read
     services:
       postgres:
         image: postgres:17.12@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c
@@ -75,10 +77,9 @@ jobs:
           --health-cmd "pg_isready -U postgres"
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
-      # Candidate code runs in this job: no NVD consumer key is present here.
+      # Read-only token for listing PR heads only. No SWARM_TOKEN and no NVD key:
       # OWASP scans the restored cache and still fails on CVSS >= 7.
-      GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
-      GH_ISSUES_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
       AUREVIA_PG_ADMIN: postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -112,15 +113,53 @@ jobs:
           done
           exit 1
       - uses: ./.github/actions/setup-tooling-python
-      # One job for the batch. The trusted command keeps GH_TOKEN for guard,
-      # merge and finalize, and strips it from the gate subprocess so agent-written
-      # code never sees a token. Delivery re-verifies main after the push.
-      - name: Merge each PR, gate, then push once
-        id: merge
+      - name: Merge each PR locally and gate it without credentials
+        id: candidate
         env:
           QUEUE: ${{ needs.pick.outputs.queue }}
           GATE: scripts/integrator-gate.sh
-        run: python3 -I scripts/swarm.py integrate-batch --queue "$QUEUE" --gate "$GATE"
+        run: python3 -I scripts/swarm.py integrate-validate --queue "$QUEUE" --gate "$GATE" --out validated
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: validated-batch
+          path: validated
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish the validated batch
+    needs: [pick, validate]
+    if: >-
+      (needs.validate.outputs.accepted != '' && needs.validate.outputs.accepted != '[]')
+      || (needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      # Labels are written through the Issues API, so PR write alone is not enough.
+      issues: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+      GH_ISSUES_TOKEN: ${{ github.token }}
+    steps:
+      # Trusted scripts from main on a runner candidate code never touched.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: validated-batch
+          path: validated
+      - uses: ./.github/actions/setup-tooling-python
+      - name: Push only the exact validated commit SHAs
+        env:
+          GATE: scripts/integrator-gate.sh
+        run: python3 -I scripts/swarm.py integrate-publish --manifest validated/manifest.json --bundle validated/main.bundle --gate "$GATE"
       - name: Reconcile tasks whose PRs merged
         if: always()
         env:
@@ -133,8 +172,8 @@ jobs:
   # to the workers. The agent and the push token never share a runner.
   resolve:
     name: Resolve merge conflicts
-    needs: [pick, integrate]
-    if: always() && needs.integrate.outputs.conflicted != '' && needs.integrate.outputs.conflicted != '[]'
+    needs: [pick, validate, publish]
+    if: always() && needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     container:
@@ -149,7 +188,7 @@ jobs:
       run:
         shell: bash
     env:
-      CONFLICTED: ${{ needs.integrate.outputs.conflicted }}
+      CONFLICTED: ${{ needs.validate.outputs.conflicted }}
       BASE_BRANCH: ${{ github.event.repository.default_branch }}
       # Only these repository variables select a model, through the centralized router.
       SWARM_MODEL: ${{ vars.SWARM_MODEL }}
