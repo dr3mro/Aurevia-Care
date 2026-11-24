@@ -1,5 +1,4 @@
-- [-] SPEC-ROLE-TENANT-ADMIN-PRIVACY · Spec section 2 role matrix (API test): Tenant admin / privacy auditor
-  - agent: swarm-8
+- [ ] SPEC-ROLE-TENANT-ADMIN-PRIVACY · Spec section 2 role matrix (API test): Tenant admin / privacy auditor
   - attempts: 1
   - requirements: IAM-01, ADM-01
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleTenantAdminPrivacyAuditorTest.java, docs/spec/clauses/authz/role-tenant-admin-privacy-auditor.md

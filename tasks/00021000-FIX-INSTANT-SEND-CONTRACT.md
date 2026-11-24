@@ -1,5 +1,5 @@
-- [-] FIX-INSTANT-SEND-CONTRACT · Bind instant message sends to the conversation in the URL
-  - agent: swarm-9
+- [x] FIX-INSTANT-SEND-CONTRACT · Bind instant message sends to the conversation in the URL
+  - pr: #1562
   - attempts: 4
   - evidence: PR #1562 merged to main (auto-reconciled)
   - requirements: MSG-02, ARC-07, WEB-05

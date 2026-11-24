@@ -1,5 +1,5 @@
-- [-] RESP-E2E-REFLOW-AND-ZOOM · Staff web end-to-end: reflowAndZoom across phone, tablet and desktop
-  - agent: swarm-10
+- [x] RESP-E2E-REFLOW-AND-ZOOM · Staff web end-to-end: reflowAndZoom across phone, tablet and desktop
+  - pr: #1560
   - attempts: 4
   - evidence: PR #1560 merged to main (auto-reconciled)
   - requirements: WEB-07, UX-01
