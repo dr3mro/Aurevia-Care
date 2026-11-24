@@ -111,6 +111,25 @@ None required for this change: it is a synthetic browser-acceptance test of pres
 - For an optimistic status that a reload clears, hold the POST with a route handler registered after the synthetic API and call `route.fallback()`; assert while held, release in `finally`, then assert the durable reloaded row.
 - `browser.newContext()` does not inherit the Playwright `baseURL` fixture; pass it conditionally to satisfy `exactOptionalPropertyTypes`, and close manually created contexts in `finally`.
 
+## Segment 2 — post-merge verification (no code changed)
+
+Segment 2 began after this branch was merged with `origin/main` (merge commit `045b4ec6`, merge base `96158b3f`). The only commit main contributed since segment 1's base is `96158b3f` (production-readiness traceability docs); it touched no staff-web scheduling, harness, config or e2e file. `git merge --no-edit origin/main` reported "Already up to date" and no conflict markers remain. No file was edited in this segment — the in-scope deliverable from segment 1 was re-verified, not rewritten.
+
+Fresh tool evidence gathered after the merge (all exit 0 unless stated):
+
+| Command | Result |
+|---|---|
+| `git merge --no-edit origin/main` | Already up to date; `git grep -nE '^(<<<<<<<\|>>>>>>>) '` → none |
+| `cd apps/staff-web && npx tsc --noEmit -p tsconfig.lint.json` | exit 0 (the config that actually typechecks `e2e/**`) |
+| `cd apps/staff-web && npx eslint e2e/responsive-scheduling.spec.ts --max-warnings 0` | exit 0 |
+| `cd apps/staff-web && npm run typecheck` | exit 0 (`> tsc --noEmit -p tsconfig.json`, no output) |
+| `cd apps/staff-web && env -u CI npx playwright test --config e2e/playwright.config.ts e2e/responsive-scheduling.spec.ts --reporter=line` | `6 skipped` / `44 passed (58.2s)`, exit 0 — identical to segment 1 |
+| `python3 -I scripts/check-constraints.py` | exit 0, no findings |
+| `python3 -I scripts/check-docs.py` | exit 0 |
+| `bash apps/staff-web/check.sh` | exit 1 — one failure only, the pre-existing WEB-10 tripwire; `Test Files 1 failed | 270 passed (271)`, `Tests 1 failed | 3050 passed (3051)`, `Duration 140.76s` |
+
+Blocker classification (per the newest daily note's rule): both remaining items are **pre-existing / out of scope**, not in-scope defects, so no code change is justified here. (1) The compact-width layout defect is real production behavior in `SchedulingScreen.tsx`/`ReceptionNav.tsx`, outside this task's single-file scope; it is routed via the existing `task-requests` block below. (2) The `check.sh` red is a pre-existing `main` red (the WEB-10 tripwire pins 9 specs while main already had 14 before this spec); the owner/follow-up task below owns it. Segment 1's three reviewer GO verdicts stand because no production or spec code changed in segment 2.
+
 ## Review verdicts
 
 - smartclinic-code-reviewer: GO
@@ -119,9 +138,9 @@ None required for this change: it is a synthetic browser-acceptance test of pres
 
 ## Why this is not finished
 
-The one repository file is implemented and its Playwright matrix is green (44 passed, 6 documented fixmes). Two items prevent an unqualified "done":
+The one repository file is implemented and its Playwright matrix is green (44 passed, 6 documented fixmes), re-confirmed after the segment-2 merge. The in-scope deliverable is complete; two out-of-scope items prevent an unqualified "done":
 
-1. `bash apps/staff-web/check.sh` exits 1 solely because of the pre-existing WEB-10 e2e spec-set tripwire (`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`, expected 9 specs, received 15). It was already red at baseline (14 vs 9). The pin lives outside this task's scope. Next step: the maintainer or a following task updates `currentSpecs` to include all committed specs, then reruns check.sh.
+1. `bash apps/staff-web/check.sh` exits 1 solely because of the pre-existing WEB-10 e2e spec-set tripwire (`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166`, expected 9 specs, received 15). It was already red at baseline (14 vs 9) and remains the single failure on the fresh post-merge run (`Tests 1 failed | 3050 passed (3051)`). The pin lives outside this task's scope. Next step: the maintainer or a following task updates `currentSpecs` to include all committed specs, then reruns check.sh.
 2. Three assertions per compact phone project are legitimately `test.fixme` because of the production nav/row layout defect described above; a production fix is required before WEB-07/UX-01 can be claimed green on phones. Next step: the task below fixes `SchedulingScreen`/`ReceptionNav`, then remove the three `test.fixme` guards.
 
 ```task-requests
