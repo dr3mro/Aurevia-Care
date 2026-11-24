@@ -592,5 +592,306 @@ class MainTest(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 0)
 
 
+class RouteParityHelpersTest(unittest.TestCase):
+    """Every branch of the pinned-base route parsers and the parity decision."""
+
+    def test_parse_route_lines_skips_comments_blanks_and_normalizes(self):
+        text = "# frozen baseline\n\n  GET /api/v1/{orderId}/accept  \nPOST /api/v1/legacy\n"
+
+        self.assertEqual(worker_gate.parse_route_lines(text),
+                         {"GET /api/v1/{}/accept", "POST /api/v1/legacy"})
+
+    def test_parse_route_lines_returns_empty_set_for_empty_text(self):
+        self.assertEqual(worker_gate.parse_route_lines(""), set())
+
+    def test_parse_route_lines_rejects_a_malformed_line(self):
+        self.assertIsNone(worker_gate.parse_route_lines("GET api/v1/legacy"))
+        self.assertIsNone(worker_gate.parse_route_lines("GET"))
+
+    def test_pinned_base_routes_needs_a_base_ref(self):
+        self.assertIsNone(worker_gate.pinned_base_routes("", "baseline.txt"))
+
+    def test_pinned_base_routes_needs_a_resolvable_ref(self):
+        result = mock.Mock(returncode=128, stdout="")
+        with mock.patch.object(worker_gate.subprocess, "run", return_value=result):
+            self.assertIsNone(worker_gate.pinned_base_routes("missing", "baseline.txt"))
+
+    def test_pinned_base_routes_handles_a_subprocess_error(self):
+        with mock.patch.object(worker_gate.subprocess, "run", side_effect=OSError("no git")):
+            self.assertIsNone(worker_gate.pinned_base_routes("base", "baseline.txt"))
+
+    def test_pinned_base_routes_treats_an_absent_file_as_a_clean_base(self):
+        results = [mock.Mock(returncode=0, stdout="base123\n"),
+                   mock.Mock(returncode=128, stdout="")]
+        with mock.patch.object(worker_gate.subprocess, "run", side_effect=results):
+            self.assertEqual(worker_gate.pinned_base_routes("base123", "baseline.txt"), set())
+
+    def test_pinned_base_routes_rejects_an_unusable_show(self):
+        # A git error other than "file absent" must never be read as a clean base.
+        results = [mock.Mock(returncode=0, stdout="base123\n"),
+                   mock.Mock(returncode=0, stdout=""),
+                   mock.Mock(returncode=128, stdout="")]
+        with mock.patch.object(worker_gate.subprocess, "run", side_effect=results):
+            self.assertIsNone(worker_gate.pinned_base_routes("base123", "baseline.txt"))
+
+    def test_pinned_base_routes_rejects_a_blank_file(self):
+        results = [mock.Mock(returncode=0, stdout="base123\n"),
+                   mock.Mock(returncode=0, stdout=""),
+                   mock.Mock(returncode=0, stdout="  \n\n")]
+        with mock.patch.object(worker_gate.subprocess, "run", side_effect=results):
+            self.assertIsNone(worker_gate.pinned_base_routes("base123", "baseline.txt"))
+
+    def test_pinned_base_routes_rejects_malformed_lines(self):
+        results = [mock.Mock(returncode=0, stdout="base123\n"),
+                   mock.Mock(returncode=0, stdout=""),
+                   mock.Mock(returncode=0, stdout="not a route\n")]
+        with mock.patch.object(worker_gate.subprocess, "run", side_effect=results):
+            self.assertIsNone(worker_gate.pinned_base_routes("base123", "baseline.txt"))
+
+    def test_pinned_base_routes_parses_a_valid_baseline(self):
+        results = [mock.Mock(returncode=0, stdout="base123\n"),
+                   mock.Mock(returncode=0, stdout=""),
+                   mock.Mock(returncode=0, stdout="# header\nGET /api/v1/{}/accept\n")]
+        with mock.patch.object(worker_gate.subprocess, "run", side_effect=results):
+            self.assertEqual(worker_gate.pinned_base_routes("base123", "baseline.txt"),
+                             {"GET /api/v1/{}/accept"})
+
+    def test_candidate_baseline_missing_file_fails_closed(self):
+        # Deleting the baseline must not look like a clean empty set.
+        self.assertIsNone(worker_gate.candidate_baseline("no/such/baseline.txt"))
+
+    def test_candidate_baseline_parses_the_working_tree_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "missing-routes.txt"
+            path.write_text("# header\nPOST /api/v1/legacy\n")
+            self.assertEqual(worker_gate.candidate_baseline(path), {"POST /api/v1/legacy"})
+
+    def test_candidate_baseline_rejects_a_malformed_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "missing-routes.txt"
+            path.write_text("not a route\n")
+            self.assertIsNone(worker_gate.candidate_baseline(path))
+
+    def test_parse_parity_message_requires_the_undocumented_heading(self):
+        self.assertIsNone(worker_gate.parse_parity_message("some other assertion failed"))
+
+    def test_parse_parity_message_collects_only_the_undocumented_section(self):
+        message = ("OpenAPI route parity failed.\n"
+                   "NEW undocumented controller routes:\n"
+                   "  GET /api/v1/new-command\n"
+                   "Contract routes with no controller:\n"
+                   "  POST /api/v1/ghost\n")
+
+        self.assertEqual(worker_gate.parse_parity_message(message), {"GET /api/v1/new-command"})
+
+    def test_parse_parity_message_ignores_prose_inside_the_section(self):
+        message = "NEW undocumented controller routes:\nsome prose without a path\n"
+
+        self.assertEqual(worker_gate.parse_parity_message(message), set())
+
+    def test_parse_parity_message_ignores_routes_before_the_heading(self):
+        message = "GET /before\nNEW undocumented controller routes:\n  GET /after\n"
+
+        self.assertEqual(worker_gate.parse_parity_message(message), {"GET /after"})
+
+    def test_real_surefire_message_shape_normalizes_path_variables(self):
+        # Shape emitted by OpenApiRouteCoverage.describe: the message attribute
+        # carries &#10; separators, which ElementTree decodes before we parse.
+        message = ("OpenAPI route parity failed.&#10;"
+                   "NEW undocumented controller routes:&#10;"
+                   "  GET /api/v1/orders/{orderId}/accept&#10;"
+                   "Contract routes with no controller:&#10;"
+                   "  GET /api/v1/ghost")
+        xml = ('<testsuite name="com.aurevia.smartclinic.it.contract.OpenApiRouteParityTest" '
+               'failures="1" errors="0">'
+               '<failure message="' + message + '" '
+               'type="org.opentest4j.AssertionFailedError"/>'
+               '</testsuite>')
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(tmp, "TEST-parity.xml", xml)
+
+            self.assertEqual(worker_gate.reported_parity_routes(tmp),
+                             {"GET /api/v1/orders/{}/accept"})
+
+    def test_reported_parity_routes_without_a_parity_report_is_unusable(self):
+        # No report means the parity suite never ran, not that it passed.
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(worker_gate.reported_parity_routes(tmp))
+
+    def test_reported_parity_routes_unparseable_xml_is_unusable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(tmp, "TEST-broken.OpenApiRouteParityTest.xml", "<not xml")
+            self.assertIsNone(worker_gate.reported_parity_routes(tmp))
+
+    def test_reported_parity_routes_ignores_other_suites(self):
+        xml = '<testsuite name="pkg.OtherTest" failures="1" errors="0">' \
+              '<failure message="NEW undocumented controller routes:&#10;  GET /x"/>' \
+              '</testsuite>'
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(tmp, "TEST-other.xml", xml)
+            self.assertIsNone(worker_gate.reported_parity_routes(tmp))
+
+    def test_reported_parity_routes_green_suite_is_clean(self):
+        xml = '<testsuite name="pkg.OpenApiRouteParityTest" failures="0" errors="0"/>'
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(tmp, "TEST-parity.xml", xml)
+            self.assertEqual(worker_gate.reported_parity_routes(tmp), set())
+
+    def test_reported_parity_routes_red_suite_collects_routes(self):
+        xml = ('<testsuite name="pkg.OpenApiRouteParityTest" failures="1" errors="0">'
+               '<failure message="OpenAPI route parity failed.&#10;'
+               'NEW undocumented controller routes:&#10;'
+               '  GET /api/v1/new-command"/>'
+               '</testsuite>')
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(tmp, "TEST-parity.xml", xml)
+            self.assertEqual(worker_gate.reported_parity_routes(tmp),
+                             {"GET /api/v1/new-command"})
+
+    def test_reported_parity_routes_red_suite_without_heading_is_unusable(self):
+        # A ghost route, a missing 2xx response or an unexpected assertion still
+        # fails the parity suite; without the route section we cannot clear it.
+        xml = ('<testsuite name="pkg.OpenApiRouteParityTest" failures="1" errors="0">'
+               '<failure message="Contract routes with no controller:&#10;  GET /ghost"/>'
+               '</testsuite>')
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(tmp, "TEST-parity.xml", xml)
+            self.assertIsNone(worker_gate.reported_parity_routes(tmp))
+
+    def test_reported_parity_routes_tolerates_missing_failure_text(self):
+        xml = ('<testsuite name="pkg.OpenApiRouteParityTest" failures="1" errors="0">'
+               '<failure type="AssertionError"/>'
+               '</testsuite>')
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(tmp, "TEST-parity.xml", xml)
+            self.assertIsNone(worker_gate.reported_parity_routes(tmp))
+
+    def test_reported_parity_routes_uses_failure_text_when_attribute_is_absent(self):
+        xml = ('<testsuite name="pkg.OpenApiRouteParityTest" failures="1" errors="0">'
+               '<failure>NEW undocumented controller routes:&#10;  GET /from-text</failure>'
+               '</testsuite>')
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(tmp, "TEST-parity.xml", xml)
+            self.assertEqual(worker_gate.reported_parity_routes(tmp), {"GET /from-text"})
+
+    def check(self, base=(), candidate=(), reported=()):
+        """Drive check_parity with synthetic loader results."""
+        def value(routes):
+            return None if routes == "unusable" else set(routes)
+
+        with mock.patch.object(worker_gate, "pinned_base_routes", return_value=value(base)), \
+             mock.patch.object(worker_gate, "candidate_baseline", return_value=value(candidate)), \
+             mock.patch.object(worker_gate, "reported_parity_routes", return_value=value(reported)):
+            return worker_gate.check_parity({"base_ref": "base", "baseline": "b.txt",
+                                             "reports": "/reports"})
+
+    def test_check_parity_fails_closed_for_each_unusable_source(self):
+        for kwargs in ({"base": "unusable"},
+                       {"candidate": "unusable"},
+                       {"reported": "unusable"}):
+            with self.subTest(kwargs=kwargs):
+                ok, message = self.check(**kwargs)
+                self.assertFalse(ok)
+                self.assertIn("unusable", message)
+
+    def test_check_parity_blocks_growth_a_new_route_and_both(self):
+        for kwargs, expected in (
+                ({"base": set(), "candidate": {"GET /grown"}}, "baseline growth"),
+                ({"base": set(), "reported": {"GET /new"}}, "new undocumented routes"),
+                ({"base": set(), "candidate": {"GET /grown"},
+                  "reported": {"GET /new"}}, "baseline growth")):
+            with self.subTest(kwargs=kwargs):
+                ok, message = self.check(**kwargs)
+                self.assertFalse(ok)
+                self.assertIn(expected, message)
+
+    def test_check_parity_allows_a_clean_or_shrinking_baseline(self):
+        for kwargs in ({"base": set()}, {"base": {"GET /old", "POST /older"},
+                                        "candidate": {"GET /old"}}):
+            with self.subTest(kwargs=kwargs):
+                ok, message = self.check(**kwargs)
+                self.assertTrue(ok)
+                self.assertIn("no new undocumented routes", message)
+
+
+class ParityMainTest(unittest.TestCase):
+    """main() passes the pinned base to the gate without disturbing report handling."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.reports = Path(self.tmp.name) / "reports"
+        self.reports.mkdir()
+        self.notes = Path(self.tmp.name) / NOTES
+        self.notes.parent.mkdir(parents=True, exist_ok=True)
+        self.notes.write_text(notes_text())
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_main(self, argv, base=None, candidate=None, reported=None):
+        env = {"STORY_BODY": "", "NOTES_FILE": str(self.notes), "WORKER_FINISHED": "1"}
+        results = []
+        for value in (base, candidate, reported):
+            results.append(set() if value is None else (None if value == "unusable" else set(value)))
+        with mock.patch.object(worker_gate, "changed_paths", return_value=[]), \
+             mock.patch.object(worker_gate, "head_commit", return_value="abc123"), \
+             mock.patch.object(worker_gate, "pinned_base_routes",
+                               return_value=results[0]) as pinned, \
+             mock.patch.object(worker_gate, "candidate_baseline",
+                               return_value=results[1]) as candidate_mock, \
+             mock.patch.object(worker_gate, "reported_parity_routes",
+                               return_value=results[2]) as reported_mock, \
+             mock.patch.dict(os.environ, env, clear=True):
+            code = worker_gate.main(argv)
+        return code, (pinned, candidate_mock, reported_mock)
+
+    def test_base_ref_and_baseline_path_are_passed_to_the_loaders(self):
+        code, loaders = self.run_main(["0", str(self.reports), "base123", "b.txt"])
+
+        self.assertEqual(code, 0)
+        loaders[0].assert_called_once_with("base123", "b.txt")
+        loaders[1].assert_called_once_with("b.txt")
+        loaders[2].assert_called_once_with(self.reports)
+
+    def test_default_baseline_is_used_when_no_path_is_given(self):
+        _, loaders = self.run_main(["0", str(self.reports), "base123"])
+
+        loaders[0].assert_called_once_with("base123", worker_gate.DEFAULT_BASELINE)
+        loaders[1].assert_called_once_with(worker_gate.DEFAULT_BASELINE)
+
+    def test_without_a_base_ref_the_loaders_are_not_called(self):
+        code, loaders = self.run_main(["0", str(self.reports)])
+
+        self.assertEqual(code, 0)
+        for loader in loaders:
+            loader.assert_not_called()
+
+    def test_empty_base_arguments_disable_the_parity_check(self):
+        code, loaders = self.run_main(["0", str(self.reports), "", ""])
+
+        self.assertEqual(code, 0)
+        for loader in loaders:
+            loader.assert_not_called()
+
+    def test_parity_context_is_forwarded_to_decide(self):
+        env = {"STORY_BODY": "", "NOTES_FILE": str(self.notes), "WORKER_FINISHED": "1"}
+        with mock.patch.object(worker_gate, "changed_paths", return_value=[]), \
+             mock.patch.object(worker_gate, "head_commit", return_value="abc123"), \
+             mock.patch.object(worker_gate, "decide",
+                               return_value=(True, "ok")) as decision, \
+             mock.patch.dict(os.environ, env, clear=True):
+            code = worker_gate.main(["0", str(self.reports), "base123", "b.txt"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(decision.call_args.args[4],
+                         {"base_ref": "base123", "baseline": "b.txt", "reports": self.reports})
+
+    def test_unusable_base_evidence_fails_the_gate(self):
+        code, _ = self.run_main(["0", str(self.reports), "base123", "b.txt"],
+                                base="unusable")
+
+        self.assertEqual(code, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
