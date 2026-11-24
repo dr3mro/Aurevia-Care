@@ -372,7 +372,20 @@ jobs:
         run: |
           set -euo pipefail
           bundle="results/worker-$TASK_ID/result.bundle"
-          if [[ ! -s "$bundle" ]]; then echo "no candidate bundle to validate" >&2; exit 1; fi
+          if [[ ! -s "$bundle" ]]; then
+            # A worker that made no commits is a legitimate no-change result:
+            # cmd_bundle only packs a bundle when commits > 0. Skip validation
+            # instead of failing the job; publish already skips without a SHA.
+            commits=$(cat "results/worker-$TASK_ID/commits" 2>/dev/null || echo 0)
+            if [[ "$commits" == "0" || -z "$commits" ]]; then
+              echo "::notice::No candidate bundle for $TASK_ID (no commits); nothing to validate."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            # A worker that reported commits but packed nothing is a real defect.
+            echo "::error::Worker reported $commits commits but produced no candidate bundle" >&2
+            exit 1
+          fi
           git fetch -q "$bundle" HEAD:refs/remotes/candidate
           sha=$(git rev-parse refs/remotes/candidate)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
@@ -380,6 +393,7 @@ jobs:
           cp -R scripts/. candidate-tree/scripts/
       - name: Run the trusted gate on the candidate tree
         id: gate
+        if: steps.candidate.outputs.skip != 'true'
         run: |
           set +e
           (cd candidate-tree && bash scripts/worker-check.sh) > validate.log 2>&1

@@ -125,6 +125,20 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertIn("Candidate was not validated", published)
         self.assertIn("VALIDATED_SHA", published)
 
+    def test_worker_validate_skips_a_no_change_result_but_fails_a_missing_bundle(self):
+        """A worker with zero commits packs no bundle; validation must not go red."""
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-worker.yml").read_text(encoding="utf-8"))
+        validate = workflow["jobs"]["validate"]
+        candidate = next(s for s in validate["steps"] if s.get("id") == "candidate")
+        gate = next(s for s in validate["steps"] if s.get("id") == "gate")
+        body = run_text(candidate)
+        self.assertIn('if [[ ! -s "$bundle" ]]', body)
+        self.assertIn('commits=$(cat "results/worker-$TASK_ID/commits"', body)
+        self.assertIn('if [[ "$commits" == "0" || -z "$commits" ]]', body)
+        self.assertIn('echo "skip=true" >> "$GITHUB_OUTPUT"', body)
+        self.assertIn("exit 1", body)  # commits reported but no bundle stays a hard failure
+        self.assertEqual(gate["if"], "steps.candidate.outputs.skip != 'true'")
+
     def test_integrator_validate_job_has_no_nvd_consumer_key(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         job = workflow["jobs"]["validate"]
