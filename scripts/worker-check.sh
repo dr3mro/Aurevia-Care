@@ -52,7 +52,18 @@ mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration test || mvn_sta
 if [[ -d "$shared_reports" ]] && compgen -G "$shared_reports/TEST-*.xml" > /dev/null; then
   cp -- "$shared_reports"/TEST-*.xml "$reports_dir/"
 fi
-python3 -I scripts/worker_gate.py "$mvn_status" "$reports_dir"
+# The pinned base is the SHA recorded before this worker made any commits; the
+# coverage and quality gates use the same value. A manual invocation without that
+# file falls back to the base branch. Passing the base and the frozen baseline
+# lets worker_gate.py block a new undocumented route even when its parity suite
+# is not name-related to the changed file.
+base_ref="$(cat .agent/base-sha 2>/dev/null || printf 'origin/%s' "${BASE_BRANCH:-main}")"
+if [[ -z "$base_ref" ]]; then
+  printf 'worker check: the pinned base ref is empty; refusing to skip the route-parity gate\n' >&2
+  exit 1
+fi
+python3 -I scripts/worker_gate.py "$mvn_status" "$reports_dir" "$base_ref" \
+  "contracts/openapi/missing-routes.txt"
 bash db/check.sh
 
 printf 'worker check: quick gate, frontend standards, integration tests and database policy passed\n'

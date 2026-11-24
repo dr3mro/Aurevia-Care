@@ -1,4 +1,4 @@
-# WEB-11 clause 4 — use expand and contract migrations and feature flags that default off
+# WEB-11 clause 4 — Use expand and contract migrations and feature flags that default off
 
 ## Clause
 
@@ -6,60 +6,161 @@ Use expand and contract migrations and feature flags that default off.
 
 ## Status
 
-Not built
+Partly built
 
 ## Evidence
 
-This is a repository-survey evidence note. Every file, test and command below was found or re-run locally; no CI run, real deployment, signed artifact, clinical review or human decision is claimed. `Not built` follows rule 3 of this task: WEB-11 evidence is produced with the infrastructure owner before G5, and the repository does not hold that evidence (see `## Gap`). The offline expand/contract checker described below is a supporting control, not evidence that the clause has been used in a release. The expand/contract half alone would be "Built and verified" as offline tooling; the clause as a release practice is not.
+The clause has two halves and they do not have the same status. The
+expand/contract migration discipline is implemented and verified offline; the
+feature flags that default off are not implemented, and the evidence that would
+prove them is infrastructure-owner and human-gated. Section 8.1 of
+[SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) says WEB-11 evidence
+is produced with the infrastructure owner. The WEB-11 row of the
+[production readiness register](../../../operations/production-readiness/README.md)
+still reads "not started", owner "unassigned", and the corresponding row of the
+[launch checklist](../../../operations/production-readiness/launch-checklist.md)
+is `open`, with a runbook link but no evidence artifact attached.
 
-The clause is the third sentence of WEB-11 in [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md) (line 159). Section 8.1 requires WEB-01–WEB-13 evidence before G5 and states WEB-11 evidence is produced with the infrastructure owner. Section 11 names "Service fails during rollout" as a testable outcome — operators stop traffic to the affected feature — but that is a required outcome, not an implemented mechanism here. The tracked checklist in [docs/operations/production-readiness/README.md](../../../../docs/operations/production-readiness/README.md) (line 19) still records the WEB-11 evidence as "not started", owner "Infrastructure owner", with an empty evidence link.
+Built and verified — expand and contract migrations:
 
-Expand and contract — an offline checker exists and passes:
+- [scripts/check-migrations.py](../../../../scripts/check-migrations.py) is a
+  deterministic offline gate. It requires unique migration versions, restricts
+  the optional `Change` header to `expand` or `contract`, requires
+  statement-start destructive DDL to declare `Change: contract`, and requires
+  every contract to carry a `Forward-fix: V<n>__name.sql` reference plus a
+  `Requires-expand: V<n>` pointing at an existing, earlier expand migration.
+  Its header states that the declaration is the developer's and that human
+  review of each contract remains required.
+- The gate is wired where changes are actually checked:
+  [scripts/check.sh](../../../../scripts/check.sh),
+  [scripts/quick-check.sh](../../../../scripts/quick-check.sh) and the Delivery
+  `policy` job in
+  [.github/workflows/delivery.yml](../../../../.github/workflows/delivery.yml)
+  each call `python3 -I scripts/check-migrations.py --require-baseline`. The
+  baseline flag makes an empty or missing migration directory fail rather than
+  silently disabling the check.
+- The enforced rules are documented in
+  [db/migrations/README.md](../../../../db/migrations/README.md) and decided in
+  [decision 0002 — OPS-06 migration change-safety gate](../../../../docs/decisions/0002-ops06-migration-change-safety.md).
+  Real migrations carry the declared headers; for example
+  [V13__longitudinal_chart.sql](../../../../db/migrations/V13__longitudinal_chart.sql)
+  declares `-- Change: expand`.
+- [scripts/tests/test_check_migrations.py](../../../../scripts/tests/test_check_migrations.py)
+  covers the gate, including the destructive-DDL forms, malformed headers, the
+  missing expand reference and the comment/string/dollar-quote regressions.
+  `python3 -I -m unittest discover -s scripts/tests -p 'test_check_migrations.py' -q`
+  reported `Ran 35 tests in 0.087s` and `OK` (tool evidence, this checkout).
+- Limit of this proof: the gate checks the *declaration* and its references,
+  not that the SQL matches the label. No migration in the repository currently
+  declares `Change: contract`; the first contract and its forward-fix are
+  future work and still require human review.
 
-- [scripts/check-migrations.py](../../../../scripts/check-migrations.py) is the OPS-06 change-safety gate. It parses `Change: expand|contract`, `Forward-fix:` and `Requires-expand:` headers, requires a format-valid forward fix and an existing earlier `Change: expand` for every contract, rejects duplicate versions, and fails closed under `--require-baseline`. Its module docstring says the header is a developer declaration: the checker proves its format and reference, not that SQL matches the label; human review of every contract remains required.
-- [scripts/tests/test_check_migrations.py](../../../../scripts/tests/test_check_migrations.py) is the nearest honest expand/contract test. It uses synthetic migration fixtures in a scratch repository; `ContractTest.test_valid_contract_passes`, `ContractTest.test_documented_contract_example_passes` and `SequenceTest.test_clean_expand_migration_passes` cover the accepting paths, and the remaining cases cover destructive DDL forms, comment/string/dollar-body evasion, duplicates, gaps, forward-fix and expand-reference branches, and CLI exit codes. The observed full run is `Ran 35 tests in 0.050s / OK`.
-- [db/migrations/README.md](../../../../db/migrations/README.md) (lines 15–35) documents the gate, its canonical command and its wiring into `scripts/check.sh`, `scripts/quick-check.sh` and the Delivery policy job; it also records that the header is self-declared and `db/check.sh` remains the authoritative apply-and-assert gate on real PostgreSQL.
-- [docs/decisions/0002-ops06-migration-change-safety.md](../../../../docs/decisions/0002-ops06-migration-change-safety.md) is the accepted decision. It adds the deterministic checker and explicitly defers environment-account separation, signed builds, monitored progressive rollout and audited production access to cloud/human-gated work; it rejected a self-attesting environment manifest as vacuous. Its evidence line records 34 cases and 100% line coverage measured with stdlib `trace` at decision time; the current suite has 35 cases.
-- [docs/decisions/0003-persistence-of-in-memory-stores.md](../../../../docs/decisions/0003-persistence-of-in-memory-stores.md) (line 45) records that one migration per store, with its own reserved version, is required to keep expand/contract changes reviewable under OPS-06.
-- [docs/archive/TODO-DONE.md](../../../../docs/archive/TODO-DONE.md) (line 644) records S-G0-03d delivering the gate with rollout deferred to S-G5-07; line 1073 records S-G5-07 done with PR #129 in `infra/delivery-safety` and `docs/operations/delivery-safety`.
-- [infra/delivery-safety/check.sh](../../../../infra/delivery-safety/check.sh) executes the evaluator's unit tests, three synthetic fixture runs and the real migration checker. A local run reported `Ran 71 tests ... OK` and `S-G5-07: OPS-06 evaluator unit tests and fixture checks passed`, exit 0. [docs/operations/delivery-safety/README.md](../../../../docs/operations/delivery-safety/README.md) states the contract, evaluator and handoff are delivered while real deployment evidence and per-site launch approval are **not** produced there and remain open G5 gates; synthetic rehearsals are explicitly `final_evidence: false`. [docs/operations/delivery-safety/build-and-migration-gates.md](../../../../docs/operations/delivery-safety/build-and-migration-gates.md) names the existing checker in the artifact contract and states what it does not prove.
+Built as an evaluator only — declaration checks, not deployment evidence:
 
-Feature flags that default off — no release mechanism found:
+- The [delivery safety handoff](../../../operations/delivery-safety/README.md)
+  defines three evidence tiers: contract, synthetic rehearsal and measured
+  deployment. A passing synthetic artifact is labelled `final_evidence: false`
+  and a `measured_deployment` claim is checked only for the shape of its run
+  provenance, not for its truth. The
+  [evidence contract](../../../operations/delivery-safety/evidence-contract.md)
+  and
+  [build and migration gates](../../../operations/delivery-safety/build-and-migration-gates.md)
+  require an artifact to declare `migrations.expand_contract: true` and
+  `migrations.forward_fix_required: true`.
+- [infra/delivery-safety/delivery_safety_evidence.py](../../../../infra/delivery-safety/delivery_safety_evidence.py)
+  evaluates those declarations and the rollout/rollback contract, and
+  [infra/delivery-safety/check.sh](../../../../infra/delivery-safety/check.sh)
+  runs the real migration checker instead of trusting the artifact. This is a
+  manually run gate: no workflow or shared script invokes it (decision D8 in the
+  handoff), and no conforming `measured_deployment` artifact exists in the
+  repository. It proves bad declarations are rejected, not that a release used
+  default-off flags or rolled back. Run here: `Ran 71 tests in 0.009s`, `OK`,
+  `S-G5-07: OPS-06 evaluator unit tests and fixture checks passed` (tool
+  evidence, this checkout).
 
-- Exact search: `grep -rniE 'feature.?flag|feature.?toggle|default.?off|kill.?switch|launch.?darkly|unleash' .github/workflows/ infra/ apps/api/src/main/resources/ db/migrations/` returned one hit, `.github/workflows/swarm-integrator.yml:23`, a `SWARM_ALLOW_PROTECTED` kill switch for merging protected files in swarm CI. It is not an application or release flag and does not gate WEB-11 rollout.
-- The closest first-party default-off switch is [apps/api/src/main/java/com/aurevia/smartclinic/labflow/rejection/RejectionNotificationPolicy.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/labflow/rejection/RejectionNotificationPolicy.java) (line 25): `@Value("${smartclinic.lab.rejection.notify-patient:false}")` makes one patient-notification behaviour require explicit site enablement. It is a single LAB-01/PAT-02 domain policy default, not a feature-flag registry, rollout percentage or a gate on a promoted release.
-- No feature-flag registry, configuration key, runtime toggle, default-off release flag or 5%/25%/100% traffic mechanism exists in the four searched directories or in the delivery-safety evidence contract. No workflow run or deployment artifact in this repository demonstrates flags defaulting off.
+Not built — feature flags that default off:
+
+- No flag framework, flag registry, default-off flag configuration or component
+  that *performs* progressive rollout or automatic rollback exists under
+  `apps/`, `.github/workflows/` or `infra/`. The delivery-safety evaluator
+  checks rollout and rollback *declarations* only, as described above. No
+  deployment step gates a release on a flag that is off by default.
+- The only adjacent in-repository switches are
+  [RejectionNotificationPolicy.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/labflow/rejection/RejectionNotificationPolicy.java),
+  which injects `@Value("${smartclinic.lab.rejection.notify-patient:false}")`,
+  and [DocsEnabled.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/web/DocsEnabled.java),
+  which reads `smartclinic.docs.enabled` and keeps production docs off unless a
+  profile or property enables them. Both are single-purpose switches, not
+  WEB-11 rollout flags: neither stages a release, records a rollout or rollback,
+  or is wired to deployment.
+- The progressive rollout with automatic rollback is listed as `open` in the
+  [launch checklist](../../../operations/production-readiness/launch-checklist.md),
+  with a runbook link but no evidence artifact attached.
+  [Release and recovery rules](../../../launch/release-and-recovery-rules.md)
+  records per-site signed release policy as a human decision
+  (`S-G5-12; otherwise NO TASK`).
+  [Rollout and production access](../../../operations/delivery-safety/rollout-and-production-access.md)
+  states explicitly that its evaluator cannot observe live health signals,
+  confirm a rehearsed rollback or verify the approver's identity.
 
 ## Gap
 
-Missing before G5:
+Missing for the whole clause: (1) a feature-flag mechanism whose flags default
+off and can only be flipped through a recorded, attributable change, with its
+configuration and automated tests; (2) a progressive rollout at 5%, 25% and
+100% with health-gated automatic rollback tied to the flag state; (3) the first
+real `Change: contract` migration with its forward-fix and human review when a
+destructive change is needed; (4) a rollback rehearsal record and a release
+checklist with named approvers for the enabled site; and (5) a gate that runs
+the delivery-safety evaluator on real deployment evidence, since it is
+currently manual-only (decision D8 in the handoff).
 
-1. A default-off release feature-flag mechanism for the application: a named flag configuration whose unset value is off, with tests proving the off default and the explicit enable path. The one domain switch above does not provide it.
-2. Evidence that expand and contract migrations are actually used in a release, not just checked offline: a migration run log and human review of each contract's self-declared header (decision 0002 names human review as the compensating control).
-3. Real deployment evidence all left open by decision 0002 and the S-G5-07 handoff: separated cloud accounts with verified isolation, clean dependency and secret scan records, a signed artifact with an SBOM and verified signer identity, monitored progressive rollout with health gates and a rehearsed rollback, and approved, audited, expiring production access.
-4. The WEB-11 evidence row in [docs/operations/production-readiness/README.md](../../../../docs/operations/production-readiness/README.md) is "not started" with no evidence link, and per-site G5 acceptance is absent.
+Files that would change: `docs/operations/production-readiness/README.md` and
+`docs/operations/production-readiness/launch-checklist.md` (status, evidence
+link and owner, once the evidence exists), a new record under
+`docs/operations/delivery-safety/`, and a future infrastructure workflow plus
+application configuration for the flag framework. No task currently covers the
+flag and rollout code, and a worker must not edit the workflow files here.
 
-Files that would change: a new application-side flag configuration and its tests under the owning domain package (no such file exists yet); [infra/delivery-safety/delivery_safety_evidence.py](../../../../infra/delivery-safety/delivery_safety_evidence.py), `infra/delivery-safety/delivery-safety-policy.json`, [docs/operations/delivery-safety/evidence-contract.md](../../../../docs/operations/delivery-safety/evidence-contract.md) and [docs/operations/delivery-safety/rollout-and-production-access.md](../../../../docs/operations/delivery-safety/rollout-and-production-access.md) to judge a default-off flag contract; `docs/operations/production-readiness/launch-checklist.md` and the G5 evidence pack to record the rehearsal and named approvers. This note only lists those files; it changes none of them.
-
-Number of separate tasks: at least three — implement and test the default-off flag mechanism (code); extend the delivery-safety contract, evaluator, policy manifest and documentation (offline tooling); and supply the cloud/human evidence with per-site G5 sign-off (people, not code). A maintainer correction of the stale 34-case figure and the stale archive plan entry is separate cleanup, not clause evidence.
-
-Suppliers before G5: the infrastructure owner with DevSecOps supplies account separation and scan records; release engineering with the signing authority supplies the signed artifact, SBOM and signer identity; operations with the system designer supplies the monitored rollout and rollback rehearsal; a named approver and privacy reviewer supply audited, expiring access; the Product, clinical, engineering and privacy owners supply the signed acceptance matrix with roll-forward/rollback criteria (specification section 10), and the G5 acceptance owners supply final per-site sign-off.
+Number of separate tasks: at least two. First a code and infrastructure task
+adds default-off flags and the rollout/rollback mechanism with automated tests
+(none exists today). Only then can a separate human task produce the monitored
+rollout record, the rollback rehearsal and the signed approver checklist.
+Section 8.1 names the infrastructure owner for that evidence; a passing
+repository check is not a substitute for it.
 
 ## How to verify
 
-Repository checks a reviewer can run now. These prove only the offline tooling, never a deployment or a flag default:
+Repository checks a reviewer can run now. They prove only the expand/contract
+half, not the default-off flag half:
 
-- `python3 -I scripts/check-docs.py` — exit 0: this note's relative links and requirement IDs are valid.
-- `python3 -I scripts/check-migrations.py --require-baseline` — exit 0 on the current migration set.
-- `python3 -I -m unittest discover -s scripts/tests -p 'test_check_migrations.py' -q` — `Ran 35 tests ... OK`: the expand/contract checker suite.
-- `bash infra/delivery-safety/check.sh` — `Ran 71 tests ... OK`, final line `S-G5-07: OPS-06 evaluator unit tests and fixture checks passed`, exit 0: the synthetic evaluator and real checker, not a deployment.
-- The `grep -rniE 'feature.?flag|feature.?toggle|default.?off|kill.?switch|launch.?darkly|unleash' .github/workflows/ infra/ apps/api/src/main/resources/ db/migrations/` command above — returns only the swarm CI kill switch, confirming no WEB-11 release flag mechanism.
-- `grep -n '^## ' docs/spec/clauses/release/use-expand-contract-migrations-feature-flags-default.md` — shows the five headings in the required order; `test -f` on each linked path confirms every relative link resolves.
+- `python3 -I scripts/check-migrations.py --require-baseline` — exit 0 on the
+  current migration set.
+- `python3 -I -m unittest discover -s scripts/tests -p 'test_check_migrations.py' -q`
+  — `Ran 35 tests`, `OK`.
+- `bash infra/delivery-safety/check.sh` — the manual evaluator gate: the
+  synthetic fixture passes, both negative fixtures exit 1 and the real
+  migration gate runs — observed here as `Ran 71 tests in 0.009s`, `OK`,
+  `S-G5-07: OPS-06 evaluator unit tests and fixture checks passed`. It declares
+  `final_evidence: false`; it is not wired into a workflow and proves no real
+  rollout.
+- `python3 -I scripts/check-docs.py` — exit 0 (no output on success); this
+  note's links and requirement IDs are valid.
+- `grep -rn "Change: contract" db/migrations/*.sql` — currently no production
+  migration matches; a future destructive migration must declare it with
+  `Forward-fix` and `Requires-expand`, then pass the gate and human review.
+- `grep -rniE "feature[ _-]?flag|default[ _-]?off" apps/ .github/workflows/ infra/`
+  — no rollout-flag implementation; the default-off wording belongs to the
+  adjacent switches above, not to a rollout mechanism.
 
-Human evidence a site must produce before G5, which no command or workflow run can substitute for:
+Human evidence a site must supply before G5, produced with the infrastructure
+owner (no command or workflow run in this repository substitutes for it):
 
-- Four separated cloud accounts with distinct resources, isolation results and clean dependency/secret scan records, from the infrastructure owner with DevSecOps.
-- One signed artifact with an SBOM, a `sha256:` digest and a verified trusted signer identity, from release engineering with the signing authority.
-- A monitored, reversible 5%/25%/100% rollout with health gates, live metrics and a recorded rollback rehearsal, from operations with the system designer.
-- Approved, attributable and expiring production access with requester/approver separation, from a named approver and privacy reviewer.
-- A signed acceptance matrix naming the approvers and the roll-forward/rollback criteria, including which flags default off at that site, from the Product, clinical, engineering and privacy owners, followed by G5 per-site acceptance. Until that evidence exists, provider or partner traffic must not be enabled.
+- a monitored rollout record showing 5%, 25% and 100% with health gates and
+  automatic rollback on error-rate or latency breach, each flag's default-off
+  state and the approval for every flip;
+- a rollback rehearsal record and a release checklist with named approvers and
+  effective dates, attached to the WEB-11 rows of the
+  [production readiness register](../../../operations/production-readiness/README.md)
+  and [launch checklist](../../../operations/production-readiness/launch-checklist.md),
+  with the accountable individual recorded on the G5 acceptance record.

@@ -5,9 +5,11 @@ import java.nio.file.Path;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.documents.storage.ObjectStorePort;
 import com.aurevia.smartclinic.documents.storage.FileSystemObjectStore;
+import com.aurevia.smartclinic.staff.StaffRepository;
 
 /**
  * Wiring for the staff-attachment private object store (MSG-03, ARC-06).
@@ -43,5 +45,24 @@ public class StaffAttachmentConfiguration {
     @Bean
     public StaffAttachmentLimits staffAttachmentLimits() {
         return new StaffAttachmentLimits();
+    }
+
+    /**
+     * Provide the single publication seam used by both staff message sends.
+     *
+     * <p>Re-deriving active roles in the guarded transaction on every publication
+     * keeps a revoked membership from widening the audience between a mail or
+     * instant send's preflight and its commit.</p>
+     *
+     * @param attachments attachment domain service
+     * @param staff       authoritative active-membership role source
+     * @param transactions tenant-guarded transaction template
+     * @return the production publication seam
+     */
+    @Bean
+    public StaffAttachmentPublication staffAttachmentPublication(StaffAttachmentService attachments,
+                                                                 StaffRepository staff,
+                                                                 TransactionTemplate transactions) {
+        return new StaffAttachmentPublicationService(attachments, staff, transactions);
     }
 }
