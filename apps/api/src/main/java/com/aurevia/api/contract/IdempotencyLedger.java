@@ -193,6 +193,9 @@ public interface IdempotencyLedger {
         private record Entry(RequestDigest digest, String claim, Status status, String outcome) {
         }
 
+        /**
+         * Lifecycle state of one idempotency claim: in flight, completed or rejected.
+         */
         private enum Status {
             IN_PROGRESS,
             COMPLETED

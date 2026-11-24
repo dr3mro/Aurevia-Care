@@ -38,7 +38,6 @@ public record AssociationEvent(String id, String associationId, String action, S
     }
 
     /**
-    /**
      * Retained original bytes and whether the database re-verified their digest (CLN-07).
      *
      * <p>{@code intact} is false when the bytes held in storage no longer match

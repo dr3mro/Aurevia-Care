@@ -70,6 +70,9 @@ done < <(printf '%s\n' "$MIGRATIONS"/V*.sql | sort -V)
 AUREVIA_SERVER_PORT=8080 \
 AUREVIA_DB_URL="jdbc:postgresql://127.0.0.1:5432/$DB" \
 AUREVIA_DB_USER=aurevia_app \
+if [[ -z "${AUREVIA_PROFILE:-}" ]]; then
+  echo "aurevia: AUREVIA_PROFILE is unset; using synthetic authentication for this disposable test stack" >&2
+fi
 SPRING_PROFILES_ACTIVE="${AUREVIA_PROFILE:-synthetic-auth}" \
     java ${JAVA_OPTS:-} -jar /opt/aurevia/api.jar &
 api_pid=$!

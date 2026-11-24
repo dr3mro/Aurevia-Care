@@ -145,6 +145,12 @@ public final class FileSystemObjectStore implements ObjectStorePort {
     }
 
     @FunctionalInterface
+    /**
+     * One checked filesystem operation with a value result, used to keep the
+     * quarantine, promote and delete paths on a single error-handling route.
+     *
+     * @param <T> result type of the operation
+     */
     private interface IoOperation<T> {
         T run() throws IOException;
     }

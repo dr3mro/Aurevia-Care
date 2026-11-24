@@ -57,6 +57,7 @@ jobs:
     concurrency:
       group: agent-swarm-plan
       cancel-in-progress: false
+      queue: max
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
