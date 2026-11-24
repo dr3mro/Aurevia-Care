@@ -51,7 +51,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_rx02_verify_retry_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_prescription_verify_retry_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
@@ -62,7 +62,7 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
     private static final String OTHER_PRESCRIBER = "other-1111";
     private static final String FOREIGN_PRESCRIBER = "clinician-2222";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/aurevia_rx02_verify_retry_it";
+            "jdbc:postgresql://127.0.0.1:5432/aurevia_prescription_verify_retry_it";
     private static final String ADMIN = System.getenv().getOrDefault(
             "AUREVIA_PG_ADMIN", System.getProperty("user.name"));
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -88,8 +88,8 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
                     + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
                     + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
                     + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS aurevia_rx02_verify_retry_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE aurevia_rx02_verify_retry_it OWNER aurevia_migrate");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_prescription_verify_retry_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_prescription_verify_retry_it OWNER aurevia_migrate");
         }
         Flyway.configure()
                 .dataSource(URL, "aurevia_migrate", "")
@@ -119,7 +119,7 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS aurevia_rx02_verify_retry_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_prescription_verify_retry_it WITH (FORCE)");
         }
     }
 
@@ -394,12 +394,12 @@ class AmbiguousTransmissionVerifyPartnerStatusBeforeRetryingTest {
     }
 
     private static int countSubmissionRows(String org, String prescriptionId) {
-        return count(org, "SELECT COUNT(*) FROM public.rx02_submission WHERE prescription_id = CAST('"
+        return count(org, "SELECT COUNT(*) FROM public.prescription_submission WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid)");
     }
 
     private static int countEventsOfType(String org, String prescriptionId, String type) {
-        return count(org, "SELECT COUNT(*) FROM public.rx02_event WHERE prescription_id = CAST('"
+        return count(org, "SELECT COUNT(*) FROM public.prescription_event WHERE prescription_id = CAST('"
                 + prescriptionId + "' AS uuid) AND event_type = '" + type + "'");
     }
 

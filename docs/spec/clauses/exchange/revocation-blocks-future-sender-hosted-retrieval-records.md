@@ -14,7 +14,7 @@ Test class: `com.aurevia.exchange.clauses.RevocationBlocksFutureSenderHostedRetr
 (path: `apps/api/src/test/java/com/aurevia/exchange/clauses/RevocationBlocksFutureSenderHostedRetrievalRecordsTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, uses the
 `synthetic-auth` profile and a dedicated database
-`aurevia_xch03_revoke_clause_it` created from the production Flyway
+`aurevia_exchange_response_revoke_clause_it` created from the production Flyway
 migrations, and seeds two synthetic tenants with their own subjects, patient
 record and orders. All four tests are active (none are disabled) and use
 synthetic data only.
@@ -37,7 +37,7 @@ Test methods (one positive rule proof, three negative refusals):
   with HTTP 410 `RETRIEVAL_REVOKED`, proving that no cached or out-of-date view
   can bypass revocation. The order view reports one notification with the
   submitted `eventId`, `target`, `channel` and outcome `NOTIFIED`; a direct
-  database assertion finds one durable `xch03_notification` row for that event
+  database assertion finds one durable `exchange_response_notification` row for that event
   id and one `EXCHANGE_REVOKE` audit row for the order.
 - `aRecipientRoleCannotRevokeAndRetrievalStillSucceeds` — negative proof
   (wrong role). `lab_verifier` has recipient and read rights but
@@ -81,9 +81,9 @@ Production classes exercised through the real HTTP entry point:
   through the response body.
 
 Database evidence: `db/migrations/V21__xch03_order_response.sql` creates
-`xch03_notification` with `event_id` as the tenant-scoped deduplication key,
+`exchange_response_notification` with `event_id` as the tenant-scoped deduplication key,
 enables and forces row-level security on every XCH-03 table through
-`xch03_app_org()`, and owns the actor/immutability triggers. The `410` is raised
+`exchange_response_app_org()`, and owns the actor/immutability triggers. The `410` is raised
 by the service against the current order row, not by an in-memory cache.
 
 The `/api/v1/xch03/orders/{}/revoke` and `/api/v1/xch03/orders/{}/retrieve`

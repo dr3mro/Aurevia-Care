@@ -71,7 +71,7 @@ Production classes and files surveyed and exercised by these entry points:
   `POST /api/v1/prescriptions/{id}/transmit` (line 106) and `GET /api/v1/prescriptions/{id}/printable`
   (line 79) are the HTTP entry points; the controller injects `RxService` and parses `If-Match`.
 - [V44__rx02_prescription_transmission.sql](../../../../db/migrations/V44__rx02_prescription_transmission.sql):
-  creates `rx02_prescription`, `rx02_submission` and `rx02_event` with tenant keys, one-submission
+  creates `prescription_transmission`, `prescription_submission` and `prescription_event` with tenant keys, one-submission
   constraints, append-only triggers and `ENABLE` plus `FORCE ROW LEVEL SECURITY` with a
   `tenant_isolation` policy on all three tables (lines 115–123).
   [V59__rx02_ambiguous_transition.sql](../../../../db/migrations/V59__rx02_ambiguous_transition.sql)

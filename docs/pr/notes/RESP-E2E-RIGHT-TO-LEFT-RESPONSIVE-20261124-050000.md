@@ -4,7 +4,7 @@ Tested head revision: `30d7d16709cd64818666abca47b2f0ab4267bdba`
 
 ## Summary
 
-PR #1611 contains worker hand-off note only; no production or test file changed by this PR: `.agent/pr-notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-041536.md`. Its worker record reported
+PR #1611 contains worker hand-off note only; no production or test file changed by this PR: `docs/pr/notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-041536.md`. Its worker record reported
 local-check failure from repository-wide gate defects that have since been
 repaired on main. This note records the re-verification on the refreshed branch.
 
@@ -30,7 +30,7 @@ no new specialist review.
 
 ## Findings
 
-Historical hand-off notes remain under `.agent/pr-notes/` from the worker's
+Historical hand-off notes remain under `docs/pr/notes/` from the worker's
 original branch; the active reconciled record is this file under `docs/pr/notes/`.
 Evidence sources: executed tool commands and GitHub Actions logs. No simulated
 user walkthrough, clinician review or human participant feedback.

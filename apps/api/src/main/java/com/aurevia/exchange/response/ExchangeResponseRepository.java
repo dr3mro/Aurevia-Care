@@ -34,7 +34,7 @@ public class ExchangeResponseRepository {
             SELECT id::text AS id, version, order_code, state, revision, content_checksum,
                    local_patient_id::text AS local_patient_id, assignee, reason, question,
                    permitted_purpose, retention_policy
-              FROM public.xch03_order
+              FROM public.exchange_response_order
             """;
 
     private static final RowMapper<ExchangeOrder> ORDER_MAPPER = ExchangeResponseRepository::mapOrder;
@@ -118,7 +118,7 @@ public class ExchangeResponseRepository {
                       String reason, String question, String permittedPurpose, String retentionPolicy,
                       int revision) {
         return jdbc.update("""
-                UPDATE public.xch03_order
+                UPDATE public.exchange_response_order
                    SET state = :state, version = version + 1, local_patient_id = CAST(:patient AS uuid),
                        assignee = :assignee, reason = :reason, question = :question,
                        permitted_purpose = :purpose, retention_policy = :policy, revision = :revision
@@ -146,7 +146,7 @@ public class ExchangeResponseRepository {
     public void insertRevision(String organizationId, String id, String orderId, int revision,
                                Integer previous, String checksum, String summary, String actor) {
         jdbc.update("""
-                INSERT INTO public.xch03_revision
+                INSERT INTO public.exchange_response_revision
                     (organization_id, id, order_id, revision, previous_revision, content_checksum,
                      change_summary, actor_id)
                 VALUES (CAST(:org AS uuid), CAST(:id AS uuid), CAST(:orderId AS uuid), :revision,
@@ -175,7 +175,7 @@ public class ExchangeResponseRepository {
                                String checksum, String purpose, String policy, boolean legalHold,
                                String actor) {
         jdbc.update("""
-                INSERT INTO public.xch03_retained_copy
+                INSERT INTO public.exchange_response_retained_copy
                     (organization_id, id, order_id, revision, content_checksum, permitted_purpose,
                      retention_policy, legal_hold, actor_id)
                 VALUES (CAST(:org AS uuid), CAST(:id AS uuid), CAST(:orderId AS uuid), :revision,
@@ -203,7 +203,7 @@ public class ExchangeResponseRepository {
     public void insertNotification(String organizationId, String id, String orderId, String eventId,
                                    String target, String channel, String outcome, String actor) {
         jdbc.update("""
-                INSERT INTO public.xch03_notification
+                INSERT INTO public.exchange_response_notification
                     (organization_id, id, order_id, event_id, target, channel, outcome, actor_id)
                 VALUES (CAST(:org AS uuid), CAST(:id AS uuid), CAST(:orderId AS uuid), :eventId,
                         :target, :channel, :outcome,
@@ -230,7 +230,7 @@ public class ExchangeResponseRepository {
     public void appendEvent(String organizationId, String id, String orderId, int version, String action,
                             String fromState, String toState, String reason, String actor) {
         jdbc.update("""
-                INSERT INTO public.xch03_event
+                INSERT INTO public.exchange_response_event
                     (organization_id, id, order_id, order_version, action, from_state, to_state,
                      reason, actor_id)
                 VALUES (CAST(:org AS uuid), CAST(:id AS uuid), CAST(:orderId AS uuid), :version,
@@ -253,7 +253,7 @@ public class ExchangeResponseRepository {
         return jdbc.query("""
                 SELECT id::text, order_version, action, from_state, to_state, reason,
                        actor_id::text, occurred_at
-                  FROM public.xch03_event WHERE order_id = CAST(:id AS uuid)
+                  FROM public.exchange_response_event WHERE order_id = CAST(:id AS uuid)
                  ORDER BY occurred_at, id
                 """, Map.of("id", orderId), EVENT_MAPPER);
     }
@@ -268,7 +268,7 @@ public class ExchangeResponseRepository {
         return jdbc.query("""
                 SELECT id::text, revision, previous_revision, content_checksum, change_summary,
                        actor_id::text, occurred_at
-                  FROM public.xch03_revision WHERE order_id = CAST(:id AS uuid)
+                  FROM public.exchange_response_revision WHERE order_id = CAST(:id AS uuid)
                  ORDER BY revision
                 """, Map.of("id", orderId), REVISION_MAPPER);
     }
@@ -283,7 +283,7 @@ public class ExchangeResponseRepository {
         return jdbc.query("""
                 SELECT id::text, revision, content_checksum, permitted_purpose, retention_policy,
                        legal_hold, actor_id::text, occurred_at
-                  FROM public.xch03_retained_copy WHERE order_id = CAST(:id AS uuid)
+                  FROM public.exchange_response_retained_copy WHERE order_id = CAST(:id AS uuid)
                  ORDER BY revision
                 """, Map.of("id", orderId), COPY_MAPPER);
     }
@@ -297,7 +297,7 @@ public class ExchangeResponseRepository {
     public List<Notification> notifications(String orderId) {
         return jdbc.query("""
                 SELECT id::text, event_id, target, channel, outcome, actor_id::text, occurred_at
-                  FROM public.xch03_notification WHERE order_id = CAST(:id AS uuid)
+                  FROM public.exchange_response_notification WHERE order_id = CAST(:id AS uuid)
                  ORDER BY occurred_at, id
                 """, Map.of("id", orderId), NOTIFICATION_MAPPER);
     }
@@ -313,7 +313,7 @@ public class ExchangeResponseRepository {
         return jdbc.query("""
                 SELECT id::text, revision, previous_revision, content_checksum, change_summary,
                        actor_id::text, occurred_at
-                  FROM public.xch03_revision WHERE order_id = CAST(:id AS uuid) AND revision = :revision
+                  FROM public.exchange_response_revision WHERE order_id = CAST(:id AS uuid) AND revision = :revision
                 """, new MapSqlParameterSource().addValue("id", orderId).addValue("revision", revision),
                 REVISION_MAPPER).stream().findFirst();
     }

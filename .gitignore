@@ -9,7 +9,9 @@ coverage/
 .DS_Store
 
 /build/
+# Local scratch only: worker notes are tracked under docs/pr/notes/, never under .agent/pr-notes/.
 /.agent/*
+/.agent/pr-notes/
 
 # Tooling and editors
 __pycache__/

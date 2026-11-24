@@ -13,7 +13,7 @@ Partly proven
 Test class: `com.aurevia.exchange.clauses.ApplyLawPolicyRecipientRetentionTest`
 (path: `apps/api/src/test/java/com/aurevia/exchange/clauses/ApplyLawPolicyRecipientRetentionTest.java`).
 All seven tests are active (none are disabled) and use synthetic data on a dedicated PostgreSQL
-database (`aurevia_xch03_retention_it`) migrated from `db/migrations` with forced row-level
+database (`aurevia_exchange_response_retention_it`) migrated from `db/migrations` with forced row-level
 security. They drive the real HTTP entry point with the synthetic-auth profile, the same fixtures
 and the same style as the neighbouring `com.aurevia.it.exchangetask.ExchangeResponseExchangeTest`.
 
@@ -63,7 +63,7 @@ Production classes exercised through the normal HTTP entry point:
   the purpose, policy and hold flag; `retained` reads the immutable ledger used by the HTTP view.
 - `com.aurevia.exchange.response.ExchangeResponseCommands.AcceptRequest` and
   `RetainedCopy` — the command payload and the immutable retained-copy projection.
-- `db/migrations/V21__xch03_order_response.sql` — `xch03_retained_copy` with `retention_policy`,
+- `db/migrations/V21__xch03_order_response.sql` — `exchange_response_retained_copy` with `retention_policy`,
   `legal_hold`, an append-only guard and ENABLE/FORCE row-level security; the forced-RLS check is
   the peer-tenant proof.
 
@@ -77,9 +77,9 @@ prior clause task resolved the same conflict by recording the design in this exe
 The clause is only partly built. The policy code and the legal-hold flag are captured and persisted
 at acceptance, but the *application* of the policy over time is absent: there is no expiry deadline,
 no retention enforcement job and no behaviour that suspends scheduled expiry while a legal hold is
-in force. `docs/security/data-inventory.md` records for `xch03_retained_copy`:
+in force. `docs/security/data-inventory.md` records for `exchange_response_retained_copy`:
 "Retention/legal-hold fields are *declared* here, no enforcement job (see TASK-RETENTION)". A RED
-probe during this task queried `expires_at` on `public.xch03_retained_copy` and failed with
+probe during this task queried `expires_at` on `public.exchange_response_retained_copy` and failed with
 `ERROR: column "expires_at" does not exist`, confirming there is no persisted expiry metadata to
 enforce against.
 

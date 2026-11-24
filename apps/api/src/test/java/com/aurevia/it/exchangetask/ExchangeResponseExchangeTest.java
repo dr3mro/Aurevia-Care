@@ -40,14 +40,14 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_xch03_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_exchange_response_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
 class ExchangeResponseExchangeTest {
 
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_xch03_it";
+    static final String URL = "jdbc:postgresql://127.0.0.1:5432/aurevia_exchange_response_it";
     static final String CHECKSUM = "a".repeat(64);
     static final String NEXT_CHECKSUM = "b".repeat(64);
     static final int ORDER_COUNT = 7;
@@ -80,8 +80,8 @@ class ExchangeResponseExchangeTest {
                     + "CREATE ROLE aurevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
                     + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aurevia_app') THEN "
                     + "CREATE ROLE aurevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS aurevia_xch03_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE aurevia_xch03_it OWNER aurevia_migrate");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_exchange_response_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE aurevia_exchange_response_it OWNER aurevia_migrate");
         }
         Flyway.configure()
                 .dataSource(URL, "aurevia_migrate", "")
@@ -100,7 +100,7 @@ class ExchangeResponseExchangeTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS aurevia_xch03_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS aurevia_exchange_response_it WITH (FORCE)");
         }
     }
 
@@ -140,17 +140,17 @@ class ExchangeResponseExchangeTest {
         // Each test owns a distinct order: the ledgers are append-only, so a
         // shared order would leak advanced versions and states between tests.
         for (int index = 1; index <= ORDER_COUNT; index++) {
-            statement.execute("INSERT INTO public.xch03_order "
+            statement.execute("INSERT INTO public.exchange_response_order "
                     + "(organization_id, id, order_code, state, revision, content_checksum, created_by) "
                     + "VALUES ('" + org + "', '" + orderId(org, index) + "', 'LAB-REQ-" + index
                     + "', 'requested', 1, '" + CHECKSUM
                     + "', (SELECT id FROM public.user_identity WHERE subject = 'admin-" + shortName + "'))");
             statement.execute("SET app.actor = 'admin-" + shortName + "'");
-            statement.execute("INSERT INTO public.xch03_revision "
+            statement.execute("INSERT INTO public.exchange_response_revision "
                     + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, NULL, '" + CHECKSUM + "')");
-            statement.execute("INSERT INTO public.xch03_event "
+            statement.execute("INSERT INTO public.exchange_response_event "
                     + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, 'received', NULL, 'requested')");
@@ -292,8 +292,8 @@ class ExchangeResponseExchangeTest {
                 .getStatusCode());
         assertEquals("requested", text(send(HttpMethod.GET, peer, null, subjectB, ORG_B, null),
                 "/order/state"));
-        assertEquals(1L, scalar(ORG_A, "SELECT count(*) FROM public.xch03_order WHERE order_code = 'LAB-REQ-1'"));
-        assertEquals(1L, scalar(ORG_B, "SELECT count(*) FROM public.xch03_order WHERE order_code = 'LAB-REQ-1'"));
+        assertEquals(1L, scalar(ORG_A, "SELECT count(*) FROM public.exchange_response_order WHERE order_code = 'LAB-REQ-1'"));
+        assertEquals(1L, scalar(ORG_B, "SELECT count(*) FROM public.exchange_response_order WHERE order_code = 'LAB-REQ-1'"));
     }
 
     @Test
@@ -496,7 +496,7 @@ class ExchangeResponseExchangeTest {
             bind(connection, ORG_A, "admin");
             boolean refused = false;
             try (Statement statement = connection.createStatement()) {
-                statement.execute("UPDATE public.xch03_event SET reason = 'tampered'");
+                statement.execute("UPDATE public.exchange_response_event SET reason = 'tampered'");
             } catch (Exception exception) {
                 refused = true;
             } finally {

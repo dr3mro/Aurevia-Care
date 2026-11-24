@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline drift gate for the X-04 generated command contract and client (PRD-06).
+"""Offline drift gate for the generated command contract and client (PRD-06).
 
 Recomputes the X-01 canonical SHA-256 of each generated artifact, compares it
 with the committed manifest and checks that every catalog command appears in
@@ -107,9 +107,9 @@ def check(directory: Path = GENERATED) -> int:
     errors, count = verify(directory)
     if errors:
         for error in errors:
-            print(f"FAIL x-04: {error}")
+            print(f"FAIL command-contract: {error}")
         return 1
-    print(f"x-04 drift check OK: {count} commands, contract and client match manifest")
+    print(f"command-contract drift check OK: {count} commands, contract and client match manifest")
     return 0
 
 

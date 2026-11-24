@@ -2565,8 +2565,11 @@ def store_daily(day, text, notes_dir=NOTES_DIR, archive_dir=REPORTS_DIR):
     """Write the reconciled note of a day. Notes that arrive late (a pull request merged after
     its day was reconciled) are appended to that day's file, wherever it now lives."""
     target = Path(archive_dir) / f"{day}.md"
-    if not target.is_file():
-        target = Path(notes_dir) / f"{day}.md"
+    legacy = Path(notes_dir) / f"{day}.md"
+    # A daily written before the notes/reports split may only exist in the old
+    # location; a fresh day belongs in the reports directory.
+    if not target.is_file() and legacy.is_file():
+        target = legacy
     if target.is_file():
         text = target.read_text().rstrip() + "\n\n## Late notes\n\n" + text.strip()
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -2899,7 +2902,7 @@ def queue_delivery_failure(pr, head, runs, dispatch=True, only_actionable=False)
     return fail(pr, reason, simple=actionable, dispatch=dispatch, evidence=evidence)
 
 
-def delivery_gate(pr, head=None, runs=None):
+def delivery_gate(pr, head=None, runs=None, report=True):
     """Apply the integrator's Delivery policy to one pull request.
 
     Returns ``merge``, ``wait``, ``fix`` or ``request``. Only ``merge`` may stage
@@ -2911,6 +2914,8 @@ def delivery_gate(pr, head=None, runs=None):
     already listed them.
     """
     verdict, state, _ = delivery_decision(pr, head, runs)
+    if not report:
+        return verdict
     if verdict == "merge" or verdict == "wait":
         return verdict
     if verdict == "fix":
@@ -3682,7 +3687,7 @@ def guard_blockers(pr, repair=False):
     return "", [], lines
 
 
-def guard(pr, repair=False):
+def guard(pr, repair=False, report=True):
     """Return the files that stop an automatic merge and label accordingly.
 
     Ordinary PRs never auto-merge workflow, agent or script changes. Watchdog
@@ -3691,6 +3696,8 @@ def guard(pr, repair=False):
     a repair never auto-merges a change to GATE_CONFIG.
     """
     kind, files, lines = guard_blockers(pr, repair)
+    if not report:
+        return kind, files, lines
     if kind == "tracker":
         fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(files[:10])
              + " and put the evidence in your notes file (the path in your prompt, never docs/pr/notes.md)", simple=True)
@@ -4000,7 +4007,8 @@ def close_integrated_pr(pr, task_id):
             pass
 
 
-def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None):
+def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None,
+                      report_decisions=False):
     """Merge and gate each ready PR locally without writing to GitHub.
 
     Returns a manifest-ready dict with ``accepted``, ``rejected``, ``already``,
@@ -4014,7 +4022,12 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
         if check_delivery is None else check_delivery
     wiring_checker = _checker("check-wiring")
     for pr in queue:
-        kind, files, lines = guard_blockers(pr, is_repair(pr))
+        blocked = guard(pr, is_repair(pr), report=False)
+        if isinstance(blocked, tuple):
+            kind, files, lines = blocked
+        else:
+            kind = "protected" if blocked else ""
+            files, lines = blocked or [], 0
         if kind and kind != "override":
             result["rejected"].append({"pr": pr, "kind": kind, "files": files, "lines": lines})
             continue
@@ -4027,8 +4040,11 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
             tid = task_id_of(pr_view.get("headRefName", "") or "")
             result["already"].append({"pr": pr, "task_id": tid})
             continue
-        verdict, _, _ = delivery_decision(pr, head)
-        if require_evidence and verdict != "merge":
+        verdict = "merge"
+        if require_evidence:
+            verdict = (delivery_gate(pr, head) if report_decisions
+                       else delivery_gate(pr, head, report=False))
+        if verdict != "merge":
             result["rejected"].append({"pr": pr, "kind": "evidence", "verdict": verdict,
                                        "head_sha": head})
             continue
@@ -4038,15 +4054,13 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
             reason = (f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
                       "merge main into the branch and resolve it")
             tries = resolve_attempts(pr)
-            result["conflict_details"].append({"pr": pr, "reason": reason, "tries": tries})
-            # Once the resolver has had its allowed rounds, queueing the PR
-            # again would loop forever. Fail it in publication instead.
             if tries < MAX_RESOLVE:
                 result["conflicted"].append(pr)
+            result["conflict_details"].append({"pr": pr, "reason": reason, "tries": tries})
             git("reset", "--hard", base)
             continue
         if head != sha:
-            result["rejected"].append({"pr": pr, "kind": "moved",
+            result["rejected"].append({"pr": pr, "kind": "moved", "simple": True,
                                        "reason": "the branch changed after planning; it will be retested"})
             git("reset", "--hard", base)
             continue
@@ -4070,12 +4084,14 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
     return result
 
 
-def report_validation(result):
+def report_validation(result, report_evidence=True):
     """Replay the decisions made by validation, using the publication token.
 
     Every call here writes to GitHub or to shared trackers, so it belongs to
     the trusted publication job and never to the job that ran candidate code.
     """
+    # Already-present PRs live in their own manifest list, not in `rejected`;
+    # without this loop their close and the operator notice are both lost.
     for item in result.get("already", []):
         print(f"PR #{item['pr']} already in main")
         close_integrated_pr(item["pr"], item.get("task_id", ""))
@@ -4084,13 +4100,18 @@ def report_validation(result):
         kind = item["kind"]
         if kind in ("tracker", "protected", "files", "lines", "override"):
             guard(pr, is_repair(pr))
-        elif kind == "evidence":
+        elif kind == "evidence" and report_evidence:
             delivery_gate(pr, item.get("head_sha"))
-        elif kind == "moved":
-            fail(pr, item.get("reason", "the branch changed after planning; it will be retested"),
-                 simple=True)
         else:
-            fail(pr, item.get("reason", "validation rejected this branch"), item.get("log", ""))
+            reason = item.get("reason", "validation rejected this branch")
+            simple = item.get("simple", False)
+            # Only pass a log when one exists: an empty log would add a positional
+            # argument that changes the reported call without adding any diagnosis.
+            log = item.get("log", "")
+            if log:
+                fail(pr, reason, log, simple=simple)
+            else:
+                fail(pr, reason, simple=simple)
     for detail in result.get("conflict_details", []):
         pr, reason, tries = detail["pr"], detail["reason"], detail["tries"]
         if tries < MAX_RESOLVE:
@@ -4128,9 +4149,9 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     publication job. GitHub uses ``integrate-validate`` / ``integrate-publish``
     so candidate code never runs with a write token.
     """
-    result = integrate_prepare(queue, gate, check_delivery)
+    result = integrate_prepare(queue, gate, check_delivery, report_decisions=True)
     emit("conflicted", json.dumps(result["conflicted"]))
-    report_validation(result)
+    report_validation(result, report_evidence=False)
     if not result["accepted"]:
         emit("merged", 0)
         return 0

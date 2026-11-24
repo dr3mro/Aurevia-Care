@@ -47,7 +47,7 @@ import tools.jackson.databind.ObjectMapper;
 @Timeout(300)
 class InputContainsValidatedLocalRequisitionAssociationOptionalTest {
 
-    static final String DB = "aurevia_xch03_arc04_input_it";
+    static final String DB = "aurevia_exchange_response_arc04_input_it";
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
@@ -161,17 +161,17 @@ class InputContainsValidatedLocalRequisitionAssociationOptionalTest {
                 + "VALUES ('" + org + "', 1, 'MRN-1', 'CLINIC', 'Synthetic Patient', 'synthetic patient', "
                 + "'1990-05-20')");
         for (int index = 1; index <= ORDER_COUNT; index++) {
-            statement.execute("INSERT INTO public.xch03_order "
+            statement.execute("INSERT INTO public.exchange_response_order "
                     + "(organization_id, id, order_code, state, revision, content_checksum, created_by) "
                     + "VALUES ('" + org + "', '" + orderId(org, index) + "', 'LAB-REQ-" + index
                     + "', 'requested', 1, '" + CHECKSUM
                     + "', (SELECT id FROM public.user_identity WHERE subject = 'admin-" + shortName + "'))");
             statement.execute("SET app.actor = 'admin-" + shortName + "'");
-            statement.execute("INSERT INTO public.xch03_revision "
+            statement.execute("INSERT INTO public.exchange_response_revision "
                     + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, NULL, '" + CHECKSUM + "')");
-            statement.execute("INSERT INTO public.xch03_event "
+            statement.execute("INSERT INTO public.exchange_response_event "
                     + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
                     + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
                     + "', 1, 'received', NULL, 'requested')");

@@ -36,13 +36,13 @@ public class RxRepository {
             SELECT id::text AS id, version, patient_id::text AS patient_id, medication, strength,
                    dose, route, frequency, quantity, prescriber_subject, destination_pharmacy,
                    state, channel, submission_id::text AS submission_id, retry_allowed, created_at
-              FROM public.rx02_prescription
+              FROM public.prescription_transmission
             """;
     private static final String SELECT_EVENT = """
             SELECT id::text AS id, prescription_id::text AS prescription_id, prescription_version,
                    event_type, actor_id::text AS actor_id, channel, submission_id::text AS submission_id,
                    outcome, detail, occurred_at
-              FROM public.rx02_event
+              FROM public.prescription_event
             """;
 
     private static final RowMapper<Prescription> PRESCRIPTION_MAPPER = RxRepository::mapPrescription;
@@ -125,7 +125,7 @@ public class RxRepository {
                       String route, String frequency, int quantity, String prescriberSubject,
                       String destinationPharmacy) {
         return jdbc.update("""
-                INSERT INTO public.rx02_prescription
+                INSERT INTO public.prescription_transmission
                     (organization_id, id, version, patient_id, medication, strength, dose, route,
                      frequency, quantity, prescriber_subject, destination_pharmacy, state)
                 VALUES (public.app_org(), CAST(:id AS uuid), 1, CAST(:patientId AS uuid),
@@ -152,7 +152,7 @@ public class RxRepository {
      */
     public int insertSubmission(String submissionId, String prescriptionId, String channel) {
         return jdbc.update("""
-                INSERT INTO public.rx02_submission
+                INSERT INTO public.prescription_submission
                     (organization_id, submission_id, prescription_id, channel)
                 VALUES (public.app_org(), CAST(:submissionId AS uuid), CAST(:prescriptionId AS uuid), :channel)
                 ON CONFLICT (organization_id, submission_id) DO NOTHING
@@ -205,7 +205,7 @@ public class RxRepository {
      */
     public int transmit(String id, int expectedVersion, String channel, String submissionId, State state) {
         return jdbc.update("""
-                UPDATE public.rx02_prescription
+                UPDATE public.prescription_transmission
                    SET state = :state, channel = :channel, submission_id = CAST(:submissionId AS uuid),
                        version = version + 1
                  WHERE id = CAST(:id AS uuid) AND version = :expectedVersion
@@ -224,7 +224,7 @@ public class RxRepository {
      */
     public int transmitPrinted(String id, int expectedVersion, String channel) {
         return jdbc.update("""
-                UPDATE public.rx02_prescription
+                UPDATE public.prescription_transmission
                    SET state = 'printed', channel = :channel, version = version + 1
                  WHERE id = CAST(:id AS uuid) AND version = :expectedVersion
                 """, new MapSqlParameterSource().addValue("id", id)
@@ -242,7 +242,7 @@ public class RxRepository {
      */
     public int reconcile(String id, int expectedVersion, boolean retryAllowed, State state) {
         return jdbc.update("""
-                UPDATE public.rx02_prescription
+                UPDATE public.prescription_transmission
                    SET state = :state, retry_allowed = :retryAllowed, version = version + 1
                  WHERE id = CAST(:id AS uuid) AND version = :expectedVersion
                 """, new MapSqlParameterSource().addValue("id", id)
@@ -260,7 +260,7 @@ public class RxRepository {
      */
     public int retrySubmission(String id, int expectedVersion, State state) {
         return jdbc.update("""
-                UPDATE public.rx02_prescription
+                UPDATE public.prescription_transmission
                    SET state = :state, retry_allowed = false, version = version + 1
                  WHERE id = CAST(:id AS uuid) AND version = :expectedVersion
                 """, new MapSqlParameterSource().addValue("id", id)
@@ -276,7 +276,7 @@ public class RxRepository {
      */
     public int bumpVersion(String id, int expectedVersion) {
         return jdbc.update("""
-                UPDATE public.rx02_prescription SET version = version + 1
+                UPDATE public.prescription_transmission SET version = version + 1
                  WHERE id = CAST(:id AS uuid) AND version = :expectedVersion
                 """, new MapSqlParameterSource().addValue("id", id)
                 .addValue("expectedVersion", expectedVersion));
@@ -292,7 +292,7 @@ public class RxRepository {
      */
     public int setState(String id, int expectedVersion, State state) {
         return jdbc.update("""
-                UPDATE public.rx02_prescription SET state = :state, version = version + 1
+                UPDATE public.prescription_transmission SET state = :state, version = version + 1
                  WHERE id = CAST(:id AS uuid) AND version = :expectedVersion
                 """, new MapSqlParameterSource().addValue("id", id)
                 .addValue("expectedVersion", expectedVersion).addValue("state", state.wire()));
@@ -308,7 +308,7 @@ public class RxRepository {
         // COUNT(*) always yields one non-null row; fail closed if a driver ever
         // violates that contract instead of unboxing null.
         Integer attempts = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM public.rx02_event
+                SELECT COUNT(*) FROM public.prescription_event
                  WHERE submission_id = CAST(:submissionId AS uuid) AND event_type = 'submitted'
                 """, Map.of("submissionId", submissionId), Integer.class);
         return Objects.requireNonNull(attempts, "submissionAttempts aggregate returned no row");
@@ -328,7 +328,7 @@ public class RxRepository {
     public void appendEvent(String prescriptionId, int version, EventType eventType, String channel,
                             String submissionId, String outcome, String detail) {
         jdbc.update("""
-                INSERT INTO public.rx02_event
+                INSERT INTO public.prescription_event
                     (organization_id, prescription_id, prescription_version, event_type,
                      channel, submission_id, outcome, detail)
                 VALUES (public.app_org(), CAST(:prescriptionId AS uuid), :version, :eventType,

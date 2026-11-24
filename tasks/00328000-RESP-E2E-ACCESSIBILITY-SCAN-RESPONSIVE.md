@@ -1,5 +1,5 @@
-- [-] RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE · Staff web end-to-end: accessibilityScanResponsive across phone, tablet and desktop
-  - agent: swarm-5
+- [x] RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE · Staff web end-to-end: accessibilityScanResponsive across phone, tablet and desktop
+  - pr: #1602
   - attempts: 3
   - evidence: `python3 -I scripts/check-docs.py` exit 0 on tested head 8789ec02; note `docs/pr/notes/RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE-20261124-050000.md`
   - requirements: WEB-07, UX-01
