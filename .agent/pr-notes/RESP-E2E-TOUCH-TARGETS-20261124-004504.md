@@ -85,8 +85,9 @@ Commands and final lines (cwd `apps/staff-web` unless stated):
   `npx playwright test --config e2e/playwright.config.ts e2e/touchTargets.spec.ts --retries=0`
   → `Running 310 tests using 2 workers`, `246 skipped`, `64 passed (1.5m)`, exit 0. The 246
   skipped are 156 scoped real-defect fixmes plus 90 not-applicable fine-pointer executions
-  (3 fine projects × 30 routes); 64 passed are 54 passing compact coarse executions plus 7 route
-  matrix assertions plus 3 more compact passing executions.
+  (3 fine projects × 30 routes); 64 passed are 54 passing coarse route executions plus 10 route
+  matrix assertions (30 routes × 7 coarse projects = 210 coarse route targets: 156 fixmed,
+  54 passed; plus 10 matrix assertions).
 - Discovery: `npx playwright test --config e2e/playwright.config.ts e2e/touchTargets.spec.ts --list`
   → `Total: 310 tests in 1 file` (31 declared tests × 10 installed projects; WebKit and Firefox
   projects are omitted by `crossBrowserProjects()` because those binaries are not installed).
@@ -123,7 +124,7 @@ Each new branch of the spec and the execution that takes it:
 | `namedCoarse` prefix agrees with `project.use.hasTouch` | All 310 executions (both outcomes; fine projects skip after the assertion) |
 | `if (!coarse)` → `testInfo.skip` | 3 fine projects × 30 routes = 90 not-applicable skips |
 | `if (defect !== undefined)` → `test.fixme` | 156 exact (route, project) pairs; false for the 54 passing compact coarse executions |
-| `viewport !== null/undefined && width < 768` → open user menu | true on the 3 compact phone projects, false on the 4 tablet/landscape coarse projects |
+| `viewport !== null/undefined && width < 768` → open user menu | true on the 2 compact phone projects (360, 390 px); false on the 5 wide coarse projects (844–1180 px) |
 | `isMeasurable`: not visible / disabled / `aria-hidden` / skip-link class | every measured route; `a.skip-link` is excluded on all 30 routes; closed-drawer controls are not rendered at measurement time |
 | `boundingBox() === null` → element not measured | non-empty measured-set assertion would fail; no null boxes were observed in the green matrix |
 | `control.width < 44` width failure array | 150 RED observations, e.g. `#5 a[Today]: 8x17 < 44x44` |
@@ -143,11 +144,18 @@ rule is a documented layout contract, not a sign-off.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (final re-review; all nine Required gaps from the pre-code NO-GO closed)
-- smartclinic-test-engineer: NO-GO on the initial design; all seven Required gaps were fixed before coding (synthetic UA, readiness, pointer parity, documented exceptions, real RED, measured-set guard and per-control descriptors)
-- smartclinic-coverage-auditor: GO (no source-coverage delta; RED/GREEN evidence and exact fixme keying reconciled — 310 = 64 passed + 246 skipped)
-- smartclinic-devsecops: GO (no auth/tenant/credential surface changed; synthetic identifiers only; no dependency or production code changed, so no new dependency scan applicable)
-- smartclinic-code-reviewer: (pending final verdict)
+- smartclinic-plan-reviewer: GO
+- smartclinic-test-engineer: GO
+- smartclinic-coverage-auditor: GO
+- smartclinic-devsecops: GO
+- smartclinic-code-reviewer: GO
+
+Verdict context: the plan reviewer issued a pre-code NO-GO with nine Required gaps and a final
+GO once all were closed; the test engineer issued a design-stage NO-GO with seven Required gaps
+that were fixed before coding (synthetic UA, readiness, pointer parity, documented exceptions,
+real RED, measured-set guard and per-control descriptors). The three post-code reviewers each
+ended GO with no Critical or Required findings; the code reviewer's Optional notes are recorded
+under `## Lessons for workers`.
 
 ## Findings
 
@@ -212,6 +220,14 @@ rule is a documented layout contract, not a sign-off.
 - Check for tripwire tests that pin a file inventory before adding a file to that directory; here
   the tripwire was already red on `main`, so a baseline run with the new file moved aside is the
   evidence that distinguishes a pre-existing red from a regression.
+- When a `test.fixme` list is used for measured defects, prefer measuring first and fixme-ing only
+  on a reproduced failure so a later production fix turns the test green by itself. This runs the
+  fixme before measurement by design (the RED was captured separately); a follow-up task removing
+  the defect entries should rerun the full matrix.
+- A drift guard that asserts only a list's length and uniqueness misses swap-in/swap-out changes;
+  deriving expected paths from the route source modules is a stronger future guard.
+- Reviewer Optional: `aria-hidden` is read only on the control, not its ancestors (deliberately
+  err-on-measure); if an ancestor-hidden control is ever measured, extend the check.
 
 ```task-requests
 [

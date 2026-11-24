@@ -18,9 +18,10 @@ import type { Locator, Page } from '@playwright/test';
  * applicable because the 44 px rule belongs to coarse pointers only (24 px is
  * the WCAG 2.2 fine-pointer floor and is enforced by a separate accessibility
  * review). The checked state is the route as rendered: the navigation drawer is
- * closed by default and its links are inside a closed overlay, which is an
- * allowed exception; the user menu is opened on compact projects so its theme,
- * language and sign-out controls are measured. If a real defect is observed,
+ * closed by default, so its links are not rendered and are outside this pass
+ * (they are 17px tall when opened and need a follow-up fix); the user menu is
+ * opened on compact projects so its theme, language and sign-out controls are
+ * measured. If a real defect is observed,
  * add its exact (route, project) pair to `knownDefects` rather than lowering
  * the threshold or widening this exception list.
  *
@@ -28,7 +29,9 @@ import type { Locator, Page } from '@playwright/test';
  * nodes, the visually hidden `a.skip-link` (off-screen until focused), native
  * checkbox/radio inputs (the WCAG user-agent-control case: the wrapping label
  * is the real target), and controls inside a closed dialog or drawer (they are
- * not rendered when closed). WCAG spacing and inline-link exceptions are not
+ * not rendered when closed). Only the control's own `aria-hidden` is read;
+ * an ancestor `aria-hidden` subtree is deliberately err-on-measure. WCAG
+ * spacing and inline-link exceptions are not
  * used to excuse a small target.
  */
 
@@ -92,7 +95,7 @@ interface KnownDefect {
   readonly reason: string;
 }
 
-/** The nav-rail links render 8-17px tall at medium and expanded coarse widths. */
+/** The nav-rail links render 8-17px tall at coarse widths from 768px upward. */
 const RAIL_DEFECT =
   'NavRail links measure below 44x44 at medium and expanded widths; add the shared .touch target class to the rail links';
 
