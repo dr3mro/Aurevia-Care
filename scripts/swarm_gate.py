@@ -345,8 +345,8 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None)
     if not number:
         return ctx
     details = _gh_json("pr", "view", str(number), "--json", "headRefOid,title,labels,commits")
-    files = subprocess.check_output(["gh", "pr", "diff", str(number), "--name-only"],
-                                    text=True).split()
+    files = subprocess.check_output(["gh", *_gh_repo_args(), "pr", "diff", str(number),
+                                     "--name-only"], text=True).split()
     ctx = GateContext(**{**ctx.__dict__, "title": details.get("title") or ctx.title,
                          "labels": tuple(x.get("name", "") for x in details.get("labels", [])),
                          "commit_authors": tuple((x.get("author") or {}).get("login", "")
