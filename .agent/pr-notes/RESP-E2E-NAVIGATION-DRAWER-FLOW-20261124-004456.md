@@ -42,16 +42,33 @@ All commands run from `apps/staff-web` unless stated. Exact final lines:
 - `npm run typecheck` → `> tsc --noEmit -p tsconfig.json`, exited 0, no `error TS…`.
 - `npm run gen:api:check` → `gen:api: generated client matches the contract`.
 - `node scripts/check-bundle-size.mjs` → exited 0, all chunk sizes `ok`.
-- `bash apps/staff-web/check.sh` (from repo root) → generated-client check, typecheck, lint, build and bundle-size stages passed; **final `npm run test:coverage` stage failed on a pre-existing tripwire**, `Test Files 1 failed | 267 passed (268)`, `Tests 1 failed | 3044 passed (3045)`. See `## Why this is not finished`.
+- `bash apps/staff-web/check.sh` (from repo root) → all stages passed after the repair below (previous run had failed only on the stale tripwire pin).
+- **Repair attempt 1 (tripwire pin refresh)** `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` → `Test Files 1 passed (1)`, `Tests 3 passed (3)`.
+- **Repair attempt 1 full gate** `npm run test:coverage` (from `apps/staff-web`) → `Test Files 268 passed (268)`, `Tests 3045 passed (3045)`, `No files with missing coverage. 267 files fully covered.`; `npm run typecheck` and `npm run lint -- --max-warnings 0` both exited 0. The `jsdom "Not implemented: navigation"` lines are pre-existing console noise, not failures.
 
 **Entry-point-to-test trace:** `page.goto('/')` → Vite dev server → `src/main.tsx` real `isSupportedBrowser` guard → `src/App.tsx` → `src/app/AppShell.tsx` → compact `src/app/NavigationDrawer.tsx` (menu button `aria-label=navigationLabel(locale,'navigation')` = "Sections", `#staff-navigation-drawer` dialog, `data-testid=nav-drawer-backdrop`) or medium/expanded `NavRail` (`.app-shell__nav[data-rail=icon|full]`) → link click/keyboard activation → `src/app/router.tsx` `navigate` → `main#main` focus on path change. Every assertion is made through these real components; no harness or API stub is used.
 
 ## Coverage
 
-`Coverage: N/A — e2e excluded, no production source file changed.`
+`Coverage: 100% — no production source line or branch was added or changed; the repair only refreshed a test-artifact pin.`
 
-- Coverage command for the touched area: `bash apps/staff-web/check.sh` → `npm run test:coverage` (`vitest run --coverage --exclude 'e2e/**'`). `package.json:16-17` already excludes `e2e/**` and `vite.config.ts` `coverage.include` counts only `src/**/*.{ts,tsx}` with 100% per-file thresholds — none edited.
+- Coverage command for the touched area: `npm run test:coverage` (`vitest run --coverage --exclude 'e2e/**'`) → `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`; `No files with missing coverage. 267 files fully covered. 8 empty files skipped.` `package.json:16-17` already excludes `e2e/**` and `vite.config.ts` `coverage.include` counts only `src/**/*.{ts,tsx}` with 100% per-file thresholds — none edited.
 - No line, branch, method or class in `src/**` was added or changed, so per-file 100% is unchanged. Every one of the 110 new Playwright tests asserts an outcome (`toEqual`, `toBeVisible`, `expect.poll().toBe`, `toHaveCount`, `toBeFocused`, `toHaveAttribute`, `expectNoBlockingViolations`). No threshold, exclusion, ignore comment or skipped test was added; the single `test.fixme` is a task-authorised response to a confirmed defect, not a coverage bypass.
+
+### Branch-to-test list (repair attempt 1)
+
+The reported failure was **not an uncovered production branch**: it was the GAP tripwire's stale `currentSpecs` pin in `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:86`, which hardcoded 9 e2e spec names while the committed `e2e/` tree holds 15. Deterministic coverage of each assertion in that test:
+
+| Tripwire assertion (line) | Deterministic test | Result after repair |
+|---|---|---|
+| `specs.sort()` equals pinned `currentSpecs` (166) | `GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded` — reads `e2e/**/*.spec.ts` from disk via `filesBelow`, compares to the refreshed 15-name pin | green — pin now matches the 15 committed specs |
+| `workflows.sort()` equals `[]` (171) | same test — scans `.github/workflows/*.{yml,yaml}` for `playwright\|e2e` | green — no matching workflow (verified by shell scan) |
+| `visualChecks.sort()` equals `[]` (178) | same test — regex-scans each spec for `toHaveScreenshot\|toMatchSnapshot\|getComputedStyle\|data-theme\|colorScheme` | green — no spec contains those tokens (verified by shell scan) |
+| `expectTypeOf<Role>()` union (180) | same test — compile-time tripwire enforced by `npm run typecheck` | green |
+| positive RTL/axe gate (104) and wrong-role guard (136) | the other two `it` blocks in the file | green (3/3 in the targeted run) |
+
+- **Production branches added/changed by this repair: none.** Only the test pin's expected-value array changed; no `src/**` file, config, threshold, exclusion or `coverage.include` entry was touched. Full 100% coverage is re-proven by the command above.
+- The pin refresh is the exact action the test's own comment mandates ("a new journey must replace this pin"): BUILD-60 added five bilingual journeys and this task added `navigationDrawerFlow.spec.ts` after the pin was last written at `6951647b`.
 
 ## Clinical and architecture review
 
@@ -72,7 +89,7 @@ Advisory context: `smartclinic-context-optimizer` returned GO on the authoritati
 2. **REAL DEFECT — open drawer fails WCAG 2.2 AA colour contrast (2.79:1).** `NavigationDrawer.tsx:133-147` gives the dialog no opaque surface; its links inherit `#0000ee` over the translucent scrim, and axe reports serious `color-contrast` on all six LTR links (`foreground #0000ee, background #8c8c8c, expected 4.5:1`, measured 2.79:1). Because `NavigationDrawer.tsx` is outside this task's scope, the one axe test is `test.fixme(true, reason)` on compact projects only; medium/expanded projects still scan green. Direction-specific evidence (tool): the LTR run reports the `color-contrast` violation on all six links, while the same open drawer in Arabic reports zero serious/critical violations, so the RTL journey still runs its localised axe gate unchanged. Follow-up requested below.
 3. **REAL DEFECT — medium icon-rail pointer clicks are swallowed.** `AppShell.tsx:98-148` `IconRailLink.onFocus` reveals its tooltip, reflowing the link from 16×17 to 44×53 between pointerdown and mouseup; instrumented runs show only `pointerdown`/`mousedown`, no `mouseup`/`click`. Keyboard `press('Enter')` navigates correctly. The per-route test therefore uses keyboard activation on the medium band only; compact and expanded bands still use real pointer clicks. Follow-up requested below.
 4. **REAL DEFECT — RTL skip link inflates the emulated mobile layout viewport.** `src/theme/responsive.css:181` `inset-inline-start: -9999px` becomes `right:-9999px` under `dir=rtl`, raising `document.documentElement.scrollWidth` to 10389 and `window.innerWidth` to 1560 on `isMobile` projects, pushing header buttons off-screen (menu box x=1476 at a 390 px viewport). The RTL test focuses the skip link first — the keyboard user's first Tab — which restores the 390 px layout, then opens the drawer by keyboard. Follow-up requested below.
-5. **Pre-existing red gate (not caused by this change).** `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:86,166` pins a hardcoded `currentSpecs` list of 9 e2e spec names, but base `main` already has 14 (adminflow, financeflow, therapyflow, pharmacy-bilingual, radflow-bilingual were added without updating it). Verified by removing the new spec and running the file alone: `Test Files 1 failed (1)`, `Tests 1 failed | 2 passed (3)`. With the new spec the list is 15. The file is outside this task's scope, so it is reported with a follow-up request rather than edited.
+5. **Pre-existing red gate (not caused by this change) — RESOLVED in repair attempt 1.** `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:86,166` pinned a hardcoded `currentSpecs` list of 9 e2e spec names, but base `main` already had 14 (adminflow, financeflow, therapyflow, pharmacy-bilingual, radflow-bilingual were added without updating it); with `navigationDrawerFlow.spec.ts` the tree has 15. Confirmed by removing the new spec and running the file alone: `Test Files 1 failed (1)`, `Tests 1 failed | 2 passed (3)`. The repair loop returned this failure to this worker, so the pin was refreshed to the full 15-spec set and the whole `test:coverage` gate is now green. The follow-up task-request below for this item is therefore withdrawn.
 6. The brief's "new file absent today" note is a confirmed planned path, not a stale reference; no other scope ambiguity found. `docs/design/responsive-layout.md` still describes a 320 px support floor while WEB-07 text says 768 px — the code and decision 0004 follow 320 px, so this test asserts the measured code, not the stale sentence.
 
 ## Lessons for workers
@@ -82,34 +99,31 @@ Advisory context: `smartclinic-context-optimizer` returned GO on the authoritati
 - For focus assertions that depend on a path change, start each journey on a route different from the destination; clicking the already-active item leaves focus on the opener, not on `<main>`.
 - `test.fixme` is the only allowed skip-like construct in this repo and must be tied to a confirmed defect with a route/project reason; `test.skip`/`only`/`xit` are rejected by `check-constraints.py`.
 
-## Why this is not finished
+## Resolution of the earlier gate failure
 
-`bash apps/staff-web/check.sh` does not end green, but the failure is pre-existing and outside this task's scope. Exact failing command and result:
+The earlier `bash apps/staff-web/check.sh` failure was a stale tripwire pin, not a coverage miss. It was reported here as out of scope, but the repair loop returned it to this worker, so the pin was refreshed to the 15 committed e2e specs (the exact action the test's own comment requires). Post-repair evidence:
 
 ```
-bash apps/staff-web/check.sh
-npm run test:coverage -> vitest run --coverage --exclude 'e2e/**'
-Test Files  1 failed | 267 passed (268)
-Tests  1 failed | 3044 passed (3045)
-FAIL tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts
-  > WEB-10 clause 2 ... > GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded
-AssertionError: expected [ …(15) ] to deeply equal [ …(9) ]   at ...test.ts:166:26
+npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts
+Test Files  1 passed (1)
+Tests       3 passed (3)
+
+npm run test:coverage   (from apps/staff-web)
+Test Files  268 passed (268)
+Tests       3045 passed (3045)
+No files with missing coverage. 267 files fully covered.
+Statements 100%  Branches 100%  Functions 100%  Lines 100%
+npm run typecheck -> exit 0 ; npm run lint -- --max-warnings 0 -> exit 0
 ```
 
-Most likely cause: the GAP tripwire's hardcoded `currentSpecs` list was last updated in commit `6951647b` while per-role journey specs were added later without updating it. Verified by removing the new spec and running that test file alone — it still fails (1 failed | 2 passed), so base `main` is red. What was tried: confirmed every other check.sh stage (gen:api check, typecheck, lint, build, bundle size) passes; ran the full Playwright matrix green apart from the one authorised fixme; attempted no out-of-scope edit. Exact next step: a worker with `apps/staff-web/tests/spec/platform/` in scope updates `currentSpecs` to the full current 15-spec set, reconciles the WEB-10 clause note, and reruns `bash apps/staff-web/check.sh`.
+Cause: the GAP tripwire's `currentSpecs` list was last updated in commit `6951647b`; `4698687f` (BUILD-60) added five bilingual journeys and `31312d08` added `navigationDrawerFlow.spec.ts` without refreshing it. The two open defects (drawer contrast, icon-rail/RTL layout) remain genuine follow-ups and are not production changes of this task.
 
-The scoped work itself is complete and verified: 108 Playwright tests pass, 2 are the documented fixme, lint/typecheck/build/bundle checks pass, and no source coverage changed.
+The scoped work is complete and verified: 108 Playwright tests pass, 2 are the documented fixme, lint/typecheck/build/bundle/coverage checks pass, and no source coverage changed. Nothing is left unfinished.
 
 ## task-requests
 
 ```json
 [
-  {
-    "title": "Refresh WEB-10 real-browser journey tripwire spec list",
-    "details": "apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:86 hardcodes currentSpecs with 9 names; base main already has 14 e2e specs and 15 after navigationDrawerFlow.spec.ts, so the GAP assertion at line 166 fails check.sh's final vitest stage on a clean tree. Add the full current spec set including navigationDrawerFlow.spec.ts, reconcile the WEB-10 clause note, and decide whether the GAP tripwire should remain now that per-role journeys and the axe gate exist. Verified failing with the new spec removed (1 failed | 2 passed).",
-    "scope": ["apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts"],
-    "depends": ["RESP-E2E-NAVIGATION-DRAWER-FLOW"]
-  },
   {
     "title": "Give the compact navigation drawer a contrast-safe opaque surface",
     "details": "apps/staff-web/src/app/NavigationDrawer.tsx:133-147 renders the modal dialog without a background, so its links inherit #0000ee over the translucent scrim and axe reports serious color-contrast 2.79:1 (needs 4.5:1) on all six destinations in English. Add an opaque themed surface and a contrast-safe link colour, cover it with an axe/component test, then remove the test.fixme in apps/staff-web/e2e/navigationDrawerFlow.spec.ts (open navigation has no blocking accessibility violations).",
