@@ -1,4 +1,6 @@
-- [ ] SPEC-ROLE-FINANCE · Spec section 2 role matrix (API test): Finance
+- [-] SPEC-ROLE-FINANCE · Spec section 2 role matrix (API test): Finance
+  - agent: swarm-7
+  - attempts: 1
   - requirements: IAM-01, FIN-01
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleFinanceTest.java, docs/spec/clauses/authz/role-finance.md
   - details:

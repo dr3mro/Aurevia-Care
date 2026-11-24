@@ -1,4 +1,6 @@
-- [ ] SPEC-ROLE-PATIENT · Spec section 2 role matrix (API test): Patient
+- [-] SPEC-ROLE-PATIENT · Spec section 2 role matrix (API test): Patient
+  - agent: swarm-9
+  - attempts: 1
   - requirements: IAM-01, PAT-02
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RolePatientTest.java, docs/spec/clauses/authz/role-patient.md
   - details:
