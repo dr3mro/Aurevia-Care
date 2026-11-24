@@ -1,14 +1,15 @@
-"""Workflow concurrency must report a verdict for every commit that can merge.
+"""Workflow concurrency groups superseded runs without starving later ones.
 
-Branch protection checks the exact SHA, so a push to main or a tag must never
-cancel an older run: that SHA would receive no verdict and unverified code
-could land on the protected branch. GitHub also rejects ``queue: max`` together
-with ``cancel-in-progress: true`` at workflow validation time, before any job
-starts, so every queueing workflow must keep cancellation off. A pull request
-is different -- only its current head can be merged -- so Delivery groups PR
-runs by head SHA: a new head starts in its own group instead of waiting behind
-a stale head, while main, tag, dispatch and merge-group runs stay serialized
-per ref and keep every exact-SHA verdict.
+Most workflows queue every trigger with ``queue: max`` and keep cancellation
+off, so a frequent trigger cannot replace pending work and starve it. Delivery
+is the deliberate exception: two runs of the same workflow on the same branch
+are redundant, so a newer one cancels the older one instead of either queueing
+behind it or running it in parallel. GitHub rejects ``queue: max`` together
+with ``cancel-in-progress: true`` at validation time, so Delivery declares no
+queue. Its group is scoped by repository and branch (PR source branch for pull
+requests, otherwise the pushed ref), which keeps different branches and forks
+independent. Cancelling a run on main means that exact SHA gets no verdict, so
+branch protection must be configured with that trade-off in mind.
 """
 import unittest
 
@@ -27,8 +28,9 @@ class WorkflowConcurrencyTest(unittest.TestCase):
     def workflows(self):
         return sorted(WORKFLOWS.glob("*.yml"))
 
-    def test_every_workflow_declares_a_queueing_concurrency_group(self):
-        paths = self.workflows()
+    def test_every_queuing_workflow_declares_a_queueing_concurrency_group(self):
+        """Every workflow except Delivery queues triggers instead of cancelling."""
+        paths = [p for p in self.workflows() if p.name != "delivery.yml"]
         self.assertTrue(paths)
         for path in paths:
             with self.subTest(workflow=path.name):
@@ -58,12 +60,11 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         concurrency = load(WORKFLOWS / "swarm.yml")["concurrency"]
         self.assertIn("github.run_id", concurrency["group"])
 
-    def test_delivery_groups_pull_requests_by_head_sha_and_other_events_by_ref(self):
-        """A new PR head starts at once; other triggers stay serialized per ref."""
+    def test_delivery_groups_runs_by_repository_and_branch(self):
+        """A newer run on the same branch cancels the older one, not other branches."""
         group = load(WORKFLOWS / "delivery.yml")["concurrency"]["group"]
-        self.assertEqual(group, "${{ github.workflow }}-${{ "
-                         "github.event_name == 'pull_request' && "
-                         "github.event.pull_request.head.sha || github.ref }}")
+        self.assertEqual(group, "${{ github.workflow }}-${{ github.repository }}-"
+                                "${{ github.head_ref || github.ref }}")
 
     def test_delivery_reports_a_check_for_every_pull_request(self):
         """A bare trigger covers every PR; a filter map would omit the check."""
@@ -79,10 +80,12 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         self.assertNotIn("paths", trigger)
         self.assertNotIn("paths-ignore", trigger)
 
-    def test_delivery_never_cancels_a_running_run(self):
-        """Cancellation would fail validation with queue:max and lose a verdict."""
-        cancel = load(WORKFLOWS / "delivery.yml")["concurrency"]["cancel-in-progress"]
-        self.assertIs(cancel, False)
+    def test_delivery_cancels_superseded_runs_on_the_same_branch(self):
+        """Duplicate runs of the workflow on one branch must not overlap."""
+        concurrency = load(WORKFLOWS / "delivery.yml")["concurrency"]
+        self.assertIs(concurrency["cancel-in-progress"], True)
+        # GitHub rejects queue:max together with cancellation at load time.
+        self.assertNotIn("queue", concurrency)
 
 
 if __name__ == "__main__":
