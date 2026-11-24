@@ -4112,6 +4112,12 @@ def report_validation(result, report_evidence=True):
                 fail(pr, reason, log, simple=simple)
             else:
                 fail(pr, reason, simple=simple)
+    # Already-integrated PRs are recorded separately from rejections; close them
+    # here so the worker's task is marked done and the pull request is not left open.
+    for item in result.get("already", []):
+        tid = item.get("task_id", "")
+        print(f"PR #{item['pr']} already in main; closed and task {tid or '?'} marked done")
+        close_integrated_pr(item["pr"], tid)
     for detail in result.get("conflict_details", []):
         pr, reason, tries = detail["pr"], detail["reason"], detail["tries"]
         if tries < MAX_RESOLVE:

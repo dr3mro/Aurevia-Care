@@ -52,6 +52,15 @@ export class TransportError extends Error {
 /** Optional tuning for the transport; the default abort deadline is 15 s. */
 export interface SendOptions {
   timeoutMs?: number;
+  /**
+   * Caller-owned cancellation signal. Aborting it cancels the underlying
+   * fetch and suppresses the GET retry, because a deliberate cancellation
+   * must never re-issue the request. An already-aborted signal rejects
+   * before any fetch is issued. A caller abort rejects with a
+   * `TransportError` of kind 'timeout'; callers that offer a retry affordance
+   * must check `signal.aborted` before presenting it.
+   */
+  signal?: AbortSignal;
 }
 
 /** Map an HTTP status to the closest user-facing failure kind (WEB-09). */
@@ -125,12 +134,46 @@ async function toTransportError(
   });
 }
 
+/**
+ * Relay caller cancellation into the transport's own controller and return a
+ * cleanup that detaches the listener. Keeping the relay in one place means the
+ * real fetch has a single abort signal whether the deadline or the caller
+ * fires first; no listener is left on a signal the caller may reuse.
+ */
+function linkCallerAbort(
+  controller: AbortController,
+  externalSignal?: AbortSignal,
+): () => void {
+  const relayAbort = (): void => {
+    controller.abort();
+  };
+  if (externalSignal !== undefined) {
+    externalSignal.addEventListener('abort', relayAbort, { once: true });
+  }
+  return () => {
+    externalSignal?.removeEventListener('abort', relayAbort);
+  };
+}
+
 /** Perform one credentialed fetch with CSRF, timeout and typed failures. */
 async function attempt(
   descriptor: RequestDescriptor,
   correlationId: string,
   timeoutMs: number,
+  externalSignal?: AbortSignal,
 ): Promise<unknown> {
+  // A cancelled request short-circuits before CSRF validation and before any
+  // network call. It intentionally takes precedence over csrf-missing: a
+  // cancelled request needs no cookie read and issues no fetch at all. The
+  // abort failure deliberately uses the timeout kind so callers see one
+  // "this fetch is no longer wanted" failure mode for every cancellation.
+  if (externalSignal?.aborted === true) {
+    throw new TransportError('timeout', {
+      correlationId,
+      code: undefined,
+      retryAfterSeconds: undefined,
+    });
+  }
   const headers: Record<string, string> = {
     ...descriptor.headers,
     [CORRELATION_HEADER]: correlationId,
@@ -152,6 +195,7 @@ async function attempt(
   }
 
   const controller = new AbortController();
+  const unlinkCallerAbort = linkCallerAbort(controller, externalSignal);
   const init: RequestInit = {
     method: descriptor.method,
     headers,
@@ -187,13 +231,16 @@ async function attempt(
     });
   } finally {
     clearTimeout(timer);
+    unlinkCallerAbort();
   }
 }
 
 /**
  * Send a versioned API request with credentialed fetch, CSRF protection for
  * writes, a bounded abort deadline and typed failures. Only GET requests are
- * retried, once, on a network failure or timeout; writes are never retried.
+ * retried, once, on a network failure or timeout, and only while the caller's
+ * signal is not aborted; writes are never retried. An already-aborted signal
+ * rejects before any fetch is issued.
  *
  * @returns The parsed JSON body of a successful response.
  * @throws TransportError for every failure, with the failure `kind` and the
@@ -204,14 +251,21 @@ export async function send<T = unknown>(
   options?: SendOptions,
 ): Promise<T> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const externalSignal = options?.signal;
   const correlationId = descriptor.headers[CORRELATION_HEADER] ?? crypto.randomUUID();
   try {
-    return (await attempt(descriptor, correlationId, timeoutMs)) as T;
+    return (await attempt(descriptor, correlationId, timeoutMs, externalSignal)) as T;
   } catch (error) {
     // attempt() normalises every failure into a TransportError before it escapes.
     const failure = error as TransportError;
-    if (descriptor.method === 'GET' && (failure.kind === 'offline' || failure.kind === 'timeout')) {
-      return (await attempt(descriptor, correlationId, timeoutMs)) as T;
+    // A caller-initiated abort is deliberate: never re-issue a cancelled GET.
+    const callerCancelled = externalSignal?.aborted === true;
+    if (
+      descriptor.method === 'GET' &&
+      !callerCancelled &&
+      (failure.kind === 'offline' || failure.kind === 'timeout')
+    ) {
+      return (await attempt(descriptor, correlationId, timeoutMs, externalSignal)) as T;
     }
     throw error;
   }
