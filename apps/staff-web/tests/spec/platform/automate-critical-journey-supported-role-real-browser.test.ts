@@ -82,17 +82,28 @@ const axeGateConsumers: readonly string[] = [
 const e2eSpecs = (): string[] =>
   filesBelow(resolve(moduleRoot, 'e2e')).filter((path) => path.endsWith('.spec.ts'));
 
-/** The exact e2e spec set committed today; a new journey must replace this pin. */
+/**
+ * The exact e2e spec set committed today; a new journey must replace this pin.
+ * Re-pinned to include the per-role journeys and the soft-keyboard/forms spec
+ * that now ship, so the tripwire keeps pinning the whole set rather than a
+ * stale subset. The clause-level GAP assertions below remain active.
+ */
 const currentSpecs: readonly string[] = [
+  'adminflow/admin-journey.spec.ts',
   'clinicalnote/clinicalnote-journey.spec.ts',
+  'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
+  'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
   'smoke.spec.ts',
+  'softKeyboardAndForms.spec.ts',
+  'therapyflow/therapy-journey.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {

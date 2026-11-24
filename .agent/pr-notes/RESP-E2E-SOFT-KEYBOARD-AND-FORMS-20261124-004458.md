@@ -99,7 +99,7 @@ Not required: no signed data, cross-organization sharing, patient association, p
 ## Findings
 
 1. **R8 product defect (observed, tool evidence):** on `/patients` at compact phone widths the focused field intersects the sticky `[data-part="actions"]` footer, both at the configured viewport and after keyboard emulation. `src/components/Form.tsx:59-75` sets `scrollPaddingBlockEnd` on the form while scrolling happens on the page/main scroll container, so the reserved space does not apply. Fixme descriptions carry route, project and measured rects. Production was not edited. A follow-up task is requested below.
-2. **Pre-existing gate failure (tool evidence):** `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` hard-codes 9 e2e specs; main already ships 14 (15 with this spec). Confirmed red with the new file removed. Owner: integrator; out of scope here.
+2. **Resolved: stale e2e spec pin (tool evidence):** `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` hard-coded 9 e2e specs while the branch ships 15. Re-pinned to all 15 in repair pass 1 below; the file's clause-level GAP tripwire stays active and no threshold, skip or exclusion was added.
 3. **Headless UA (tool evidence):** the bundled Chromium headless shell reports `HeadlessChrome/159...`, which `src/features/system/browserSupport.ts` rejects, so pages render the unsupported message. The spec sets a synthetic supported Chrome 159 token via `test.use({ userAgent })`; it bypasses only the client-support matrix, not role or data boundaries.
 4. **Route exclusions (file/tool evidence):** `/admin/config` and `/admin/staff` render `ForbiddenPage` for the hard-coded `reception` role (`useRole.ts:10`, `navigation.ts:411-414`); `/schedule/book` gates its `BookingForm` behind a live appointment list (`SchedulingPage.tsx:170-179`), so neither renders a form on a bare dev server. These are environment facts, not defects; they were not fixmed or silently dropped, and the spec documents them at lines 61-68.
 5. **Environment change (tool evidence):** this sandbox had no browser binaries. I ran `npx playwright install chromium` and `npx playwright install-deps chromium` (root, apt) to obtain real execution evidence. No repository file, lockfile or dependency changed. Firefox/WebKit remain absent, so the config omits their variants.
@@ -125,6 +125,37 @@ Not required: no signed data, cross-organization sharing, patient association, p
 - The default staff-web role is `reception`; admin forms are unreachable in a direct-route e2e test. For a `FieldErrorSummary` example use the `/patients` registration dialog, which reception may open and which validates locally.
 - `bash apps/staff-web/check.sh` has a pre-existing red evidence tripwire on this branch (14 shipped specs vs 9 hard-coded). Confirm by temporarily removing your new spec before assuming you caused it; do not edit the tripwire from a worker scope.
 
+## Repair pass 1 — deterministic coverage-check fix (tool evidence)
+
+The coverage gate `bash apps/staff-web/check.sh` returned exit 1 with `Test Files 2 failed | 266 passed (268)` / `Tests 2 failed | 3043 passed (3045)`. Both failures were test defects, not uncovered production lines (this task adds no production code):
+
+1. **`automate-critical-journey-supported-role-real-browser.test.ts:166` (deterministic):** the `currentSpecs` pin listed 9 e2e specs while 15 are committed. Applied the file's own documented contract ("a new journey must replace this pin"): re-pinned to all 15 committed specs. The three clause-level GAP assertions — workflows-filter `[]`, visual-checks-filter `[]` and `expectTypeOf<Role>()` — remain active and unchanged.
+2. **`resilient-screens.test.ts:250` (flaky under load):** `keepsTypedWorkAndWiresCompareReloadAndCopyOnAStaleConflict` raced React's passive effect — after the async save resolved, `findByText('saved')` could observe the DOM before the `beforeunload` listener cleanup ran, leaving `defaultPrevented === true` under full-suite load (5/5 isolated runs passed). Both post-recovery `beforeunload` assertions were wrapped in `waitFor`, matching the established pattern in `src/features/staffmsg/settings/SettingsPage.test.tsx:378-403`. The asserted invariant (`defaultPrevented === false`) is unchanged; no skip, retry, exclusion or threshold change.
+
+Commands and final lines (tool):
+
+- `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts --exclude 'e2e/**'` → `Tests 3 passed (3)`, exit 0.
+- `npx vitest run tests/spec/platform/resilient-screens.test.ts --exclude 'e2e/**'` ×5 → `Tests 15 passed (15)` each.
+- `bash apps/staff-web/check.sh` → `Test Files 268 passed (268)`, `Tests 3045 passed (3045)`, `No files with missing coverage. 267 files fully covered. 8 empty files skipped.`, `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`, exit 0. Its gen:api:check, typecheck, lint, build and bundle-budget stages all ran and passed.
+- `python3 -I scripts/check-constraints.py --base origin/main` → no output, exit 0 (no added suppression, skip, exclusion or lowered threshold).
+
+Branch → named test (repair pass):
+
+| Changed branch / path | Test that takes it |
+|---|---|
+| `currentSpecs` pin adds `adminflow/admin-journey.spec.ts` | `GAP: all-role...` → `expect(specs.sort()).toEqual([...currentSpecs].sort())` |
+| pin adds `financeflow/finance-journey.spec.ts` | same equality assertion |
+| pin adds `pharmacyflow/pharmacy-bilingual-journey.spec.ts` | same equality assertion |
+| pin adds `radflow/radiology-bilingual-journey.spec.ts` | same equality assertion |
+| pin adds `softKeyboardAndForms.spec.ts` | same equality assertion |
+| pin adds `therapyflow/therapy-journey.spec.ts` | same equality assertion |
+| GAP assertions unchanged: workflows filter, visual-checks filter, `expectTypeOf<Role>()` | same test's remaining three assertions |
+| async save resolves → `setDirty(false)` passive-effect cleanup removes the `beforeunload` listener | `keepsTypedWorkAndWiresCompareReloadAndCopyOnAStaleConflict` → `waitFor` on `savedLeave.defaultPrevented === false` |
+| conflict reload → `handleReload()` clears dirty and removes the listener | same test → `waitFor` on `reloadedLeave.defaultPrevented === false` |
+| success/failure sides of both `defaultPrevented` assertions | each `waitFor` retries until `false`; a still-true guard fails the test |
+
+The original branch-to-test table under `## Coverage` above still holds for the new e2e spec. No production source changed in this repair, so the 100% line/branch/function gates are unchanged; the full-suite run above proves them green.
+
 ## Why this is not finished
 
 Three `/patients` cases are marked `test.fixme` because they expose the genuine R8 defect above; the task brief requires a fixme rather than a red suite or a weakened assertion for a product defect outside this test-only scope. Their exact measurements are in the Test evidence table and in the fixme annotations:
@@ -135,4 +166,4 @@ Three `/patients` cases are marked `test.fixme` because they expose the genuine 
 
 Next step: merge the task request above, then implement the scroll reservation in `Form.tsx`/`responsive.css` with a regression test and remove these fixmes.
 
-Two further gaps are environmental or pre-existing and outside scope: Firefox and WebKit binaries are absent, so the configured cross-browser variants were not executed (the config omits them by design); and `bash apps/staff-web/check.sh` remains exit 1 solely because of the pre-existing spec-list tripwire described in Findings. All other stages of that check, the real Playwright run, and all four reviewer verdicts are green.
+One further gap is environmental and outside scope: Firefox and WebKit binaries are absent, so the configured cross-browser variants were not executed (the config omits them by design). `bash apps/staff-web/check.sh` is now green (268 files / 3045 tests, 100% coverage, exit 0) after repair pass 1, so the stale-spec-pin gap described in Findings is resolved. The real Playwright run and all four reviewer verdicts remain green.
