@@ -1,6 +1,7 @@
-- [-] RENAME-MIGRATION-FILENAMES · Rename seven task-ID-named Flyway migrations to business-domain filenames
+- [x] RENAME-MIGRATION-FILENAMES · Rename seven task-ID-named Flyway migrations to business-domain filenames
   - agent: orca
   - requirements: OPS-06
+  - pr: direct commit 28cfb5b4 on main (interactive, human-reviewed)
   - scope: db/migrations, docs/reference/data-dictionary.md, docs/spec/clauses, docs/swarm, scripts/tests/test_check_migrations.py
   - delivery: interactive, human-reviewed scoped commit on main; not a swarm auto-merge
   - attempts: 0
@@ -48,5 +49,7 @@
     `NameError: name 'MOVED_DOCS' is not defined` while another session edited
     that script; left untouched. Evidence sources: executed tool commands; no
     reviewer, simulated user or human participant evidence.
-    Delivery: another session committed this work in `28cfb5b4` and merged
-    origin in `4932b50c`; no push or tag was made by this session.
+    Resolution: the concurrent doc-path migration finished and
+    `python3 -I scripts/check-docs.py` now exits 0 with no output; the migration,
+    naming and wiring gates are green. Delivery: committed on main in `28cfb5b4`
+    and merged with origin in `4932b50c`; no push or tag was made by this session.

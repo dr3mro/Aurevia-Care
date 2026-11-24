@@ -1,6 +1,7 @@
-- [-] CLEAN-PATH-REFERENCES · Repair stale path strings and broken relative links left by the config and operations-folder moves
+- [x] CLEAN-PATH-REFERENCES · Repair stale path strings and broken relative links left by the config and operations-folder moves
   - agent: orca
   - requirements: OPS-06
+  - pr: direct commit 28cfb5b4 on main (interactive, human-reviewed)
   - scope: README.md, docs/operations/slo.md, docs/reference/synthetic-data.md, docs/security/data-inventory.md, docs/reference/testing-guide.md, docs/TEAM-ACTIONS.md, docs/SWARM.md, docs/operations/workflow-changes/quality-verification-checklist.md, .opencode/setup/AGENTS.md, .opencode/config/README-SETUP.md, .opencode/config/STARTER_PROMPT.md, .opencode/config/MEMORY.md, .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, .opencode/agents/orca.md, .opencode/skills/aurevia-delivery/SKILL.md
   - delivery: interactive, human-reviewed scoped commit on main; not a swarm auto-merge (docs/SWARM.md:203 protects .opencode/)
   - attempts: 0
@@ -90,5 +91,7 @@
     `NameError: name 'MOVED_DOCS' is not defined` while another session edited
     that script; left untouched. Evidence sources: executed tool commands; no
     reviewer, simulated user or human participant evidence.
-    Delivery: another session committed this work in `28cfb5b4` and merged
-    origin in `4932b50c`; no push or tag was made by this session.
+    Resolution: the concurrent doc-path migration finished and
+    `python3 -I scripts/check-docs.py` now exits 0 with no output; every other
+    gate above is green. Delivery: committed on main in `28cfb5b4` and merged
+    with origin in `4932b50c`; no push or tag was made by this session.
