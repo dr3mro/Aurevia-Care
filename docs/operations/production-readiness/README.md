@@ -2,6 +2,10 @@
 
 This checklist turns section 8.1 ("Production platform and web delivery") of the [SmartClinic Cloud V1 specification](../../../SMARTCLINIC_V1_SPEC.md) into evidence that a named owner can produce, record and sign before G5. Each row states, in our own words, the verification the specification asks for; a row is complete only when its evidence link is supplied and its owner signs it. Nothing here is asserted as done.
 
+The product-level companion for PRD-01 to PRD-06 is
+[requirement traceability](requirement-traceability.md); this register covers WEB-01
+to WEB-13 only.
+
 Status: draft, owners to complete
 
 | Requirement | Evidence needed | Produced by | Owner | Status | Link |
