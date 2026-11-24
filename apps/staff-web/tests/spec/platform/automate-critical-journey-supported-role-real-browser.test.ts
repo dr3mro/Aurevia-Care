@@ -97,6 +97,7 @@ const currentSpecs: readonly string[] = [
   'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
+  'responsive-patients.spec.ts',
   'smoke.spec.ts',
   'therapyflow/therapy-journey.spec.ts',
 ];
