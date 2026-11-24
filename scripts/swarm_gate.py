@@ -352,7 +352,7 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None)
                          "commit_authors": tuple((x.get("author") or {}).get("login", "")
                                                  for x in details.get("commits", [])),
                          "files": tuple(files)})
-    ctx = _collect_task_and_evidence(ctx, root)
+    ctx = _collect_task_and_evidence(ctx, root, tested_root)
     return _collect_manifest(ctx, tested_root)
 
 
@@ -371,13 +371,23 @@ def _task_file(root, task_id):
     return numbered[0] if numbered else exact
 
 
-def _collect_task_and_evidence(ctx, root):
-    """Read the task and notes from the trusted base checkout."""
+def _collect_task_and_evidence(ctx, root, head_root=None):
+    """Read the task from the trusted base and notes from the tested PR head.
+
+    The protected base supplies the task record; worker-authored notes are
+    supporting metadata that belongs to the revision under test, so they must
+    be read from that checkout. Since the notes layout migration they live in
+    ``.agents/notes``; the legacy ``docs/pr/notes`` path is still accepted on
+    the head for pull requests opened before the migration.
+    """
     _, task_id = classify_pull_request(ctx.head_ref, ctx.labels, ctx.title, ctx.commit_authors)
     if not task_id:
         return ctx
     task_path = _task_file(root, task_id)
-    notes = sorted((Path(root) / "docs" / "pr" / "notes").glob(f"{task_id}-*.md"))
+    notes_root = Path(head_root or root)
+    notes = sorted((notes_root / ".agents" / "notes").glob(f"{task_id}-*.md"))
+    if not notes:
+        notes = sorted((notes_root / "docs" / "pr" / "notes").glob(f"{task_id}-*.md"))
     return GateContext(**{**ctx.__dict__,
                           "task_text": task_path.read_text() if task_path.is_file() else "",
                           "evidence_text": notes[-1].read_text() if notes else ""})

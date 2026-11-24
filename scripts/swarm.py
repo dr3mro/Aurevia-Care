@@ -3056,6 +3056,7 @@ def plan_workers(
     story_wave=None,
     focus="",
     red=False,
+    force=False,
 ):
     """Main repairs, then fixes, then ready tasks whose scope is free.
 
@@ -3065,7 +3066,9 @@ def plan_workers(
     when its scope overlaps a running task or a pull request in the fix loop, so no slot idles
     while a ready task exists. Low-priority backlog tasks fill spare slots.
     `focus` is a task id a person asked to launch: it is planned first, ignores the attempt limit and
-    the waiting-pull-request gate, but still needs open status, a scope, met dependencies and a free scope."""
+    the waiting-pull-request gate, but still needs open status, a scope, met dependencies and a free scope.
+    ``force`` is the workflow's scheduling override: it relaxes claim, dependency, attempt and
+    waiting-wave limits so a wave can start, but never weakens a verification or merge gate."""
     tasks = parse_tasks(text)
     by_id = {t["id"]: t for t in tasks}
     for t in tasks:
@@ -3080,7 +3083,9 @@ def plan_workers(
     busy = [
         t["scope"]
         for t in tasks
-        if t["status"] == "taken" and (not red or main_repair_id(t["id"], t["task"]))
+        if not force
+        and t["status"] == "taken"
+        and (not red or main_repair_id(t["id"], t["task"]))
     ]
     assigned = set(live)
     fix_busy = [
@@ -3162,15 +3167,15 @@ def plan_workers(
             continue
         wanted = bool(focus) and focus in (task["id"], *task["aliases"])
         if (
-            task["status"] != "todo"
+            task["status"] not in (("todo", "taken") if force else ("todo",))
             or not task["scope"]
             or task["id"] in in_flight
-            or (attempts_of(task) >= MAX_ATTEMPTS and not wanted)
+            or (not force and attempts_of(task) >= MAX_ATTEMPTS and not wanted)
         ):
             continue
-        if not set(task["depends"]) <= done:
+        if not force and not set(task["depends"]) <= done:
             continue
-        if any(overlaps(task["scope"], other) for other in busy):
+        if not force and any(overlaps(task["scope"], other) for other in busy):
             continue
         busy.append(task["scope"])
         plan.append(
@@ -3901,6 +3906,11 @@ def latest_main_delivery_verdict(workflow="delivery.yml"):
     return max(runs, key=lambda run: (run["createdAt"], run["databaseId"]), default={})
 
 
+def scheduling_override():
+    """True when the dispatched wave asked to relax scheduling gates only."""
+    return os.environ.get("SWARM_IGNORE_RED_MAIN", "").strip().lower() in ("1", "true")
+
+
 def main_is_red(workflow="delivery.yml"):
     """True when the latest completed Delivery verdict on main is a failure.
 
@@ -3908,7 +3918,7 @@ def main_is_red(workflow="delivery.yml"):
     override: planning, PR flow, top-up and integration all see the same answer,
     so one dispatched wave works through end to end. The override never changes
     what the gate reports on main; it only stops the swarm from deferring work."""
-    if os.environ.get("SWARM_IGNORE_RED_MAIN", "").strip().lower() in ("1", "true"):
+    if scheduling_override():
         print("main_is_red: SWARM_IGNORE_RED_MAIN override; treating main as green",
               file=sys.stderr)
         return False
@@ -4629,7 +4639,8 @@ def top_up(finished_id):
         or []
     )
     text = reclaim(todo_read(), everything, live)
-    if not plan_workers(1, [{"slot": 1}], text, prs, live=live, red=main_is_red()):
+    if not plan_workers(1, [{"slot": 1}], text, prs, live=live, red=main_is_red(),
+                        force=scheduling_override()):
         return False
     gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
     return True
@@ -4637,7 +4648,7 @@ def top_up(finished_id):
 
 def wave_dispatch_args():
     """Extra `gh workflow run` args that carry a wave-level override forward."""
-    if os.environ.get("SWARM_IGNORE_RED_MAIN", "").strip().lower() in ("1", "true"):
+    if scheduling_override():
         return ["-f", "ignore_red_main=true"]
     return []
 
@@ -5546,9 +5557,9 @@ def dispatch_delivery():
     gh("workflow", "run", "delivery.yml", "--ref", "main", check=False)
 
 
-def continue_swarm(text, prs, red=False):
+def continue_swarm(text, prs, red=False, force=False):
     """Keep eligible workers busy while the independent integrator runs."""
-    return bool(plan_workers(1, [{"slot": 1}], text, prs, red=red))
+    return bool(plan_workers(1, [{"slot": 1}], text, prs, red=red, force=force))
 
 
 def pending_note_days():
@@ -6554,8 +6565,9 @@ def main(argv=None):
             a.file,
         )
         text = todo_read(a.file)
-        go = continue_swarm(text, prs, red=main_is_red())
-        if go and (len(live) >= MAX_ACTIVE_WORKERS or waiting_waves()):
+        force = scheduling_override()
+        go = continue_swarm(text, prs, red=main_is_red(), force=force)
+        if go and not force and (len(live) >= MAX_ACTIVE_WORKERS or waiting_waves()):
             go = False
             print("No free workers or a wave is already waiting.")
         print("Starting the next wave." if go else "No further wave to start now.")

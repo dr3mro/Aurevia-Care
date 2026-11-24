@@ -1085,6 +1085,9 @@ class PlanTests(unittest.TestCase):
         self.assertIn("IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}", plan)
         self.assertIn("--ignore-red-main", plan)
         self.assertIn("SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}", plan)
+        self.assertIn("steps.budget.outputs.start == 'true' || inputs.ignore_red_main == true", text)
+        self.assertIn('"$IMAGES_READY" != true && "${IGNORE_RED_MAIN:-false}" != true', plan)
+        self.assertIn('"$BUDGET_WORKERS" =~ ^[0-9]+$ && "${IGNORE_RED_MAIN:-false}" != true', plan)
         worker_call = text.split("    uses: ./.github/workflows/swarm-worker.yml", 1)[1]
         self.assertIn("ignore_red_main: ${{ inputs.ignore_red_main == true }}", worker_call)
         integrator_call = text.split("    uses: ./.github/workflows/swarm-integrator.yml", 1)[1]
@@ -1139,6 +1142,24 @@ class PlanTests(unittest.TestCase):
                 self.assertTrue(task["details"], task["id"])
         reserved = [t["reserved"] for t in tasks if t["reserved"]]
         self.assertEqual(len(reserved), len(set(reserved)))
+
+
+class ForceSchedulingTests(unittest.TestCase):
+    def test_force_ignores_claim_dependency_and_attempt_gates_but_not_done(self):
+        text = (
+            "# TODO\n\n"
+            "- [x] DONE-1 · Finished\n  - scope: a/done\n  - details:\n    Keep out\n\n"
+            "- [-] HELD-1 · Held claim\n  - scope: a/held\n  - details:\n    Stale claim\n\n"
+            "- [ ] BLOCKED-1 · Blocked\n  - scope: a/blocked\n  - depends: MISSING-1\n"
+            "  - details:\n    Unmet dependency\n\n"
+            "- [ ] RETRY-1 · Too many tries\n  - scope: a/retry\n  - attempts: 9\n"
+            "  - details:\n    Over the attempt cap\n\n"
+        )
+        slots = [{"slot": n} for n in range(1, 5)]
+        self.assertEqual([t["id"] for t in swarm.plan_workers(4, slots, text, [])], [])
+        ids = [t["id"] for t in swarm.plan_workers(4, slots, text, [], force=True)]
+        self.assertEqual(ids, ["HELD-1", "BLOCKED-1", "RETRY-1"])
+        self.assertNotIn("DONE-1", ids)
 
 
 class ReleaseTests(unittest.TestCase):

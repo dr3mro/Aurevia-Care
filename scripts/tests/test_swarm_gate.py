@@ -245,7 +245,7 @@ class CollectionTests(unittest.TestCase):
             base_path, head_path = Path(base), Path(head)
             (base_path / "tasks").mkdir()
             (base_path / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
-            notes = base_path / "docs" / "pr" / "notes"
+            notes = head_path / ".agents" / "notes"
             notes.mkdir(parents=True)
             (notes / "TASK-01-1.md").write_text(EVIDENCE)
             (head_path / gate.MANIFEST_PATH).parent.mkdir(parents=True)
