@@ -120,6 +120,23 @@
 - Entry-point trace: `swarm.py main integrate-publish` → `integrate_publish` → `integrate_finalize` → `record_merges` → `record_merge`; rejected publish emits `merged=0`, returns `INTEGRATION_FAILED` and exits 1. `swarm.py main pr-flow` → `pr_flow` → `delivery_runs_from` → `validated_delivery_runs` → `delivery_state`/`request_delivery_rerun`, with exact workflow id and PR/base/head checks.
 - No Git, `gh`, push, tag or live Actions command was run. Canonical Python branch coverage, full policy suite and live GitHub behavior remain deferred under the standing no-Git directive.
 
+## Phase 4 correction follow-up (2026-11-24)
+- Reviewer finding (simulated static): same-pass readiness appended an integer to the `(pr, idle)` list, which could crash the stuck-alert loop.
+- Fix (tool): `ready.append((pr, 0))` and an explicit `assertNotIn((7, \"stuck alert\"), acted)`.
+- Green (tool): full `test_swarm.py` 325/326 after the fix; only the unrelated pre-existing `FIX-TEST-WORKSPACE-RESET` details failure remains.
+- Optional review cleanup (tool): `delivery_decision` now takes a resolved head (dead optional branch removed), the already-integrated comment matches recoverable tasks, the workflow test guard moved to file end, and exact resolve/publish gate assertions were added. Green: `test_delivery_workflow_gates.py` 15/15, `test_swarm_delivery_state.py` 52/52, literal `py_compile`, `check-docs.py`.
+
+## Checklist reconciliation (2026-11-24)
+- Tool/source: `swarm-bugs.md` now carries a status note and marks locally implemented but not fully verified findings `[-]` (WF-05, WF-08, WF-09, WF-10, WF-11, WF-15, WF-16, WF-18, WF-31, WF-35); WF-22/WF-23 are `[N/A]` under the owner's direct-`SWARM_MODEL` decision; WF-36 stays `[!]`; all other unimplemented findings remain `[ ]`.
+- Tool: `python3 -I scripts/check-docs.py` → exit 0 after the checklist update.
+
+## Final no-Git evidence (2026-11-24, re-run on final files)
+- Tool: full `test_swarm.py` → `Ran 326 tests`, exit 1, sole failure `PlanTests.test_committed_files_are_valid`.
+- Tool: `test_swarm_cli_coverage.py` 56/56; `test_delivery_workflow_gates.py` 15/15; `test_swarm_integrator_coverage.py` 44/44; `test_task_requests.py` 25/25; `test_swarm_schedule_coverage.py` 27/27; `test_swarm_drafts.py` 15/15; `test_swarm_delivery_state.py` 59/59; `test_workspace_git_isolation.py` 1/1 with 13 no-subprocess scenarios.
+- Tool: literal `py_compile`, `actionlint -no-color -shellcheck= -pyflakes= -ignore 'unexpected key "queue" for "concurrency" section' .github/workflows/*.yml`, and `python3 -I scripts/check-docs.py` → exit 0.
+- Defect transfer (QA + tool): `QA-01279000-01` recorded in `.opencode/config/BUGS.md`; owner task 01278000. Inline `details:` is discarded by `parse_tasks`; fix by converting the task body, never by weakening the assertion.
+- Blocker: canonical Python branch coverage, disposable-Git tests, full policy suite, live GitHub rulesets/reruns/merge ancestry and exact-SHA CI remain unrun under the standing no-Git/no-live-GitHub directive; these are explicit blockers, not claimed passes.
+
 ## Phase 4 review verdicts (2026-11-24)
 - aurevia-senior-python: NO-GO — CLI status, raw Delivery listing, checked redundant-PR cleanup, unique task/PR identity and note-rollback evidence require correction (simulated static reviewer).
 - aurevia-github-workflow: NO-GO — rejected publish exited zero, reconciliation could run from rejected HEAD, and obsolete branch-dispatch/Markdown wording remained (simulated static reviewer).
@@ -128,6 +145,12 @@
 - aurevia-plan-reviewer: NO-GO on the first correction plan; literal branch/test commands, reconciliation security contract and exact GitHub field mapping were missing (simulated read-only reviewer).
 - Corrected plan now includes those details.
 - aurevia-plan-reviewer: GO for the revised Phase 4 correction plan (simulated read-only reviewer; no execution).
+- aurevia-github-workflow: GO (fresh-main reconciliation, least privilege and all terminal success gates verified).
+- aurevia-code-reviewer: GO (correctness verified; two optional comment/dead-branch cleanups applied).
+- aurevia-devsecops: GO (no Critical/Required security finding; live ruleset behavior still unverified).
+- aurevia-coverage-auditor: first NO-GO listed nine unmapped fail-closed branches; ten named tests added; re-review GO (simulated static reviewer; canonical percentage still unmeasured under no-Git directive).
+- aurevia-senior-python: first NO-GO found the same-pass readiness tuple mismatch; fixed; re-review GO (simulated static reviewer).
+- Coverage follow-up (tool): `test_task_requests.py` 25/25, `test_swarm_schedule_coverage.py` 27/27, `test_swarm_delivery_state.py` 59/59, literal `py_compile` and `check-docs.py` green.
 - Tool: `python3 -I scripts/check-docs.py` → exit 0 after the Phase 4 plan corrections.
 - No Phase 4 finding is marked fixed until the correction plan is reviewed, red/green evidence is recorded, and each reviewer returns GO.
 

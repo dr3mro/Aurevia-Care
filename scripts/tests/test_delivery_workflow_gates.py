@@ -269,10 +269,6 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertFalse(lacks(runs, "scripts/python-coverage.sh"))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class IntegratorPublicationCoverageTest(unittest.TestCase):
     """The publish job must run even when no PR was accepted or conflicted."""
 
@@ -302,5 +298,14 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
     def test_follow_up_jobs_require_successful_publication(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         jobs = workflow["jobs"]
-        self.assertIn("needs.publish.result == 'success'", jobs["resolve"]["if"])
+        self.assertEqual(
+            jobs["resolve"]["if"],
+            "always() && needs.publish.result == 'success' && "
+            "needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]'",
+        )
         self.assertEqual(jobs["resolve-publish"]["if"], "always() && needs.resolve.result == 'success'")
+        self.assertNotIn("continue-on-error", jobs["publish"])
+
+
+if __name__ == "__main__":
+    unittest.main()

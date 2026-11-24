@@ -112,6 +112,9 @@ class DeliveryStateTest(unittest.TestCase):
                 delivery_run(event="pull_request", conclusion="failure")]
         self.assertEqual(swarm.delivery_state(runs, HEAD), "failed")
 
+    def test_positive_decimal_run_id_string_is_accepted(self):
+        self.assertEqual(swarm.delivery_run_id("123"), "123")
+
     def test_missing_event_is_not_evidence(self):
         record = delivery_run()
         record.pop("event")
@@ -127,10 +130,11 @@ class DeliveryStateTest(unittest.TestCase):
 class DeliveryRunsTest(unittest.TestCase):
     """The run listing is filtered by commit and enriched with job-level gates."""
 
-    def gh_for(self, runs, jobs=None, details=None, workflow_id=WORKFLOW_ID):
+    def gh_for(self, runs, jobs=None, details=None, workflow_id=WORKFLOW_ID,
+               workflow_info=None, job_answer=None):
         def fake(*args, check=True):
             if args[0] == "api" and "actions/workflows/delivery.yml" in args[-1]:
-                return json.dumps({"id": workflow_id})
+                return json.dumps(workflow_info if workflow_info is not None else {"id": workflow_id})
             if args[0] == "api" and "actions/runs/" in args[-1]:
                 run_id = int(args[-1].rsplit("/", 1)[1])
                 if details is not None:
@@ -143,7 +147,7 @@ class DeliveryRunsTest(unittest.TestCase):
             if args[:2] == ("run", "list"):
                 return json.dumps(runs)
             if args[:2] == ("run", "view"):
-                return json.dumps({"jobs": jobs or []})
+                return json.dumps(job_answer if job_answer is not None else {"jobs": jobs or []})
             raise AssertionError(f"unexpected gh call: {args}")
         return mock.Mock(side_effect=fake)
 
@@ -226,6 +230,56 @@ class DeliveryRunsTest(unittest.TestCase):
         with mock.patch.object(swarm, "gh", self.gh_for([delivery_run()], details={7: detail})):
             with self.assertRaises(ValueError):
                 swarm.delivery_runs(HEAD, 7)
+
+    def test_malformed_canonical_workflow_id_is_rejected(self):
+        for workflow_info in ({"id": True}, {"id": "123"}, {"id": 0}, {"id": -1}, {"name": "Delivery"}):
+            with self.subTest(workflow_info=workflow_info):
+                with mock.patch.object(swarm, "gh", self.gh_for(
+                        [], workflow_info=workflow_info)) as gh:
+                    with self.assertRaises(ValueError):
+                        swarm.delivery_runs(HEAD, 7)
+                self.assertFalse(any(c.args[:2] == ("run", "list") for c in gh.call_args_list))
+
+    def test_raw_listing_without_metadata_raises(self):
+        with self.assertRaises(ValueError):
+            swarm.delivery_runs_from([delivery_run()], HEAD, 7)
+
+    def test_non_list_run_response_raises(self):
+        with mock.patch.object(swarm, "gh", self.gh_for({"message": "rate limited"})):
+            with self.assertRaises(ValueError):
+                swarm.delivery_runs(HEAD, 7)
+
+    def test_rest_detail_identity_mismatch_is_rejected(self):
+        detail = {"workflow_id": 999, "event": "pull_request", "head_sha": HEAD,
+                  "pull_requests": [{"number": 7, "base": {"ref": "main"}, "head": {"sha": HEAD}}]}
+        with mock.patch.object(swarm, "gh", self.gh_for(
+                [delivery_run()], details={7: detail})) as gh:
+            with self.assertRaises(ValueError):
+                swarm.delivery_runs(HEAD, 7)
+        self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
+
+    def test_malformed_jobs_payload_fails_closed(self):
+        with mock.patch.object(swarm, "gh", self.gh_for(
+                [delivery_run()], job_answer="not-json-object")):
+            with self.assertRaises(ValueError):
+                swarm.delivery_runs(HEAD, 7)
+
+    def test_malformed_pr_association_item_fails_closed(self):
+        associations = (
+            [7],
+            [{"number": True, "base": {"ref": "main"}, "head": {"sha": HEAD}}],
+            [{"number": 7, "head": {"sha": HEAD}}],
+            [{"number": 7, "base": {"ref": "main"}}],
+        )
+        for pull_requests in associations:
+            with self.subTest(pull_requests=pull_requests):
+                detail = {"workflow_id": WORKFLOW_ID, "event": "pull_request",
+                          "head_sha": HEAD, "pull_requests": pull_requests}
+                with mock.patch.object(swarm, "gh", self.gh_for(
+                        [delivery_run()], details={7: detail})) as gh:
+                    with self.assertRaises(ValueError):
+                        swarm.delivery_runs(HEAD, 7)
+                self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
 
     def test_full_mixed_listing_still_falls_back(self):
         old = delivery_run(sha=OLD)

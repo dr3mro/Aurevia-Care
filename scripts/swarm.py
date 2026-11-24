@@ -4326,14 +4326,13 @@ def delivery_gate(pr, head=None, runs=None, report=True):
     return "request"
 
 
-def delivery_decision(pr, head=None, runs=None):
-    """Return (verdict, state, runs) without writing to GitHub.
+def delivery_decision(pr, head, runs=None):
+    """Classify validated Delivery evidence for one already resolved PR head.
 
-    The validation job calls this while candidate code is in the tree and holds
-    only a read-only token. ``verdict`` matches :func:`delivery_gate`: merge,
-    wait, fix or request. Reporting and re-run dispatch stay in the caller.
+    ``verdict`` matches :func:`delivery_gate`: merge, wait, fix or request.
+    Reporting and re-run dispatch stay in the caller; the gate resolves the
+    head before calling this pure classifier.
     """
-    head = delivery_head(pr) if head is None else head
     runs = delivery_runs(head, pr) if runs is None else runs
     state = delivery_state(runs, head)
     if state == "passed":
@@ -5236,7 +5235,7 @@ def pr_flow(now=None, dispatch_wave=True):
                     comment_best_effort(pr, "Draft state could not be confirmed; needs-fix stays in place.")
                     continue
                 remove_label(pr, "needs-fix")
-                ready.append(pr)
+                ready.append((pr, 0))
                 acted.append((pr, "needs-fix cleared: delivery already passed"))
             else:
                 wants_wave = True
@@ -6115,8 +6114,8 @@ def report_validation(result, report_evidence=True):
                 fail(pr, reason, log, simple=simple)
             else:
                 fail(pr, reason, simple=simple)
-    # Already-integrated PRs are recorded separately from rejections; close them
-    # here so the worker's task is marked done and the pull request is not left open.
+    # Already-integrated PRs are recorded separately from rejections. Close the
+    # redundant PR but leave its task recoverable until a merge is confirmed.
     for item in result.get("already", []):
         tid = item.get("task_id", "")
         print(

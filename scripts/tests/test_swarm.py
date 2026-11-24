@@ -2391,6 +2391,7 @@ class PrFlowTests(unittest.TestCase):
         self.assertIn((7, "needs-fix cleared: delivery already passed"), acted)
         self.assertFalse(fake.said("swarm.yml"))
         self.assertTrue(fake.said("workflow", "run", "swarm-integrator.yml"))
+        self.assertNotIn((7, "stuck alert"), acted)
 
     def test_needs_fix_is_not_cleared_until_ready_confirmed(self):
         for draft in (True, False):

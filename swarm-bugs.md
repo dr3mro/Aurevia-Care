@@ -95,13 +95,17 @@ For each finding, record:
 - Confidence level.
 - Remaining risks.
 
+## Status note (2026-11-24)
+
+The statuses below are deliberately conservative. Local Phase 1/2/4 fixes have focused no-Git tests and independent reviews, but no finding is `[x]` until the full tooling suite, canonical branch coverage, disposable Git tests where applicable, and authorized live GitHub evidence are complete. `[-]` means an implemented fix is under final review or blocked from full verification. WF-22 and WF-23 are `[N/A]` because the owner chose a single direct `SWARM_MODEL` with no router, fallback, or force flag; WF-21 remains open because no runtime pricing verification was added. WF-36 remains externally blocked on owner policy decisions.
+
 # 5. Detailed findings, investigation scopes, and required fixes
 
 ## Phase 1 — Git safety and repository integrity
 
 Complete this phase before executing potentially destructive tests.
 
-### [ ] WF-08 — Local repository unexpectedly resets
+### [-] WF-08 — Local repository unexpectedly resets
 
 **Severity:** Critical
 
@@ -148,7 +152,7 @@ Complete this phase before executing potentially destructive tests.
 - Tests pass when invoked from different working directories.
 - The original reset defect is reproduced and prevented, or the inability to reproduce it is documented.
 
-### [ ] WF-09 — Git operations target incorrect directories
+### [-] WF-09 — Git operations target incorrect directories
 
 **Severity:** Critical
 
@@ -216,7 +220,7 @@ Complete this phase before executing potentially destructive tests.
 - Parent environment remains unchanged.
 - Legitimate Git operations continue to function.
 
-### [ ] WF-05 — Python tests fail or modify Git index state
+### [-] WF-05 — Python tests fail or modify Git index state
 
 **Severity:** High
 
@@ -246,7 +250,7 @@ Complete this phase before executing potentially destructive tests.
 - Repeated execution produces consistent results.
 - No legitimate failing test is disabled.
 
-### [ ] WF-10 — Branch protection bypass
+### [-] WF-10 — Branch protection bypass
 
 **Severity:** Critical
 
@@ -280,7 +284,7 @@ Complete this phase before executing potentially destructive tests.
 
 ## Phase 2 — Delivery gate and pull request lifecycle
 
-### [ ] WF-11 — Delivery gate incorrectly reports success
+### [-] WF-11 — Delivery gate incorrectly reports success
 
 **Severity:** Critical
 
@@ -347,7 +351,7 @@ Complete this phase before executing potentially destructive tests.
 - Failed validation cannot trigger an unauthorized merge.
 - Handoff failures identify the exact blocking condition.
 
-### [ ] WF-15 — Passing PRs remain drafts
+### [-] WF-15 — Passing PRs remain drafts
 
 **Severity:** High
 
@@ -377,7 +381,7 @@ Complete this phase before executing potentially destructive tests.
 - Readiness transitions are idempotent.
 - No circular dependency exists between draft status and validation.
 
-### [ ] WF-16 — Auto-merge fails silently
+### [-] WF-16 — Auto-merge fails silently
 
 **Severity:** High
 
@@ -438,7 +442,7 @@ Complete this phase before executing potentially destructive tests.
 - Failed merge-group checks prevent merging.
 - Normal PR validation remains functional.
 
-### [ ] WF-18 — Tasks marked complete before merge
+### [-] WF-18 — Tasks marked complete before merge
 
 **Severity:** High
 
@@ -906,7 +910,7 @@ Complete this phase before executing potentially destructive tests.
 - Concurrent processing does not create uncontrolled duplicates.
 - Issue history remains traceable.
 
-### [ ] WF-31 — Stale task and progress records
+### [-] WF-31 — Stale task and progress records
 
 **Severity:** Medium
 
@@ -1053,7 +1057,7 @@ Capacity calculation and reservation must be performed as one atomic operation.
 - Fallback models follow the same pricing policy.
 - Missing free models produce a clear blocked outcome.
 
-### [ ] WF-22 — Model fallback failure
+### [N/A] WF-22 — Model fallback failure
 
 **Severity:** High
 
@@ -1083,7 +1087,7 @@ Capacity calculation and reservation must be performed as one atomic operation.
 - Every attempted model satisfies the zero-cost requirement.
 - Exhausted candidates produce a clear blocked state.
 
-### [ ] WF-23 — Forced model override ignored
+### [N/A] WF-23 — Forced model override ignored
 
 **Severity:** High
 
@@ -1278,7 +1282,7 @@ Capacity calculation and reservation must be performed as one atomic operation.
 - Model routing decisions are explainable.
 - Diagnostic output contains no credentials.
 
-### [ ] WF-35 — Insufficient workflow regression testing
+### [-] WF-35 — Insufficient workflow regression testing
 
 **Severity:** Medium
 
