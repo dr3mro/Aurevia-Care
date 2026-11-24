@@ -18,7 +18,6 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,10 +44,11 @@ import com.aurevia.tenancy.FacilityService;
  * {@code ORDER-CODE-SHARED}). Each existing surface must conceal the peer
  * tenant's record, and a missing tenant context must fail closed.
  *
- * <p>The tenant export surface has no production implementation yet, so its
- * acceptance test is present but disabled with an explicit gap reason (see
- * {@code docs/gates/g0-isolation-surfaces.md}). No production code is added by
- * this suite; it only exercises existing entry points with synthetic data.</p>
+ * <p>The tenant export surface is covered here at the route boundary; its
+ * manifest, checksum and cross-tenant concealment are covered by
+ * {@code TenantExportIntegrationTest} against real PostgreSQL. No production
+ * code is added by this suite; it only exercises existing entry points with
+ * synthetic data.</p>
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -484,40 +484,26 @@ class IsolationAcrossSurfacesTest {
     }
 
     /**
-     * OPS-07 acceptance: a tenant export must carry only the active tenant's
-     * records, manifest, checksums, authorized documents, provenance and audit.
-     * Disabled until a tenant export surface exists — see the gap note in
-     * {@code docs/gates/g0-isolation-surfaces.md}.
+     * OPS-07 export surface fail-closed evidence (ARC-02, IAM-01).
+     *
+     * <p>The live export route is {@code /api/v1/tenant/exports}. Its manifest
+     * contents, checksums, provenance and cross-tenant concealment are proved by
+     * {@code TenantExportIntegrationTest} against real PostgreSQL and V89. This
+     * surface test proves the route exists and that a foreign tenant, an
+     * unauthenticated caller, a tenant-less caller and a non-admin are all
+     * refused before any job is read.</p>
      */
     @Test
-    @Disabled("GAP: OPS-07 tenant export endpoint, manifest, checksums and authorized-document "
-            + "selection do not exist. Only an in-scope messaging-governance export exists. "
-            + "No production code is added by this test.")
-    void tenantExportNeverIncludesAnotherTenantsRecords() {
-        String patientA = PATIENT_A;
-        linkFile(patientA, "clinician-a", ORG_A);
-        linkFile(PATIENT_B, "clinician-b", ORG_B);
-
-        ResponseEntity<String> created = post("/api/v1/tenant-exports",
-                "{\"scope\":\"chart\",\"format\":\"json\",\"includeDocuments\":true}", "admin-a", ORG_A);
-        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
-        String exportId = field(created.getBody(), "id");
-        assertEquals(ORG_A, field(created.getBody(), "organizationId"));
-
-        String manifest = get("/api/v1/tenant-exports/" + exportId + "/manifest", "admin-a", ORG_A).getBody();
-        assertTrue(manifest.contains("schemaVersion"));
-        assertTrue(manifest.contains("sha256"));
-        assertTrue(manifest.contains(patientA));
-        assertTrue(manifest.contains(SHARED_FILE_NAME));
-        assertFalse(manifest.contains(PATIENT_B));
-        assertFalse(manifest.contains("Shared Beta"));
-        assertFalse(manifest.contains(ORG_B));
+    void tenantExportSurfaceIsTenantScopedAndFailsClosed() {
+        String unknownJob = UNKNOWN;
 
         assertEquals(HttpStatus.NOT_FOUND,
-                get("/api/v1/tenant-exports/" + exportId + "/manifest", "admin-b", ORG_B).getStatusCode());
+                get("/api/v1/tenant/exports/" + unknownJob, "admin-b", ORG_B).getStatusCode());
         assertEquals(HttpStatus.UNAUTHORIZED,
-                get("/api/v1/tenant-exports/" + exportId + "/manifest", null, ORG_A).getStatusCode());
+                get("/api/v1/tenant/exports/" + unknownJob, null, ORG_A).getStatusCode());
         assertEquals(422,
-                get("/api/v1/tenant-exports/" + exportId + "/manifest", "admin-a", null).getStatusCode().value());
+                get("/api/v1/tenant/exports/" + unknownJob, "admin-a", null).getStatusCode().value());
+        assertEquals(HttpStatus.FORBIDDEN,
+                post("/api/v1/tenant/exports", null, "reception-a", ORG_A).getStatusCode());
     }
 }

@@ -127,7 +127,7 @@ Missing pieces, the files that would change and the separate work needed:
    task.
 3. **Conducted restore drill (OPS-04).** No measured RPO/RTO or reconciliation
    record exists; Docker is unavailable locally (see
-   [`WORKSPACE.md`](../../../../WORKSPACE.md)). An authorized environment must
+   [`WORKSPACE.md`](../../../../.opencode/config/WORKSPACE.md)). An authorized environment must
    produce a dated drill artifact and runbook sign-off. One human/cloud-gated
    task.
 4. **Real approved onboarding import (OPS-08).** The importer exists, but no

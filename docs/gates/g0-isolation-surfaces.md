@@ -40,14 +40,14 @@ before SQL. No real patient data, credential or token is used.
 | Patient search | Yes | `com.aurevia.web.PatientController`, `com.aurevia.patient.PatientRepository` | `patientSearchNeverReturnsThePeerTenantsRecordWithTheSameMrn` | Proven |
 | Files and attachment retrieval | Partly | `com.aurevia.documents.DocumentController`, `com.aurevia.documents.DocumentService`; `com.aurevia.messaging.attachments.AttachmentController` for patient-unit files | `filesAndRendersWithTheSameNameAreConcealedAcrossTenants` | Partly proven |
 | Worker/outbox processing | Yes | `com.aurevia.events.DeliveryController`, `com.aurevia.events.DurableEventService`, `com.aurevia.events.JdbcDeliveryStore` | `workerAndOutboxProcessingStaysTenantScopedWithTheSameEventKey` | Proven |
-| Tenant export | No | None. `com.aurevia.tenant.importing.ImportController` is import-only; `com.aurevia.messaging.governance.MessagingGovernanceController` offers a scoped, expiring messaging export, not an OPS-07 tenant export | `tenantExportNeverIncludesAnotherTenantsRecords` (`@Disabled` with a GAP reason) | Not built |
+| Tenant export | Yes | `com.aurevia.tenant.export.ExportController`, `TenantExportService`, `JdbcExportStore`, V89 | `tenantExportSurfaceIsTenantScopedAndFailsClosed` (route boundary) and `TenantExportIntegrationTest` (manifest, checksums, provenance, cross-tenant concealment) | Proven |
 
 The fail-closed assertions are collected in `missingTenantContextFailsClosedOnEverySurface`.
-The disabled export test is written in full — it uses seeded tenant records, creates a document
-in each tenant, requests an export, asserts a `schemaVersion` and `sha256` field in the manifest
-plus the owner's patient and file name, and asserts cross-tenant and missing-context denial —
-but it cannot run until an export surface exists. It is the only
-`@Disabled` test added by this story; the skip is an explicit gap marker, not a weakened gate.
+The export route is `/api/v1/tenant/exports`; its durable job table, forced RLS and object-store
+manifest are declared in V89 and published in `contracts/openapi.yaml`. The route-boundary test
+asserts cross-tenant 404, unauthenticated 401, missing-context 422 and non-admin 403; the real
+PostgreSQL integration test proves that an authorized source and audit row from another tenant
+never enter the manifest.
 
 ### Why files are only partly proven
 
@@ -62,15 +62,7 @@ this note.
 
 ## Stories still required for the missing surfaces
 
-1. **OPS-07 tenant export (Not built).** Add a story that creates a tenant export surface with a
-   versioned manifest, schema version, checksums, authorized-document selection, provenance and
-   audit history, backed by a Flyway table with `organization_id`, forced RLS and a `Jdbc*`
-   store behind an interface, a thin injected controller with an HTTP-level integration test and
-   an OpenAPI entry. Acceptance: the disabled
-   `tenantExportNeverIncludesAnotherTenantsRecords` is enabled and passes, including
-   cross-tenant 404 and missing-context fail-closed. Ownership: Architect + Product Owner for the
-   export contract, then a backend story.
-2. **Patient-unit attachment retrieval (Partly proven).** Add a story with a verified care-unit
+1. **Patient-unit attachment retrieval (Partly proven).** Add a story with a verified care-unit
    connection grant fixture so that a cross-tenant download of an identically named file is
    proven at HTTP level through `AttachmentController`, reusing the existing `JdbcAttachmentStore`
    and its V82 tables. Until then the status stays Partly proven and this note does not claim

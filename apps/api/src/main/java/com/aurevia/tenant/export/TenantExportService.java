@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.api.ApiException;
 import com.aurevia.audit.AuditAppender;
@@ -52,6 +53,7 @@ public class TenantExportService {
     private final ExportPermissionGuard authorization;
     private final AuditAppender audit;
     private final Clock clock;
+    private final TransactionTemplate transactions;
 
     /**
      * Create the export service with injected boundaries and a clock.
@@ -62,15 +64,18 @@ public class TenantExportService {
      * @param authorization fresh export permission check
      * @param audit         append-only audit appender
      * @param clock         clock used for timestamps and expiry decisions
+     * @param transactions  tenant-guarded transaction template that binds the RLS GUCs
      */
     public TenantExportService(ExportStore store, ObjectStorePort objects, ExportDigests digests,
-                               ExportPermissionGuard authorization, AuditAppender audit, Clock clock) {
+                               ExportPermissionGuard authorization, AuditAppender audit, Clock clock,
+                               TransactionTemplate transactions) {
         this.store = store;
         this.objects = objects;
         this.digests = digests;
         this.authorization = authorization;
         this.audit = audit;
         this.clock = clock;
+        this.transactions = transactions;
     }
 
     /**
@@ -81,6 +86,7 @@ public class TenantExportService {
      *                      a source cannot be verified, or the job is not durable
      */
     public ExportResult start() {
+        return transactions.execute(status -> {
         TenantContext context = authorize("start");
         List<ExportSource> sources = store.authorizedSources(POLICY_VERSION);
         if (sources.isEmpty()) {

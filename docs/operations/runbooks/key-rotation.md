@@ -51,7 +51,7 @@ a hard-coded NVD key. A passing scan is evidence that no literal is in the tree,
 not that a value was rotated.
 
 A historical exposure of `NVD_API_KEY` is recorded in [BUGS.md](../../../.opencode/config/BUGS.md)
-(`DS-G0-01-01`) and the durable decision in [MEMORY.md](../../../MEMORY.md) was
+(`DS-G0-01-01`) and the durable decision in [MEMORY.md](../../../.opencode/config/MEMORY.md) was
 **not** to rotate it and not to rewrite published history. That decision is an
 owner decision about that incident, not a general rule that secrets need not be
 rotated. Any change to it requires a new owner decision; history rewrite and

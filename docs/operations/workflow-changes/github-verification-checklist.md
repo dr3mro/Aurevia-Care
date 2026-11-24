@@ -13,7 +13,7 @@ This checklist is the hand-off from the audit workers to a person who has workfl
 Rules for the person performing it:
 
 1. Change only workflow files by applying the embedded diff from the named patch document; do not hand-edit a proposed workflow. Script and documentation changes are already merged — confirm the commit is on `main` rather than re-applying them.
-2. Use a synthetic task, a synthetic fix pull request and a synthetic pre-release tag. Never use real patient data, a real credential or a production release. A release tag requires the separate release authority in [README-SETUP.md](../../../README-SETUP.md); this document does not authorize a release.
+2. Use a synthetic task, a synthetic fix pull request and a synthetic pre-release tag. Never use real patient data, a real credential or a production release. A release tag requires the separate release authority in [README-SETUP.md](../../../.opencode/config/README-SETUP.md); this document does not authorize a release.
 3. Record the workflow run URL, the exact SHA, the proving log line and any image digest in the result table before ticking a box. A local `git apply --check`, a stubbed dry run or a simulated review is **not** GitHub verification and must not tick a box.
 4. Run the required checks on the exact SHA. Required checks are `Policy and tooling`, `Delivery tooling tests`, `Frontend standards`, `Java and database verification`, `Developer reference`, both `Verify and smoke image` jobs and `Delivery gate`. Never force-push or bypass a protection. Workflow files are protected: only a person applies or rolls back these patches.
 5. If a step cannot be performed because a prerequisite is missing, leave its box unchecked and write the missing item in the result table.
@@ -105,7 +105,7 @@ Rules for the person performing it:
 
   **Proving log line.** `Developer reference` finishes with an uploaded `developer-reference` artifact containing `index.html`; `Policy and tooling` has no `check-docs:` error. The guide states the 5-attempt and 50-file limits in prose (the code constants are `MAX_ATTEMPTS` and `MAX_PR_FILES`), the `repair-gate.sh` path for repairs, `SWARM_ALLOW_PROTECTED` and the `protected-change` oversight issue.
 
-  **Negative control.** A stale number or an absolute protected-file claim in either document is caught by reading the source lines cited in [the WFAUDIT-08 notes](../../../.agent/pr-notes/WFAUDIT-08-20261121-153634.md) (notes are not themselves checked by CI; this is a person review).
+  **Negative control.** A stale number or an absolute protected-file claim in either document is caught by reading the source lines cited in [the WFAUDIT-08 notes](../../../docs/pr/reports/WFAUDIT-08-20261121-153634.md) (notes are not themselves checked by CI; this is a person review).
 
   **Rollback.** Revert commit `894dd24a`; the previous wording is restored. No workflow behaviour changes with this documentation.
 

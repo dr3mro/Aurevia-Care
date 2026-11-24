@@ -171,7 +171,7 @@ The exact shell block was checked locally with `bash -n` and `shellcheck -s bash
 ## How to verify on GitHub after the push
 
 1. Push the applied workflow change and open a pull request; confirm the required checks on the **exact SHA**: `Policy and tooling` (includes `actionlint`), `Delivery tooling tests`, `Frontend standards`, `Java and database verification`, `Developer reference`, both per-architecture smoke checks and `Delivery gate`. Merge only when all are green.
-2. From a green default-branch commit, create and push an **authorized annotated tag** for a pre-release, for example `v0.1.0-rc.<n>` (release policy in [README-SETUP.md](../../../README-SETUP.md) still applies; this document does not authorize a release).
+2. From a green default-branch commit, create and push an **authorized annotated tag** for a pre-release, for example `v0.1.0-rc.<n>` (release policy in [README-SETUP.md](../../../.opencode/config/README-SETUP.md) still applies; this document does not authorize a release).
 3. Watch both `Delivery` and `Release app image` for that tag. Green for this patch looks like:
    - `Delivery` → `verify (amd64)` and `verify (arm64)` succeed and upload `smoke-tested-image-*`;
    - `Delivery` → `release` succeeds; its log contains **no** `An image does not exist locally with the tag`, no `.Id` mismatch, and no `refusing to overwrite`; each child tag is pushed exactly once on a first release;
