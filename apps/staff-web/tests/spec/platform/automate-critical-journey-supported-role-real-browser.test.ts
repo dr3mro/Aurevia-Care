@@ -82,17 +82,30 @@ const axeGateConsumers: readonly string[] = [
 const e2eSpecs = (): string[] =>
   filesBelow(resolve(moduleRoot, 'e2e')).filter((path) => path.endsWith('.spec.ts'));
 
-/** The exact e2e spec set committed today; a new journey must replace this pin. */
+/**
+ * The exact e2e spec set committed today; a new journey must replace this pin.
+ *
+ * Adding a spec is an intentional change to the harness and must be recorded
+ * here so the tripwire keeps detecting any future unannounced addition. The
+ * list is deliberately exhaustive (domain journeys, bilingual variants, smoke
+ * and the device-orientation spec) rather than a substring allow-list.
+ */
 const currentSpecs: readonly string[] = [
+  'adminflow/admin-journey.spec.ts',
   'clinicalnote/clinicalnote-journey.spec.ts',
+  'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',
   'labflow/lab-journey.spec.ts',
   'orderentry/orderentry-journey.spec.ts',
+  'orientationChange.spec.ts',
+  'pharmacyflow/pharmacy-bilingual-journey.spec.ts',
   'pharmacyflow/pharmacy-journey.spec.ts',
   'print/print-journey.spec.ts',
+  'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
   'smoke.spec.ts',
+  'therapyflow/therapy-journey.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {
