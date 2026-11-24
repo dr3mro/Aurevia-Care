@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "default_agent": "smartclinic-orchestrator",
+  "default_agent": "orca",
   "instructions": [
     "AGENTS.md",
     "CODING_STYLE.md",
@@ -8,7 +8,7 @@
     "docs/WORKFLOW.md"
   ],
   "agents": {
-    "smartclinic-orchestrator": {
+    "orca": {
       "permissions": [
         {
           "action": "external_directory",
