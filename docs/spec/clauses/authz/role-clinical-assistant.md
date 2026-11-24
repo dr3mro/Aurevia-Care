@@ -15,21 +15,21 @@ The characterization tests are in `apps/api/src/test/java/com/aurevia/smartclini
 Verbs granted to the assistant and proved green:
 
 - `allowsEachPermittedVerbForClinicalAssistant` — the real `WorklistPolicy` grants `WORKLIST_READ`, `VITALS_RECORD`, `HANDOFF` and `INTAKE_LINK` to `clinical_assistant`.
-- `worklistReadReachesCheckInServiceForClinicalAssistant` — `CheckInService.worklist` returns the facility worklist and commits a `WORKLIST_READ` / `SUCCESS` audit row.
-- `intakeLinkReachesCheckInServiceForClinicalAssistant` — `CheckInService.linkIntake` creates a walk-in entry and commits an `INTAKE_LINK` / `SUCCESS` audit row.
-- `handoffReachesCheckInServiceForClinicalAssistant` — `CheckInService.handoff` transfers an item currently held by the caller and commits a `HANDOFF` / `SUCCESS` audit row.
+- `worklistReadReachesCheckInServiceForClinicalAssistant` — `CheckInService.worklist` returns the facility worklist and asserts a `WORKLIST_READ` / `SUCCESS` audit append.
+- `intakeLinkReachesCheckInServiceForClinicalAssistant` — `CheckInService.linkIntake` creates a walk-in entry and asserts an `INTAKE_LINK` / `SUCCESS` audit append.
+- `handoffReachesCheckInServiceForClinicalAssistant` — `CheckInService.handoff` transfers an item currently held by the caller and asserts a `HANDOFF` / `SUCCESS` audit append.
 - `chartPolicyAllowsAssistantToCreateVitalsEntryButNotVerifyIt` — `ChartActionPolicy` grants `CHART_ENTRY_CREATE` to the assistant but withholds `CHART_ENTRY_VERIFY`. Vitals are recorded in the CLN-03 chart slice: `WorklistPolicy` has a `VITALS_RECORD` key but `CheckInService` has no vitals command, so this verb is proven at policy level only.
 
 Negative and narrowing guards proved green (generic IAM-01/workflow guards, **not** proof of this row's scope constraint):
 
 - `refusesOtherRolesVerbsAndUnknownRoles` — the assistant is refused `ENCOUNTER_OPEN`, `IDENTITY_VERIFY`, `CHECK_IN` and `WORKLIST_ASSIGN`; reception, clinician, tenant_admin, privacy_auditor, a missing role, an unknown role and an unknown action are each refused at least three verbs. All `WorklistPolicy` switch arms and the default are exercised.
-- `assistantCannotAssignWorklistItemThroughService` — `CheckInService.assign` denies before reading the item and commits a `WORKLIST_ASSIGN` / `DENIED` audit row.
-- `deniesWhenMembershipIsInactive` — `CheckInService.authorize` refuses a worklist read with HTTP 403 `FORBIDDEN` and a `DENIED` audit row when active membership is absent.
-- `handoffRefusesAnotherFacility` and `intakeRefusesAnotherFacility` — `CheckInService.facilityDenial` refuses a resource in another facility with HTTP 403 `FORBIDDEN` and a `DENIED` audit row. This is the *facility* narrowing of the Reception row, implemented via `WorklistRepository.outsideAssignedFacilities` and `public.is_facility_out_of_scope`; it is not the "assigned encounters or care team" constraint of this row.
+- `assistantCannotAssignWorklistItemThroughService` — `CheckInService.assign` denies before reading the item and asserts a `WORKLIST_ASSIGN` / `DENIED` audit append.
+- `deniesWhenMembershipIsInactive` — `CheckInService.authorize` refuses a worklist read with HTTP 403 `FORBIDDEN` and asserts a `DENIED` audit append when active membership is absent.
+- `handoffRefusesAnotherFacility` and `intakeRefusesAnotherFacility` — `CheckInService.facilityDenial` refuses a resource in another facility with HTTP 403 `FORBIDDEN` and asserts a `DENIED` audit append. This is the *facility* narrowing of the Reception row, implemented via `WorklistRepository.outsideAssignedFacilities` and `public.is_facility_out_of_scope`; it is not the "assigned encounters or care team" constraint of this row.
 - `handoffRefusesAnUnassignedItem` — HTTP 409 `NO_ACTIVE_ASSIGNEE` when the item has no current assignee; an item-state guard, not a caller-relationship check.
 - `handoffRefusesStaleVersion` — HTTP 412 `STALE_VERSION` when the expected version does not match; an optimistic-concurrency guard, not a scope check.
 
-Production classes exercised: `com.aurevia.smartclinic.scheduling.checkin.WorklistPolicy`, `CheckInService`, `ClinicController`, `WorklistRepository`, and `com.aurevia.smartclinic.chart.record.ChartActionPolicy`. The clinical-assistant permission is a role-to-action decision only: `WorklistPolicy.allows(String, String)` takes no encounter, assignee or care-team input.
+Production classes exercised by this test: `com.aurevia.smartclinic.scheduling.checkin.WorklistPolicy`, `CheckInService`, `WorklistRepository` and `com.aurevia.smartclinic.chart.record.ChartActionPolicy`. `ClinicController` is the modeled HTTP entry point, exercised by the separate integration suites named above rather than instantiated here. The clinical-assistant permission is a role-to-action decision only: `WorklistPolicy.allows(String, String)` takes no encounter, assignee or care-team input.
 
 ## Gap
 

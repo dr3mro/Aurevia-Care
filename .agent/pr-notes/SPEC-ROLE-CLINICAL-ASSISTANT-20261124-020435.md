@@ -63,6 +63,10 @@ Known cloud-worker false positives (confirmed once, not re-diagnosed):
 
 No production code changed: zero new production lines, methods, classes or branches, so there is no new JaCoCo burden and no branch-to-test mapping to add. `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RoleClinicalAssistantTest test` — exit 0, `tests="12" errors="0" skipped="0" failures="0"`; the full unit suite reports `tests=4613 errors=0 skipped=0`. No test is skipped, disabled or excluded; no suppression, coverage-ignore marker or threshold change was added (`scripts/check-constraints.py` exit 0).
 
+## Clinical and architecture review
+
+none — routine, test-and-doc-only change with synthetic fixtures; no clinical workflow, signed data or architecture boundary changed.
+
 ## Review verdicts
 
 (pending)
