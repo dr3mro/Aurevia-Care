@@ -1,7 +1,5 @@
-- [x] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
+- [ ] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
   - evidence: PR #1569 merged to main (auto-reconciled)
-  - pr: #1569
-  - agent: swarm-9
   - attempts: 2
   - requirements: IAM-01, CLN-05
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleClinicianTest.java, docs/spec/clauses/authz/role-clinician.md
