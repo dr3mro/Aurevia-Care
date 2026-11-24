@@ -1,5 +1,19 @@
 # RESP-E2E-REFLOW-AND-ZOOM — staff web reflowAndZoom across phone, tablet and desktop
 
+## Story status (segment 2 of 4)
+
+**STORY COMPLETE within the assigned scope.** The sole scoped file,
+`apps/staff-web/e2e/reflowAndZoom.spec.ts`, is committed and was not changed by
+the post-merge verification. On merged HEAD `99cd56cf` every in-scope gate is
+green: strict typecheck of the e2e file, scoped ESLint, the 1152-case Playwright
+listing and a focused real-browser run. The only failing gate is
+`bash apps/staff-web/check.sh` at a **pre-existing, out-of-scope GAP tripwire**
+(`tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`)
+whose pinned e2e spec list had already drifted on `main`; a `task-requests`
+entry for it is filed below and the file was deliberately not edited (scope
+rule). The documented `test.fixme` cases are the task-brief-sanctioned way to
+record real defects for follow-up tasks, not incomplete work in this scope.
+
 ## Summary
 
 Added one cross-cutting Playwright spec, `apps/staff-web/e2e/reflowAndZoom.spec.ts`, that measures WCAG 1.4.4 / 1.4.10 / 1.4.12 reflow, zoom and text-spacing behaviour for every reachable staff-web route across every configured project, with synthetic data only. No production source, configuration, dependency, tracker or workflow file was changed. Genuine defects and harness limitations are recorded as `test.fixme` with measured values and are listed under **Why this is not finished**; no assertion was weakened, skipped or removed.
@@ -59,6 +73,16 @@ All commands were run by me in this cloud worker; evidence is from executed tool
 9. `bash apps/staff-web/check.sh` → **exit 1** at the last stage only. Earlier stages were green: `gen:api: generated client matches the contract`; typecheck final lines `> smartclinic-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`; `✓ built in 152ms`; bundle-size gate passed. The Vitest stage failed one pre-existing tripwire: `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` pins the exact e2e spec set (9 names) but `main` already contains five sibling-worker specs that are not pinned (`adminflow/admin-journey.spec.ts`, `financeflow/finance-journey.spec.ts`, `pharmacyflow/pharmacy-bilingual-journey.spec.ts`, `radflow/radiology-bilingual-journey.spec.ts`, `therapyflow/therapy-journey.spec.ts`); this spec is the sixth. `Test Files 1 failed | 267 passed`, `Tests 1 failed | 3044 passed`. That file is outside this task's scope (`apps/staff-web/e2e/reflowAndZoom.spec.ts`) and the test is intentionally a GAP tripwire, so I did not edit it; a task-request is filed below.
 10. Diagnostic coverage confirmation (no config, test or threshold changed; only the one stale tripwire file excluded from the CLI invocation): `npx vitest run --coverage --exclude 'e2e/**' --exclude 'tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts'` → exit 0, `267 files fully covered`, `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`, `No files with missing coverage.` This is a diagnostic, not a substitute for the blocked full gate.
 11. `python3 -I scripts/check-constraints.py --require-base` exit 0; `python3 -I scripts/check-secrets.py` exit 0; no conflict markers in the two new files.
+
+Segment 2 of 4 — post-merge reconciliation and completion verification (all commands executed by me; evidence from tools):
+
+12. `git merge --no-edit origin/main` → `Already up to date.`; HEAD `99cd56cf` (merge of `88d350f7` onto `origin/main` `96158b3f`). `git diff origin/main...HEAD --stat` shows only the two intended files (this note + the scoped spec, 1112 insertions); working tree clean. `git grep -nE '^(<<<<<<<|>>>>>>>) ' -- .` → no conflict markers.
+13. `cd apps/staff-web && npx tsc --noEmit -p tsconfig.lint.json` → exit 0, no `error TS…`. **Typecheck final lines: no output on success, exit code 0** (the lint tsconfig includes `e2e/`; the module `tsconfig.json` excludes it).
+14. `cd apps/staff-web && npx eslint e2e/reflowAndZoom.spec.ts --max-warnings 0` → exit 0, zero warnings.
+15. `E2E_BASE_URL=http://127.0.0.1:5173 npx playwright test --list --config e2e/playwright.config.ts e2e/reflowAndZoom.spec.ts` → `Total: 1152 tests in 1 file` (72 declared cases × 16 projects), exit 0.
+16. `npx playwright test --config e2e/playwright.config.ts e2e/reflowAndZoom.spec.ts -g "design-preview" --project=chromium --retries=0 --reporter=line` (config-managed dev server, no `E2E_BASE_URL`) → `3 skipped, 4 passed (4.3s)`, exit 0. The skips are the documented `zoom-400`, `rtl-text-spacing` and `combined-320-zoom-400` fixmes.
+17. `bash apps/staff-web/check.sh` → **exit 1 at the Vitest stage only**, same out-of-scope tripwire as segment 1: `Test Files 1 failed | 270 passed (271)`, `Tests 1 failed | 3050 passed (3051)`, `expected [ …(15) ] to deeply equal [ …(9) ]` at `automate-critical-journey-supported-role-real-browser.test.ts:166`. Every earlier stage was green (gen:api:check, typecheck, lint, build, bundle). The delta is five sibling-worker specs plus this story's sixth; task-request already filed.
+18. `python3 -I scripts/check-constraints.py --require-base` exit 0; `python3 -I scripts/check-secrets.py` exit 0; `git diff --check` exit 0; no conflict markers.
 
 ## Coverage
 
@@ -126,7 +150,7 @@ Evidence sources for this note: executed tool commands (browser probes and Playw
 
 The scoped file is complete and every runnable gate is green; the following are documented, evidence-backed fixmes, not omissions. Production fixes and harness corrections belong to other tasks/files.
 
-- **Full module gate `bash apps/staff-web/check.sh` (exit 1).** Command and error: Vitest `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` → `expected [ …(15) ] to deeply equal [ …(9) ]`; the delta was already five sibling-worker spec files on `main` before this story added a sixth. Most likely cause: an intentional GAP tripwire whose pinned list was not refreshed as e2e specs landed. Tried: confirmed gen:api, typecheck, lint, build and bundle stages pass; ran a diagnostic coverage invocation excluding only that one tripwire file and confirmed 100% on all 267 source files. Next step: execute the task-request above; the file is outside this story's scope, so editing it here would fail the worker scope rule.
+- **Full module gate `bash apps/staff-web/check.sh` (exit 1).** Out-of-scope, pre-existing drift; does not block completion of the scoped story. Segment 2 re-ran it on merged HEAD `99cd56cf`: Vitest `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` → `expected [ …(15) ] to deeply equal [ …(9) ]`, `Test Files 1 failed | 270 passed (271)`, `Tests 1 failed | 3050 passed (3051)`; all prior stages (gen:api:check, typecheck, lint, build, bundle) green. The delta is five sibling-worker spec files already on `main` plus this story's sixth. Most likely cause: an intentional GAP tripwire whose pinned list was not refreshed as e2e specs landed. Tried: two segments of diagnosis, including a coverage invocation excluding only that one tripwire file (100% on all touched source files). Next step: execute the task-request above; the file is outside this story's scope, so editing it here would fail the worker scope rule.
 
 - **400% CSS-zoom reflow (all renderable routes × 16 projects).** Command: `npx playwright test --config e2e/playwright.config.ts e2e/reflowAndZoom.spec.ts -g design-preview --project=chromium` before the fixme. Error: `document-horizontal-scroll:html measured[scrollWidth=1696 clientWidth=1280]` at 1280px zoom4; probe also measured `448/320` at 320px zoom4. Cause: CSS zoom does not reflow viewport media queries. Tried: isolated passes at native and 320px viewports; both overflow. Next step: provide a true browser-zoom harness (for example device-metric emulation at 320 CSS px with an appropriate DPR) and remove the `zoom-400`/`combined` fixme.
 - **RTL document reflow on `/design-preview` (16 projects).** The RTL case first runs `runRtlEvidencePass`, which exercises the real Language toggle, asserts `lang=ar`/`dir=rtl` and proves the four text overrides including Arabic tracking 0; only the document-reflow assertion is then fixme'd. Error: `document-horizontal-scroll:html measured[scrollWidth=10767 clientWidth=768]`, caused by `a.skip-link` at `-9999…10767`. Cause: the off-screen inset is logical (`inset-inline-start:-9999px`) so it mirrors to the right under RTL. Tried: real toggle at 768px (works) and a no-probe/no-spacing `dir=rtl` probe (same overflow), which refuted an initial reviewer hypothesis that the harness zoom probe caused it. Next step: fix the skip-link hiding technique in `apps/staff-web/src/theme/responsive.css` (owner of an RTL/responsive task) and remove the single RTL fixme.
