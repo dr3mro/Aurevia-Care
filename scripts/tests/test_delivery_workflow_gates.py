@@ -130,6 +130,32 @@ class WorkflowGateWiringTest(unittest.TestCase):
         job = workflow["jobs"]["validate"]
         self.assertNotIn("NVD_API_KEY", job.get("env", {}))
 
+    def test_swarm_reusable_workflows_receive_explicit_secrets(self):
+        caller = (WORKFLOWS / "swarm.yml").read_text(encoding="utf-8")
+        self.assertNotIn("secrets: inherit", caller)
+        for name in ("swarm-worker.yml", "swarm-integrator.yml"):
+            workflow = yaml.safe_load((WORKFLOWS / name).read_text(encoding="utf-8"))
+            declared = workflow["on"]["workflow_call"].get("secrets", {})
+            self.assertIn("SWARM_TOKEN", declared, name)
+            self.assertIn("GITHUB_TOKEN", declared, name)
+
+    def test_integrator_validation_has_no_write_token_and_publication_binds_shas(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
+        jobs = workflow["jobs"]
+        validate = jobs["validate"]
+        self.assertEqual(validate["permissions"], {"contents": "read", "pull-requests": "read",
+                                                  "actions": "read"})
+        self.assertNotIn("SWARM_TOKEN", validate.get("env", {}).get("GH_TOKEN", ""))
+        self.assertNotIn("NVD_API_KEY", validate.get("env", {}))
+        validated = "\n".join(run_text(step) for step in validate["steps"])
+        self.assertIn("integrate-validate", validated)
+        self.assertNotIn("integrate-publish", validated)
+        publish = jobs["publish"]
+        self.assertIn("validate", publish["needs"])
+        published = "\n".join(run_text(step) for step in publish["steps"])
+        self.assertIn("integrate-publish", published)
+        self.assertNotIn("integrate-validate", published)
+
     def test_delivery_frontend_runs_the_canonical_coverage_entry_points(self):
         workflow = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))
         runs = commands(workflow["jobs"]["frontend"]["steps"])
