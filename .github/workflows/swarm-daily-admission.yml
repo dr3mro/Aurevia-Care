@@ -28,7 +28,6 @@ jobs:
           sparse-checkout: |
             scripts
             tasks
-            docs/archive/TODO-DONE.md
       - id: priority
         env:
           GH_TOKEN: ${{ github.token }}

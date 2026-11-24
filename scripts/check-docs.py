@@ -19,12 +19,6 @@ LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
 GENERATED = ("staff-web/", "patient-mobile/")
 # "plan" is a pre-existing scratch copy of this pack and is not checked.
 SKIP = {".git", "build", "node_modules", ".opencode", "plan"}
-# Instruction and tracker files moved under .opencode; legacy links to their
-# former root paths are not broken links to a file the repo still uses.
-MOVED_DOCS = {"TODO.md", "AGENTS.md", "CODING_STYLE.md", "CONSTRAINTS.md",
-              "README-SETUP.md", "STARTER_PROMPT.md", "MEMORY.md", "WORKSPACE.md",
-              "BUGS.md", "PROJECT.md", "AUREVIA_V1_SPEC.md",
-              "PROJECT_V1_SPEC.md"}
 
 # Structural rules for generated Markdown. The token pattern carries a
 # word-boundary guard so ordinary words such as "risk-transitions" are not
@@ -67,8 +61,10 @@ def mentioned_ids(text, prefixes):
     return found
 
 
-# Worker notes and archives are records, not specs: agent-written text there must not turn main red.
-SKIP_PREFIXES = (".agent/", "docs/archive/")
+# Worker notes and archives are records, not specs: agent-written text there must
+# not turn main red. Historical pull-request reports were moved from
+# docs/pr/notes/ to docs/pr/reports/; they stay records at the new location.
+SKIP_PREFIXES = (".agent/", "docs/archive/", "docs/pr/")
 
 
 def markdown_files(root):
@@ -183,10 +179,6 @@ def check(root=ROOT):
                 continue
             file_part = target.split("#")[0]
             if rel.parts[:2] == ("docs", "reference") and file_part.startswith(GENERATED):
-                continue
-            if "tasks" in Path(file_part).parts or Path(file_part).name in MOVED_DOCS:
-                # Trackers and instruction files now live under .opencode/config and
-                # .opencode/setup; legacy links to their old root paths are ignored.
                 continue
             if file_part and not (path.parent / file_part).exists():
                 errors.append(f"{rel}: broken link {target}")

@@ -31,6 +31,10 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import com.aurevia.api.ApiErrorHandler;
 import com.aurevia.api.ApiException;
 import com.aurevia.audit.AuditAppender;
@@ -57,6 +61,20 @@ import com.aurevia.tenant.export.TenantExportService;
  * missing artifact and a conflicting state retry. All fixtures are synthetic.
  */
 class ExportsUseExplicitScopeExpiryAuditTest {
+
+    /**
+     * A transaction template that runs callbacks directly for unit tests.
+     *
+     * <p>The real template binds tenant GUCs through the guarded manager; here
+     * the domain behaviour is exercised without a database.</p>
+     *
+     * @return a template that executes each callback immediately
+     */
+    private static TransactionTemplate directTransactions() {
+        PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
+        when(manager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
+        return new TransactionTemplate(manager);
+    }
 
     private static final String ORG = "org-a";
     private static final String ORG_B = "org-b";
@@ -85,7 +103,8 @@ class ExportsUseExplicitScopeExpiryAuditTest {
         authorization = mock(ExportPermissionGuard.class);
         audit = mock(AuditAppender.class);
         clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        service = new TenantExportService(store, objects, digests, authorization, audit, clock);
+        service = new TenantExportService(store, objects, digests, authorization, audit, clock,
+                directTransactions());
         TenantContext.set(new TenantContext(ORG, "admin", "TENANT_EXPORT", "corr-1"));
         when(authorization.mayExport(any())).thenReturn(true);
         when(store.save(any())).thenReturn(true);
@@ -164,7 +183,8 @@ class ExportsUseExplicitScopeExpiryAuditTest {
         ExportJob job = startAndCaptureJob(result);
         when(store.find(job.id())).thenReturn(Optional.of(job));
         TenantExportService later = new TenantExportService(store, objects, digests, authorization,
-                audit, Clock.fixed(NOW.plus(TenantExportService.RETENTION).plusSeconds(1), ZoneOffset.UTC));
+                audit, Clock.fixed(NOW.plus(TenantExportService.RETENTION).plusSeconds(1), ZoneOffset.UTC),
+                directTransactions());
 
         ApiException failure = assertThrows(ApiException.class, () -> later.download(job.id()));
         assertEquals(410, failure.status());
@@ -237,7 +257,8 @@ class ExportsUseExplicitScopeExpiryAuditTest {
         ExportJob job = startAndCaptureJob(result);
         when(store.find(job.id())).thenReturn(Optional.of(job));
         TenantExportService later = new TenantExportService(store, objects, digests, authorization,
-                audit, Clock.fixed(NOW.plus(TenantExportService.RETENTION).plusSeconds(1), ZoneOffset.UTC));
+                audit, Clock.fixed(NOW.plus(TenantExportService.RETENTION).plusSeconds(1), ZoneOffset.UTC),
+                directTransactions());
         MockMvc laterMvc = MockMvcBuilders.standaloneSetup(new ExportController(later))
                 .setControllerAdvice(new ApiErrorHandler())
                 .build();

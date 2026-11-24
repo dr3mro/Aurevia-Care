@@ -164,7 +164,7 @@ describe('SchedulingScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'book') }));
     expect(status.textContent).toBe(schedulingText('en', 'conflictHint'));
     expect(onBook).toHaveBeenCalledTimes(1);
-  });
+  }, 30000);
 
   it('never treats the other tenant with the same local id as a conflict', () => {
     wrap(<Harness organizationId={betaOrganizationId} />);

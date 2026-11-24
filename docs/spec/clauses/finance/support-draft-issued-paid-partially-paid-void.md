@@ -69,7 +69,7 @@ Production classes exercised through `com.aurevia.finance.FinanceController`
 
 Verified locally: `mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=SupportDraftIssuedPaidPartiallyPaidVoidTest test`
 — `Tests run: 8, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`; see
-`.agent/pr-notes/SPEC-FIN-01-C02-20261122-212917.md` for the exact final lines.
+`docs/pr/notes/SPEC-FIN-01-C02-20261122-212917.md` for the exact final lines.
 
 ## Gap
 

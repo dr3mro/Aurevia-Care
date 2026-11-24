@@ -28,10 +28,10 @@ CALLS = {
     "todo": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q",
              '.data.repository.t.entries[]? | select(.name | test("^[0-9].*[.]md$")) | "\\(.name) \\(.oid)"',
              "-f", 'query=query($o:String!,$n:String!){repository(owner:$o,name:$n){t:object(expression:"HEAD:tasks"){... on Tree{entries{name oid}}}}}'],
-    # Finished tasks: one file each under tasks/done, plus the older archive file.
+    # Finished tasks: one file each under tasks/done.
     "archive": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q",
-                '[(.data.repository.d.entries // [])[].object.text, .data.repository.a.text] | map(select(. != null)) | join("\n")',
-                "-f", 'query=query($o:String!,$n:String!){repository(owner:$o,name:$n){d:object(expression:"HEAD:tasks/done"){... on Tree{entries{object{... on Blob{text}}}}} a:object(expression:"HEAD:docs/archive/TODO-DONE.md"){... on Blob{text}}}}'],
+                '[(.data.repository.d.entries // [])[].object.text] | map(select(. != null)) | join("\n")',
+                "-f", 'query=query($o:String!,$n:String!){repository(owner:$o,name:$n){d:object(expression:"HEAD:tasks/done"){... on Tree{entries{object{... on Blob{text}}}}}}}'],
 }
 
 

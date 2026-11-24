@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.api.ApiException;
 import com.aurevia.audit.AuditAppender;
@@ -52,6 +53,7 @@ public class TenantExportService {
     private final ExportPermissionGuard authorization;
     private final AuditAppender audit;
     private final Clock clock;
+    private final TransactionTemplate transactions;
 
     /**
      * Create the export service with injected boundaries and a clock.
@@ -62,15 +64,18 @@ public class TenantExportService {
      * @param authorization fresh export permission check
      * @param audit         append-only audit appender
      * @param clock         clock used for timestamps and expiry decisions
+     * @param transactions  tenant-guarded transaction template that binds the RLS GUCs
      */
     public TenantExportService(ExportStore store, ObjectStorePort objects, ExportDigests digests,
-                               ExportPermissionGuard authorization, AuditAppender audit, Clock clock) {
+                               ExportPermissionGuard authorization, AuditAppender audit, Clock clock,
+                               TransactionTemplate transactions) {
         this.store = store;
         this.objects = objects;
         this.digests = digests;
         this.authorization = authorization;
         this.audit = audit;
         this.clock = clock;
+        this.transactions = transactions;
     }
 
     /**
@@ -81,53 +86,55 @@ public class TenantExportService {
      *                      a source cannot be verified, or the job is not durable
      */
     public ExportResult start() {
-        TenantContext context = authorize("start");
-        List<ExportSource> sources = store.authorizedSources(POLICY_VERSION);
-        if (sources.isEmpty()) {
-            throw new ApiException(404, "NO_AUTHORIZED_DOCUMENTS", "no document is authorized for export");
-        }
-        List<ExportRecord> records = new ArrayList<>();
-        for (ExportSource source : sources) {
-            ObjectKey sourceKey = new ObjectKey(context.organizationId(),
-                    source.objectId(), source.objectVersion());
-            byte[] content = objects.getVerified(sourceKey, source.checksum())
-                    .orElseThrow(() -> new ApiException(409, "EXPORT_SOURCE_MISSING",
-                            "an authorized source is unavailable"));
-            String checksum = digests.sha256Hex(content);
-            if (!checksum.equals(source.checksum())) {
-                throw new ApiException(409, "EXPORT_CHECKSUM_MISMATCH",
-                        "source bytes do not match their recorded checksum");
+        return transactions.execute(status -> {
+            TenantContext context = authorize("start");
+            List<ExportSource> sources = store.authorizedSources(POLICY_VERSION);
+            if (sources.isEmpty()) {
+                throw new ApiException(404, "NO_AUTHORIZED_DOCUMENTS", "no document is authorized for export");
             }
-            // The manifest cites the verified source and its checksum. Copying the
-            // bytes here would create an unreferenced object with no expiry path:
-            // only the manifest key is durable and only that object can be removed.
-            records.add(new ExportRecord(source.recordId(), checksum, source.provenance(),
-                    List.of(new ExportedDocument(source.objectId(), checksum,
-                            source.authorization(), POLICY_VERSION)),
-                    store.auditFor(source.recordId())));
-        }
-
-        Instant now = clock.instant();
-        Manifest manifest = new Manifest(ENVELOPE_SCHEMA_VERSION, POLICY_VERSION,
-                context.organizationId(), now.toString(), records.size(), records);
-        byte[] manifestBytes = manifest.bytes();
-        String manifestChecksum = digests.sha256Hex(manifestBytes);
-        ObjectKey manifestKey = ObjectKey.generate(context.organizationId(), 1);
-        objects.putInQuarantine(manifestKey, manifestBytes);
-        objects.promote(manifestKey, manifestChecksum);
-
-        ExportJob job = new ExportJob(UUID.randomUUID().toString(), "COMPLETE",
-                manifestKey.objectId(), manifestKey.version(), manifestChecksum,
-                now.toString(), now.plus(RETENTION).toString());
-        if (!store.save(job)) {
-            // The manifest is already promoted. Without a durable job row nothing
-            // can expire this object, so remove it here rather than leak bytes that
-            // carry provenance and audit history with no cleanup path.
-            objects.delete(manifestKey);
-            throw new ApiException(409, "EXPORT_STATE_CONFLICT", "export job was not persisted");
-        }
-        audit.append(context, PURPOSE, "EXPORT_START", RESOURCE_TYPE, SCOPE, job.id(), "SUCCESS");
-        return new ExportResult(job.id(), manifestChecksum, records.size(), job.expiresAt());
+            List<ExportRecord> records = new ArrayList<>();
+            for (ExportSource source : sources) {
+                ObjectKey sourceKey = new ObjectKey(context.organizationId(),
+                        source.objectId(), source.objectVersion());
+                byte[] content = objects.getVerified(sourceKey, source.checksum())
+                        .orElseThrow(() -> new ApiException(409, "EXPORT_SOURCE_MISSING",
+                                "an authorized source is unavailable"));
+                String checksum = digests.sha256Hex(content);
+                if (!checksum.equals(source.checksum())) {
+                    throw new ApiException(409, "EXPORT_CHECKSUM_MISMATCH",
+                            "source bytes do not match their recorded checksum");
+                }
+                // The manifest cites the verified source and its checksum. Copying the
+                // bytes here would create an unreferenced object with no expiry path:
+                // only the manifest key is durable and only that object can be removed.
+                records.add(new ExportRecord(source.recordId(), checksum, source.provenance(),
+                        List.of(new ExportedDocument(source.objectId(), checksum,
+                                source.authorization(), POLICY_VERSION)),
+                        store.auditFor(source.recordId())));
+            }
+    
+            Instant now = clock.instant();
+            Manifest manifest = new Manifest(ENVELOPE_SCHEMA_VERSION, POLICY_VERSION,
+                    context.organizationId(), now.toString(), records.size(), records);
+            byte[] manifestBytes = manifest.bytes();
+            String manifestChecksum = digests.sha256Hex(manifestBytes);
+            ObjectKey manifestKey = ObjectKey.generate(context.organizationId(), 1);
+            objects.putInQuarantine(manifestKey, manifestBytes);
+            objects.promote(manifestKey, manifestChecksum);
+    
+            ExportJob job = new ExportJob(UUID.randomUUID().toString(), "COMPLETE",
+                    manifestKey.objectId(), manifestKey.version(), manifestChecksum,
+                    now.toString(), now.plus(RETENTION).toString());
+            if (!store.save(job)) {
+                // The manifest is already promoted. Without a durable job row nothing
+                // can expire this object, so remove it here rather than leak bytes that
+                // carry provenance and audit history with no cleanup path.
+                objects.delete(manifestKey);
+                throw new ApiException(409, "EXPORT_STATE_CONFLICT", "export job was not persisted");
+            }
+            audit.append(context, PURPOSE, "EXPORT_START", RESOURCE_TYPE, SCOPE, job.id(), "SUCCESS");
+            return new ExportResult(job.id(), manifestChecksum, records.size(), job.expiresAt());
+        });
     }
 
     /**
@@ -138,17 +145,19 @@ public class TenantExportService {
      * @throws ApiException when denied, unknown, expired, or the object is gone
      */
     public byte[] download(String jobId) {
-        TenantContext context = authorize("download");
-        ExportJob job = findJob(jobId);
-        if (job.expired(clock.instant())) {
-            throw new ApiException(410, "EXPORT_EXPIRED", "export artifact has expired");
-        }
-        ObjectKey key = new ObjectKey(context.organizationId(), job.objectId(), job.objectVersion());
-        byte[] manifest = objects.getVerified(key, job.checksum())
-                .orElseThrow(() -> new ApiException(409, "EXPORT_OBJECT_MISSING",
-                        "export artifact is unavailable"));
-        audit.append(context, PURPOSE, "EXPORT_DOWNLOAD", RESOURCE_TYPE, SCOPE, jobId, "SUCCESS");
-        return manifest;
+        return transactions.execute(status -> {
+            TenantContext context = authorize("download");
+            ExportJob job = findJob(jobId);
+            if (job.expired(clock.instant())) {
+                throw new ApiException(410, "EXPORT_EXPIRED", "export artifact has expired");
+            }
+            ObjectKey key = new ObjectKey(context.organizationId(), job.objectId(), job.objectVersion());
+            byte[] manifest = objects.getVerified(key, job.checksum())
+                    .orElseThrow(() -> new ApiException(409, "EXPORT_OBJECT_MISSING",
+                            "export artifact is unavailable"));
+            audit.append(context, PURPOSE, "EXPORT_DOWNLOAD", RESOURCE_TYPE, SCOPE, jobId, "SUCCESS");
+            return manifest;
+        });
     }
 
     /**
@@ -163,21 +172,23 @@ public class TenantExportService {
      * @throws ApiException when denied, unknown, or the job is in neither lifecycle state
      */
     public void expire(String jobId) {
-        TenantContext context = authorize("expire");
-        ExportJob job = findJob(jobId);
-        // A false result means the row is no longer COMPLETE. With only two lifecycle
-        // states that is EXPIRED, i.e. an earlier expiry interrupted before the object
-        // was removed. Such a retry must still clean up the object rather than conflict,
-        // otherwise the manifest with its provenance and audit history is orphaned.
-        if (!store.markExpired(jobId) && !job.isExpired()) {
-            throw new ApiException(409, "EXPORT_STATE_CONFLICT", "export job state changed");
-        }
-        ObjectKey key = new ObjectKey(context.organizationId(), job.objectId(), job.objectVersion());
-        // The row is now EXPIRED. A missing promoted object is already the desired end
-        // state (for example after an earlier interrupted expiry), so its false result
-        // is not a conflict; the durable transition is the single source of truth.
-        objects.expire(key);
-        audit.append(context, PURPOSE, "EXPORT_EXPIRE", RESOURCE_TYPE, SCOPE, jobId, "SUCCESS");
+        transactions.executeWithoutResult(status -> {
+            TenantContext context = authorize("expire");
+            ExportJob job = findJob(jobId);
+            // A false result means the row is no longer COMPLETE. With only two lifecycle
+            // states that is EXPIRED, i.e. an earlier expiry interrupted before the object
+            // was removed. Such a retry must still clean up the object rather than conflict,
+            // otherwise the manifest with its provenance and audit history is orphaned.
+            if (!store.markExpired(jobId) && !job.isExpired()) {
+                throw new ApiException(409, "EXPORT_STATE_CONFLICT", "export job state changed");
+            }
+            ObjectKey key = new ObjectKey(context.organizationId(), job.objectId(), job.objectVersion());
+            // The row is now EXPIRED. A missing promoted object is already the desired end
+            // state (for example after an earlier interrupted expiry), so its false result
+            // is not a conflict; the durable transition is the single source of truth.
+            objects.expire(key);
+            audit.append(context, PURPOSE, "EXPORT_EXPIRE", RESOURCE_TYPE, SCOPE, jobId, "SUCCESS");
+        });
     }
 
     private TenantContext authorize(String action) {

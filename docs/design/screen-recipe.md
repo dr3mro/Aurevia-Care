@@ -33,7 +33,7 @@ The page must render all of these (see `docs/design/screens-and-navigation.md` s
 - Commands that change data send `If-Match` (version) and, where the contract says so, `Idempotency-Key` (a new `crypto.randomUUID()` per user action, reused on retry of the same action).
 - A 409 or 412 shows the conflict state and keeps what the user typed.
 - Never put patient data in a URL, page title, `localStorage` or `sessionStorage`.
-- No new npm dependency without a note in `.agent/pr-notes/<task-id>.md` saying why none of the existing ones works.
+- No new npm dependency without a note in `docs/pr/notes/<task-id>.md` saying why none of the existing ones works.
 
 ## 4. Tests every screen needs
 
@@ -46,4 +46,4 @@ The page must render all of these (see `docs/design/screens-and-navigation.md` s
 
 ## 5. Finish
 
-Add the route to `src/app/navigation.ts` if the table in `screens-and-navigation.md` lists it, run `bash apps/staff-web/check.sh`, and record the output in `.agent/pr-notes/<task-id>.md`.
+Add the route to `src/app/navigation.ts` if the table in `screens-and-navigation.md` lists it, run `bash apps/staff-web/check.sh`, and record the output in `docs/pr/notes/<task-id>.md`.

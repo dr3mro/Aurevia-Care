@@ -76,4 +76,4 @@ the runbooks below say `NOT YET IN PLACE:` at the exact step that needs them.
 - [Recovery drill runbook](../recovery/runbook.md) and
   [drill evidence template](../recovery/drill-evidence.md).
 - [Deployment design handoff](../../../infra/DEPLOYMENT.md) and
-  [project setup and delivery](../../../README-SETUP.md).
+  [project setup and delivery](../../../.opencode/config/README-SETUP.md).

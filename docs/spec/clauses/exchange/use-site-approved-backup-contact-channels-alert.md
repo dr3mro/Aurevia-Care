@@ -93,7 +93,7 @@ in `contracts/openapi.yaml`. That is contract-documentation debt recorded
 elsewhere and does not affect whether the behaviour is implemented and proven.
 
 Verified locally: the targeted Maven command and its final Surefire counts are
-recorded in `.agent/pr-notes/SPEC-XCH-05-C03-20261122-162409.md`.
+recorded in `docs/pr/notes/SPEC-XCH-05-C03-20261122-162409.md`.
 
 ## Gap
 

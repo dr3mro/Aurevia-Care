@@ -51,7 +51,6 @@ jobs:
             scripts
             tasks/
             tasks
-            docs/archive/TODO-DONE.md
       - name: Move every open swarm pull request to its next step
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}

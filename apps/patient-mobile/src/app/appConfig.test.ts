@@ -45,10 +45,10 @@ describe('app.json', () => {
     expect(found).toEqual([]);
   });
 
-  it('uses the approved identity and placeholder application identifiers', () => {
+  it('uses the canonical Aurevia application identifiers', () => {
     expect(appConfig.expo.name).toBe('Aurevia Care');
     expect(appConfig.expo.slug).toBe('aurevia-care');
-    expect(appConfig.expo.ios.bundleIdentifier).toBe('com.example.aureviacare');
-    expect(appConfig.expo.android.package).toBe('com.example.aureviacare');
+    expect(appConfig.expo.ios.bundleIdentifier).toBe('com.aurevia.patient');
+    expect(appConfig.expo.android.package).toBe('com.aurevia.patient');
   });
 });

@@ -18,7 +18,7 @@ SPEC = importlib.util.spec_from_file_location("worker_gate", SCRIPTS / "worker_g
 worker_gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(worker_gate)
 
-NOTES = ".agent/pr-notes/WQUALITY-03-20261121-153620.md"
+NOTES = "docs/pr/notes/WQUALITY-03-20261121-153620.md"
 SCOPE_TEXT = ("Scope (stay inside these paths): scripts/worker_gate.py, "
               "scripts/tests/test_worker_gate.py")
 CHANGED = ["scripts/worker_gate.py", "scripts/tests/test_worker_gate.py", NOTES]
@@ -59,13 +59,13 @@ class ParseScopeTest(unittest.TestCase):
 
 class PathRulesTest(unittest.TestCase):
     def test_worker_notes_are_recognised(self):
-        for path in (NOTES, ".agent/pr-notes/FIX-123-20261121-010101.md"):
+        for path in (NOTES, "docs/pr/notes/FIX-123-20261121-010101.md"):
             with self.subTest(path=path):
                 self.assertTrue(worker_gate.is_notes_file(path))
 
     def test_non_notes_paths_are_rejected(self):
-        for path in ("scripts/worker_gate.py", ".agent/pr-notes.md",
-                     ".agent/pr-notes/notes.txt", "docs/swarm/WQUALITY-03.md"):
+        for path in ("scripts/worker_gate.py", "docs/pr/notes.md",
+                     "docs/pr/notes/notes.txt", "docs/swarm/WQUALITY-03.md"):
             with self.subTest(path=path):
                 self.assertFalse(worker_gate.is_notes_file(path))
 
@@ -234,7 +234,7 @@ class EnvironmentWiringTest(unittest.TestCase):
     def test_finds_notes_file_by_story_id_when_env_missing(self):
         env = self.env()
         env.pop("NOTES_FILE")
-        self.notes.rename(self.root / ".agent/pr-notes/WQUALITY-03-20991231-235959.md")
+        self.notes.rename(self.root / "docs/pr/notes/WQUALITY-03-20991231-235959.md")
         with mock.patch.object(worker_gate, "head_commit", return_value="abc123"):
             out = worker_gate.candidate_from_env(env, str(self.root), CHANGED)
         self.assertEqual(out, [])
@@ -268,11 +268,11 @@ class GitPlumbingTest(unittest.TestCase):
 
     def test_changed_paths_combines_diff_and_dirty_files(self):
         results = [mock.Mock(stdout="scripts/worker_gate.py\nscripts/tests/test_worker_gate.py\n"),
-                   mock.Mock(stdout=" M scripts/worker_gate.py\n?? .agent/pr-notes/W.md\n")]
+                   mock.Mock(stdout=" M scripts/worker_gate.py\n?? docs/pr/notes/W.md\n")]
         with mock.patch.object(worker_gate.subprocess, "run", side_effect=results) as run:
             paths = worker_gate.changed_paths()
         self.assertEqual(paths, ["scripts/worker_gate.py", "scripts/tests/test_worker_gate.py",
-                                 "scripts/worker_gate.py", ".agent/pr-notes/W.md"])
+                                 "scripts/worker_gate.py", "docs/pr/notes/W.md"])
         self.assertEqual(run.call_count, 2)
 
     def test_failing_classes_marks_unparseable_reports(self):

@@ -95,7 +95,7 @@ def classify(args):
         return "jobs"
     if args[:1] == ["api"]:
         if "graphql" in text:
-            if "TODO-DONE.md" in text:
+            if 'object(expression:"HEAD:tasks/done")' in text:
                 return "archive"
             if 'object(oid:' in text:
                 return "blobs"

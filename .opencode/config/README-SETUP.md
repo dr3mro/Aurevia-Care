@@ -70,11 +70,11 @@ For one-container testing use `docker run --rm -p 127.0.0.1:8080:8080 ghcr.io/<o
 
 ## Agent team in GitHub Actions
 
-See [docs/TEAM-ACTIONS.md](docs/TEAM-ACTIONS.md) for the prepared agent images, what runs on which schedule, and the safeguards. [STARTER_PROMPT.md](STARTER_PROMPT.md) says how to start, steer and stop the swarm.
+See [docs/TEAM-ACTIONS.md](../../docs/TEAM-ACTIONS.md) for the prepared agent images, what runs on which schedule, and the safeguards. [STARTER_PROMPT.md](STARTER_PROMPT.md) says how to start, steer and stop the swarm.
 
 ## Agent swarm
 
-See [docs/SWARM.md](docs/SWARM.md) for the 10-worker swarm driven by `tasks/`: its integrator, the issue hand-off between workers, the issue monitor, the daily notes and the daily audit.
+See [docs/SWARM.md](../../docs/SWARM.md) for the 10-worker swarm driven by `tasks/`: its integrator, the issue hand-off between workers, the issue monitor, the daily notes and the daily audit.
 
 ## Browse and maintain the code
 

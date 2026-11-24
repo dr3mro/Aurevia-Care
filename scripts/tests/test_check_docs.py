@@ -46,13 +46,30 @@ class RepositoryTests(unittest.TestCase):
         errors = docs.check(self.make_repo("IAM-01 [self](NOTE.md#top) [a](#x)"))
         self.assertEqual(errors, [])
 
-    def test_link_to_the_local_task_view_is_not_broken(self):
-        errors = docs.check(self.make_repo("IAM-01 [tasks](TODO.md) [up](../../TODO.md#x)"))
-        self.assertEqual(errors, [])
+    def test_broken_link_to_a_moved_config_doc_is_reported(self):
+        """Active links to a moved tracker must fail instead of being ignored."""
+        errors = docs.check(self.make_repo("IAM-01 [setup](README-SETUP.md) [memory](MEMORY.md)"))
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(any("README-SETUP.md" in e for e in errors), errors)
+        self.assertTrue(any("MEMORY.md" in e for e in errors), errors)
 
-    def test_link_to_a_task_file_is_not_broken_when_the_task_moves(self):
-        errors = docs.check(self.make_repo("IAM-01 [t](../../tasks/00299000-GATE-X.md) [u](tasks/done/A-01.md)"))
-        self.assertEqual(errors, [])
+    def test_broken_link_to_a_generated_view_is_reported(self):
+        """TODO.md is generated and untracked, so a link to it breaks a clean checkout."""
+        errors = docs.check(self.make_repo("IAM-01 [tasks](TODO.md) [up](../../TODO.md#x)"))
+        self.assertEqual(len(errors), 2)
+
+    def test_broken_link_to_a_missing_task_file_is_reported(self):
+        """Task files are tracked; a link to a nonexistent one is a real broken reference."""
+        errors = docs.check(self.make_repo("IAM-01 [t](../../tasks/00299000-GATE-X.md)"))
+        self.assertEqual(len(errors), 1)
+
+    def test_historical_report_links_are_not_checked(self):
+        """Records under docs/pr are history, not specification pages."""
+        tmp = self.make_repo("IAM-01 [ok](NOTE.md)")
+        report = tmp / "docs" / "pr" / "reports" / "OLD.md"
+        report.parent.mkdir(parents=True, exist_ok=True)
+        report.write_text("[x](missing.md) and IAM-09")
+        self.assertEqual(docs.check(tmp), [])
 
 
 class StructureTests(unittest.TestCase):
@@ -156,8 +173,8 @@ class StructureTests(unittest.TestCase):
     def test_generated_files_exclude_records_and_notes(self):
         root = self.repo("IAM-01 clean\n", extra={
             "docs/swarm/REC.md": "# Record\n",
-            ".agent/pr-notes/N.md": "# Note\n",
-            "docs/archive/OLD.md": "# Old\n",
+            "docs/pr/notes/N.md": "# Note\n",
+            "docs/pr/reports/OLD.md": "# Old\n",
             "docs/GOOD.md": "# Good\n",
         })
         names = sorted(p.relative_to(root).as_posix()

@@ -67,7 +67,7 @@ reopen → close chain is `ConversationFlowTest`.
 Verified locally:
 `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=TrackAwaitingStaffAwaitingPatientResolvedClosedTest test`
 — 8 tests, 0 failures, 0 skipped; see
-`.agent/pr-notes/SPEC-MSG-02-C05-20261122-231913.md` for the exact final lines.
+`docs/pr/notes/SPEC-MSG-02-C05-20261122-231913.md` for the exact final lines.
 
 ## Gap
 

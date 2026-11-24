@@ -28,11 +28,13 @@ jobs:
     timeout-minutes: 10
     steps:
       # The verifier and the task/evidence inputs come only from the protected
-      # base revision. For a merge group the base is the queue target.
+      # base revision. A PR's recorded base.sha is stale once main advances, so
+      # pull requests use the current default-branch tip; a merge group uses its
+      # queue target instead.
       - name: Check out trusted base verifier
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.ref }}
+          ref: ${{ github.event.merge_group.base_sha || github.event.repository.default_branch || github.ref }}
           persist-credentials: false
           path: base
       # The manifest and ancestry are read from the exact revision being

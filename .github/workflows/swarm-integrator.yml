@@ -75,10 +75,11 @@ jobs:
           --health-cmd "pg_isready -U postgres"
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
+      # Candidate code runs in this job: no NVD consumer key is present here.
+      # OWASP scans the restored cache and still fails on CVSS >= 7.
       GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
       GH_ISSUES_TOKEN: ${{ github.token }}
       AUREVIA_PG_ADMIN: postgres
-      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

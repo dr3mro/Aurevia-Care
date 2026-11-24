@@ -85,7 +85,6 @@ jobs:
             .opencode/config
             tasks/
             tasks
-            docs/archive/TODO-DONE.md
       - id: image
         run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
       # Safety net: refuse a wave when estimated monthly runner minutes are near
@@ -207,7 +206,6 @@ jobs:
             scripts
             tasks/
             tasks
-            docs/archive/TODO-DONE.md
       - env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py continue

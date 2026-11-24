@@ -129,6 +129,8 @@ function requiredStates(): readonly StateCase[] {
 }
 
 describe('WEB-09 clause 6 — verify each state with a component test', () => {
+  // Each case mounts several full StateView trees; under a 278-file suite the
+  // jsdom mount cost can exceed the default 5s on a busy runner.
   it('eachRequiredStateHasAnExecutableComponentTest', () => {
     for (const state of requiredStates()) {
       const mounted = renderView(state.view);
@@ -147,7 +149,7 @@ describe('WEB-09 clause 6 — verify each state with a component test', () => {
         mounted.unmount();
       }
     }
-  });
+  }, 30000);
 
   it('forbiddenRefusesRecoveryAndCorrelation', () => {
     const onRetry = vi.fn();
@@ -182,7 +184,7 @@ describe('WEB-09 clause 6 — verify each state with a component test', () => {
     } finally {
       mounted.unmount();
     }
-  });
+  }, 30000);
 
   it('staleVersionRefusesSilentLoss', () => {
     for (const kind of ['conflict', 'precondition-required'] as const) {
@@ -199,5 +201,5 @@ describe('WEB-09 clause 6 — verify each state with a component test', () => {
         mounted.unmount();
       }
     }
-  });
+  }, 30000);
 });

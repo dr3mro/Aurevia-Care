@@ -38,7 +38,7 @@ UNFINISHED_SECTION = "Why this is not finished"
 SCOPE_LINE = re.compile(r"^Scope \(stay inside these paths\):\s*(.*)$", re.M)
 SECTION = re.compile(r"^##\s+(.+?)\s*$", re.M)
 PLACEHOLDER = re.compile(r"<[^\s<>]+>")
-NOTES_PATH = re.compile(r"\.agent/pr-notes/[A-Za-z0-9._-]+\.md")
+NOTES_PATH = re.compile(r"docs/pr/notes/[A-Za-z0-9._-]+\.md")
 
 # Route-parity gate. The baseline holds only pre-existing undocumented routes,
 # frozen at the pinned base; a worker may remove entries after documenting them
@@ -314,7 +314,7 @@ def parse_scope(task_text):
 
 
 def is_notes_file(path):
-    """True for a worker's own notes file under `.agent/pr-notes/`."""
+    """True for a worker's own notes file under `docs/pr/notes/`."""
     return bool(NOTES_PATH.fullmatch(path or ""))
 
 
@@ -401,7 +401,7 @@ def find_notes_file(story_id, root="."):
     """Newest committed notes file for a story, as a repository-relative path."""
     if not story_id:
         return ""
-    pattern = str(Path(root) / ".agent" / "pr-notes" / (glob.escape(story_id) + "-*.md"))
+    pattern = str(Path(root) / "docs" / "pr" / "notes" / (glob.escape(story_id) + "-*.md"))
     matches = sorted(glob.glob(pattern))
     return str(Path(matches[-1]).relative_to(root)) if matches else ""
 

@@ -299,9 +299,21 @@ def evaluate(ctx):
                       ctx.base_sha, timestamp, tuple(checks), failures)
 
 
+def _gh_repo_args():
+    """Return the repository selector ``gh`` needs outside a repo worktree.
+
+    The gate checks the trusted verifier and the tested revision out into
+    subdirectories, so the working root is not a Git worktree and ``gh`` cannot
+    infer the repository. GitHub Actions exports GITHUB_REPOSITORY; local tests
+    run inside the repo and leave the selector out.
+    """
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    return ("--repo", repo) if repo else ()
+
+
 def _gh_json(*args):
     """Run ``gh`` with the workflow's read-only token and parse its JSON output."""
-    return json.loads(subprocess.check_output(["gh", *args], text=True,
+    return json.loads(subprocess.check_output(["gh", *_gh_repo_args(), *args], text=True,
                                               stderr=subprocess.DEVNULL) or "{}")
 
 
@@ -333,8 +345,8 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None)
     if not number:
         return ctx
     details = _gh_json("pr", "view", str(number), "--json", "headRefOid,title,labels,commits")
-    files = subprocess.check_output(["gh", "pr", "diff", str(number), "--name-only"],
-                                    text=True).split()
+    files = subprocess.check_output(["gh", *_gh_repo_args(), "pr", "diff", str(number),
+                                     "--name-only"], text=True).split()
     ctx = GateContext(**{**ctx.__dict__, "title": details.get("title") or ctx.title,
                          "labels": tuple(x.get("name", "") for x in details.get("labels", [])),
                          "commit_authors": tuple((x.get("author") or {}).get("login", "")
@@ -344,13 +356,28 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None)
     return _collect_manifest(ctx, tested_root)
 
 
+def _task_file(root, task_id):
+    """Resolve a task ID to its file on the protected base revision.
+
+    Repository task files carry a numeric prefix (``00906000-START-18.md``),
+    while a worker PR names only the task ID. Prefer an exact match so callers
+    can also point at an unnumbered file, then fall back to the numbered name.
+    """
+    tasks = Path(root) / "tasks"
+    exact = tasks / f"{task_id}.md"
+    if exact.is_file():
+        return exact
+    numbered = sorted(tasks.glob(f"[0-9]*-{task_id}.md"))
+    return numbered[0] if numbered else exact
+
+
 def _collect_task_and_evidence(ctx, root):
     """Read the task and notes from the trusted base checkout."""
     _, task_id = classify_pull_request(ctx.head_ref, ctx.labels, ctx.title, ctx.commit_authors)
     if not task_id:
         return ctx
-    task_path = Path(root) / "tasks" / f"{task_id}.md"
-    notes = sorted((Path(root) / ".agent" / "pr-notes").glob(f"{task_id}-*.md"))
+    task_path = _task_file(root, task_id)
+    notes = sorted((Path(root) / "docs" / "pr" / "notes").glob(f"{task_id}-*.md"))
     return GateContext(**{**ctx.__dict__,
                           "task_text": task_path.read_text() if task_path.is_file() else "",
                           "evidence_text": notes[-1].read_text() if notes else ""})
@@ -380,12 +407,17 @@ def main(argv=None):
     parser.add_argument("--event-path", required=True)
     parser.add_argument("--event-name", required=True)
     parser.add_argument("--root", default=".")
+    # The verifier runs from the trusted base checkout, but the manifest and
+    # ancestry describe the revision under test and live in a separate checkout.
+    # Reading them from --root would judge a stale revision.
+    parser.add_argument("--head-root", default=None)
     parser.add_argument("--required-checks", default=os.environ.get("SWARM_GATE_REQUIRED_CHECKS", ""))
     args = parser.parse_args(argv)
     try:
         event = json.loads(Path(args.event_path).read_text())
         required = tuple(n.strip() for n in args.required_checks.split(",") if n.strip())
-        ctx = collect_context(event, args.event_name, args.root, required)
+        ctx = collect_context(event, args.event_name, args.root, required,
+                              head_root=args.head_root)
         result = evaluate(ctx)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Swarm gate: verification error: {error}", file=sys.stderr)

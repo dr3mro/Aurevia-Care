@@ -61,7 +61,7 @@ service tests in `AppointmentServiceTest`; this story proves the clause through
 the HTTP boundary with committed state, which those suites do not cover.
 
 Verified locally: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=StatesBookedCheckedProgressCompletedCancelledShowTest test`
-— see `.agent/pr-notes/SPEC-CLN-01-C04-20261122-123030.md` for the exact final lines.
+— see `docs/pr/notes/SPEC-CLN-01-C04-20261122-123030.md` for the exact final lines.
 
 ## Gap
 

@@ -10,7 +10,6 @@ import runpy
 import json
 import subprocess
 import tempfile
-import runpy
 import sys
 import unittest
 from pathlib import Path
@@ -246,7 +245,7 @@ class CollectionTests(unittest.TestCase):
             base_path, head_path = Path(base), Path(head)
             (base_path / "tasks").mkdir()
             (base_path / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
-            notes = base_path / ".agent" / "pr-notes"
+            notes = base_path / "docs" / "pr" / "notes"
             notes.mkdir(parents=True)
             (notes / "TASK-01-1.md").write_text(EVIDENCE)
             (head_path / gate.MANIFEST_PATH).parent.mkdir(parents=True)
@@ -289,6 +288,34 @@ class ModelAndCLITests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("evidence_schema: failed", out.getvalue())
 
+    def test_main_accepts_head_root_for_the_tested_checkout(self):
+        """The Swarm gate workflow checks the manifest out of --head-root, not --root."""
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            path = base / "event.json"
+            path.write_text(json.dumps({"pull_request": {
+                "number": 42, "title": "TASK-01: x", "draft": False,
+                "head": {"sha": HEAD, "ref": "swarm/TASK-01-7"},
+                "base": {"sha": BASE}, "labels": []}}))
+            (head / gate.MANIFEST_PATH).parent.mkdir(parents=True)
+            (head / gate.MANIFEST_PATH).write_text(json.dumps(manifest_data()))
+            details = {"title": "TASK-01: x", "labels": [], "commits": []}
+            out, err = io.StringIO(), io.StringIO()
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"), \
+                 mock.patch.object(gate.subprocess, "run",
+                                   return_value=subprocess.CompletedProcess([], 0)), \
+                 mock.patch.object(gate, "collect_context", wraps=gate.collect_context) as collect, \
+                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                try:
+                    code = gate.main(["evaluate", "--event-path", str(path),
+                                      "--event-name", "pull_request", "--root", str(base),
+                                      "--head-root", str(head)])
+                except SystemExit as exit_error:
+                    code = exit_error.code
+            self.assertNotEqual(code, 2, err.getvalue())
+            self.assertEqual(collect.call_args.kwargs["head_root"], str(head))
+
     def test_main_handles_bad_event(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "event.json")
@@ -329,7 +356,7 @@ class CoverageTests(unittest.TestCase):
             self.assertEqual(caught.exception.code, 1)
 
 
-class CoverageTests(unittest.TestCase):
+class AdditionalCoverageTests(unittest.TestCase):
     """Exercise the few branches not reached by the behaviour tests."""
 
     def test_gh_json_empty_output_is_an_empty_object(self):
@@ -396,6 +423,77 @@ class MaintenancePRTests(unittest.TestCase):
         kind, _ = gate.classify_pull_request(
             "feature/odd-branch", labels=("swarm",), author_association="NONE")
         self.assertEqual(kind, gate.UNKNOWN)
+
+
+class TaskFileLookupTests(unittest.TestCase):
+    """Worker PRs name a task ID; the repository stores numbered task files."""
+
+    def test_numbered_task_file_is_found(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tasks").mkdir()
+            (root / "tasks" / "00906000-START-18.md").write_text(
+                "- [-] START-18 · work it\n  - evidence: tool evidence\n")
+            ctx = context(head_ref="swarm/START-18-1436", title="START-18: link the index")
+            found = gate._collect_task_and_evidence(ctx, str(root))
+        self.assertIn("tool evidence", found.task_text)
+
+    def test_exact_task_file_wins_over_numbered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tasks").mkdir()
+            (root / "tasks" / "START-18.md").write_text("exact")
+            (root / "tasks" / "00906000-START-18.md").write_text("numbered")
+            self.assertEqual(gate._task_file(str(root), "START-18").read_text(), "exact")
+
+    def test_missing_task_file_has_empty_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = context(head_ref="swarm/START-18-1436", title="START-18: link the index")
+            found = gate._collect_task_and_evidence(ctx, tmp)
+        self.assertEqual(found.task_text, "")
+
+
+class GitHubContextTests(unittest.TestCase):
+    """The gate runs outside a worktree, so every gh call names its repository."""
+
+    def test_no_repo_selector_locally(self):
+        with mock.patch.dict(gate.os.environ, {}, clear=True):
+            self.assertEqual(gate._gh_repo_args(), ())
+
+    def test_repo_selector_from_actions_environment(self):
+        with mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "dr3mro/Aurevia-Care"}):
+            self.assertEqual(gate._gh_repo_args(), ("--repo", "dr3mro/Aurevia-Care"))
+
+    def test_gh_json_uses_repo_selector(self):
+        with mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "dr3mro/Aurevia-Care"}), \
+             mock.patch.object(gate.subprocess, "check_output", return_value=b"{}") as run:
+            gate._gh_json("pr", "view", "42")
+        self.assertEqual(run.call_args.args[0][:5],
+                         ["gh", "--repo", "dr3mro/Aurevia-Care", "pr", "view"])
+
+    def test_collect_context_uses_repo_selector_for_diff(self):
+        event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                  "head": {"sha": HEAD, "ref": "swarm/TASK-01-7"},
+                                  "base": {"sha": BASE}, "labels": []}}
+        details = {"title": "TASK-01: x", "labels": [], "commits": []}
+        with mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "dr3mro/Aurevia-Care"}), \
+             mock.patch.object(gate, "_gh_json", return_value=details), \
+             mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n") as run, \
+             mock.patch.object(gate.subprocess, "run",
+                               return_value=subprocess.CompletedProcess([], 0)):
+            gate.collect_context(event, "pull_request", ".")
+        self.assertEqual(run.call_args.args[0][:3],
+                         ["gh", "--repo", "dr3mro/Aurevia-Care"])
+
+
+class TrustedVerifierCheckoutTests(unittest.TestCase):
+    """The verifier follows current main, not a PR's stale recorded base SHA."""
+
+    def test_workflow_checks_out_current_protected_branch(self):
+        workflow = (ROOT / ".github" / "workflows" / "swarm-gate.yml").read_text(encoding="utf-8")
+        self.assertIn("github.event.merge_group.base_sha || github.event.repository.default_branch",
+                      workflow)
+        self.assertNotIn("github.event.pull_request.base.sha", workflow)
 
 
 if __name__ == "__main__":

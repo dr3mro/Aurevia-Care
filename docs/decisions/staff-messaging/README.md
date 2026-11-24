@@ -227,6 +227,6 @@ must not start until that amendment exists.
   pack; it contains no fixtures or code.
 - Review status: advisory specialist review was completed by the
   software-architect and product-manager specialists (simulated reviewer
-  evidence; see `.agent/pr-notes/SMSG-01-20261121-163355.md`). There is **no
+  evidence; see `docs/pr/notes/SMSG-01-20261121-163355.md`). There is **no
   human, clinical or simulated-user acceptance** recorded here. A person's
   decision is required before any requirement becomes part of the specification.

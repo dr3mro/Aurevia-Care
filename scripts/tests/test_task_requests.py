@@ -120,11 +120,11 @@ class MergeTests(unittest.TestCase):
         original = Path.cwd()
         os.chdir(self.dir)
         self.addCleanup(os.chdir, original)
-        Path(".agent/pr-notes").mkdir(parents=True)
+        Path("docs/pr/notes").mkdir(parents=True)
         swarm.store().write(TEXT)
 
     def note(self, name, items):
-        Path(".agent/pr-notes", name).write_text(fence(items))
+        Path("docs/pr/notes", name).write_text(fence(items))
 
     def test_only_this_tasks_notes_are_read(self):
         self.note("T-01-20261121-100000.md", [good()])
@@ -135,7 +135,7 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(sorted(titles), ["Add the missing report endpoint", "Add the second missing thing"])
 
     def test_a_missing_notes_folder_gives_nothing(self):
-        shutil.rmtree(".agent")
+        shutil.rmtree("docs/pr/notes")
         self.assertEqual(swarm.merged_requests("T-01"), [])
 
     def test_merging_a_task_adds_its_requested_tasks(self):

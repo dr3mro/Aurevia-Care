@@ -1,6 +1,6 @@
 # Aurevia delivery record
 
-The authoritative product requirements are in PROJECT_V1_SPEC.md. Repository discovery, baseline verification and implementation status are pending.
+The authoritative product requirements are in PROJECT_V1_SPEC.md. Repository discovery and the G0 platform baseline are implemented and evidenced in `tasks/` and `docs/gates/`; later gates and real-patient launch approvals remain open. Gate notes record evidence, not human acceptance.
 
 | Decision | Baseline |
 |---|---|

@@ -13,5 +13,5 @@
     3. For a surface that does not exist yet, write the full test and mark it `@Disabled("GAP: <what is missing>")`; do not write production code and do not leave a failing test.
     4. Write `docs/gates/g0-isolation-surfaces.md`: a table with one row per surface (exists or not, class, test method, status Proven, Partly proven or Not built) and a list of the stories still needed to create each missing surface. Run `python3 -I scripts/check-docs.py` and the backend skill checks and paste the results.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

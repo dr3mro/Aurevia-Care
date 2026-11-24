@@ -1538,13 +1538,12 @@ def parse_tasks(text):
     return tasks
 
 
-ARCHIVE = "docs/archive/TODO-DONE.md"
+ARCHIVE = ""  # Finished tasks live in tasks/done; no separate archive file remains.
 
 
 def archived_done_ids(path=ARCHIVE):
     """Ids and aliases of tasks moved out of TODO.md by archive_done; they still satisfy `depends`."""
-    file = Path(path)
-    text = file.read_text() if file.exists() else ""
+    text = Path(path).read_text() if path and Path(path).exists() else ""
     if path == ARCHIVE:
         text += "\n" + store().archived()
     return {name for t in parse_tasks(text) if t["status"] == "done"
@@ -2159,7 +2158,7 @@ def archived_task_scope(task_id):
     An open PR can belong to a task that was already marked done and moved to the
     archive; its scope must still block overlapping work until the PR merges.
     """
-    text = Path(ARCHIVE).read_text() if Path(ARCHIVE).exists() else ""
+    text = ""
     if store().active():
         text += "\n" + store().archived()
     for t in parse_tasks(text):
@@ -2419,14 +2418,15 @@ def note_worker_outcome(task, result, directory, pr):
 
 
 # ---------------------------------------------------------------------------
-# Daily notes reconciliation. Every worker writes .agent/pr-notes/<task>-<stamp>.md.
+# Daily notes reconciliation. Every worker writes docs/pr/notes/<task>-<stamp>.md.
 # Once a day (after midnight New York) the notes of each finished day are merged by a
 # read-only worker into one dated file; the originals go into one zip per day under
-# docs/archive/pr-notes/. The worker also lists problems for new issues and may edit
+# docs/pr/notes/archive/. The worker also lists problems for new issues and may edit
 # instruction documents, which go out as a draft pull request for a person to review.
 # ---------------------------------------------------------------------------
-NOTES_DIR = ".agent/pr-notes"
-NOTES_ARCHIVE = "docs/archive/pr-notes"
+NOTES_DIR = "docs/pr/notes"
+NOTES_ARCHIVE = "docs/pr/notes/archive"
+REPORTS_DIR = "docs/pr/reports"
 DAILY_NOTE = re.compile(r"\d{4}-\d{2}-\d{2}\.md")
 NOTE_STAMP = re.compile(r"-(\d{8})-(\d{6})\.md$")
 RULES_ALLOWED = (re.compile(r"\.opencode/setup/AGENTS\.md"), re.compile(r"\.opencode/.+\.md"), re.compile(r"docs/[^/]+\.md"))
@@ -2466,13 +2466,13 @@ def referenced_notes():
     listed = git("ls-files", "*.md", check=False).split()
     names = set()
     for name in listed:
-        if name.startswith((".agent/", "docs/archive/", "docs/swarm/")):
+        if name.startswith((".agent/", "docs/pr/notes/", "docs/pr/reports/", "docs/swarm/")):
             continue
         try:
             text = Path(name).read_text(errors="replace")
         except OSError:
             continue
-        names.update(re.findall(r"pr-notes/([A-Za-z0-9._-]+\.md)", text))
+        names.update(re.findall(r"pr/notes/([A-Za-z0-9._-]+\.md)", text))
     return names
 
 
@@ -2521,7 +2521,7 @@ def notes_collect(out_dir, notes_dir=NOTES_DIR, today=None, added=None, keep=Non
     return chosen
 
 
-def push_main(message, edit, paths=(NOTES_DIR, NOTES_ARCHIVE), attempts=6):
+def push_main(message, edit, paths=(NOTES_DIR, NOTES_ARCHIVE, REPORTS_DIR), attempts=6):
     """Run `edit()` in the checkout, commit only `paths` and push to main; redo it on a fresh
     main if the push races. The job's scratch folders (notes-in/, reconciled/) never go in."""
     for attempt in range(attempts):
@@ -2561,7 +2561,7 @@ def archive_day(day, names, notes_dir=NOTES_DIR, archive_dir=NOTES_ARCHIVE):
     return True
 
 
-def store_daily(day, text, notes_dir=NOTES_DIR, archive_dir=NOTES_ARCHIVE):
+def store_daily(day, text, notes_dir=NOTES_DIR, archive_dir=REPORTS_DIR):
     """Write the reconciled note of a day. Notes that arrive late (a pull request merged after
     its day was reconciled) are appended to that day's file, wherever it now lives."""
     target = Path(archive_dir) / f"{day}.md"
@@ -2609,7 +2609,7 @@ def rules_patch_ok(patch_text):
                  patch_text, re.M):
         return False
     return bool(paths) and all(a == b and any(p.fullmatch(a) for p in RULES_ALLOWED)
-                               and not a.startswith("docs/archive/") for a, b in paths)
+                               and not a.startswith("docs/pr/") for a, b in paths)
 
 
 def open_rules_pr(day, patch_path):
@@ -2639,7 +2639,7 @@ def open_rules_pr(day, patch_path):
              "--title", f"Notes {day}: instruction updates for review",
              "--body", f"{MARK}\nThe daily notes reconciliation for {day} suggests these edits to make workers "
                        "more efficient. Review them; nothing here merges by itself.\n\n"
-                       f"Reconciled notes: `{NOTES_DIR}/{day}.md`.", check=False)
+                       f"Reconciled report: `{REPORTS_DIR}/{day}.md`.", check=False)
     git("checkout", "-q", "-")
     match = re.search(r"/pull/(\d+)", out or "")
     if match:
@@ -2910,28 +2910,42 @@ def delivery_gate(pr, head=None, runs=None):
     docs gate is the evidence instead. ``runs`` may be supplied by a caller that
     already listed them.
     """
+    verdict, state, _ = delivery_decision(pr, head, runs)
+    if verdict == "merge" or verdict == "wait":
+        return verdict
+    if verdict == "fix":
+        head = head or (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
+        runs = delivery_runs(head) if runs is None else runs
+        queue_delivery_failure(pr, head, runs)
+        return "fix"
+    branch = (gh_json("pr", "view", str(pr), "--json", "headRefName") or {}).get("headRefName", "")
+    gh("pr", "comment", str(pr), "--body",
+       f"{MARK}\nDelivery is {state} for {(head or '')[:12]}; a fresh run was requested on this branch. "
+       "Nothing merges until it reports passed.", check=False)
+    gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
+    return "request"
+
+
+def delivery_decision(pr, head=None, runs=None):
+    """Return (verdict, state, runs) without writing to GitHub.
+
+    The validation job calls this while candidate code is in the tree and holds
+    only a read-only token. ``verdict`` matches :func:`delivery_gate`: merge,
+    wait, fix or request. Reporting and re-run dispatch stay in the caller.
+    """
     if head is None:
         head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
     runs = delivery_runs(head) if runs is None else runs
     state = delivery_state(runs, head)
     if state == "passed":
-        return "merge"
+        return "merge", state, runs
     if state == "failed":
-        queue_delivery_failure(pr, head, runs)
-        return "fix"
+        return "fix", state, runs
     if state == "pending":
-        return "wait"
+        return "wait", state, runs
     if state == "missing" and markdown_only(gh("pr", "diff", str(pr), "--name-only").split()):
-        # Defensive exception for a docs-only run that never started (for example
-        # one from before the PR path filter was removed); quick-check.sh already
-        # ran check-docs.py on this exact merge result.
-        return "merge"
-    branch = (gh_json("pr", "view", str(pr), "--json", "headRefName") or {}).get("headRefName", "")
-    gh("pr", "comment", str(pr), "--body",
-       f"{MARK}\nDelivery is {state} for {head[:12]}; a fresh run was requested on this branch. "
-       "Nothing merges until it reports passed.", check=False)
-    gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
-    return "request"
+        return "merge", state, runs
+    return "request", state, runs
 
 
 # Decision returned by draft_recovery for one draft pull request.
@@ -3034,7 +3048,7 @@ def repair_task(run_id):
     body = (f"Repair the failed '{run['name']}' run on main ({run['url']}, commit {run['headSha'][:12]}).\n"
             "Reproduce it with the failing commands. When it is a real defect, write a failing test "
             "first, then make the smallest fix. When it is a transient or runner problem, say so in "
-            "your notes file (the path in your prompt, never .agent/pr-notes.md) and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
+            "your notes file (the path in your prompt, never docs/pr/notes.md) and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
     return {"kind": "story", "id": f"FIX-{run_id}", "number": 0, "branch": "",
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
 
@@ -3642,6 +3656,32 @@ def debug_publish(pr, directory):
     return "fix"
 
 
+def guard_blockers(pr, repair=False):
+    """Return (kind, files, lines) describing why a PR cannot auto-merge.
+
+    This is the read-only half of :func:`guard`. The validation job runs it with
+    a read-only token while candidate code is in the tree; reporting the
+    decision belongs to the publication job. ``kind`` is empty for a clear PR,
+    otherwise ``tracker``, ``override``, ``protected``, ``files`` or ``lines``.
+    """
+    files = gh("pr", "diff", str(pr), "--name-only").split()
+    trackers = [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in TRACKERS)]
+    if trackers:
+        return "tracker", trackers, 0
+    touched = [f for f in files if f in GATE_CONFIG] if repair else protected_files(files)
+    if touched and protected_override():
+        return "override", touched, 0
+    if touched:
+        return "protected", touched, 0
+    if len(files) > MAX_PR_FILES:
+        return "files", files, 0
+    size = json.loads(gh("pr", "view", str(pr), "--json", "additions,deletions") or "{}")
+    lines = size.get("additions", 0) + size.get("deletions", 0)
+    if lines > MAX_PR_LINES:
+        return "lines", files, lines
+    return "", [], lines
+
+
 def guard(pr, repair=False):
     """Return the files that stop an automatic merge and label accordingly.
 
@@ -3650,33 +3690,28 @@ def guard(pr, repair=False):
     and they still pass the fast gate before the integrator merges them. Even
     a repair never auto-merges a change to GATE_CONFIG.
     """
-    files = gh("pr", "diff", str(pr), "--name-only").split()
-    # Shared trackers are checked before protected paths: a tracker file may live
-    # under a protected tree, but a worker edit to it is always sent back as a
-    # tracker violation rather than a human-review "needs-human" label.
-    trackers = [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in TRACKERS)]
-    if trackers:
-        fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(trackers[:10])
-             + " and put the evidence in your notes file (the path in your prompt, never .agent/pr-notes.md)", simple=True)
-        return trackers
-    touched = [f for f in files if f in GATE_CONFIG] if repair else protected_files(files)
-    if touched and protected_override():
+    kind, files, lines = guard_blockers(pr, repair)
+    if kind == "tracker":
+        fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(files[:10])
+             + " and put the evidence in your notes file (the path in your prompt, never docs/pr/notes.md)", simple=True)
+        return files
+    if kind == "override":
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nKill switch SWARM_ALLOW_PROTECTED is on: the protected-file rule was skipped for "
-           f"{', '.join(touched[:10])}. The full gate still runs before the merge. "
+           f"{', '.join(files[:10])}. The full gate still runs before the merge. "
            "An issue lists the diffs for review; it does not block anything.")
-        report_protected_merge(pr, touched)
-        touched = []
-    if touched:
+        report_protected_merge(pr, files)
+        return []
+    if kind == "protected":
         add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nThis pull request changes workflow, agent or script files, which are never "
-           f"merged automatically: {', '.join(touched[:10])}. Please review it.")
+           f"merged automatically: {', '.join(files[:10])}. Please review it.")
         report_pr_stuck(pr, "protected files changed",
                         "It changes workflow, agent or script files, which are never merged "
-                        "automatically: " + ", ".join(f"`{f}`" for f in touched[:15]), review=True)
-        return touched
-    if len(files) > MAX_PR_FILES:
+                        "automatically: " + ", ".join(f"`{f}`" for f in files[:15]), review=True)
+        return files
+    if kind == "files":
         add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nThis pull request changes {len(files)} files; the limit is {MAX_PR_FILES}. "
@@ -3685,9 +3720,7 @@ def guard(pr, repair=False):
                         f"It changes {len(files)} files and the limit for an automatic merge is "
                         f"{MAX_PR_FILES}. Split it into one bounded story per pull request.")
         return files
-    size = json.loads(gh("pr", "view", str(pr), "--json", "additions,deletions") or "{}")
-    lines = size.get("additions", 0) + size.get("deletions", 0)
-    if lines > MAX_PR_LINES:
+    if kind == "lines":
         add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nThis pull request changes {lines} lines; the limit is {MAX_PR_LINES}. "
@@ -3967,75 +4000,143 @@ def close_integrated_pr(pr, task_id):
             pass
 
 
-def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
-    """Merge every ready PR in one job, gate each, then push main once.
+def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None):
+    """Merge and gate each ready PR locally without writing to GitHub.
 
-    One cache/Java setup serves the whole batch. A PR whose gate fails is sent
-    back to the workers and its merge is rolled back before the next PR, so a
-    bad PR never blocks the others. The production caller is the trusted
-    integrator job in GitHub Actions, where a current-head Delivery verdict is
-    a precondition for staging a merge; direct callers that only exercise merge
-    mechanics have no CI evidence to check. ``check_delivery`` overrides that
-    default. The wiring checker is loaded before merging any candidate.
-    Returns the number of merged PRs."""
-    merged, conflicted, gates = [], [], {}
+    Returns a manifest-ready dict with ``accepted``, ``rejected``, ``already``,
+    ``conflicted``, ``conflict_details`` and ``gates``. The tree is left at the
+    final gated tip so the caller can bundle it. Reporting every decision is
+    deferred to :func:`report_validation` in the trusted publication job.
+    """
+    result = {"accepted": [], "rejected": [], "already": [], "conflicted": [],
+              "conflict_details": [], "gates": {}}
     require_evidence = (os.environ.get("GITHUB_ACTIONS") == "true") \
         if check_delivery is None else check_delivery
     wiring_checker = _checker("check-wiring")
     for pr in queue:
-        blocked = guard(pr, is_repair(pr))
-        if blocked:
+        kind, files, lines = guard_blockers(pr, is_repair(pr))
+        if kind and kind != "override":
+            result["rejected"].append({"pr": pr, "kind": kind, "files": files, "lines": lines})
             continue
+        if kind == "override":
+            result["rejected"].append({"pr": pr, "kind": kind, "files": files})
         pr_view = gh_json("pr", "view", str(pr), "--json", "headRefOid,headRefName") or {}
         head = pr_view.get("headRefOid", "")
         current_main = git("rev-parse", "HEAD").strip()
         if pr_already_in_main(pr, head, current_main):
             tid = task_id_of(pr_view.get("headRefName", "") or "")
-            close_integrated_pr(pr, tid)
-            print(f"PR #{pr} already in main; closed and task {tid or '?'} marked done")
+            result["already"].append({"pr": pr, "task_id": tid})
             continue
-        if require_evidence and delivery_gate(pr, head) != "merge":
-            # wait/fix/request PRs stay open and unstaged; the gate already took
-            # the appropriate label or comment action for each verdict.
+        verdict, _, _ = delivery_decision(pr, head)
+        if require_evidence and verdict != "merge":
+            result["rejected"].append({"pr": pr, "kind": "evidence", "verdict": verdict,
+                                       "head_sha": head})
             continue
         base = git("rev-parse", "HEAD").strip()
         sha, task_id, conflicts = merge_local(pr)
         if sha is None:
             reason = (f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
                       "merge main into the branch and resolve it")
-            # Give the automatic resolver a few tries before the PR goes back to the workers.
-            tries = resolve_attempts(pr)
-            if tries < MAX_RESOLVE:
-                conflicted.append(pr)
-                # Counted when queued, so a resolver that never runs cannot loop forever.
-                gh("pr", "comment", str(pr), "--body", f"{RESOLVE_MARK}\nMerge conflict with main; "
-                   f"automatic resolution queued ({tries + 1} of {MAX_RESOLVE}). {reason}", check=False)
-            else:
-                fail(pr, reason, simple=True)
+            result["conflicted"].append(pr)
+            result["conflict_details"].append({"pr": pr, "reason": reason,
+                                               "tries": resolve_attempts(pr)})
+            git("reset", "--hard", base)
             continue
         if head != sha:
-            fail(pr, "the branch changed after planning; it will be retested", simple=True)
+            result["rejected"].append({"pr": pr, "kind": "moved"})
             git("reset", "--hard", base)
             continue
         wiring_error = refresh_wiring_baseline(wiring_checker, base)
         if wiring_error is None:
             continue
         if wiring_error:
-            fail(pr, "Wiring baseline validation failed on the merge of main and this branch", wiring_error)
+            result["rejected"].append({"pr": pr, "kind": "wiring", "reason": wiring_error})
             git("reset", "--hard", base)
             continue
         pr_gate, pr_env = gate_for(pr, gate)
         ok, log = run_gate(pr_gate, pr_env)
         if not ok:
-            fail(pr, f"Merge gate ({pr_gate}) failed on the merge of main and this branch", log)
+            result["rejected"].append({"pr": pr, "kind": "gate", "reason":
+                f"Merge gate ({pr_gate}) failed on the merge of main and this branch", "log": log})
             git("reset", "--hard", base)
             continue
-        gates[pr] = (pr_gate, pr_env)
-        merged.append((pr, task_id, sha))
-    emit("conflicted", json.dumps(conflicted))
-    if not merged:
+        result["gates"][str(pr)] = [pr_gate, pr_env]
+        result["accepted"].append({"pr": pr, "task_id": task_id, "head_sha": head,
+                                   "merge_sha": sha})
+    return result
+
+
+def report_validation(result):
+    """Replay the decisions made by validation, using the publication token.
+
+    Every call here writes to GitHub or to shared trackers, so it belongs to
+    the trusted publication job and never to the job that ran candidate code.
+    """
+    for item in result.get("rejected", []):
+        pr = item["pr"]
+        kind = item["kind"]
+        if kind in ("tracker", "protected", "files", "lines", "override"):
+            guard(pr, is_repair(pr))
+        elif kind == "evidence":
+            delivery_gate(pr, item.get("head_sha"))
+        elif kind == "already":
+            close_integrated_pr(pr, item.get("task_id", ""))
+        else:
+            fail(pr, item.get("reason", "validation rejected this branch"), item.get("log", ""))
+    for detail in result.get("conflict_details", []):
+        pr, reason, tries = detail["pr"], detail["reason"], detail["tries"]
+        if tries < MAX_RESOLVE:
+            gh("pr", "comment", str(pr), "--body", f"{RESOLVE_MARK}\nMerge conflict with main; "
+               f"automatic resolution queued ({tries + 1} of {MAX_RESOLVE}). {reason}", check=False)
+        else:
+            fail(pr, reason, simple=True)
+    for item in result.get("accepted", []):
+        tid = item.get("task_id", "")
+        print(f"PR #{item['pr']} validated for integration; task {tid or '?'}")
+
+
+def integrate_validate(queue, gate="scripts/quick-check.sh", out="validated", check_delivery=None):
+    """Validate a ready batch without repository writes; persist a manifest.
+
+    Emits ``accepted`` and ``conflicted`` for the workflow. Never pushes,
+    comments, labels or opens issues; those belong to :func:`integrate_publish`.
+    """
+    target = Path(out)
+    target.mkdir(parents=True, exist_ok=True)
+    result = integrate_prepare(queue, gate, check_delivery)
+    manifest = dict(result, base=git("rev-parse", "HEAD").strip(),
+                    tip=git("rev-parse", "HEAD").strip())
+    (target / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    git("bundle", "create", str(target / "main.bundle"), "--all")
+    emit("accepted", json.dumps([a["pr"] for a in result["accepted"]]))
+    emit("conflicted", json.dumps(result["conflicted"]))
+    return result
+
+
+def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
+    """Validate and publish a ready batch in one trusted process.
+
+    Kept for local callers and existing tests that do not have a separate
+    publication job. GitHub uses ``integrate-validate`` / ``integrate-publish``
+    so candidate code never runs with a write token.
+    """
+    result = integrate_prepare(queue, gate, check_delivery)
+    emit("conflicted", json.dumps(result["conflicted"]))
+    report_validation(result)
+    if not result["accepted"]:
         emit("merged", 0)
         return 0
+    merged = [(a["pr"], a["task_id"], a["merge_sha"]) for a in result["accepted"]]
+    gates = {int(pr): tuple(env) for pr, env in result["gates"].items()}
+    return integrate_finalize(merged, gates, gate)
+
+
+def integrate_finalize(merged, gates, gate):
+    """Record merges, commit, push once with concurrency reconciliation, report.
+
+    Trusted: the caller has already gated this exact tree and verified every
+    head SHA. Returns the number of pull requests pushed.
+    """
     merged, comments, moved = record_merges(merged, gates)
     files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
@@ -4113,6 +4214,36 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     dispatch_delivery()
     emit("merged", len(merged))
     return len(merged)
+
+
+def integrate_publish(manifest_file, bundle_file, gate="scripts/integrator-gate.sh"):
+    """Publish an already-gated batch on a fresh runner with the write token.
+
+    Re-verifies the bundle tip and every accepted PR head against the manifest
+    before any write. Runs no candidate code and checks out no candidate branch
+    until those checks pass. Returns the number of pull requests merged.
+    """
+    manifest = json.loads(Path(manifest_file).read_text())
+    git("fetch", "-q", str(bundle_file), "HEAD:refs/remotes/validated-batch")
+    tip = git("rev-parse", "refs/remotes/validated-batch").strip()
+    if tip != manifest["tip"]:
+        raise SystemExit(f"validated bundle head {tip} != {manifest['tip']}; refusing to publish")
+    accepted = []
+    for item in manifest["accepted"]:
+        pr = item["pr"]
+        current = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
+        if current != item["head_sha"]:
+            raise SystemExit(f"PR #{pr} head moved after validation ({current} != "
+                             f"{item['head_sha']}); refusing to publish")
+        accepted.append(item)
+    report_validation(manifest)
+    if not accepted:
+        emit("merged", 0)
+        return 0
+    git("checkout", "-q", "--detach", tip)
+    merged = [(a["pr"], a["task_id"], a["merge_sha"]) for a in accepted]
+    gates = {int(pr): tuple(env) for pr, env in manifest["gates"].items()}
+    return integrate_finalize(merged, gates, gate)
 
 
 MAX_RESOLVE = 5
@@ -4202,6 +4333,14 @@ def main(argv=None):
     p = sub.add_parser("integrate-batch")
     p.add_argument("--queue", required=True, help="JSON array of pull request numbers")
     p.add_argument("--gate", default="scripts/quick-check.sh")
+    p = sub.add_parser("integrate-validate")
+    p.add_argument("--queue", required=True, help="JSON array of pull request numbers")
+    p.add_argument("--gate", default="scripts/integrator-gate.sh")
+    p.add_argument("--out", default="validated", help="directory for manifest.json and main.bundle")
+    p = sub.add_parser("integrate-publish")
+    p.add_argument("--manifest", required=True)
+    p.add_argument("--bundle", required=True)
+    p.add_argument("--gate", default="scripts/integrator-gate.sh")
     p = sub.add_parser("resolve-publish")
     p.add_argument("--dir", required=True)
     p = sub.add_parser("slot-config")
@@ -4297,7 +4436,7 @@ def main(argv=None):
     if a.cmd == "ensure-labels":
         ensure_labels()
     elif a.cmd == "archive-todo":
-        print(f"archived {archive_todo()} finished task(s) to {ARCHIVE}")
+        print(f"archived {archive_todo()} finished task(s) to {store().ROOT}/{store().DONE}")
     elif a.cmd == "images-ready":
         images_ready_command(a.slots, parse_generations(a.generations))
     elif a.cmd == "slot-matrix":

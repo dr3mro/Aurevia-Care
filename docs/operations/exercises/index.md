@@ -56,11 +56,11 @@ these, or marks a step `NOT YET IN PLACE:`.
 | `python3 -I infra/ops-queues/ops_queues.py <artifact.json>` | Evaluates a synthetic or operator-attested queue snapshot | [ops_queues.py](../../../infra/ops-queues/ops_queues.py) |
 | `python3 -I scripts/check-secrets.py` | Fails on credential- or PHI-shaped strings in repository files | [check-secrets.py](../../../scripts/check-secrets.py) |
 | `python3 -I scripts/check-pack.py`, `python3 -I scripts/check-docs.py` | Validates the agent pack, Markdown links and requirement IDs | [check.sh](../../../scripts/check.sh) |
-| `curl -fsS http://127.0.0.1:8080/health.txt` | Bootstrap test-stack health response once the disposable stack is up | [README-SETUP.md](../../../README-SETUP.md) |
+| `curl -fsS http://127.0.0.1:8080/health.txt` | Bootstrap test-stack health response once the disposable stack is up | [README-SETUP.md](../../../.opencode/config/README-SETUP.md) |
 | `GET /health/live`, `GET /health/ready` | Unauthenticated liveness and readiness of the real API (WEB-05); readiness checks the database and leaks no exception text | [HealthController.java](../../../apps/api/src/main/java/com/aurevia/web/HealthController.java) |
 
 `docker compose up -d` / `docker compose down` start and stop the disposable
-bootstrap stack described in [README-SETUP.md](../../../README-SETUP.md). Docker is
+bootstrap stack described in [README-SETUP.md](../../../.opencode/config/README-SETUP.md). Docker is
 not available in every worker environment; the drill owner confirms it before
 using that step. `scripts/monitor.sh` is a **GitHub Actions swarm dashboard**, not
 a clinical monitoring tool: it must not be cited as evidence for any OPS-05

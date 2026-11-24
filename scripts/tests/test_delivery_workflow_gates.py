@@ -113,6 +113,23 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertEqual(len(approval), 1)
         self.assertIn("exit 1", run_text(approval[0]))
 
+    def test_worker_publication_is_bound_to_an_isolated_validation_job(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-worker.yml").read_text(encoding="utf-8"))
+        jobs = workflow["jobs"]
+        validate = jobs["validate"]
+        self.assertEqual(validate["permissions"], {"contents": "read"})
+        self.assertNotIn("GH_TOKEN", validate.get("env", {}))
+        publish = jobs["publish"]
+        self.assertIn("validate", publish["needs"])
+        published = "\n".join(run_text(step) for step in publish["steps"])
+        self.assertIn("Candidate was not validated", published)
+        self.assertIn("VALIDATED_SHA", published)
+
+    def test_integrator_candidate_job_has_no_nvd_consumer_key(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
+        job = workflow["jobs"]["integrate"]
+        self.assertNotIn("NVD_API_KEY", job.get("env", {}))
+
     def test_delivery_frontend_runs_the_canonical_coverage_entry_points(self):
         workflow = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))
         runs = commands(workflow["jobs"]["frontend"]["steps"])

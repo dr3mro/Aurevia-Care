@@ -12,8 +12,8 @@ Swarm worker 6. Local checks: passed. Agent result: ok.
 This is a re-dispatched worker. The implementation was already merged into `main` under the
 earlier equivalent task `AUD-20261120-06` (commit `93b358e` "Integrate swarm PRs (reconciled)",
 followed by `cad10de` "Remove SpotBugs EI_EXPOSE_REP2 suppressions"), and its original notes are
-`.agent/pr-notes/AUD-20261120-06-20261120-210218.md`. Following the
-`.agent/pr-notes/READY-37-20261121-073607.md` precedent, this pass re-read the merged code,
+`docs/pr/notes/AUD-20261120-06-20261120-210218.md`. Following the
+`docs/pr/notes/READY-37-20261121-073607.md` precedent, this pass re-read the merged code,
 re-ran the targeted unit and real-PostgreSQL tests, proved 100% JaCoCo coverage for every touched
 class, and ran every applicable gate stage. **No production code, migration, dependency or
 threshold was changed in this pass; its deliverable is the completed evidence and this record.**
@@ -90,7 +90,7 @@ No new migration and no schema edit. The adapter writes the existing V55 tables
 and `delivery_audit`; it reads `exchange_order` (V19) and `patient_record` (V7) only for
 identifier confirmation. `db/check.sh` applies and verifies the full migration set. Rollback is a
 redeploy of the previous artifact; no backfill or forward-fix applies. This pass created no file
-outside `.agent/pr-notes/`.
+outside `docs/pr/notes/`.
 
 ## Authorization boundaries and audit events
 

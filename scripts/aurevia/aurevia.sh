@@ -326,9 +326,6 @@ cmd_todo() {
   taken=$(grep -c '^- \[-\]' "$ROOT/TODO.md" || true)
   done_=$(grep -c '^- \[x\]' "$ROOT/TODO.md" || true)
   printf 'open %s · taken %s · done %s\n' "$open" "$taken" "$done_"
-  if [[ -f "$ROOT/docs/archive/TODO-DONE.md" ]]; then
-    printf 'archived done %s\n' "$(grep -c '^- \[x\]' "$ROOT/docs/archive/TODO-DONE.md" || true)"
-  fi
 }
 
 cmd_doctor() {

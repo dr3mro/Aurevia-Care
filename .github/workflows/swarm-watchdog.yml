@@ -51,7 +51,6 @@ jobs:
             scripts
             tasks/
             tasks
-            docs/archive/TODO-DONE.md
       - name: Record or close the failure of a finished run
         if: github.event_name == 'workflow_run'
         env:

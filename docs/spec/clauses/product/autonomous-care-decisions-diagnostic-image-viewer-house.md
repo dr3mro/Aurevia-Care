@@ -55,7 +55,7 @@ Requirement: [PRD-06](../../../../.opencode/config/PROJECT_V1_SPEC.md) (product 
 **Evidence that is NOT in the repository (human/partner/signed).**
 
 - [launch-checklist.md](../../../../docs/operations/production-readiness/launch-checklist.md) states "Every row is `open`" and "asserts nothing as done"; the per-site Product Owner and clinical sign-off row is `open` with `none yet` as its link.
-- [TODO.md](../../../../TODO.md) leaves `S-G5-04` (Laboratory, PACS and pharmacy interface contracts, credentials and outage drills), `S-G5-01` (market policy pack) and `S-G5-12` (per-site launch approvals and final G5 acceptance) as `[ ]`. These are plans, not completion evidence.
+- `TODO.md` (generated from `tasks/` by `scripts/taskstore.py`) leaves `S-G5-04` (Laboratory, PACS and pharmacy interface contracts, credentials and outage drills), `S-G5-01` (market policy pack) and `S-G5-12` (per-site launch approvals and final G5 acceptance) as `[ ]`. These are plans, not completion evidence.
 
 ## Gap
 

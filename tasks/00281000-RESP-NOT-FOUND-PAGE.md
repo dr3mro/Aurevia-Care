@@ -17,5 +17,5 @@
     4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
     5. Do not change behaviour, text, API calls or exported names.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

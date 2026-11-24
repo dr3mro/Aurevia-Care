@@ -76,7 +76,7 @@ age metrics and alerting on error-budget burn; none is implemented here.
 2. **Identify the last known-good artifact.** Use the release record: the
    promoted tag and its smoke-tested digest. Promote by digest, not by a floating
    tag; the repository records the digest in release notes and states that tags
-   are immutable ([README-SETUP.md](../../../README-SETUP.md)).
+   are immutable ([README-SETUP.md](../../../.opencode/config/README-SETUP.md)).
 3. **Deploy the known-good digest through the approved path.**
    `NOT YET IN PLACE:` a deploy or rollback command in this repository.
    `infra/DEPLOYMENT.md` is a design handoff that asks for health-based routing,
@@ -153,5 +153,5 @@ or when the old artifact is no longer promotable.
 [Runbook index](index.md) · [Incident response](incident-response.md) ·
 [Secret and key rotation](key-rotation.md) ·
 [Deployment design handoff](../../../infra/DEPLOYMENT.md) ·
-[Release and delivery setup](../../../README-SETUP.md) ·
+[Release and delivery setup](../../../.opencode/config/README-SETUP.md) ·
 [Production readiness checklist](../production-readiness/launch-checklist.md)

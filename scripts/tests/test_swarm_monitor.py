@@ -463,9 +463,9 @@ class NotesTests(unittest.TestCase):
         self.assertEqual(days, ["2026-11-19"])
 
     def test_references_come_from_tracked_markdown_outside_notes_and_records(self):
-        files = {"TODO.md": "Read first: `.agent/pr-notes/REFACTOR-PACKAGES.md`.",
-                 "docs/swarm/X.md": "notes in .agent/pr-notes/OLD-20261119-010101.md",
-                 ".agent/pr-notes/2026-11-19.md": "see .agent/pr-notes/SELF.md"}
+        files = {"TODO.md": "Read first: `docs/pr/notes/REFACTOR-PACKAGES.md`.",
+                 "docs/swarm/X.md": "notes in docs/pr/notes/OLD-20261119-010101.md",
+                 "docs/pr/reports/2026-11-19.md": "see docs/pr/notes/SELF.md"}
         tmp = Path(tempfile.mkdtemp())
         for name, text in files.items():
             (tmp / name).parent.mkdir(parents=True, exist_ok=True)
@@ -535,6 +535,19 @@ class NotesTests(unittest.TestCase):
         self.assertIn("later still", (archive / "2026-11-18.md").read_text())
         self.assertFalse((self.notes / "2026-11-18.md").exists())
 
+    def test_store_daily_writes_reconciled_reports_to_the_reports_directory(self):
+        import inspect
+        self.assertEqual(inspect.signature(swarm.store_daily).parameters["archive_dir"].default,
+                         swarm.REPORTS_DIR)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            report = root / "reports" / "2026-11-22.md"
+            report.parent.mkdir(parents=True)
+            report.write_text("first pass\n")
+            swarm.store_daily("2026-11-22", "second pass", str(root / "notes"), str(root / "reports"))
+            self.assertIn("first pass", report.read_text())
+            self.assertIn("## Late notes\n\nsecond pass", report.read_text())
+
     def test_only_the_newest_daily_file_stays(self):
         for name in ("2026-11-17.md", "2026-11-18.md", "2026-11-19.md", "X-20261119-010101.md"):
             (self.notes / name).write_text("x")
@@ -551,7 +564,7 @@ class NotesTests(unittest.TestCase):
             return ""
         with mock.patch.object(swarm, "git", git), mock.patch.object(swarm, "authed_git", lambda *a, **k: ""):
             self.assertFalse(swarm.push_main("m", lambda: True))
-        self.assertIn(("add", "-A", "--", swarm.NOTES_DIR, swarm.NOTES_ARCHIVE), calls)
+        self.assertIn(("add", "-A", "--", swarm.NOTES_DIR, swarm.NOTES_ARCHIVE, swarm.REPORTS_DIR), calls)
         self.assertFalse(any(c[:1] == ("-c",) or "commit" in c for c in calls))
 
     def test_issue_proposals_are_validated_and_capped(self):
@@ -570,7 +583,7 @@ class NotesTests(unittest.TestCase):
             return "".join(f"diff --git a/{p} b/{p}\n--- a/{p}\n+++ b/{p}\n" for p in paths)
         self.assertTrue(swarm.rules_patch_ok(patch(".opencode/setup/AGENTS.md", ".opencode/agents/x.md", "docs/NOTES.md")))
         for bad in (patch("scripts/swarm.py"), patch(".opencode/setup/AGENTS.md", ".github/workflows/x.yml"),
-                    patch("docs/archive/pr-notes/x.md"), patch("docs/sub/x.md"), patch("check.sh"), "",
+                    patch("docs/pr/notes/archive/x.md"), patch("docs/sub/x.md"), patch("check.sh"), "",
                     patch(".opencode/setup/AGENTS.md") + "new file mode 120000\n",
                     patch(".opencode/setup/AGENTS.md") + "GIT binary patch\n",
                     patch(".opencode/setup/AGENTS.md") + "rename from AGENTS.md\n"):
@@ -683,7 +696,7 @@ class DocsCheckTests(unittest.TestCase):
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         tmp = Path(tempfile.mkdtemp())
-        for rel in (".agent/pr-notes/2026-11-19.md", "docs/archive/pr-notes/2026-11-18.md", "docs/guide.md"):
+        for rel in ("docs/pr/reports/2026-11-19.md", "docs/pr/notes/archive/2026-11-18.md", "docs/guide.md"):
             (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
             (tmp / rel).write_text("[x](missing.md)")
         self.assertEqual([p.relative_to(tmp).as_posix() for p in mod.markdown_files(tmp)], ["docs/guide.md"])
