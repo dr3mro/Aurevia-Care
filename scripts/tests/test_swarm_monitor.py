@@ -551,7 +551,7 @@ class NotesTests(unittest.TestCase):
             return ""
         with mock.patch.object(swarm, "git", git), mock.patch.object(swarm, "authed_git", lambda *a, **k: ""):
             self.assertFalse(swarm.push_main("m", lambda: True))
-        self.assertIn(("add", "-A", "--", swarm.NOTES_DIR, swarm.NOTES_ARCHIVE), calls)
+        self.assertIn(("add", "-A", "--", swarm.NOTES_DIR, swarm.NOTES_ARCHIVE, swarm.REPORTS_DIR), calls)
         self.assertFalse(any(c[:1] == ("-c",) or "commit" in c for c in calls))
 
     def test_issue_proposals_are_validated_and_capped(self):

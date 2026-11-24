@@ -2471,7 +2471,7 @@ def referenced_notes():
             text = Path(name).read_text(errors="replace")
         except OSError:
             continue
-        names.update(re.findall(r"pr-notes/([A-Za-z0-9._-]+\.md)", text))
+        names.update(re.findall(r"pr/notes/([A-Za-z0-9._-]+\.md)", text))
     return names
 
 

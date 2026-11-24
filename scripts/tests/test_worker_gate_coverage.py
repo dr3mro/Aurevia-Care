@@ -187,7 +187,7 @@ class GitPlumbingTest(unittest.TestCase):
 
     def test_find_notes_file_returns_newest_match(self):
         with tempfile.TemporaryDirectory() as tmp:
-            folder = Path(tmp) / ".agent" / "pr-notes"
+            folder = Path(tmp) / "docs" / "pr" / "notes"
             folder.mkdir(parents=True)
             (folder / "W-20260101-000000.md").write_text("old")
             (folder / "W-20261231-235959.md").write_text("new")

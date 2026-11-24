@@ -64,7 +64,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(len(errors), 1)
 
     def test_historical_report_links_are_not_checked(self):
-        """Records moved under docs/pr/reports are history, like docs/archive."""
+        """Records under docs/pr are history, not specification pages."""
         tmp = self.make_repo("IAM-01 [ok](NOTE.md)")
         report = tmp / "docs" / "pr" / "reports" / "OLD.md"
         report.parent.mkdir(parents=True, exist_ok=True)
@@ -174,7 +174,7 @@ class StructureTests(unittest.TestCase):
         root = self.repo("IAM-01 clean\n", extra={
             "docs/swarm/REC.md": "# Record\n",
             "docs/pr/notes/N.md": "# Note\n",
-            "docs/archive/OLD.md": "# Old\n",
+            "docs/pr/reports/OLD.md": "# Old\n",
             "docs/GOOD.md": "# Good\n",
         })
         names = sorted(p.relative_to(root).as_posix()

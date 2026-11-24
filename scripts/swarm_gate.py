@@ -299,9 +299,21 @@ def evaluate(ctx):
                       ctx.base_sha, timestamp, tuple(checks), failures)
 
 
+def _gh_repo_args():
+    """Return the repository selector ``gh`` needs outside a repo worktree.
+
+    The gate checks the trusted verifier and the tested revision out into
+    subdirectories, so the working root is not a Git worktree and ``gh`` cannot
+    infer the repository. GitHub Actions exports GITHUB_REPOSITORY; local tests
+    run inside the repo and leave the selector out.
+    """
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    return ("--repo", repo) if repo else ()
+
+
 def _gh_json(*args):
     """Run ``gh`` with the workflow's read-only token and parse its JSON output."""
-    return json.loads(subprocess.check_output(["gh", *args], text=True,
+    return json.loads(subprocess.check_output(["gh", *_gh_repo_args(), *args], text=True,
                                               stderr=subprocess.DEVNULL) or "{}")
 
 

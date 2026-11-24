@@ -58,7 +58,7 @@ class CheckNamesTest(unittest.TestCase):
 
     def test_history_folders_are_ignored(self):
         self.assertEqual(self.found(["docs/pr/notes/S-G5-09.md", "docs/swarm/S-G3-02.md",
-                                     "docs/archive/s_g1_01/a.md"]), [])
+                                     "docs/pr/notes/x_04/a.md"]), [])
 
     def test_canonical_package_and_application_identifiers_are_enforced(self):
         """Package names and mobile identifiers must use the canonical aurevia prefix."""

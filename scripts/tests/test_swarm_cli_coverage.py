@@ -213,7 +213,8 @@ class MainDispatchCoverageTests(CliTestCase):
     def test_main_archive_todo_prints_the_archived_count(self):
         with mock.patch.object(swarm, "archive_todo", return_value=2):
             self.assertEqual(swarm.main(["archive-todo"]), 0)
-        self.assertIn(f"archived 2 finished task(s) to {swarm.ARCHIVE}", self.stdout.getvalue())
+        self.assertIn(f"archived 2 finished task(s) to {swarm.store().ROOT}/{swarm.store().DONE}",
+                      self.stdout.getvalue())
 
     def test_main_slot_matrix_emits_the_slot_list(self):
         with mock.patch.object(swarm, "load_slots", return_value=SLOTS):
