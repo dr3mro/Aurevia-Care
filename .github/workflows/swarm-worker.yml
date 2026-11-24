@@ -13,6 +13,10 @@ on:
       # body, branch, number and fix. One input keeps the interface small.
       # No model travels in this input; the router selects the model at run time.
       task: {type: string, required: true}
+      ignore_red_main:
+        description: 'Carry the wave-level red-main override into slot refill'
+        type: boolean
+        default: false
     secrets:
       # GITHUB_TOKEN is system-reserved: a workflow_call that declares it fails
       # GitHub validation. It is supplied automatically to the called workflow.
@@ -486,4 +490,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TASK_ID: ${{ fromJSON(inputs.task).id }}
+          SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
         run: python3 -I scripts/swarm.py top-up --id "$TASK_ID"

@@ -10,6 +10,11 @@ name: Swarm integrator
 # workflow_run chain) and runnable by hand.
 on:
   workflow_call:
+    inputs:
+      ignore_red_main:
+        description: 'Carry the wave-level red-main override into integration'
+        type: boolean
+        default: false
     secrets:
       # GITHUB_TOKEN is system-reserved: a workflow_call that declares it fails
       # GitHub validation. It is supplied automatically to the called workflow.
@@ -55,6 +60,7 @@ jobs:
       - id: queue
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
         run: python3 -I scripts/swarm.py plan-integration
 
   # Candidate code is merged and gated here with NO write token and NO secrets.

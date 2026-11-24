@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 from helpers import ROOT, load
@@ -1084,6 +1084,15 @@ class PlanTests(unittest.TestCase):
         plan = text.split("  plan:", 1)[1].split("  worker:", 1)[0]
         self.assertIn("IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}", plan)
         self.assertIn("--ignore-red-main", plan)
+        self.assertIn("SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}", plan)
+        worker_call = text.split("    uses: ./.github/workflows/swarm-worker.yml", 1)[1]
+        self.assertIn("ignore_red_main: ${{ inputs.ignore_red_main == true }}", worker_call)
+        integrator_call = text.split("    uses: ./.github/workflows/swarm-integrator.yml", 1)[1]
+        self.assertIn("ignore_red_main: ${{ inputs.ignore_red_main == true }}", integrator_call)
+        for name in ("swarm-worker.yml", "swarm-integrator.yml"):
+            called = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
+            self.assertEqual(called[True]["workflow_call"]["inputs"]["ignore_red_main"]["type"],
+                             "boolean")
         self.assertIn("github.run_id", config["concurrency"]["group"])
         self.assertIs(config["concurrency"]["cancel-in-progress"], False)
         plan = config["jobs"]["plan"]["concurrency"]
@@ -2603,6 +2612,20 @@ class RepairTests(unittest.TestCase):
         passed[0]["createdAt"] = "2026-11-22T11:00:00Z"
         with mock.patch.object(swarm, "gh_json", side_effect=[cancelled, failed, passed]):
             self.assertFalse(swarm.main_is_red())
+
+    def test_override_makes_every_red_gate_see_a_green_main(self):
+        with mock.patch.dict(os.environ, {"SWARM_IGNORE_RED_MAIN": "true"}), \
+                mock.patch.object(swarm, "gh_json") as listing, \
+                redirect_stderr(io.StringIO()) as err:
+            self.assertFalse(swarm.main_is_red())
+        listing.assert_not_called()
+        self.assertIn("SWARM_IGNORE_RED_MAIN override", err.getvalue())
+
+    def test_override_is_carried_into_the_next_wave_dispatch(self):
+        with mock.patch.dict(os.environ, {"SWARM_IGNORE_RED_MAIN": "true"}):
+            self.assertEqual(swarm.wave_dispatch_args(), ["-f", "ignore_red_main=true"])
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(swarm.wave_dispatch_args(), [])
 
     def test_main_is_red_reads_the_latest_finished_run(self):
         for conclusion, expected in (("failure", True), ("success", False), (None, False)):

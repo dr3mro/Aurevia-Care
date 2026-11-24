@@ -121,6 +121,7 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
           WORKERS: ${{ inputs.workers || '20' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
@@ -189,6 +190,7 @@ jobs:
       image: ${{ needs.plan.outputs.image_prefix }}-${{ matrix.slot }}:latest
       slot: ${{ format('{0}', matrix.slot) }}
       task: ${{ toJSON(matrix) }}
+      ignore_red_main: ${{ inputs.ignore_red_main == true }}
   # Integration runs inside the wave, after its workers: no workflow_run chain.
   # The integrator serializes itself (group swarm-integrator), so overlapping
   # waves queue their batches instead of racing to push main. It also runs when
@@ -204,6 +206,8 @@ jobs:
       actions: write
       packages: read
     uses: ./.github/workflows/swarm-integrator.yml
+    with:
+      ignore_red_main: ${{ inputs.ignore_red_main == true }}
     secrets:
       SWARM_TOKEN: ${{ secrets.SWARM_TOKEN }}
       OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
@@ -232,4 +236,5 @@ jobs:
             tasks
       - env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
         run: python3 -I scripts/swarm.py continue

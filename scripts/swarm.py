@@ -941,7 +941,7 @@ def run_event(run_id):
     ):
         # A red main is repaired by the next plan. Start it now instead of waiting for the
         # watchdog's half hour, because nothing else merges while main is red.
-        gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+        gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
     suspected = first_error(log) or where
     if kind == "repository-rules":
         proposed = (
@@ -1094,7 +1094,7 @@ def watchdog():
     if not active and work and idle >= START_IDLE_MINUTES:
         # Nothing runs, so no worker's last job will start the next wave and the hourly schedule
         # did not either. A dispatch is the only thing left that can.
-        gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+        gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
         print(f"No wave for {idle} minutes while work waits; started one.")
     if not active and work and idle >= STALL_MINUTES:
         number = record_issue(
@@ -3902,7 +3902,16 @@ def latest_main_delivery_verdict(workflow="delivery.yml"):
 
 
 def main_is_red(workflow="delivery.yml"):
-    """True when the latest completed Delivery verdict on main is a failure."""
+    """True when the latest completed Delivery verdict on main is a failure.
+
+    ``SWARM_IGNORE_RED_MAIN=true`` is an explicit, workflow-scoped safety
+    override: planning, PR flow, top-up and integration all see the same answer,
+    so one dispatched wave works through end to end. The override never changes
+    what the gate reports on main; it only stops the swarm from deferring work."""
+    if os.environ.get("SWARM_IGNORE_RED_MAIN", "").strip().lower() in ("1", "true"):
+        print("main_is_red: SWARM_IGNORE_RED_MAIN override; treating main as green",
+              file=sys.stderr)
+        return False
     try:
         runs = (
             gh_json(
@@ -4622,8 +4631,15 @@ def top_up(finished_id):
     text = reclaim(todo_read(), everything, live)
     if not plan_workers(1, [{"slot": 1}], text, prs, live=live, red=main_is_red()):
         return False
-    gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+    gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
     return True
+
+
+def wave_dispatch_args():
+    """Extra `gh workflow run` args that carry a wave-level override forward."""
+    if os.environ.get("SWARM_IGNORE_RED_MAIN", "").strip().lower() in ("1", "true"):
+        return ["-f", "ignore_red_main=true"]
+    return []
 
 
 def active_workers():
@@ -6544,7 +6560,7 @@ def main(argv=None):
             print("No free workers or a wave is already waiting.")
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
-            gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+            gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
     elif a.cmd == "top-up":
         print("Started another wave." if top_up(a.id) else "No room or no ready task.")
     elif a.cmd == "release":
