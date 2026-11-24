@@ -12,7 +12,7 @@
     `.github/swarm/model-pricing.json`). The real files are under `.opencode/`.
     Fix every active reference, repair the broken relative Markdown links, and
     reconcile the stale tracker claims. Historical records under docs/archive/,
-    docs/swarm/, tasks/ and docs/pr/notes/ are deliberately left untouched.
+    docs/swarm/, tasks/ and .agents/notes/ are deliberately left untouched.
     Regenerate the OpenCode config after editing instruction files and commit
     any resulting diff. Run `python3 -I scripts/check-docs.py` and the pack
     check as evidence.
@@ -50,7 +50,7 @@
     reports zero broken links outside generated output; (f) `bash scripts/quick-check.sh`.
   - evidence:
     Owner choice 2026-11-24: remove all old naming in active files; historical
-    records under tasks/, docs/archive/, docs/swarm/ and docs/pr/notes/ stay.
+    records under tasks/, docs/archive/, docs/swarm/ and .agents/notes/ stay.
     Tool: path map verified on disk before edits — `.opencode/config/slots.json`,
     `.opencode/model-pricing.json`, `.opencode/opencode.ci.json`,
     `.opencode/opencode.json`, `infra/{capacity,recovery,ops-queues,tenant-lifecycle,onboarding/fixtures}`
@@ -85,7 +85,7 @@
     migration naming test and `test_swarm.py`.
     Blocker (environment, not this change): `python3 -I scripts/check-docs.py`
     exit 1 with 151 lines, all from concurrent sessions moving notes to
-    `docs/pr/reports/` and deleting `docs/archive/`; zero errors name a file
+    `.agents/reports/` and deleting `docs/archive/`; zero errors name a file
     changed here, and the same check on a clean `git archive HEAD` copy exits 0.
     A later run crashed in `scripts/check-docs.py` with
     `NameError: name 'MOVED_DOCS' is not defined` while another session edited

@@ -15,7 +15,7 @@ The Aurevia V1 delivery loop runs as the agent swarm. Setup is in [docs/SWARM.md
 
 ## Watch it
 
-Open issues are the to-do list for a person: `needs-human` (a decision, a credential or a pull request that will not merge by itself), `needs-review` (a protected-file change or the daily rules pull request), `stalled` and `ci-failure`. Each says why and what was tried. The reconciled notes of each day are in `docs/pr/reports/<YYYY-MM-DD>.md`.
+Open issues are the to-do list for a person: `needs-human` (a decision, a credential or a pull request that will not merge by itself), `needs-review` (a protected-file change or the daily rules pull request), `stalled` and `ci-failure`. Each says why and what was tried. The reconciled notes of each day are in `.agents/reports/<YYYY-MM-DD>.md`.
 
 ## Stop it
 

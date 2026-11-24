@@ -8,7 +8,7 @@
     concurrent path/migration cleanup (commit 28cfb5b4):
     P-11 (P1): scripts/check-docs.py skips every link whose target basename is
     in MOVED_DOCS, so active broken links pass the gate; it also does not skip
-    the historical records moved to docs/pr/reports/, so the gate now fails on
+    the historical records moved to .agents/reports/, so the gate now fails on
     148 historical false positives. Fix the checker with tests that prove both
     sides, then repair the active links it reveals.
     N-01: com.example.aureviacare bundle identifier and Android package are

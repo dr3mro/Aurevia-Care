@@ -77,7 +77,7 @@ jobs:
         if: always()
         with:
           name: audit-findings
-          path: .agent/audit-findings.json
+          path: .agents/audit-findings.json
           if-no-files-found: ignore
           retention-days: 1
   append:

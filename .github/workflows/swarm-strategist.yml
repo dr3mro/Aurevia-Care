@@ -78,7 +78,7 @@ jobs:
         if: always()
         with:
           name: strategy-review
-          path: .agent/strategy.json
+          path: .agents/strategy.json
           if-no-files-found: ignore
           retention-days: 1
   publish:

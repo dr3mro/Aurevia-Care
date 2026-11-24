@@ -78,7 +78,7 @@ jobs:
         if: always()
         with:
           name: daily-qa
-          path: .agent/daily-qa.json
+          path: .agents/daily-qa.json
           if-no-files-found: ignore
           retention-days: 1
   publish:
