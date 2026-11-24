@@ -43,13 +43,31 @@ Commands executed in `apps/staff-web` (tool evidence; final lines quoted):
 - `python3 -I scripts/check-constraints.py` (from repo root) — `CONSTRAINTS_EXIT=0`.
 - `npx playwright test --config e2e/playwright.config.ts e2e/accessibilityScanResponsive.spec.ts --list` — final line:
   `Total: 1800 tests in 1 file` (180 declarations × 10 configured Chromium projects; 840 active registrations, 960 `test.fixme` registrations). Cross-browser projects are omitted because no WebKit/Firefox binary exists.
-- `bash apps/staff-web/check.sh` — **FAILED**: `Test Files 1 failed | 267 passed (268)`, `Tests 1 failed | 3044 passed (3045)`. The sole failure is the pre-existing e2e spec-set tripwire `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` (`expected [ …(15) ] to deeply equal [ …(9) ]`), because the new spec changes the committed spec set. All generated-client, typecheck, lint, build, bundle-size and other unit checks in the gate passed. The pin file is outside the one-file scope and is escalated in `task-requests`.
+- `bash apps/staff-web/check.sh` (first run) — **FAILED**: `Test Files 1 failed | 267 passed (268)`, `Tests 1 failed | 3044 passed (3045)`. The sole failure was the pre-existing e2e spec-set tripwire `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:166` (`expected [ …(15) ] to deeply equal [ …(9) ]`), because the new spec changed the committed spec set.
+- `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` (repair pass 1, before fix) — **RED**: `Tests 1 failed | 2 passed (3)`, same `expected [ …(15) ] to deeply equal [ …(9) ]` at line 166.
+- `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` (repair pass 1, after fix) — **GREEN**: `Test Files 1 passed (1)`, `Tests 3 passed (3)`.
+- `bash apps/staff-web/check.sh` (repair pass 1, after fix) — **GREEN**: `Test Files 268 passed (268)`, `Tests 3045 passed (3045)`, `No files with missing coverage. 267 files fully covered. 8 empty files skipped.` Coverage summary: `Statements 100% (5107/5107)`, `Branches 100% (2634/2634)`, `Functions 100% (1697/1697)`, `Lines 100% (4903/4903)`. The jsdom `Not implemented: navigation` stack traces on stderr are pre-existing noise from unrelated view tests; they are not assertion failures (all tests and the gate passed).
 
 **No live axe scan ran.** All Playwright engine executable paths resolve to absent files in this sandbox (`chromium`, `firefox`, `webkit` → `existsSync() === false`; no system browser found). The `--list` result is discovery evidence only; it does not establish WCAG compliance. CI on the exact SHA must execute the scan. Entry-point trace: Playwright project → `e2e/accessibilityScanResponsive.spec.ts` → `page.goto(route)` → real `AppShell`/router → `AxeBuilder.analyze()` → serious/critical zero assertion.
 
 ## Coverage
 
 No production source changed; e2e specs are excluded from Vitest (`--exclude 'e2e/**'`) and from the `tsconfig.json` typecheck, so no per-file production coverage metric applies. The canonical per-area command is `bash apps/staff-web/check.sh` (result recorded above). Every line/branch introduced is in the spec itself and enumerated below.
+
+### Repair pass 1 — branch-to-test list
+
+The coverage gate failed only because a test-data pin was stale, not because of an uncovered production line. No threshold was lowered and no exclusion, suppression or skip was added. The change is confined to `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`: the doc comment on `currentSpecs` now states the invariant, and the array gained the six committed specs the pin omitted. The deterministic test that exercises every newly enumerated case is the existing GAP tripwire `GAP: all-role, staging-RC and light/dark visual evidence is not yet recorded`, whose assertion at line 179 compares `e2eSpecs().sort()` with `currentSpecs.sort()`.
+
+| Enumerated case added to the pin | Deterministic test (tool evidence) |
+|---|---|
+| `accessibilityScanResponsive.spec.ts` (this story's new spec) | GAP tripwire line 179, via `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` — RED at line 166 before the fix, GREEN after |
+| `adminflow/admin-journey.spec.ts` | same assertion — set equality covers every member, so the 9→15 transition is asserted as a whole |
+| `financeflow/finance-journey.spec.ts` | same |
+| `pharmacyflow/pharmacy-bilingual-journey.spec.ts` | same |
+| `radflow/radiology-bilingual-journey.spec.ts` | same |
+| `therapyflow/therapy-journey.spec.ts` | same |
+
+The other two assertions in the same GAP test are unchanged and still pass: the workflow filter at line 184 asserts `[]`, and the visual-check filter at line 191 asserts `[]`. Full re-run `bash apps/staff-web/check.sh` proved 100% statements/branches/functions/lines over all 267 non-empty source files.
 
 Generation-time branches — exercised at module load, proven by `--list`:
 
@@ -87,13 +105,13 @@ The "true"/"included" sides of the substitute-heading guard and the serious/crit
 - smartclinic-plan-reviewer: NO-GO
 - smartclinic-code-reviewer: NO-GO
 
-Both NO-GO verdicts are solely the out-of-scope `currentSpecs` pin that keeps `check.sh` red; every in-file Critical and Required finding was fixed and re-verified, and the read-only reviewers confirmed the in-scope design is sound. The three required post-code reviewers are not all GO, so this change is **not releasable** until the companion pin task lands and the gate is re-run.
+Both NO-GO verdicts were solely the out-of-scope `currentSpecs` pin that kept `check.sh` red; every in-file Critical and Required finding was fixed and re-verified, and the read-only reviewers confirmed the in-scope design is sound. **Repair pass 1 addendum (tool evidence):** that pin is now updated and `bash apps/staff-web/check.sh` is green with 100% coverage, so the sole basis for both NO-GO verdicts is resolved. The verdict lines above are the historical results of those reviews; they were not re-run in this repair pass. The read-only reviewers must re-issue their verdicts against the green gate before the change is releasable.
 
 ## Findings
 
 - **Brief discrepancy (minor):** the brief says the Arabic toggle is labelled `العربية`; the shell actually labels it `اللغة` (`src/i18n/messages.ts:68`). The spec clicks the English name `Language` once to enter Arabic, so the difference does not affect the test. Harness journeys that use `العربية` mount different pages.
 - **Role denial:** `useRole()` is hard-coded to `reception` (`src/app/useRole.ts:10`). Sixteen registered patterns are denied to that role by `canAccessRoute`; their 960 cells are `test.fixme` because the only reachable screen would be `ForbiddenPage`. The story's "zero violations on every route" cannot be claimed for those routes in this harness.
-- **Spec-set pin (blocking, out of scope):** `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:86,166` pins the exact e2e spec file list. Its own comment says "a new journey must replace this pin". Updating it is required for a green `check.sh` but is outside the granted one-file scope.
+- **Spec-set pin — RESOLVED in repair pass 1:** `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:85,179` pins the exact e2e spec file list. Its own comment says "a new journey must replace this pin". Repair pass 1 added the six omitted committed specs (`accessibilityScanResponsive`, `adminflow/admin-journey`, `financeflow/finance-journey`, `pharmacyflow/pharmacy-bilingual-journey`, `radflow/radiology-bilingual-journey`, `therapyflow/therapy-journey`) and documented the invariant; the targeted test and the full `check.sh` are green.
 - **No live scan:** no browser binary is installed; `--list` is discovery only. The WCAG verdict must be produced by CI on the exact SHA.
 - **DEV-only target:** `/design-preview` is registered only when `import.meta.env.DEV` is true; the default harness starts the Vite dev server, so it resolves. A staged `E2E_BASE_URL` build would render the catch-all for that path.
 - **Test count:** 180 declarations become 1,800 registrations across the ten configured Chromium projects; with `fullyParallel: false` and retries this is a long CI job. The project name is in every failure message.
@@ -101,18 +119,14 @@ Both NO-GO verdicts are solely the out-of-scope `currentSpecs` pin that keeps `c
 
 ## Why this is not finished
 
-1. `bash apps/staff-web/check.sh` is red on one pre-existing out-of-scope test pin: the command and failure are quoted under Test evidence. Most likely cause: `currentSpecs` at `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:86` must include `accessibilityScanResponsive.spec.ts`. What was tried: all in-scope defects were fixed and the gate re-run conceptually through its individual stages (typecheck, lint, build and 3,044 unit tests pass). Exact next step: the owning worker updates that pin and re-runs `bash apps/staff-web/check.sh`.
+1. **RESOLVED in repair pass 1.** The red `bash apps/staff-web/check.sh` was caused solely by the stale `currentSpecs` pin at `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:85`. The pin now lists all 15 committed e2e specs; the targeted test passed 3/3 and the full gate passed 3,045/3,045 with 100% coverage. Command output is quoted under Test evidence and the branch-to-test list under Coverage. Remaining gate step: the read-only reviewers re-issue their verdicts against the green gate (the historical NO-GO lines above predate this fix).
 2. 16 role-denied routes are not scanned: `/patients/:id`, `/patients/:id/chart`, `/patients/:id/notes/:noteId`, `/admin/facilities`, `/admin/staff`, `/admin/config`, `/admin/audit`, `/messages`, `/results`, `/results/critical`, `/lab/accessions`, `/radiology`, `/pharmacy`, `/operations/exports`, `/operations/imports`, `/operations/queues`. Next step: an authorized-role + synthetic-API harness, then un-fixme those cells.
 3. No WCAG verdict is established here because no browser binary exists; CI must run the real scan on the exact SHA.
 
+The earlier request to create a task for the spec-set pin is withdrawn: the pin was fixed in repair pass 1 and is part of this pull request, so creating that task at merge would duplicate completed work.
+
 ```task-requests
 [
-  {
-    "title": "Update WEB-10 e2e spec-set pin for accessibilityScanResponsive",
-    "details": "apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:86 pins currentSpecs and line 166 compares it to e2eSpecs(); the new apps/staff-web/e2e/accessibilityScanResponsive.spec.ts makes check.sh fail 1/3045. Add the new spec path to currentSpecs and re-run bash apps/staff-web/check.sh to green.",
-    "scope": ["apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts"],
-    "depends": []
-  },
   {
     "title": "Authorized-role harness for role-denied responsive accessibility scans",
     "details": "useRole() is hard-coded to reception, so 16 registered patterns render ForbiddenPage and their 960 responsive accessibility cells are test.fixme. Provide a synthetic authorized role plus endpoint-shaped API fixtures and un-fixme those cells so WCAG 2.2 AA is proven on the intended screens.",
