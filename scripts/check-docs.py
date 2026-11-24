@@ -64,7 +64,7 @@ def mentioned_ids(text, prefixes):
 # Worker notes and archives are records, not specs: agent-written text there must
 # not turn main red. Historical pull-request reports were moved from
 # docs/pr/notes/ to docs/pr/reports/; they stay records at the new location.
-SKIP_PREFIXES = (".agent/", "docs/pr/")
+SKIP_PREFIXES = (".agent/", "docs/archive/", "docs/pr/")
 
 
 def markdown_files(root):
