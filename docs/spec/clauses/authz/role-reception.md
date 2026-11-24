@@ -10,7 +10,7 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.aurevia.authz.clauses.RoleReceptionTest` (path: `apps/api/src/test/java/com/aurevia/aurevia/authz/clauses/RoleReceptionTest.java`). All 11 tests are active; the targeted Surefire report records `tests="11" errors="0" skipped="0" failures="0"`. Fixtures are synthetic: fixed clock and UUIDs, mocked repository boundaries with an inline transaction template, and a MockMvc standalone controller with the synthetic-auth tenant interceptor.
+Test class `com.aurevia.authz.clauses.RoleReceptionTest` (path: `apps/api/src/test/java/com/aurevia/authz/clauses/RoleReceptionTest.java`). All 11 tests are active; the targeted Surefire report records `tests="11" errors="0" skipped="0" failures="0"`. Fixtures are synthetic: fixed clock and UUIDs, mocked repository boundaries with an inline transaction template, and a MockMvc standalone controller with the synthetic-auth tenant interceptor.
 
 Allowed workflow, one test per verb:
 
@@ -32,13 +32,13 @@ Scope narrowing:
 - `anotherOrganizationIsRefused` — the real `CommandAuthorization` command gate admits `registerPatient` for a member of the home organization and denies the same command with HTTP 403 `FORBIDDEN` (recorded reason `MEMBERSHIP_INACTIVE`) for the same subject selecting another organization.
 - `handoffOfUnassignedItemIsRefused` — `CheckInService.handoff` refuses an item with no active assignee with HTTP 409 `NO_ACTIVE_ASSIGNEE` and performs no write.
 
-Production classes exercised through their normal service or HTTP entry points: `com.aurevia.aurevia.authz.ActionPolicy`, `com.aurevia.aurevia.scheduling.checkin.WorklistPolicy`, `com.aurevia.aurevia.patient.identity.IdentityActionPolicy`, `com.aurevia.aurevia.messaging.enrollment.EnrollmentActions`, `com.aurevia.aurevia.scheduling.checkin.CheckInService`, `com.aurevia.aurevia.messaging.enrollment.PatientAccessService`, `com.aurevia.aurevia.messaging.enrollment.PatientAccessController`, `com.aurevia.aurevia.api.authorization.CommandAuthorization` and `CommandCatalog`.
+Production classes exercised through their normal service or HTTP entry points: `com.aurevia.authz.ActionPolicy`, `com.aurevia.scheduling.checkin.WorklistPolicy`, `com.aurevia.patient.identity.IdentityActionPolicy`, `com.aurevia.messaging.enrollment.EnrollmentActions`, `com.aurevia.scheduling.checkin.CheckInService`, `com.aurevia.messaging.enrollment.PatientAccessService`, `com.aurevia.messaging.enrollment.PatientAccessController`, `com.aurevia.api.authorization.CommandAuthorization` and `CommandCatalog`.
 
 Neighbouring active evidence, surveyed and not changed by this task: `authz.clauses.FacilityScopeEnforcementTest` and `authz.clauses.FacilityScopeFurtherNarrowAccessTest` (facility scope on all check-in commands), `messaging.enrollment.PatientAccessControllerTest` (patient-access HTTP adapter), `scheduling.clauses.EligibleRolesRecordVitalsOpenEncounterTest` (clinical-role refusal), and `messaging.enrollment.AuthorizePatientAccessThroughConnectionStaffAccessTest` (patient-link authorization). The older `docs/spec/clauses/authz/facility-scope-further-narrow-access.md` status is stale: its tests are active and facility scope is enforced today.
 
 ## Gap
 
-The "demographic/scheduling fields" half of the scope constraint is **not built**. `com.aurevia.aurevia.patient.PatientService.register` accepts `contacts`, `identifiers` and `consents` as raw JSON text with no role-based field allowlist and no guard that refuses clinical fields for a reception caller; `com.aurevia.aurevia.messaging.enrollment.PatientAccessService.changeStaffContact` changes only a contact digest, so there is no field set to restrict. The enforced scope today is assigned facilities plus active membership in the selected organization, not a field-level boundary.
+The "demographic/scheduling fields" half of the scope constraint is **not built**. `com.aurevia.patient.PatientService.register` accepts `contacts`, `identifiers` and `consents` as raw JSON text with no role-based field allowlist and no guard that refuses clinical fields for a reception caller; `com.aurevia.messaging.enrollment.PatientAccessService.changeStaffContact` changes only a contact digest, so there is no field set to restrict. The enforced scope today is assigned facilities plus active membership in the selected organization, not a field-level boundary.
 
 The would-prove test for the missing behaviour is recorded here rather than added as a skipped Java test: AGENTS.md forbids a skipped test and `scripts/check-constraints.py` rejects an added `@Disabled` line, so a skipped test would fail the worker and quality gates. The complete test to enable when field scope exists is:
 
@@ -54,6 +54,6 @@ void fieldOutsideDemographicSchedulingIsRefused() {
 }
 ```
 
-To build it: add a validated demographic/scheduling field schema at the patient-registration and contact-change trust boundaries, reject fields outside that schema for reception with a stable error code and a `DENIED` audit row, and add the test above plus the corresponding rejection test on the contact-change route. Files that would change: `apps/api/src/main/java/com/aurevia/aurevia/patient/PatientService.java`, `apps/api/src/main/java/com/aurevia/aurevia/messaging/enrollment/PatientAccessService.java`, their owning tests and the OpenAPI request schemas. Estimate: two implementation tasks plus one test-enablement task; a `task-requests` entry is filed in the worker notes for the first of these.
+To build it: add a validated demographic/scheduling field schema at the patient-registration and contact-change trust boundaries, reject fields outside that schema for reception with a stable error code and a `DENIED` audit row, and add the test above plus the corresponding rejection test on the contact-change route. Files that would change: `apps/api/src/main/java/com/aurevia/patient/PatientService.java`, `apps/api/src/main/java/com/aurevia/messaging/enrollment/PatientAccessService.java`, their owning tests and the OpenAPI request schemas. Estimate: two implementation tasks plus one test-enablement task; a `task-requests` entry is filed in the worker notes for the first of these.
 
 No other part of this row is in the gap. This task added proof only: no production code, existing test, contract, migration or tracker was changed.

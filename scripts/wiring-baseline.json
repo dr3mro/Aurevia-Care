@@ -8,7 +8,6 @@
   ],
   "inmemory-in-main": [
     "apps/api/src/main/java/com/aurevia/api/authorization/InMemoryDecisionSink.java",
-    "apps/api/src/main/java/com/aurevia/clinical/templates/InMemoryTemplateStore.java",
     "apps/api/src/main/java/com/aurevia/messaging/enrollment/InMemoryPatientAccessStore.java"
   ],
   "requirement-id-name": [

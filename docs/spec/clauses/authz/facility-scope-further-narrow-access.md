@@ -23,7 +23,7 @@ Production classes surveyed (none of them narrow access by facility today):
 - `com.aurevia.scheduling.checkin.CheckInService.authorize` — checks active membership and role permission only; `worklist` passes the caller-supplied facility code straight to the repository.
 - `com.aurevia.authz.access.EmergencyAccessService` — records a `facilityCode` on the grant for the audit scope, but `active()` checks membership, clinician role, revocation and expiry only.
 - `com.aurevia.authz.access.AccessRepository` — `facilityExists(code)` only checks that a facility belongs to the active organization.
-- `com.aurevia.staff.StaffInvitationService` and `V70__build_01.sql` `accept_staff_invitation` — the invitation carries `facility_id`, but acceptance inserts a facility-free `membership` row.
+- `com.aurevia.staff.StaffInvitationService` and `V70__staff_invitation.sql` `accept_staff_invitation` — the invitation carries `facility_id`, but acceptance inserts a facility-free `membership` row.
 - `V1__tenant_schema.sql` defines the tenant-owned `facility` table; there is no `staff_facility`, `user_facility`, `membership_facility` or `facility_assignment` table, and `membership`/`role_assignment` have no facility column.
 - `com.aurevia.web.FacilityController`, `FacilityService` — facility CRUD, not an authorization scope.
 - No contract under `contracts/` describes a facility-scope claim or input.
@@ -34,7 +34,7 @@ Facility scope is a recorded attribute, not an enforced authorization boundary. 
 
 To build it:
 
-1. Persist facility scope on the identity model — add a tenant-owned, forced-RLS association between membership (or role assignment) and `facility` in a new Flyway migration; propagate the invitation's `facility_id` in `V70__build_01.sql`'s `accept_staff_invitation`; expose it through the staff store and service.
+1. Persist facility scope on the identity model — add a tenant-owned, forced-RLS association between membership (or role assignment) and `facility` in a new Flyway migration; propagate the invitation's `facility_id` in `V70__staff_invitation.sql`'s `accept_staff_invitation`; expose it through the staff store and service.
 2. Enforce it at every trust boundary that is already facility-aware — `CheckInService.worklist` and the other check-in commands, `AppointmentService`, and the emergency/support decisions in `authz/access`, by narrowing the resource set to the caller's assigned facilities (and deciding the admin/privacy-auditor exception). Update the action-policy contract and OpenAPI with the scope claim.
 3. Enable these two tests (remove `@Disabled`) and add the equivalent negative cases for the other facility-aware endpoints.
 

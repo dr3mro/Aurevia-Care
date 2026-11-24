@@ -43,7 +43,7 @@ Production classes exercised by these tests:
   `saveScale`, `find` (reading reload), all inside the tenant-guarded transaction.
 - `com.aurevia.therapy.TherapyContract` — `OutcomeScale`, `OutcomeReading`,
   `ScaleRequest`, `OutcomeRequest`, `Actor`, `TherapyAggregate`.
-- `db/migrations/V77__build_12.sql` — `therapy_outcome_scale` and `therapy_outcome_reading` tables,
+- `db/migrations/V77__therapy_episode.sql` — `therapy_outcome_scale` and `therapy_outcome_reading` tables,
   the immutable-definition and approved-scale/unit-match triggers, RLS and FORCE RLS.
   `db/migrations/V85__therapy_store.sql` — the atomic `therapy_scale_sequence` version counter.
 

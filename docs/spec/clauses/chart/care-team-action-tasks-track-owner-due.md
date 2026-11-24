@@ -66,7 +66,7 @@ Production classes exercised through those entry points:
 - `com.aurevia.scheduling.followup.FollowUpConfiguration` — the
   approved interval that makes the fixture suggestion deterministic.
 - Persistence and isolation are supplied by
-  `db/migrations/V74__build_05.sql`, which creates `public.care_team_task` with
+  `db/migrations/V74__follow_up_suggestions.sql`, which creates `public.care_team_task` with
   the owner, due-date, status and outcome columns, per-tenant `ENABLE` and
   `FORCE ROW LEVEL SECURITY`, the tenant isolation policy and the runtime grants.
 

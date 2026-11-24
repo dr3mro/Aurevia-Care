@@ -152,6 +152,9 @@ then
 fi
 
 # 6. Audit is append-only and its hash chain verifies.
+# This app-role probe asserts the V2 privilege boundary only: PostgreSQL denies
+# the UPDATE before the reject-mutation trigger can fire, so it is not trigger
+# coverage. The owner-role loop in scenario 7 exercises the trigger itself.
 "${app[@]}" -v a="$org_a" <<'SQL' >/dev/null
 SET app.current_org = :'a';
 INSERT INTO public.audit_event (organization_id, actor_id, action, outcome, correlation_id)
@@ -165,7 +168,7 @@ SET app.current_org = :'a';
 UPDATE public.audit_event SET outcome = 'DENIED' WHERE correlation_id = 'check-1';
 SQL
 then
-  printf 'fail: audit row was mutable\n' >&2
+  printf 'fail: app role retained audit UPDATE privilege\n' >&2
   exit 1
 fi
 
@@ -175,6 +178,59 @@ SELECT count(*) FROM public.audit_verify_chain(:'a') WHERE NOT ok;
 SQL
 )
 [[ "$bad" == "0" ]] || { printf 'fail: audit chain has %s bad rows\n' "$bad" >&2; exit 1; }
+
+# 6a. The derived audit actor is bound to the audit row's tenant, not merely to
+# the subject. Seed a subject that exists only in tenant B, then let the owner
+# role disable RLS on the lookup table inside a rolled-back probe. Removing RLS
+# as a crutch means only the function's tenant predicate can keep B's user off
+# an A audit row. The DO block raises when a foreign actor is stamped; a raised
+# error is the PASS side of this probe.
+"${mig[@]}" -v b="$org_b" <<'SQL' >/dev/null
+SET app.current_org = :'b';
+INSERT INTO public.user_identity (organization_id, subject, display_name)
+  VALUES (:'b', 'foreign-only-actor', 'Foreign Only Actor');
+SQL
+
+if ! "${mig[@]}" -v a="$org_a" <<'SQL' >/dev/null 2>&1
+BEGIN;
+SET LOCAL app.current_org = :'a';
+SET LOCAL app.actor = 'foreign-only-actor';
+ALTER TABLE public.user_identity DISABLE ROW LEVEL SECURITY;
+INSERT INTO public.audit_event (organization_id, action, outcome, correlation_id)
+  VALUES (:'a', 'ACTOR_TENANT_PROBE', 'SUCCESS', 'check-actor-tenant');
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.audit_event e
+     WHERE e.correlation_id = 'check-actor-tenant'
+       AND e.actor_id = (SELECT id FROM public.user_identity
+                          WHERE subject = 'foreign-only-actor')
+  ) THEN
+    RAISE EXCEPTION 'audit actor was derived from a foreign tenant';
+  END IF;
+END $$;
+ROLLBACK;
+SQL
+then
+  printf 'fail: audit actor lookup was not tenant-bound\n' >&2
+  exit 1
+fi
+
+# An explicit actor_id must never be replaced by the lookup, even when the
+# session names a foreign subject.
+rows=$("${app[@]}" -v a="$org_a" <<'SQL'
+SET app.current_org = :'a';
+SET app.actor = 'foreign-only-actor';
+INSERT INTO public.audit_event (organization_id, actor_id, action, outcome, correlation_id)
+  SELECT :'a', id, 'ACTOR_EXPLICIT_PROBE', 'SUCCESS', 'check-actor-explicit'
+    FROM public.user_identity WHERE organization_id = :'a' AND subject = 'admin-a';
+SELECT e.actor_id = u.id
+  FROM public.audit_event e
+  JOIN public.user_identity u ON u.organization_id = e.organization_id AND u.subject = 'admin-a'
+ WHERE e.correlation_id = 'check-actor-explicit';
+SQL
+)
+[[ "$rows" == "t" ]] || { printf 'fail: explicit audit actor was overwritten\n' >&2; exit 1; }
 
 # 7. Staff history is immutable for every role, including the migration owner.
 # Seed one grant of each kind so the triggers actually see rows to reject.
@@ -192,9 +248,13 @@ INSERT INTO public.config_entry (organization_id, key, version, value)
   VALUES (:'a', 'check.policy', 1, 'seed');
 INSERT INTO public.config_approval (organization_id, entry_id, note)
   SELECT :'a', id, 'seed approval' FROM public.config_entry WHERE key = 'check.policy';
+-- Seed an audit row so audit_event's reject-mutation trigger sees a row under
+-- FORCE RLS when the owner-role loop below runs.
+INSERT INTO public.audit_event (organization_id, actor_id, action, outcome, correlation_id)
+  VALUES (:'a', NULL, 'IMMUTABILITY_PROBE', 'SUCCESS', 'check-immutability');
 SQL
 
-for t in user_identity membership role_assignment config_entry config_approval; do
+for t in user_identity membership role_assignment config_entry config_approval audit_event; do
   if "${mig[@]}" -v a="$org_a" <<SQL >/dev/null 2>&1
 SET app.current_org = :'a';
 UPDATE public.$t SET organization_id = organization_id WHERE organization_id = :'a';
@@ -219,7 +279,7 @@ DO $$
 DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['user_identity','membership','role_assignment',
-                           'config_entry','config_approval']
+                           'config_entry','config_approval','audit_event']
   LOOP
     IF has_table_privilege('aurevia_app','public.'||t,'UPDATE')
        OR has_table_privilege('aurevia_app','public.'||t,'DELETE')

@@ -79,7 +79,7 @@ jobs:
         with:
           persist-credentials: false
           # images-ready and plan-workers read .opencode/config/slots.json; the
-          # old .github/swarm path was removed in the repository rename.
+          # swarm configuration now lives under .opencode/; the former location was removed.
           sparse-checkout: |
             scripts
             .opencode/config

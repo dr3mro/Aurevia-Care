@@ -51,7 +51,7 @@ Where the clause is implemented today (source survey result):
 - Schema: `db/migrations/V1__tenant_schema.sql` defines `role_assignment` with the
   `granted_by`, `valid_from` and `valid_to` columns; `db/migrations/V2__rls_roles_policies.sql`
   forces row-level security on tenant tables; `db/migrations/V4__staff_lifecycle.sql`
-  makes membership and role grants append-only; `db/migrations/V71__build_02.sql`
+  makes membership and role grants append-only; `db/migrations/V71__role_change_history.sql`
   creates the append-only `role_change_history` ledger with forced RLS, immutability
   triggers and a `capture_role_change()` trigger function that records the actor
   (from `app.actor` or the `granted_by` foreign key) and the effective window for

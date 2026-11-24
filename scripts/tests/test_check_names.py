@@ -30,12 +30,23 @@ class CheckNamesTest(unittest.TestCase):
 
     def test_repository_default_rejects_former_legacy_paths(self):
         """The repository-wide check must not exempt folders from a completed rename."""
+        paths = (
+            "contracts/x_01/a.yaml", "contracts/x_02/a.yaml", "contracts/x_03/a.yaml",
+            "apps/api/src/main/java/com/aurevia/api/x_01/A.java",
+            "apps/api/src/main/java/com/aurevia/api/x_02/A.java",
+            "apps/api/src/main/java/com/aurevia/api/x_03/A.java",
+            "apps/api/src/test/java/com/aurevia/api/x_01/A.java",
+            "apps/api/src/test/java/com/aurevia/api/x_02/A.java",
+            "apps/api/src/test/java/com/aurevia/api/x_03/A.java",
+        )
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp, "contracts/x_01/a.yaml")
-            path.parent.mkdir(parents=True)
-            path.write_text("x")
-            self.assertEqual(check_names.violations(tmp, ["contracts/x_01/a.yaml"]),
-                             ["contracts/x_01"])
+            for name in paths:
+                target = Path(tmp, name)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("x")
+            found = check_names.violations(tmp, list(paths))
+        for name in paths:
+            self.assertIn(str(Path(name).parent), found)
 
     def test_java_package_segment_is_checked(self):
         with tempfile.TemporaryDirectory() as tmp:

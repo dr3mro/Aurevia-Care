@@ -10,7 +10,7 @@ Partly proven
 
 ## Evidence
 
-The proof is `apps/api/src/test/java/com/aurevia/aurevia/authz/clauses/RoleLabCollectorVerifierTest.java`. It uses synthetic UUIDs, a fixed clock, a `MembershipResolver` fixture, mocked `LabAccessionRepository` / `PatientRepository` / `AuditAppender` / `TransactionTemplate` and `TenantContext.set`/`clear`. No production code, migration, contract, route or existing test was changed.
+The proof is `apps/api/src/test/java/com/aurevia/authz/clauses/RoleLabCollectorVerifierTest.java`. It uses synthetic UUIDs, a fixed clock, a `MembershipResolver` fixture, mocked `LabAccessionRepository` / `PatientRepository` / `AuditAppender` / `TransactionTemplate` and `TenantContext.set`/`clear`. No production code, migration, contract, route or existing test was changed.
 
 Enabled tests and the branch each asserts:
 

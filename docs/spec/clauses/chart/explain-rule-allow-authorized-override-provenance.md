@@ -66,7 +66,7 @@ for the terminal-state and read preconditions):
   `APPOINTMENT_RESCHEDULE` to reception and tenant_admin but not to clinician.
 - `com.aurevia.scheduling.followup.JdbcFollowUpStore` — the
   tenant-scoped JDBC boundary that persists the `override_*` columns on
-  `public.follow_up_suggestion` in `db/migrations/V74__build_05.sql` (forced row
+  `public.follow_up_suggestion` in `db/migrations/V74__follow_up_suggestions.sql` (forced row
   level security).
 
 Corroborating suite already on `main` (not re-tested here):

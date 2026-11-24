@@ -55,7 +55,7 @@ Production classes exercised by the proof:
   /api/v1/documents/associations` adapter that receives the service by injection.
 - `db/migrations/V17__document_associations.sql` — association and event tables with
   `ENABLE`/`FORCE ROW LEVEL SECURITY`, tenant policies, a SHA-256 trigger over the retained
-  bytes and an immutable-update guard; `db/migrations/V75__build_06.sql` adds the
+  bytes and an immutable-update guard; `db/migrations/V75__document_verified_content.sql` adds the
   verified-content function used by download.
 
 The thin HTTP adapter `DocumentController.link()` is unit-covered by

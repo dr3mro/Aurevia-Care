@@ -75,7 +75,7 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
   `apps/api/src/test/java/com/aurevia/api/authorization/CommandAuthorizationTest.java`
   and `apps/api/src/test/java/com/aurevia/radiology/StudyLinkReviewTest.java`.
 - The onboarding fixture declares issuer `ORG-A` in
-  `infra/s_g5_09/fixtures/synthetic_onboarding_manifest.json`.
+  `infra/onboarding/fixtures/synthetic_onboarding_manifest.json`.
 
 ## Facilities and care units
 
@@ -175,10 +175,10 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
 ## Other synthetic fixture files
 
 The same conventions govern the evidence fixtures under
-`infra/s_g5_*/fixtures/` (files named `synthetic_*_evidence.json` for the pilot,
+`infra/<domain>/fixtures/` (files named `synthetic_*_evidence.json` for the pilot,
 recovery, lifecycle, UX and operations-queue rehearsals, plus
 `synthetic_evidence.json` for the build rehearsal) and the onboarding manifest
-`infra/s_g5_09/fixtures/synthetic_onboarding_manifest.json`. The latter uses
+`infra/onboarding/fixtures/synthetic_onboarding_manifest.json`. The latter uses
 `SYN-`-prefixed source IDs, `M-`-prefixed MRNs, an obviously invented given/family
 placeholder pair (a short token derived from the word "synthetic" and the word
 "patient"), a fixed checksum and a `legacy-synthetic-emr` historical signature;

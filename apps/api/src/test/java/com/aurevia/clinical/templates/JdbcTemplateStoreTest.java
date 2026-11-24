@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -34,12 +38,17 @@ class JdbcTemplateStoreTest {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private NamedParameterJdbcTemplate jdbc;
+    private PlatformTransactionManager manager;
+    private TransactionTemplate transactions;
     private JdbcTemplateStore store;
 
     @BeforeEach
     void setUp() {
         jdbc = mock(NamedParameterJdbcTemplate.class);
-        store = new JdbcTemplateStore(jdbc);
+        manager = mock(PlatformTransactionManager.class);
+        when(manager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
+        transactions = new TransactionTemplate(manager);
+        store = new JdbcTemplateStore(jdbc, transactions);
     }
 
     private static FieldDefinition field() {
@@ -194,6 +203,16 @@ class JdbcTemplateStoreTest {
     void auditMapsEvents() throws Exception {
         stubRows(JdbcTemplateStore.mapAudit(auditRow(), 0));
         assertEquals(List.of(auditEvent()), store.audit(ORG));
+    }
+
+    @Test
+    void everyStatementRunsInsideTheTenantGuardedTransaction() {
+        store.dictionary(ORG, "absent");
+        store.putDictionary(ORG, dictionary());
+
+        // Both the read and the write path must enter the transaction manager,
+        // which is what binds the tenant GUCs before forced RLS sees a row.
+        verify(manager, times(2)).getTransaction(any());
     }
 
     @Test

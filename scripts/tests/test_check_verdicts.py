@@ -47,6 +47,23 @@ class ParsingTests(unittest.TestCase):
         _, findings = verdicts.verdicts_and_findings(section)
         self.assertEqual(findings, ["Required: the false side of the CAS is unresolved"])
 
+    def test_negated_resolution_keeps_a_finding_open(self):
+        open_lines = [
+            "Required: the false side of the CAS is not resolved",
+            "Required: the false side of the CAS is still not resolved",
+            "Required: the false side has never been resolved",
+            "Required: the fix was not yet resolved in the branch",
+        ]
+        for line in open_lines:
+            with self.subTest(line=line):
+                _, findings = verdicts.verdicts_and_findings(line)
+                self.assertEqual(findings, [line])
+        # A remote, non-negating "resolved" is a fix; the lookback is bounded.
+        fixed = "Required: " + "word " * 30 + "resolved in abc123"
+        _, findings = verdicts.verdicts_and_findings(fixed)
+        self.assertEqual(findings, [])
+        self.assertTrue(verdicts.finding_is_resolved("no resolution word here") is False)
+
 
 class ProblemTests(unittest.TestCase):
     def test_a_clean_set_of_verdicts_passes(self):

@@ -27,9 +27,13 @@ jobs:
           # can be dismissed by the branch protection rules.
           if ! gh pr view "$PR_URL" --json labels --jq '.labels[].name' | grep -qx 'dependency-approved'; then
             echo "Dependency update needs the dependency-approved label from a person."
-            exit 0
+            exit 1
           fi
       - name: Enable auto-merge
+        # Defence in depth: a missing label must also stop this step if the
+        # approval check above is ever weakened. The bot-only job condition
+        # and the label itself are unchanged.
+        if: contains(github.event.pull_request.labels.*.name, 'dependency-approved')
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}

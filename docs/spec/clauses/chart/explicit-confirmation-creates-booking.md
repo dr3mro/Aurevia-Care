@@ -76,7 +76,7 @@ Production classes exercised through the normal HTTP entry point:
 
 The follow-up schedule, override, booking and task model lives in `scheduling.followup`; its
 durable `follow_up_suggestion` and `care_team_task` tables are created in
-`db/migrations/V74__build_05.sql` with `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`
+`db/migrations/V74__follow_up_suggestions.sql` with `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`
 and tenant isolation policies, while `db/migrations/V8__scheduling.sql` owns the shared
 appointment table. `chart.record` holds the CLN-03 longitudinal chart and has no booking
 behaviour. All five follow-up routes are published in `contracts/openapi.yaml` (tasks 3492,

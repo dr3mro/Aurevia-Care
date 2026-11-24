@@ -47,7 +47,7 @@
   implemented data-pipeline for either is the *messaging governance* framework
   (V62, `messaging/governance/`), and it tracks synthetic `messaging_resource`
   facts only. The G5 artifacts checked by
-  `infra/s_g5_08/tenant_lifecycle_evidence.py` validate the *shape* of an
+  `infra/tenant-lifecycle/tenant_lifecycle_evidence.py` validate the *shape* of an
   export manifest and retention ledger; they do not export or delete live rows.
   Everywhere else the cells read `NOT YET:` with a suggested task:
   - `TASK-EXPORT` — **Implement OPS-07 tenant export pipeline (manifest, schema
@@ -280,7 +280,7 @@ wish to treat it as staff personal data; it is listed here for that decision.
   `apps/api/src/main/java/com/aurevia/messaging/governance/`
   (`MessagingGovernanceService`, `MessagingGovernanceController`,
   `MessagingAuditContract`, `MessagingGovernanceActions`), V62 migration, and
-  `infra/s_g5_08/tenant_lifecycle_evidence.py` (synthetic artifact evaluator).
+  `infra/tenant-lifecycle/tenant_lifecycle_evidence.py` (synthetic artifact evaluator).
 - Role keys and authorization boundaries: the `*Actions.java` / `*Policy.java`
   files listed in "How to read the tables", plus `tenant/TenantContext.java`
   (purpose `FACILITY_ADMIN` and request scope).

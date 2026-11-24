@@ -62,7 +62,7 @@ the task brief says 28, but the specification and story list 26):
 | ExchangeGrant | `public.exchange_authorization` | `V19__exchange_orders.sql` | organization_id + opaque id, forced RLS |
 | DeliveryEvent | `public.delivery_outbox`, `public.delivery_receipt` | `V55__durable_event_outbox.sql` | organization_id + opaque id, forced RLS |
 | Attachment | `public.attachment` | `V82__attachment_store.sql` | organization_id + opaque id, forced RLS |
-| TherapyEpisode | `public.therapy_episode` | `V77__build_12.sql` | organization_id + opaque id, forced RLS |
+| TherapyEpisode | `public.therapy_episode` | `V77__therapy_episode.sql` | organization_id + opaque id, forced RLS |
 | Prescription | `public.prescription_draft` | `V43__prescription_drafts.sql` | organization_id + opaque id, forced RLS |
 | Invoice | `public.finance_invoice` | `V45__finance.sql` | organization_id + opaque id, forced RLS |
 | PaymentEntry | `public.finance_ledger_entry` | `V45__finance.sql` | organization_id + opaque id, forced RLS |

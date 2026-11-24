@@ -10,6 +10,8 @@ Flyway migrations are applied by `aurevia_migrate`; the application uses `aurevi
 - `V6__catalog_fold.sql` — approved catalog family fold.
 - `V7__patient_registration.sql` — append-only patient records and issuer-scoped MRN.
 
+Flyway identifies an applied migration by version **and** description. Seven migrations that had been reserved under task IDs were renamed to business-domain descriptions without changing their version numbers or SQL bytes: V70 `staff_invitation`, V71 `role_change_history`, V74 `follow_up_suggestions`, V75 `document_verified_content`, V76 `medication_catalog_version`, V77 `therapy_episode` and V78 `export_provenance`. An environment that already applied the old filenames has a checksum-history mismatch and must run `flyway repair` once before the next `validate` or migration; a fresh database applies the new names directly. This is an operator step, not a schema change, and it must be repeated for every persistent environment.
+
 Run `bash ../check.sh` from `db/` against a local PostgreSQL to apply the migrations and assert policy, isolation and audit behavior on synthetic data. That is the runtime and policy gate.
 
 ## Change-safety gate (OPS-06)

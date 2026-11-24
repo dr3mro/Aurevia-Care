@@ -9,7 +9,7 @@ Partly proven
 ## Evidence
 
 Test class `RoleClinicianTest`
-(`apps/api/src/test/java/com/aurevia/aurevia/authz/clauses/RoleClinicianTest.java`),
+(`apps/api/src/test/java/com/aurevia/authz/clauses/RoleClinicianTest.java`),
 17 active tests, 0 skipped. It changes no production file, migration, contract or
 existing test. All fixtures are synthetic; tenant and subject arrive through
 `X-Active-Organization` and `X-Synthetic-Subject` headers on the prescription
@@ -74,7 +74,7 @@ which this test-only task is not allowed to change.
 1. **Reconcile.** `exchange.result.ResultActionPolicy` excludes `clinician` from
    `RECONCILIATION_READ` and `RECONCILIATION_RESOLVE`; only result read and review
    acknowledgement are permitted. Files to change:
-   `apps/api/src/main/java/com/aurevia/aurevia/exchange/result/ResultActionPolicy.java`
+   `apps/api/src/main/java/com/aurevia/exchange/result/ResultActionPolicy.java`
    (grant the role), the owning `ResultRoutingService`/`ReconciliationService`
    tests and the OpenAPI entry for the resolution route. The complete would-prove
    test for the enabling task is:

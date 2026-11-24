@@ -7,7 +7,7 @@ Load aurevia-delivery. Follow AGENTS.md. In review-only mode preserve the workin
 
 ## Runtime model selection
 
-The model is chosen at run time by `scripts/model-router.py`; no image, slot or workflow field pins one. `.github/swarm/slots.json` carries only slot identity and OpenCode config. Intelligent mode ranks verified $0.00/M models from `.github/swarm/model-pricing.json` by agent role and phase, rotating on rate limits only to another verified free model. `SWARM_FORCE_MODEL=1` forces the exact `SWARM_MODEL`; otherwise `SWARM_MODEL` is only the final fallback. Never put a model id, API key or credential in a task payload, fixture, log or tracker.
+The model is chosen at run time by `scripts/model-router.py`; no image, slot or workflow field pins one. `.opencode/config/slots.json` carries only slot identity and OpenCode config. Intelligent mode ranks verified $0.00/M models from `.opencode/model-pricing.json` by agent role and phase, rotating on rate limits only to another verified free model. `SWARM_FORCE_MODEL=1` forces the exact `SWARM_MODEL`; otherwise `SWARM_MODEL` is only the final fallback. Never put a model id, API key or credential in a task payload, fixture, log or tracker.
 
 ## Durable state and evidence
 

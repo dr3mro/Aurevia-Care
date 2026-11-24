@@ -69,7 +69,7 @@ Production classes exercised:
   `EvaluationRequest`, `Measurement`, `Goal`, `OutcomeRequest`, `NoteRequest`, `NoteKind`,
   `EpisodeState` and `TherapyAggregate`, the immutable command and view types.
 - `com.aurevia.therapy.JdbcTherapyStore` — the tenant-guarded JDBC boundary, backed by
-  the therapy tables created by `db/migrations/V77__build_12.sql` and `db/migrations/V85__therapy_store.sql`
+  the therapy tables created by `db/migrations/V77__therapy_episode.sql` and `db/migrations/V85__therapy_store.sql`
   (enabled and forced row level security, tenant policies, append-only notes and problems).
 
 Every fact named in the clause is asserted by an active test and survives a fresh migration over

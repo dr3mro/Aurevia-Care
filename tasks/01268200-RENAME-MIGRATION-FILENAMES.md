@@ -1,6 +1,8 @@
-- [ ] RENAME-MIGRATION-FILENAMES · Rename seven task-ID-named Flyway migrations to business-domain filenames
+- [-] RENAME-MIGRATION-FILENAMES · Rename seven task-ID-named Flyway migrations to business-domain filenames
+  - agent: orca
   - requirements: OPS-06
-  - scope: db/migrations, db/migrations/README.md, scripts/tests/test_check_migrations.py
+  - scope: db/migrations, docs/reference/data-dictionary.md, docs/spec/clauses, docs/swarm, scripts/tests/test_check_migrations.py
+  - delivery: interactive, human-reviewed scoped commit on main; not a swarm auto-merge
   - attempts: 0
   - details:
     Owner decision 2026-11-23: rename V70__build_01.sql, V71__build_02.sql,

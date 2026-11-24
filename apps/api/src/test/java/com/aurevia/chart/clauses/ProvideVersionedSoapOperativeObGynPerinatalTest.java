@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,11 +27,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.api.ApiException;
 import com.aurevia.clinical.templates.BaselineTemplates;
+import com.aurevia.clinical.templates.JdbcTemplateStore;
 import com.aurevia.clinical.templates.FieldDefinition;
 import com.aurevia.clinical.templates.FieldType;
 import com.aurevia.clinical.templates.TemplateActor;
@@ -79,6 +82,9 @@ class ProvideVersionedSoapOperativeObGynPerinatalTest {
 
     @Autowired
     TemplateService templates;
+
+    @Autowired
+    DataSource dataSource;
 
     @Autowired
     TransactionTemplate transactions;
@@ -143,9 +149,9 @@ class ProvideVersionedSoapOperativeObGynPerinatalTest {
      * Run one command with the tenant bound as the HTTP layer binds it.
      *
      * <p>Forced RLS resolves the active organization from the transaction-local
-     * GUC, so setting {@code TenantContext} and using the tenant-guarded
-     * transaction template is what makes the production JDBC store see only
-     * this tenant's rows.</p>
+     * GUC. No outer transaction is opened here: the production store opens the
+     * guarded transaction for each statement. An outer wrapper would hide a
+     * store that forgot to bind the GUCs itself.</p>
      *
      * @param org     owning organization identifier
      * @param subject synthetic authenticated subject
@@ -156,7 +162,7 @@ class ProvideVersionedSoapOperativeObGynPerinatalTest {
     private <T> T as(String org, String subject, Supplier<T> action) {
         TenantContext.set(new TenantContext(org, subject, "CLN04_CLAUSE", "cln04-clause-" + org));
         try {
-            return transactions.execute(status -> action.get());
+            return action.get();
         } finally {
             TenantContext.clear();
         }
@@ -311,5 +317,31 @@ class ProvideVersionedSoapOperativeObGynPerinatalTest {
                 () -> templates.validate(clinicianA, stale)));
         assertEquals(404, refused.status());
         assertEquals("NOT_FOUND", refused.code());
+    }
+
+    /**
+     * A published version is durable and cannot cross tenants.
+     *
+     * <p>A fresh store over the same datasource models a restarted process: it
+     * carries no in-memory state, so it can only read the V80 table. Binding a
+     * second tenant means forced RLS conceals the first tenant's row even when
+     * the caller supplies that row's identifier.</p>
+     */
+    @Test
+    void aPublishedVersionSurvivesAFreshStoreAndCannotCrossTenants() {
+        int published = approveBaseline(TemplateKind.OBGYN);
+        TemplateVersion original = as(orgA, "clin-a",
+                () -> templates.effective(clinicianA, TemplateKind.OBGYN));
+
+        JdbcTemplateStore restartedStore = new JdbcTemplateStore(
+                new NamedParameterJdbcTemplate(dataSource), transactions);
+        TemplateService restarted = new TemplateService(restartedStore);
+        TemplateVersion reloaded = as(orgA, "clin-a",
+                () -> restarted.effective(clinicianA, TemplateKind.OBGYN));
+        assertEquals(original, reloaded, "a fresh store reads the approved version from PostgreSQL");
+
+        assertTrue(as(orgB, "clin-b",
+                        () -> restartedStore.version(orgA, TemplateKind.OBGYN, published).isEmpty()),
+                "forced RLS conceals another tenant's version even with its id supplied");
     }
 }

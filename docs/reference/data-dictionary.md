@@ -134,7 +134,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 
 **Keys/constraints.** PK `(organization_id, id)`; CHECKs `effective_to >= effective_from`, REVOKE requires `effective_to`, non-empty subject and role key; index on `(organization_id, subject, effective_from DESC, id DESC)`.
 **Isolation / writes.** Forced RLS declared here; append-only for every role. The runtime role has `SELECT` only; only the trigger function (granted to `aurevia_migrate`) can append.
-**Migration.** Created V71__build_02.sql (IAM-02, ARC-02, OPS-02).
+**Migration.** Created V71__role_change_history.sql (IAM-02, ARC-02, OPS-02).
 
 ### `staff_invitation`
 
@@ -158,7 +158,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 
 **Keys/constraints.** PK `(organization_id, id)`; `UNIQUE (organization_id, token_hash)`; FK `(organization_id, facility_id)`; CHECKs on expiry and role array; a trigger enforces distinct roles and an active `tenant_admin` issuer.
 **Isolation / writes.** Forced RLS; `SELECT, INSERT` plus column-scoped `UPDATE (used_at, revoked_at)`; no DELETE/TRUNCATE. Acceptance is one guarded transaction that consumes the token and appends identity, membership and role rows.
-**Migration.** Created V70__build_01.sql (IAM-02, ARC-01, ARC-02, OPS-02).
+**Migration.** Created V70__staff_invitation.sql (IAM-02, ARC-01, ARC-02, OPS-02).
 
 ### `emergency_access_grant`
 
@@ -444,7 +444,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 
 **Keys/constraints.** PK `(organization_id, id)`; `basis` CHECK; `version >= 1` CHECK. A state change overwrites the current row with a new version; the original explanation and OPS-02 audit rows preserve the history.
 **Isolation / writes.** Forced RLS declared here; `SELECT, INSERT, UPDATE` granted, DELETE/TRUNCATE revoked (no trigger-level immutability).
-**Migration.** Created V74__build_05.sql (CLN-06, ARC-01, ARC-02, OPS-02).
+**Migration.** Created V74__follow_up_suggestions.sql (CLN-06, ARC-01, ARC-02, OPS-02).
 
 ### `care_team_task`
 
@@ -1643,7 +1643,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 
 **Keys/constraints.** PK `(organization_id, version)`; index `(organization_id, version DESC)`; CHECKs on `version`, `market` and `provenance`.
 **Isolation / writes.** Forced RLS; append-only for every role via dedicated reject trigger; `SELECT, INSERT` only.
-**Migration.** Created V76__build_09.sql (RX-01, ARC-01, ARC-02, OPS-02); conditional DDL. Tenants with no published version read baseline version 1.
+**Migration.** Created V76__medication_catalog_version.sql (RX-01, ARC-01, ARC-02, OPS-02); conditional DDL. Tenants with no published version read baseline version 1.
 
 ### `patient_allergy_status`
 
@@ -1810,7 +1810,7 @@ Focus: **ARC-01** (tenant-owned domain keys), **ARC-02** (forced row-level isola
 
 ## 8. Physical therapy
 
-All eleven tables below were created by V77__build_12.sql (PT-01, ARC-01, ARC-02, OPS-02). Each is tenant-owned and forced-RLS with the `app_org()` policy; the migration declares its own policies, grants and triggers because new tables are not covered by V2's static list. Append-only tables use owner-proof immutability triggers. The migration is additive.
+All eleven tables below were created by V77__therapy_episode.sql (PT-01, ARC-01, ARC-02, OPS-02). Each is tenant-owned and forced-RLS with the `app_org()` policy; the migration declares its own policies, grants and triggers because new tables are not covered by V2's static list. Append-only tables use owner-proof immutability triggers. The migration is additive.
 
 ### `therapy_episode`
 

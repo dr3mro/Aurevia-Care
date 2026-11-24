@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -24,6 +25,10 @@ import tools.jackson.databind.ObjectMapper;
  * in the database, version numbers come from an atomic per-family counter, and a
  * saved note keeps the field meanings and dictionary entries it was saved with as
  * application-written JSON facts that reads never re-derive (ARC-02, CLN-04).</p>
+ *
+ * <p>Every statement runs inside the injected tenant-guarded transaction, so the
+ * manager binds the organization and actor GUCs before forced RLS evaluates a row.
+ * A bare pooled connection carries no tenant context and would see no rows.</p>
  */
 @Repository
 public class JdbcTemplateStore implements TemplateStore {
@@ -125,73 +130,83 @@ public class JdbcTemplateStore implements TemplateStore {
             """;
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final TransactionTemplate transactions;
 
     /**
      * Create the store over the tenant-guarded JDBC boundary.
      *
+     * <p>Every statement is opened through {@code transactions}, so the guarded
+     * manager binds the tenant GUCs before forced RLS evaluates any row.</p>
+     *
      * @param jdbc shared named-parameter JDBC template
+     * @param transactions tenant-guarded transaction template
      */
-    public JdbcTemplateStore(NamedParameterJdbcTemplate jdbc) {
+    public JdbcTemplateStore(NamedParameterJdbcTemplate jdbc, TransactionTemplate transactions) {
         this.jdbc = jdbc;
+        this.transactions = transactions;
     }
 
     @Override
     public Optional<FieldDictionary> dictionary(String organizationId, String key) {
-        return jdbc.query("SELECT " + DICTIONARY_COLUMNS,
+        return transactions.execute(status -> jdbc.query("SELECT " + DICTIONARY_COLUMNS,
                 new MapSqlParameterSource().addValue("organizationId", organizationId).addValue("key", key),
-                DICTIONARY_MAPPER).stream().findFirst();
+                DICTIONARY_MAPPER).stream().findFirst());
     }
 
     @Override
     public void putDictionary(String organizationId, FieldDictionary dictionary) {
-        jdbc.update(UPSERT_DICTIONARY, new MapSqlParameterSource()
+        transactions.executeWithoutResult(status -> jdbc.update(UPSERT_DICTIONARY, new MapSqlParameterSource()
                 .addValue("organizationId", organizationId)
                 .addValue("key", dictionary.key())
                 .addValue("entries", JSON.writeValueAsString(dictionary.entries()))
                 .addValue("approved", dictionary.approved())
-                .addValue("approvedBy", dictionary.approvedBy()));
+                .addValue("approvedBy", dictionary.approvedBy())));
     }
 
     @Override
     public Optional<TemplateVersion> version(String organizationId, TemplateKind kind, int version) {
-        return jdbc.query("SELECT " + VERSION_COLUMNS,
-                versionParams(organizationId, kind, version), VERSION_MAPPER).stream().findFirst();
+        return transactions.execute(status -> jdbc.query("SELECT " + VERSION_COLUMNS,
+                versionParams(organizationId, kind, version), VERSION_MAPPER).stream().findFirst());
     }
 
     @Override
     public List<TemplateVersion> versions(String organizationId, TemplateKind kind) {
-        return jdbc.query(VERSIONS_OF_FAMILY,
+        return transactions.execute(status -> jdbc.query(VERSIONS_OF_FAMILY,
                 new MapSqlParameterSource().addValue("organizationId", organizationId)
-                        .addValue("kind", kind.name()), VERSION_MAPPER);
+                        .addValue("kind", kind.name()), VERSION_MAPPER));
     }
 
     @Override
     public void putVersion(String organizationId, TemplateVersion version) {
-        jdbc.update(APPROVE_VERSION, new MapSqlParameterSource()
+        transactions.executeWithoutResult(status -> jdbc.update(APPROVE_VERSION, new MapSqlParameterSource()
                 .addValue("organizationId", organizationId)
                 .addValue("kind", version.kind().name())
                 .addValue("version", version.version())
-                .addValue("approvedBy", version.approvedBy()));
+                .addValue("approvedBy", version.approvedBy())));
     }
 
     @Override
     public TemplateVersion addVersion(String organizationId, TemplateKind kind, List<FieldDefinition> fields) {
-        int next = Objects.requireNonNull(jdbc.queryForObject(NEXT_VERSION,
-                new MapSqlParameterSource().addValue("organizationId", organizationId)
-                        .addValue("kind", kind.name()), Integer.class),
-                "version allocation must return a number");
-        jdbc.update(INSERT_VERSION, new MapSqlParameterSource()
-                .addValue("organizationId", organizationId)
-                .addValue("kind", kind.name())
-                .addValue("version", next)
-                .addValue("fields", JSON.writeValueAsString(fields)));
-        return new TemplateVersion(kind, next, false, fields, null);
+        // The counter read and its version insert share one guarded transaction
+        // so concurrent definers cannot allocate the same number.
+        return transactions.execute(status -> {
+            int next = Objects.requireNonNull(jdbc.queryForObject(NEXT_VERSION,
+                    new MapSqlParameterSource().addValue("organizationId", organizationId)
+                            .addValue("kind", kind.name()), Integer.class),
+                    "version allocation must return a number");
+            jdbc.update(INSERT_VERSION, new MapSqlParameterSource()
+                    .addValue("organizationId", organizationId)
+                    .addValue("kind", kind.name())
+                    .addValue("version", next)
+                    .addValue("fields", JSON.writeValueAsString(fields)));
+            return new TemplateVersion(kind, next, false, fields, null);
+        });
     }
 
     @Override
     public void saveNoteRevision(String organizationId, SavedNoteRevision revision) {
         TemplateNoteRevision note = revision.note();
-        jdbc.update(INSERT_NOTE, new MapSqlParameterSource()
+        transactions.executeWithoutResult(status -> jdbc.update(INSERT_NOTE, new MapSqlParameterSource()
                 .addValue("organizationId", organizationId)
                 .addValue("noteId", revision.noteId())
                 .addValue("kind", note.kind().name())
@@ -200,31 +215,31 @@ public class JdbcTemplateStore implements TemplateStore {
                 .addValue("author", note.author())
                 .addValue("values", JSON.writeValueAsString(note.values()))
                 .addValue("fieldMeanings", JSON.writeValueAsString(revision.fieldMeanings()))
-                .addValue("dictionaries", JSON.writeValueAsString(revision.dictionaries())));
+                .addValue("dictionaries", JSON.writeValueAsString(revision.dictionaries()))));
     }
 
     @Override
     public Optional<SavedNoteRevision> noteRevision(String organizationId, String noteId) {
-        return jdbc.query("SELECT " + NOTE_COLUMNS,
+        return transactions.execute(status -> jdbc.query("SELECT " + NOTE_COLUMNS,
                 new MapSqlParameterSource().addValue("organizationId", organizationId).addValue("noteId", noteId),
-                NOTE_MAPPER).stream().findFirst();
+                NOTE_MAPPER).stream().findFirst());
     }
 
     @Override
     public List<TemplateAuditEvent> audit(String organizationId) {
-        return jdbc.query("SELECT " + AUDIT_COLUMNS,
-                new MapSqlParameterSource().addValue("organizationId", organizationId), AUDIT_MAPPER);
+        return transactions.execute(status -> jdbc.query("SELECT " + AUDIT_COLUMNS,
+                new MapSqlParameterSource().addValue("organizationId", organizationId), AUDIT_MAPPER));
     }
 
     @Override
     public void appendAudit(TemplateAuditEvent event) {
-        jdbc.update(INSERT_AUDIT, new MapSqlParameterSource()
+        transactions.executeWithoutResult(status -> jdbc.update(INSERT_AUDIT, new MapSqlParameterSource()
                 .addValue("organizationId", event.organizationId())
                 .addValue("actorSubject", event.actorSubject())
                 .addValue("action", event.action())
                 .addValue("resourceType", event.resourceType())
                 .addValue("resourceId", event.resourceId())
-                .addValue("outcome", event.outcome()));
+                .addValue("outcome", event.outcome())));
     }
 
     private static MapSqlParameterSource versionParams(String organizationId, TemplateKind kind, int version) {

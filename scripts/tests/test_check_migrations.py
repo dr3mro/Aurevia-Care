@@ -4,6 +4,7 @@ Fixtures are synthetic. The gate enforces expand/contract discipline: destructiv
 DDL must be a declared contract with a forward fix and a valid prior expand.
 """
 import io
+import re
 import tempfile
 import unittest
 from contextlib import redirect_stderr
@@ -246,6 +247,21 @@ class ContractTest(MigrationFixture):
               "-- Change: contract\n-- Forward-fix: V9__restore_legacy_view.sql\n"
               "-- Requires-expand: V1\n\nDROP VIEW legacy_view;\n")
         self.assertEqual(self.errors(), [])
+
+
+class NamingTest(unittest.TestCase):
+    """Flyway descriptions name the business domain, never the originating task."""
+
+    def test_checked_in_migration_descriptions_have_no_task_ids(self):
+        task_id = re.compile(
+            r"(?:^|_)(?:build|s_g\d+|x|dlv|cw|aud|fix|imp|story|task)[_-]?\d+(?:_|$)",
+            re.IGNORECASE)
+        descriptions = [
+            path.name.split("__", 1)[1].removesuffix(".sql")
+            for path in (ROOT / "db" / "migrations").glob("V*__*.sql")
+        ]
+        self.assertTrue(descriptions)
+        self.assertEqual([name for name in descriptions if task_id.search(name)], [])
 
 
 class EntryPointTest(MigrationFixture):

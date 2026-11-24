@@ -68,7 +68,7 @@ Production classes exercised:
   `SummaryRequest`, `AckRequest` commands.
 - `com.aurevia.therapy.JdbcTherapyStore` — tenant-guarded persistence
   of notes, the summary, the acknowledgment and the append-only audit trail.
-- `db/migrations/V77__build_12.sql` — `therapy_clinical_note`, `therapy_summary`
+- `db/migrations/V77__therapy_episode.sql` — `therapy_clinical_note`, `therapy_summary`
   and `therapy_return_acknowledgment` with RLS, FORCE RLS, referrer keys and the
   `therapy_clinical_note_signed_guard` immutability trigger;
   `db/migrations/V85__therapy_store.sql` completes the store schema.

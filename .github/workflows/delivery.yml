@@ -71,13 +71,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # python-coverage.sh diffs added script lines against origin/main;
+          # a shallow PR checkout has no such ref and would skip that check.
+          fetch-depth: 0
       - uses: ./.github/actions/setup-tooling-python
-      - run: python3 -I -m unittest discover -s scripts/tests -q
+      - name: Tooling tests with the changed-line coverage gate
+        env:
+          REQUIRE_PY_COVERAGE: '1'
+        run: bash scripts/python-coverage.sh
 
   frontend:
     name: Frontend standards
     needs: script-tests
-    timeout-minutes: 15
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -87,10 +93,17 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      # Runs tsc --noEmit, eslint --max-warnings=0, prettier --check and Vitest
-      # with 100% coverage thresholds. Agents cannot merge TypeScript that
-      # violates AGENTS.md because this is a required check.
-      - run: bash scripts/frontend-check.sh
+      # The policy script keeps repository-wide standards (npm audit,
+      # TypeScript-only, strict configs, generated-client drift) but uses plain
+      # npm test, which has no coverage threshold. Each module's canonical
+      # check.sh adds typecheck, lint and its enforced 100% coverage gate;
+      # staff-web also builds and applies the WEB-08 bundle-size gate.
+      - name: Frontend policy and tool commands
+        run: bash scripts/frontend-check.sh
+      - name: Staff web canonical check (typecheck, lint, size gate, 100% coverage)
+        run: bash apps/staff-web/check.sh
+      - name: Patient mobile canonical check (typecheck, lint, 100% coverage)
+        run: bash apps/patient-mobile/check.sh
 
   # The same full verification (unit and PostgreSQL integration tests, JaCoCo,
   # SpotBugs, OWASP) runs on pull requests, merge groups and main. A pull request

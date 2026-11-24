@@ -14,12 +14,12 @@ const read = (relative: string): string => readFileSync(resolve(root, relative),
  */
 function requireCoverageThresholds(config: string): void {
   for (const metric of ['lines', 'functions', 'branches', 'statements']) {
-    expect(config, `${metric} coverage must be 100`).toContain(`${metric}: 100`);
+    expect(config, `${metric} coverage must be 100`).toMatch(new RegExp(`${metric}: 100(?![0-9])`));
   }
 }
 
 describe('shared frontend tooling', () => {
-  it('keeps strict compilation and a 100% coverage gate wired into root scripts', () => {
+  it('keeps strict compilation and 100% coverage thresholds configured', () => {
     const config = read('vitest.config.ts');
     const manifest = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
 

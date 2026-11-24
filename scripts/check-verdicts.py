@@ -31,8 +31,27 @@ SECTION = re.compile(r"(?mi)^##\s+Review verdicts\s*$")
 NEXT_SECTION = re.compile(r"(?m)^##\s")
 VERDICT = re.compile(r"^\s*[-*]?\s*`?(aurevia-[a-z0-9-]+)`?\s*[:—-]\s*(GO|NO-GO)\b", re.I)
 FINDING = re.compile(r"^\s*[-*]?\s*(Critical|Required)\s*[:—-]\s*(.+)$", re.I)
+# A finding is resolved only when it says so without a nearby negation. Workers
+# author these lines, so "not resolved" must never be mistaken for a fix; fail
+# closed instead. The word-boundary on RESOLVED also excludes "unresolved".
+RESOLVED = re.compile(r"\bresolved\b", re.I)
+NEGATION = re.compile(r"\b(?:not|never|still|no|yet|isn[’']?t|aren[’']?t|wasn[’']?t|hasn[’']?t)\b", re.I)
 # Files with nothing to review: prose, the trackers and the agents' own notes.
 DOCS_ONLY = re.compile(r"(\.md$|^docs/|^\.agent/|^tasks/)")
+
+
+def finding_is_resolved(text):
+    """Whether a finding line positively records a fix rather than an open gap.
+
+    ``text`` is the description after the severity marker. Returns True only
+    when a "resolved" token occurs with no negation in the preceding 40
+    characters; absence of the token, "unresolved" and "not yet resolved" all
+    return False so the gate keeps the finding open.
+    """
+    match = RESOLVED.search(text)
+    if match is None:
+        return False
+    return NEGATION.search(text[max(0, match.start() - 40):match.start()]) is None
 
 
 def review_section(text):
@@ -54,7 +73,7 @@ def verdicts_and_findings(section):
             verdicts[verdict.group(1).lower()] = verdict.group(2).upper()
             continue
         finding = FINDING.match(line)
-        if finding and not re.search(r"(?<!un)\bresolved\b", finding.group(2), re.I):
+        if finding and not finding_is_resolved(finding.group(2)):
             findings.append(line.strip())
     return verdicts, findings
 

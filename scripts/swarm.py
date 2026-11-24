@@ -1451,7 +1451,7 @@ def images_ready_command(slots=None, generations=None):
 
 
 # A failing command's own output outranks generic frontend or Java lines. A worker
-# whose only real failure was `check-pack: opencode.json is stale` used to produce a
+# whose only real failure was `check-pack: .opencode/opencode.json is stale` used to produce a
 # draft whose "Why it failed" block showed nothing but passing typecheck output.
 FAILURE_SIGNATURE = re.compile(
     r"check-(?:pack|docs|secrets|names|wiring|constraints|migrations|verdicts):|"

@@ -6,10 +6,12 @@ runs:
     - shell: bash
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -y -qq python3-yaml python3-venv
+        sudo apt-get install -y -qq python3-yaml python3-venv python3-coverage
         # Match the interpreter to the apt-installed module even when PATH
-        # starts with a tool-cache Python.
+        # starts with a tool-cache Python. The venv has no pip, so coverage
+        # must come from the system site packages when Delivery requires it.
         tooling_env="$RUNNER_TEMP/aurevia-tooling-python"
         /usr/bin/python3 -m venv --without-pip --system-site-packages "$tooling_env"
         "$tooling_env/bin/python3" -I -c 'import yaml'
+        "$tooling_env/bin/python3" -I -c 'import coverage'
         echo "$tooling_env/bin" >> "$GITHUB_PATH"

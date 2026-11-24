@@ -12,9 +12,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * Synthetic, thread-safe in-memory {@link com.aurevia.clinical.templates.TemplateStore}.
  *
  * <p>Keys embed the organization identifier so two tenants with identical
- * local keys and version numbers remain isolated. A follow-up story can bind
- * the same domain service to a real PostgreSQL repository without changing
- * domain logic.</p>
+ * local keys and version numbers remain isolated. This fake lives only under
+ * {@code src/test}; production uses
+ * {@link com.aurevia.clinical.templates.JdbcTemplateStore} over V80.</p>
  */
 public final class InMemoryTemplateStore implements TemplateStore {
 

@@ -5,7 +5,7 @@
 - Requirement IDs: OPS-06
 - Risk class: cross-boundary (delivery pipeline and the worker image supply chain)
 - Target files: [`.github/workflows/swarm-images.yml`](../../../.github/workflows/swarm-images.yml) (publish) and [`.github/workflows/swarm.yml`](../../../.github/workflows/swarm.yml) (`plan` and `worker` jobs).
-- Reviewed, **not changed**: [`.github/workflows/agent-image.yml`](../../../.github/workflows/agent-image.yml), [`.github/workflows/swarm-worker.yml`](../../../.github/workflows/swarm-worker.yml), `.github/swarm/slots.json` (removed in the new layout), and the generation helpers in [`scripts/swarm.py`](../../../scripts/swarm.py) added by WFAUDIT-02.
+- Reviewed, **not changed**: [`.github/workflows/agent-image.yml`](../../../.github/workflows/agent-image.yml), [`.github/workflows/swarm-worker.yml`](../../../.github/workflows/swarm-worker.yml), `the current swarm slot configuration at `.opencode/config/slots.json`, and the generation helpers in [`scripts/swarm.py`](../../../scripts/swarm.py) added by WFAUDIT-02.
 
 ## Problem (evidence from the current files)
 

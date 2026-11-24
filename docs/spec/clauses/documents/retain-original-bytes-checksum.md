@@ -54,7 +54,7 @@ not the caller, owns the digest). The database invariants come from
 `db/migrations/V17__document_associations.sql` (`content bytea`, the BEFORE
 INSERT trigger deriving `sha256` from those bytes, the update guard pinning
 bytes and digest, FORCE RLS and the append-only `document_association_event`)
-and `db/migrations/V75__build_06.sql`
+and `db/migrations/V75__document_verified_content.sql`
 (`document_association_verified_content`, which returns the retained bytes with
 an `intact` flag instead of raising a SQL error so the tamper can be audited).
 

@@ -44,7 +44,7 @@ Requirement: [PRD-06](../../../../.opencode/config/PROJECT_V1_SPEC.md) (product 
 
 **5. No inpatient workflows — no class, table or workflow found.**
 
-- The PRD-01 row of [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) sets the ambulatory-care boundary. A case-insensitive search for `inpatient` / `in-patient` across `apps`, `contracts`, `docs`, `infra`, `db` and `scripts` returns no feature match (the only hit is the local variable `syntheticWalkInPatient` in a scheduling fixture). The `discharge` references in [V77__build_12.sql](../../../../db/migrations/V77__build_12.sql) are physical-therapy episode discharge notes (PT-01), not inpatient admission/discharge; no bed, ward or admission table exists.
+- The PRD-01 row of [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md) sets the ambulatory-care boundary. A case-insensitive search for `inpatient` / `in-patient` across `apps`, `contracts`, `docs`, `infra`, `db` and `scripts` returns no feature match (the only hit is the local variable `syntheticWalkInPatient` in a scheduling fixture). The `discharge` references in [V77__therapy_episode.sql](../../../../db/migrations/V77__therapy_episode.sql) are physical-therapy episode discharge notes (PT-01), not inpatient admission/discharge; no bed, ward or admission table exists.
 
 **6. No offline clinical editing — no offline editor or local clinical write path found.**
 
