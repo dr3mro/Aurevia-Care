@@ -39,7 +39,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           OPENCODE_VERSION: ${{ inputs.opencode_version || '2.4.1' }}
-          OPENCODE_INTEGRITY: ${{ inputs.opencode_integrity || 'sha512-3TbGzJO3Y7NAR4oUvNkJtr1YREZIlc7iKKZflkHALjchMgEMGnekX26edv8icleNA60pq86bZcDN/aQ+I3pQPA==' }}
+          OPENCODE_INTEGRITY: ${{ inputs.opencode_integrity || 'sha256:83660efc00d480e6661206e6660aec6129203b801d36c2039837347bc66d4af3' }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}-agent"
           cp apps/api/pom.xml .github/agent-image/pom.xml
