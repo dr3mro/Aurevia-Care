@@ -4090,11 +4090,6 @@ def report_validation(result, report_evidence=True):
     Every call here writes to GitHub or to shared trackers, so it belongs to
     the trusted publication job and never to the job that ran candidate code.
     """
-    # Already-present PRs live in their own manifest list, not in `rejected`;
-    # without this loop their close and the operator notice are both lost.
-    for item in result.get("already", []):
-        print(f"PR #{item['pr']} already in main")
-        close_integrated_pr(item["pr"], item.get("task_id", ""))
     for item in result.get("rejected", []):
         pr = item["pr"]
         kind = item["kind"]
