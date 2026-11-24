@@ -29,7 +29,11 @@ const WCAG_22_AA_TAGS = [
   'wcag22aa',
 ] as const;
 
-/** Widest viewport whose navigation hides the language control behind a menu. */
+/**
+ * Medium-breakpoint boundary: widths below this (the compact band) hide the
+ * language control behind the User menu, while 768 and above expose it in the
+ * header. Mirrors `BREAKPOINT_WIDTHS.medium` in `src/theme/breakpoints.ts`.
+ */
 const COMPACT_MAX_WIDTH = 768;
 
 /** Synthetic signed-in role used by the staff shell in this harness. */
