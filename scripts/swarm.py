@@ -789,6 +789,31 @@ def workflow_slug(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
+def branch_head_sha(branch):
+    """Return the current tip of `branch`, or an empty string when unreadable."""
+    try:
+        data = gh_json("api", f"repos/{repo_slug()}/branches/{branch}") or {}
+    except subprocess.CalledProcessError:
+        return ""
+    if not isinstance(data, dict):
+        return ""
+    return (data.get("commit") or {}).get("sha", "") or ""
+
+
+def run_is_stale(info):
+    """True when a main run tested a commit that is no longer the branch tip.
+
+    Delivery runs queue when main is busy, so a run can start long after its
+    commit was superseded. Reporting that failure opens a needs-human issue for
+    a defect already fixed on main. An unreadable branch head is treated as
+    current so a real failure is never silently dropped.
+    """
+    if info.get("headBranch") != "main":
+        return False
+    head = branch_head_sha("main")
+    return bool(head) and head != info.get("headSha", "")
+
+
 def run_event(run_id):
     """Handle a finished workflow run: open an issue for a failure, close it on the next success.
 
@@ -817,6 +842,8 @@ def run_event(run_id):
     name, conclusion = info.get("name", "workflow"), info.get("conclusion", "")
     if info.get("event") == "pull_request":
         return "pull-request run; handled by the integrator"
+    if run_is_stale(info):
+        return f"stale run on {str(info.get('headSha'))[:7]}; main has moved on"
     slug = workflow_slug(name)
     if conclusion == "success":
         closed = close_issues(

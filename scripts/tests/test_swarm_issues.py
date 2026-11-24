@@ -31,14 +31,17 @@ class Gh:
     """A scripted gh: records every call and answers the few queries the issue code makes."""
 
     def __init__(self, issues=None, comments=None, runs=None, run_info=None, log="",
-                 pr_state="OPEN", pr_info=None, fail_first_create=False, closed=None):
+                 pr_state="OPEN", pr_info=None, fail_first_create=False, closed=None, branch_sha=""):
         self.calls, self.issues, self.comments = [], issues or [], comments or []
         self.runs, self.run_info, self.log = runs or [], run_info or {}, log
         self.pr_state, self.pr_info = pr_state, pr_info or {}
         self.fail_first_create, self.created, self.closed = fail_first_create, 0, closed or []
+        self.branch_sha = branch_sha
 
     def __call__(self, *args, check=True):
         self.calls.append(args)
+        if args[0] == "api" and "/branches/" in " ".join(map(str, args)):
+            return json.dumps({"commit": {"sha": self.branch_sha}})
         if args[0] == "api" and "issues?state=open" in args[-1]:
             return json.dumps(self.issues)
         if args[0] == "api" and "/comments" in args[-1]:
@@ -359,6 +362,37 @@ class RunEventTests(unittest.TestCase):
         result, fake = self.event({**self.FAILED, "event": "pull_request"})
         self.assertIn("integrator", result)
         self.assertFalse(fake.said("issue", "create"))
+
+    def test_a_failure_on_a_superseded_main_commit_does_not_open_an_issue(self):
+        fake = Gh(run_info=self.FAILED, log="JaCoCo: coverage checks have not been met",
+                  branch_sha="9999999999")
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=0):
+            result = swarm.run_event(5)
+        self.assertIn("stale", result)
+        self.assertFalse(fake.said("issue", "create"))
+
+    def test_a_failure_on_the_current_main_commit_opens_an_issue(self):
+        fake = Gh(run_info=self.FAILED, log="JaCoCo: coverage checks have not been met",
+                  branch_sha=self.FAILED["headSha"])
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=0):
+            result = swarm.run_event(5)
+        self.assertEqual(result, "issue 42")
+
+    def test_run_is_stale_only_for_superseded_main_runs(self):
+        with mock.patch.object(swarm, "branch_head_sha", return_value="abc"):
+            self.assertFalse(swarm.run_is_stale({"headBranch": "feature", "headSha": "old"}))
+            self.assertFalse(swarm.run_is_stale({"headBranch": "main", "headSha": "abc"}))
+            self.assertTrue(swarm.run_is_stale({"headBranch": "main", "headSha": "old"}))
+        with mock.patch.object(swarm, "branch_head_sha", return_value=""):
+            self.assertFalse(swarm.run_is_stale({"headBranch": "main", "headSha": "old"}))
+
+    def test_branch_head_sha_tolerates_unreadable_answers(self):
+        with mock.patch.object(swarm, "gh_json", side_effect=subprocess.CalledProcessError(1, "api")):
+            self.assertEqual(swarm.branch_head_sha("main"), "")
+        with mock.patch.object(swarm, "gh_json", return_value=["not", "a", "dict"]):
+            self.assertEqual(swarm.branch_head_sha("main"), "")
+        with mock.patch.object(swarm, "gh_json", return_value={"commit": {}}):
+            self.assertEqual(swarm.branch_head_sha("main"), "")
 
     def test_a_failure_opens_one_issue_naming_the_failed_step(self):
         result, fake = self.event(self.FAILED, log="JaCoCo: coverage checks have not been met")
