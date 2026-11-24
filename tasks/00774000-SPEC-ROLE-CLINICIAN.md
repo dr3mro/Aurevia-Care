@@ -1,4 +1,6 @@
-- [ ] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
+- [-] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
+  - agent: swarm-9
+  - attempts: 1
   - requirements: IAM-01, CLN-05
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/RoleClinicianTest.java, docs/spec/clauses/authz/role-clinician.md
   - details:
