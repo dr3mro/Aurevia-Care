@@ -1,5 +1,4 @@
-- [-] REMOVE-MODEL-ROUTER · Restore direct SWARM_MODEL environment selection and remove force/router logic
-  - agent: orca
+- [ ] REMOVE-MODEL-ROUTER · Restore direct SWARM_MODEL environment selection and remove force/router logic
   - scope: scripts/agent-run.sh, scripts/model-router.py, scripts/tests/test_model_router.py, scripts/tests/test_agent_run.py, scripts/tests/test_swarm.py, scripts/tests/test_swarm_cli_coverage.py, scripts/tests/helpers.py, scripts/gen-opencode.py, scripts/tests/test_gen_opencode_coverage.py, scripts/tests/test_opencode_profile.py, scripts/swarm.py, .github/workflows/*.yml, .github/agent-image/Dockerfile.slot, .opencode/model-pricing.json, .opencode/config/slots.json, .opencode/agents/orca.md, docs/SWARM.md, docs/operations/workflow-changes/quality-verification-checklist.md, docs/operations/workflow-changes/candidate-validation-isolation.md, .opencode/config/WORKSPACE.md, .opencode/config/MEMORY.md
   - details: User directive (2026-11-24) supersedes the centralized router design. Use only the
     SWARM_MODEL environment variable for the model name. Remove MODEL, SWARM_FORCE_MODEL,
@@ -39,7 +38,7 @@
 ## Coverage
 - Direct non-Git coverage after restore: `gen-opencode.py` 90/90 lines and 44/44 branches; changed range has zero missing lines/branches. `swarm.py` changed range (`_contains_model_key`, `load_slots`, `slot_config` docstring area) has zero missing lines/branches under `ModelEnvironmentTests` and the nested-slot CLI test.
 - `scripts/python-coverage.sh` was not run because it invokes `git diff` and the owner prohibited Git-using scripts.
-- Named branch tests: direct pass-through, unset/empty model, terminal rate limit, generic failure, timeout precedence, recursive slot model rejection, allowed nested slot config, registry ignored, runtime permission/secret checks. Wrapper behavior tests are present but not rerun after restore because their fixture invokes Git.
+- Named branch tests: direct pass-through, unset/empty model, terminal rate limit, generic failure, timeout precedence, recursive slot model rejection, allowed nested slot config, registry ignored, runtime permission/secret checks, plus terminal configuration-error and success paths for implement, debug, triage, reconcile, audit, daily QA/DevSecOps, strategy, review, merge-main and resolve. Wrapper behavior tests are present but not rerun after restore because their fixture invokes Git.
 
 ## Entry-point-to-test trace
 Workflow `SWARM_MODEL` env → `scripts/agent-run.sh run_agent` → one `opencode run --model "$SWARM_MODEL"` → `DirectModelEnvironmentTests`; slot image config → `scripts/swarm.py load_slots` → `ModelEnvironmentTests` and nested-model CLI test; runtime profile → `scripts/gen-opencode.py check_runtime` → runtime-profile suites.
@@ -47,7 +46,7 @@ Workflow `SWARM_MODEL` env → `scripts/agent-run.sh run_agent` → one `opencod
 ## Review verdicts
 - aurevia-coverage-auditor: GO (all terminal and success branches mapped)
 - aurevia-devsecops: GO (all caller families fail closed)
-- aurevia-code-reviewer: re-review pending after all-caller expansion
+- aurevia-code-reviewer: GO (all caller families fail closed; no remaining findings)
 
 ## Findings
 - At 14:26:36 -0500 the workspace was reset twice to `be65c427`, discarding the first restored patch. The exact process was not proven; no intentional workspace reset was issued. All changes were reconstructed from the session diff.
@@ -55,4 +54,4 @@ Workflow `SWARM_MODEL` env → `scripts/agent-run.sh run_agent` → one `opencod
 - Evidence sources: tool command output and read-only specialist reviews; no simulated user or human clinical feedback.
 
 ## Why this is not finished
-The code and documentation are restored, non-Git checks pass, changed Python ranges have direct 100% line/branch coverage, and coverage/security re-reviews are GO. The canonical full tooling suite and `scripts/python-coverage.sh` have not been rerun after the reset because both invoke Git and the owner prohibited Git-using scripts. Final code re-review is pending. Next step: after owner authorization, run `python3 -I -m unittest discover -s scripts/tests -q` and `bash scripts/python-coverage.sh`, then record the final code-review verdict and close the task.
+The code and documentation are restored, non-Git checks pass, changed Python ranges have direct 100% line/branch coverage, and code/coverage/security re-reviews are GO. The canonical full tooling suite and `scripts/python-coverage.sh` have not been rerun after the reset because both invoke Git and the owner prohibited Git-using scripts. Next step: after owner authorization, run `python3 -I -m unittest discover -s scripts/tests -q` and `bash scripts/python-coverage.sh`, then close the task with that evidence.
