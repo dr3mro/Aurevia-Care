@@ -1,7 +1,7 @@
 - [-] RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE · Staff web end-to-end: rightToLeftResponsive across phone, tablet and desktop
   - agent: swarm-4
   - attempts: 5
-  - evidence: PR #1556 merged to main (auto-reconciled)
+  - evidence: `python3 -I scripts/check-docs.py` exit 0 on tested head 30d7d167; note `docs/pr/notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-050000.md`
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/rightToLeftResponsive.spec.ts
   - depends: RESP-E2E-PROJECTS
