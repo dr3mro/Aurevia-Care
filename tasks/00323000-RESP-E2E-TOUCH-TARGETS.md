@@ -1,5 +1,4 @@
-- [-] RESP-E2E-TOUCH-TARGETS · Staff web end-to-end: touchTargets across phone, tablet and desktop
-  - agent: swarm-9
+- [ ] RESP-E2E-TOUCH-TARGETS · Staff web end-to-end: touchTargets across phone, tablet and desktop
   - attempts: 4
   - evidence: PR #1558 merged to main (auto-reconciled)
   - requirements: WEB-07, UX-01
