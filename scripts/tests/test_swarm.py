@@ -3119,6 +3119,7 @@ class TwoTierTests(unittest.TestCase):
                     with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": head}), \
                          mock.patch.object(swarm, "guard", return_value=[]), \
                          mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
+                         mock.patch.object(swarm, "delivery_decision", return_value=("merge", "passed", [])), \
                          mock.patch.object(swarm, "is_repair", return_value=False), \
                          mock.patch.object(swarm, "merge_local", side_effect=merge), \
                          mock.patch.object(swarm, "gate_for", return_value=("gate", {})), \

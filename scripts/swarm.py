@@ -4037,13 +4037,17 @@ def integrate_prepare(queue, gate="scripts/quick-check.sh", check_delivery=None)
         if sha is None:
             reason = (f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
                       "merge main into the branch and resolve it")
-            result["conflicted"].append(pr)
-            result["conflict_details"].append({"pr": pr, "reason": reason,
-                                               "tries": resolve_attempts(pr)})
+            tries = resolve_attempts(pr)
+            result["conflict_details"].append({"pr": pr, "reason": reason, "tries": tries})
+            # Once the resolver has had its allowed rounds, queueing the PR
+            # again would loop forever. Fail it in publication instead.
+            if tries < MAX_RESOLVE:
+                result["conflicted"].append(pr)
             git("reset", "--hard", base)
             continue
         if head != sha:
-            result["rejected"].append({"pr": pr, "kind": "moved"})
+            result["rejected"].append({"pr": pr, "kind": "moved",
+                                       "reason": "the branch changed after planning; it will be retested"})
             git("reset", "--hard", base)
             continue
         wiring_error = refresh_wiring_baseline(wiring_checker, base)
@@ -4072,6 +4076,8 @@ def report_validation(result):
     Every call here writes to GitHub or to shared trackers, so it belongs to
     the trusted publication job and never to the job that ran candidate code.
     """
+    for item in result.get("already", []):
+        close_integrated_pr(item["pr"], item.get("task_id", ""))
     for item in result.get("rejected", []):
         pr = item["pr"]
         kind = item["kind"]
@@ -4079,8 +4085,6 @@ def report_validation(result):
             guard(pr, is_repair(pr))
         elif kind == "evidence":
             delivery_gate(pr, item.get("head_sha"))
-        elif kind == "already":
-            close_integrated_pr(pr, item.get("task_id", ""))
         else:
             fail(pr, item.get("reason", "validation rejected this branch"), item.get("log", ""))
     for detail in result.get("conflict_details", []):

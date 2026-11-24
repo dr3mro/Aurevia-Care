@@ -299,7 +299,7 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "guard_blockers", return_value=("", [], 0)), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
-             mock.patch.object(swarm, "delivery_gate", return_value="merge"), \
+             mock.patch.object(swarm, "delivery_decision", return_value=("merge", "passed", [])), \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "gate_for", return_value=("gate.sh", {})), \
