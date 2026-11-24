@@ -69,7 +69,13 @@ none — routine, test-and-doc-only change with synthetic fixtures; no clinical 
 
 ## Review verdicts
 
-(pending)
+- smartclinic-plan-reviewer: GO
+- smartclinic-code-reviewer: GO
+- smartclinic-coverage-auditor: GO
+- smartclinic-devsecops: GO
+- smartclinic-test-engineer: GO (test design)
+
+All four required reviewers answered GO. The plan reviewer's initial NO-GO (generic guards presented as scope evidence, unnamed gates) and the code reviewer's initial NO-GO (missing `## Clinical and architecture review`) were fixed and re-reviewed. No Critical or Required finding is unresolved; the devsecops and code-reviewer Optional precision findings were applied in commit `16de4392`.
 
 ## Findings
 
