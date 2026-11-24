@@ -4077,6 +4077,7 @@ def report_validation(result):
     the trusted publication job and never to the job that ran candidate code.
     """
     for item in result.get("already", []):
+        print(f"PR #{item['pr']} already in main")
         close_integrated_pr(item["pr"], item.get("task_id", ""))
     for item in result.get("rejected", []):
         pr = item["pr"]
@@ -4085,6 +4086,9 @@ def report_validation(result):
             guard(pr, is_repair(pr))
         elif kind == "evidence":
             delivery_gate(pr, item.get("head_sha"))
+        elif kind == "moved":
+            fail(pr, item.get("reason", "the branch changed after planning; it will be retested"),
+                 simple=True)
         else:
             fail(pr, item.get("reason", "validation rejected this branch"), item.get("log", ""))
     for detail in result.get("conflict_details", []):
