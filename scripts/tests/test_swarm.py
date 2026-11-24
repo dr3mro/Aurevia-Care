@@ -1775,13 +1775,10 @@ esac
         for path in (ROOT / ".github/workflows").glob("*.yml"):
             calls |= set(re.findall(r"scripts/swarm\.py (?:-I )?([a-z-]+)", path.read_text()))
             calls |= set(re.findall(r"swarm\.py ([a-z-]+)", path.read_text()))
-<<<<<<< HEAD
         self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-validate",
                          "integrate-publish", "plan-integration", "slot-config", "slot-matrix",
-=======
         self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-validate",
                          "integrate-publish", "plan-integration", "slot-config", "slot-matrix",
->>>>>>> origin/main
                          "images-ready", "ensure-labels"} <= calls)
         for command in calls:
             done = subprocess.run(["python3", "-I", str(ROOT / "scripts/swarm.py"), command, "--help"],
