@@ -1,4 +1,6 @@
-- [ ] RESP-E2E-FEATURE-SYSTEM · Staff web end-to-end: the system screens work on phone, tablet and desktop
+- [-] RESP-E2E-FEATURE-SYSTEM · Staff web end-to-end: the system screens work on phone, tablet and desktop
+  - evidence: Swarm gate reconciliation on main 2026-11-24; worker note docs/pr/notes/RESP-E2E-FEATURE-SYSTEM-20261124-041525.md; PR #1623. Conflict resolution adopted the verified WEB-08 test from main; vitest 3/3 passed locally. Tool evidence (Actions logs, vitest); no simulated user or human feedback.
+  - pr: #1623
   - attempts: 5
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/responsive-system.spec.ts
@@ -15,4 +17,3 @@
     3. A real defect becomes a `test.fixme` with the reason and is listed under `## Why this is not finished`. Never weaken an assertion.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `docs/pr/notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-
