@@ -2254,6 +2254,8 @@ def parse_tasks(text):
             if field and not in_details:
                 if field.group(1) == "details":
                     in_details = True
+                    if field.group(2):
+                        body.append(field.group(2))
                 elif field.group(1) in current:
                     current[field.group(1)] = field.group(2).strip()
             elif in_details:

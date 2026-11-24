@@ -199,5 +199,10 @@
 - Owner decisions required before implementation: ratify reserved headroom (recommended 5), repository-wide versus swarm-only runner accounting, 15-minute request/480-minute lease policy, optional daily/triage/resolver admission, and `SWARM_TOKEN`/ruleset permission for atomic capacity-ledger commits.
 - Acceptance also requires live GitHub race, cancellation and lease evidence, which the standing no-Git directive prohibits. WF-36 is therefore `[!]` externally blocked, not marked fixed or disproven.
 
+## Owner approval and final source fix (2026-11-24)
+- Owner message: "fix all and I approve all". Recorded in MEMORY.md as ratification of the complete WF-36 policy: global 20, repository-wide accounting, headroom 5, 15-minute request/480-minute lease, optional agents under the same cap, and `SWARM_TOKEN` write permission for the atomic reservation commit.
+- Tool/source: fixed `parse_tasks` so an inline `- details: ...` value is preserved; red test `WorkerCoverageTests.test_parse_tasks_keeps_inline_details` then green. `PlanTests.test_committed_files_are_valid` is now green, closing `QA-01279000-01` at source level in `scripts/swarm.py` without weakening the assertion.
+- Still unavailable under the durable no-Git/GitHub directive: full Git-backed suite, canonical branch coverage, disposable repositories, live Actions/ruleset/rerun/race evidence, and the WF-36 atomic ledger implementation and mandatory live scenarios. Owner approval of the policy does not lift that execution constraint.
+
 ## Why this is not finished
 Audit has started; no checklist item is considered fixed without source evidence, reproduction where applicable, regression coverage and independent verification. The standing owner directive prohibits Git-using scripts/tests, so disposable-repository and full-suite evidence remain explicitly unrun.

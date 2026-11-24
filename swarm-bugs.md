@@ -97,7 +97,7 @@ For each finding, record:
 
 ## Status note (2026-11-24)
 
-The statuses below are deliberately conservative. Local Phase 1/2/4 fixes have focused no-Git tests and independent reviews, but no finding is `[x]` until the full tooling suite, canonical branch coverage, disposable Git tests where applicable, and authorized live GitHub evidence are complete. `[-]` means an implemented fix is under final review or blocked from full verification. WF-22 and WF-23 are `[N/A]` because the owner chose a single direct `SWARM_MODEL` with no router, fallback, or force flag; WF-21 remains open because no runtime pricing verification was added. WF-36 remains externally blocked on owner policy decisions.
+The statuses below are deliberately conservative. Local Phase 1/2/4 fixes have focused no-Git tests and independent reviews, but no finding is `[x]` until the full tooling suite, canonical branch coverage, disposable Git tests where applicable, and authorized live GitHub evidence are complete. `[-]` means an implemented fix is under final review or blocked from full verification. WF-22 and WF-23 are `[N/A]` because the owner chose a single direct `SWARM_MODEL` with no router, fallback, or force flag; WF-21 remains open because no runtime pricing verification was added. WF-36 policy decisions are approved; implementation and live race/cancellation evidence remain outstanding.
 
 # 5. Detailed findings, investigation scopes, and required fixes
 
@@ -941,7 +941,7 @@ Complete this phase before executing potentially destructive tests.
 - Completed work is not repeatedly scheduled.
 - Reconciliation preserves unrelated documentation.
 
-### [!] WF-36 — Global worker capacity exceeded and unnecessary swarm dispatch
+### [-] WF-36 — Global worker capacity exceeded and unnecessary swarm dispatch
 
 **Severity:** Critical
 
