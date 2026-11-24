@@ -21,9 +21,8 @@ permissions:
   packages: write
 # Queue: a cancelled publish can leave a partial or stale :latest worker image.
 concurrency:
-  group: agent-image
-  cancel-in-progress: false
-  queue: max
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest

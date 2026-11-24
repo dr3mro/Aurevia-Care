@@ -11,9 +11,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: swarm-strategist
-  cancel-in-progress: false
-  queue: max
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}

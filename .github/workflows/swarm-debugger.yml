@@ -16,9 +16,8 @@ permissions:
 # One debugger run at a time: every run takes the oldest waiting pull request, and a run
 # that finds none ends in the select job.
 concurrency:
-  group: swarm-debugger
-  cancel-in-progress: false
-  queue: max
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}

@@ -17,9 +17,8 @@ permissions:
 # Never cancel a verdict for a commit that can be merged: branch protection
 # checks the exact SHA. queue:max keeps one pending run per ref.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-  queue: max
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   swarm-gate:

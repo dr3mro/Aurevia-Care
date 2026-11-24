@@ -14,9 +14,8 @@ permissions:
   contents: read
 concurrency:
   # One group per PR: unrelated fix PRs no longer serialize behind a long gate.
-  group: fix-pr-gate-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
-  queue: max
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}

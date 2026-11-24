@@ -22,9 +22,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: swarm-pr-flow
-  cancel-in-progress: false
-  queue: max
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 env:
   SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
 

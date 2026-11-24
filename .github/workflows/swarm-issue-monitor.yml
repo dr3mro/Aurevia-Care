@@ -25,9 +25,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: swarm-issue-monitor
-  cancel-in-progress: false
-  queue: max
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
   # Keep every waiting run: without this a newer trigger replaces a waiting one,
   # so a failure event or the 2 AM run could be dropped.
 env:
