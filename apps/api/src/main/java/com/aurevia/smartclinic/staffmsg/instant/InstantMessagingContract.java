@@ -53,10 +53,14 @@ public final class InstantMessagingContract {
     }
 
     /**
-     * Publish one message to a conversation.
+     * Publish one message to the conversation named by the request path.
+     *
+     * <p>The body conversation id is accepted for client compatibility only: it
+     * must equal the path parameter and is never used for authorization or the
+     * durable write. The service refuses a mismatch with 422 INVALID_INPUT.</p>
      *
      * @param facilityId    facility the conversation must belong to
-     * @param conversationId owning conversation
+     * @param conversationId owning conversation, which must match the request path
      * @param body          immutable message content
      * @return the command
      */

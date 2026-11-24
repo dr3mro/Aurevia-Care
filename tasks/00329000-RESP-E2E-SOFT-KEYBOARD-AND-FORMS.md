@@ -1,5 +1,5 @@
-- [-] RESP-E2E-SOFT-KEYBOARD-AND-FORMS · Staff web end-to-end: softKeyboardAndForms across phone, tablet and desktop
-  - agent: swarm-5
+- [x] RESP-E2E-SOFT-KEYBOARD-AND-FORMS · Staff web end-to-end: softKeyboardAndForms across phone, tablet and desktop
+  - pr: #1536
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/softKeyboardAndForms.spec.ts
