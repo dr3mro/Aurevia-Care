@@ -20,11 +20,9 @@
 #   debug          read-only debugger for a pull request the fix workers could not repair;
 #                  runs every test, finds the cause and writes .agent/debug-report.md
 #
-# Inputs (environment): SWARM_MODEL (provider-qualified fallback or forced model),
-# SWARM_FORCE_MODEL (strict 0 intelligent default | 1 forced), MODEL (legacy hint;
-# accepted but not used for selection), AGENT_PHASE, ROUTE_PATHS, ROUTE_TITLE,
-# ROUTE_ATTEMPTS (routing hints), STORY_ID, STORY_TITLE, STORY_BODY, MODE
-# (story|fix), FIX_COMMENT, BASE_BRANCH, BRANCH, BRANCH_PREFIX, SWARM (1 for
+# Inputs (environment): SWARM_MODEL (provider-qualified model name, required),
+# STORY_ID, STORY_TITLE, STORY_BODY, MODE (story|fix), FIX_COMMENT, BASE_BRANCH,
+# BRANCH, BRANCH_PREFIX, SWARM (1 for
 # parallel workers), PR_NUMBER, ISSUE_NUMBER, AGENT_TIMEOUT, BRIEF_TIMEOUT,
 # OPENCODE_API_KEY (agent steps), GH_TOKEN (publish steps only).
 set -euo pipefail
@@ -107,44 +105,30 @@ restore_config() {
   git checkout -q -- .opencode/opencode.json
 }
 
-# Centralized model routing. Every production opencode run obtains its model
-# from scripts/model-router.py, which enforces SWARM_FORCE_MODEL (strict 0/1),
-# strict $0.00/M pricing and role/phase ranking. MODEL is a legacy hint: the
-# router accepts it but never uses it, so a paid or unverified value cannot
-# reach --model. SWARM_FORCE_MODEL=1 -> sole verified SWARM_MODEL; 0 -> ranked
-# primaries then SWARM_MODEL last, both validated against the registry.
-# A rate limit rotates to the next verified free candidate (bounded by the
-# router's candidate list); timeout/failed stay terminal.
-route_models() {
-  python3 -I scripts/model-router.py resolve \
-    --agent "${1:-}" --phase "${AGENT_PHASE:-execution}" \
-    --base-model "${MODEL:-}" --paths "${ROUTE_PATHS:-}" \
-    --title "${ROUTE_TITLE:-}" --attempts "${ROUTE_ATTEMPTS:-0}" \
-    2>&1 | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin).get("candidates", [])))'
-}
-
-# run_agent AGENT PROMPT LOG: prints ok, rate_limited, timeout or failed.
+# Every production opencode run uses the one model supplied by the workflow.
+# Missing configuration is reported through run_agent's status-string contract
+# so callers can restore the CI profile before returning.
+# A rate limit, timeout or implementation failure is terminal; there is no
+# second model or implicit fallback.
+# run_agent AGENT PROMPT LOG: prints ok, rate_limited, timeout, failed or
+# configuration_error. Callers must restore config and treat configuration_error
+# as a terminal nonzero worker result.
 run_agent() {
-  local agent=$1 prompt=$2 log=$3 status=0 model result=rate_limited
-  local models
-  models=$(route_models "$agent") || { echo configuration_error; return; }
-  if [[ -z "$models" ]]; then echo no_free_model; return; fi
-  while IFS= read -r model; do
-    [[ -z "$model" ]] && continue
-    status=0
-    printf 'model-router: selected %s for %s\n' "$model" "$agent" >&2
-    timeout "${AGENT_TIMEOUT:-30m}" opencode run --auto --agent "$agent" --model "$model" \
-      "$prompt" 2>&1 | strip_ansi | tee "$log" >&2 || status=$?
-    if [[ $status -eq 0 ]]; then echo ok; return
-    elif [[ $status -eq 124 ]]; then echo timeout; return
-    elif grep -qiE 'rate.?limit|too many requests|quota|\b429\b|free usage limit|free tier|usage (limit|exhausted)' "$log"; then
-      result=rate_limited
-      printf 'model-router: %s rate-limited; rotating to next verified model\n' "$model" >&2
-      continue
-    else echo failed; return
-    fi
-  done <<< "$models"
-  echo "$result"
+  local agent=$1 prompt=$2 log=$3 status=0
+  if [[ -z "${SWARM_MODEL:-}" ]]; then
+    printf '%s\n' 'SWARM_MODEL is required' >&2
+    echo configuration_error
+    return 0
+  fi
+  printf 'model: selected %s for %s\n' "$SWARM_MODEL" "$agent" >&2
+  timeout "${AGENT_TIMEOUT:-30m}" opencode run --auto --agent "$agent" --model "$SWARM_MODEL" \
+    "$prompt" 2>&1 | strip_ansi | tee "$log" >&2 || status=$?
+  if [[ $status -eq 0 ]]; then echo ok
+  elif [[ $status -eq 124 ]]; then echo timeout
+  elif grep -qiE 'rate.?limit|too many requests|quota|\b429\b|free usage limit|free tier|usage (limit|exhausted)' "$log"; then
+    echo rate_limited
+  else echo failed
+  fi
 }
 
 tracker_rules() {
@@ -288,6 +272,16 @@ cmd_implement() {
   activate_ci_config
   result=$(run_agent orca "$(story_prompt)" "$out/implement.log")
   restore_config
+  if [[ "$result" == configuration_error ]]; then
+    printf '%s\n' 'Worker stopped early: configuration_error; no check run' >> "$out/check.log"
+    printf '%s' "$result" > "$out/result"
+    printf '%s' skipped > "$out/checks"
+    printf '0' > "$out/commits"
+    emit result "$result"; emit commits 0; emit checks skipped
+    emit branch "$branch"
+    emit more false
+    return 1
+  fi
   # Keep any uncommitted agent work so the repair gates and the worker check see it.
   # (Previously this commit ran after coverage, so type errors in the last edit could
   # skip the repair loop and only fail later in Delivery.)

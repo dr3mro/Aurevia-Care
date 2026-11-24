@@ -1,56 +1,58 @@
-- [ ] ZERO-COST-MODEL-ROUTER · Centralized zero-cost model router with SWARM_FORCE_MODEL control
-  - branch: swarm/zero-cost-model-router
-  - scope: scripts/model-router.py, scripts/tests/test_model_router.py, scripts/agent-run.sh, .github/workflows/*.yml, docs/SWARM.md, .github/swarm/slots.json, scripts/swarm.py, scripts/gen-opencode.py, WORKSPACE.md, MEMORY.md
-  - details: Audit found no SWARM_FORCE_MODEL anywhere and MODEL: ${{ vars.SWARM_MODEL || ... }}
-    in 9 workflows, making SWARM_MODEL the primary override. Implement centralized Boolean
-    config parsing, strict zero-cost enforcement, role/phase-aware routing, bounded failover
-    and SWARM_MODEL-as-final-fallback at the single opencode run entry point.
+- [-] REMOVE-MODEL-ROUTER · Restore direct SWARM_MODEL environment selection and remove force/router logic
+  - agent: orca
+  - scope: scripts/agent-run.sh, scripts/model-router.py, scripts/tests/test_model_router.py, scripts/tests/test_agent_run.py, scripts/tests/test_swarm.py, scripts/tests/test_swarm_cli_coverage.py, scripts/tests/helpers.py, scripts/gen-opencode.py, scripts/tests/test_gen_opencode_coverage.py, scripts/tests/test_opencode_profile.py, scripts/swarm.py, .github/workflows/*.yml, .github/agent-image/Dockerfile.slot, .opencode/model-pricing.json, .opencode/config/slots.json, .opencode/agents/orca.md, docs/SWARM.md, docs/operations/workflow-changes/quality-verification-checklist.md, docs/operations/workflow-changes/candidate-validation-isolation.md, .opencode/config/WORKSPACE.md, .opencode/config/MEMORY.md
+  - details: User directive (2026-11-24) supersedes the centralized router design. Use only the
+    SWARM_MODEL environment variable for the model name. Remove MODEL, SWARM_FORCE_MODEL,
+    role/phase ranking, pricing-registry enforcement and model failover. Workflows pass SWARM_MODEL
+    from the repository variable with opencode-go/hy4-flash-free as the default. The runner invokes
+    that one model and keeps terminal rate-limit behavior. Slot config rejects model keys at any depth.
 
-## Requirements compliance (audit 2026-11-24, before change)
-
-| ID | Requirement | State | Evidence |
-|----|-------------|-------|----------|
-| R1 | SWARM_FORCE_MODEL strict 0/1 | NOT_IMPLEMENTED | `rg SWARM_FORCE_MODEL` → no matches |
-| R2 | Intelligent mode / role-aware routing | NOT_IMPLEMENTED | no router exists |
-| R3 | SWARM_MODEL final fallback only | INCORRECTLY_IMPLEMENTED | 9 workflow `MODEL:` expressions put it first |
-| R4 | Strict $0.00 input/output pricing | NOT_IMPLEMENTED | no pricing check before `--model` |
-| R5 | Centralized production invocation | PARTIALLY_IMPLEMENTED | single `opencode run` at agent-run.sh:109 but no router |
-| R6 | Bounded failover/rate-limit rotation | NOT_IMPLEMENTED | run_agent ends on rate_limited |
-| R7 | Direct push to main eliminated | NOT_IMPLEMENTED | swarm.py:2021,2523,3901,4075,4190 |
-| R8 | Swarm gate independent | IMPLEMENTED_BUT_UNVERIFIED | PR #1512; live gate blocked by bootstrap |
-| R9 | Delivery gate fail-closed | IMPLEMENTED_AND_VERIFIED | check-delivery-gate.py, 20 tests |
-| R10 | GitHub vars/rulesets verified | BLOCKED_BY_EXTERNAL_DEPENDENCY | API 403 rate limit |
-
-## Follow-on decision (user, 2026-11-23)
-- Remove the static model from all `.github/swarm/slots.json` entries. Slots keep identity and config only; the router in `scripts/model-router.py` chooses the model at runtime (auto by agent/phase or env `SWARM_MODEL`/`SWARM_FORCE_MODEL`), validated against `.github/swarm/model-pricing.json`. Acceptance: no production code reads a model from slots; baked slot config pins no model; runtime-profile model validation still fails closed against the verified registry; 100% coverage on every touched file.
+## Loaded skills
+- aurevia-delivery — every story/task uses the persistent delivery loop.
+- aurevia-senior-python — scripts/model-router.py, scripts/gen-opencode.py, scripts/swarm.py and tooling tests.
+- aurevia-test-engineer — regression tests and branch/failure-path coverage.
+- aurevia-plan-reviewer — pre-implementation plan review.
+- aurevia-senior-shell — scripts/agent-run.sh invocation and failure semantics.
+- aurevia-github-workflow — nine workflow environment blocks and exact model wiring.
 
 ## Progress
-- [x] Audit completed
-- [x] Router implemented (scripts/model-router.py, 100% coverage)
-- [x] Workflows rewired (9 workflows; no vars.SWARM_MODEL || overrides)
-- [x] Tests 34 router tests + 45 agent-run + 326 swarm; 100% router coverage
-- [x] Docs updated (docs/SWARM.md, WORKSPACE.md)
-- [x] Static slot model removed; runtime router is the sole selector
-- [ ] Committed / PR
+- [x] Owner clarified the sole model input is SWARM_MODEL.
+- [x] Direct one-model runner restored; missing/empty values fail before invocation and `cmd_implement` exits nonzero after restoring config, before gates or commits.
+- [x] Router, router tests and pricing registry removed.
+- [x] Nine workflows export only SWARM_MODEL with the Hy4 Flash default.
+- [x] Runtime-profile validation no longer reads a model registry.
+- [x] Recursive slot-config model rejection added.
+- [x] Docs, agent instructions and durable trackers updated.
+- [ ] Git-dependent suites and changed-line coverage not rerun after the owner prohibited Git-using scripts.
 
-## Test evidence (2026-11-24, tool evidence)
-- Red before implementation: `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm*.py' -q` → `FAILED (failures=3, errors=32)` with `KeyError: 'model'`; `python3 -I -m unittest discover -s scripts/tests -p 'test_*opencode*.py' -q` → `FAILED (failures=1, errors=44)` with `AttributeError: module 'gen_opencode' has no attribute 'MODEL_REGISTRY'`.
-- Green: `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1555 tests ... OK`.
-- `bash scripts/quick-check.sh` → `quick check: policy, compile and unit tests passed`.
-- `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`.
-- `python3 -I scripts/gen-opencode.py --check` → exit 0 after regenerating the pre-existing stale `.github/opencode.ci.json` (`orca` → `aurevia-orchestrator`, 2 lines; local `opencode.json` was already current).
-- `shellcheck scripts/agent-run.sh` → exit 0. `actionlint .github/workflows/*.yml` → exit 1 only for the pre-existing, repo-wide `queue: max` key unsupported by the installed actionlint; no other finding.
-- Targeted router/wrapper suites: `test_agent_run.py` 93 tests OK, `test_model_router.py` 34 tests OK.
+## Test evidence
+- Red before production edits: targeted router-era tests failed with `configuration_error`, missing workflow default, accepted nested slot model, and required model registry.
+- Green before the workspace reset: `test_agent_run.DirectModelEnvironmentTests` 52 tests OK; `test_swarm.ModelEnvironmentTests` 7 tests OK; nested slot CLI test 1 OK; runtime-profile suites 23 + 18 tests OK; `bash -n scripts/agent-run.sh`, `shellcheck scripts/agent-run.sh`, `gen-opencode.py --check-runtime`, `gen-opencode.py --check`, policy scripts and actionlint passed.
+- Full suite before the reset: 1,573 tests, one unrelated pre-existing planner assertion failure (`claim_open(..., force=False)` versus older expected call).
+- After the reset, work was restored from the exact session diff and backed up to `/private/var/folders/5f/1bz7m8qs7t380l7r_08cbx540000gn/T/opencode/remove-model-router-backup.tgz`.
+- Owner then prohibited all Git-using scripts. Non-Git green checks after restore: `py_compile` on every changed Python file; `bash -n scripts/agent-run.sh`; `shellcheck scripts/agent-run.sh`; `gen-opencode.py --check-runtime`; `gen-opencode.py --check`; `actionlint -ignore 'unexpected key "queue"' .github/workflows/*.yml`; `check-docs.py`; `check-pack.py`; runtime-profile suites 23 + 18 tests OK; `ModelEnvironmentTests` 7 OK; nested slot CLI test 1 OK; static YAML/JSON model-contract audit passed.
+- Code review found a fail-open `configuration_error` path; fixed by recording `checks=skipped`, emitting outputs and returning nonzero from `cmd_implement` after `restore_config`, before any commit or repair gate. Unset/empty tests now require nonzero exit.
+- Final non-Git rerun after that fix: Python syntax, shell syntax/shellcheck, actionlint, `check-docs.py`, `check-pack.py`, both `gen-opencode.py` checks, runtime-profile suites, `ModelEnvironmentTests`, nested-slot CLI test, and direct changed-range coverage all passed again.
+- Backup archive verified: 29 entries, SHA-256 `6c9d3ad0ab1744f7a0988209b268ea9385246629dba235c88260793003fdee4a` before the final checkpoint-only refresh.
+- The full suite and `scripts/python-coverage.sh` were not rerun because both invoke Git.
 
 ## Coverage
-- `scripts/swarm.py`: `slot_config` no-model branch → `test_swarm.PlanTests.test_committed_files_are_valid`, `test_swarm_cli_coverage.test_main_slot_config_prints_the_config`, `test_module_main_guard_exits_with_zero`; `plan_workers` matrix without model → `test_swarm.LaunchTaskTests.test_planned_worker_has_no_pinned_model`; four synthetic slot literals → existing planner/schedule/daily tests.
-- `scripts/gen-opencode.py`: registry read/missing → `test_gen_opencode_coverage.test_missing_registry_alone_returns_early`, `test_opencode_profile.test_missing_model_registry_is_reported`; non-dict `models` → `test_a_non_mapping_models_entry_fails_closed`; missing `models` → `test_a_registry_without_a_models_mapping_fails_closed`; allowed/disallowed declared model → `test_model_declaration_branches`, `test_allowed_agent_model_passes`, `test_disallowed_agent_model_is_reported`.
-- No threshold, exclusion, skip or suppression added.
+- Direct non-Git coverage after restore: `gen-opencode.py` 90/90 lines and 44/44 branches; changed range has zero missing lines/branches. `swarm.py` changed range (`_contains_model_key`, `load_slots`, `slot_config` docstring area) has zero missing lines/branches under `ModelEnvironmentTests` and the nested-slot CLI test.
+- `scripts/python-coverage.sh` was not run because it invokes `git diff` and the owner prohibited Git-using scripts.
+- Named branch tests: direct pass-through, unset/empty model, terminal rate limit, generic failure, timeout precedence, recursive slot model rejection, allowed nested slot config, registry ignored, runtime permission/secret checks. Wrapper behavior tests are present but not rerun after restore because their fixture invokes Git.
 
 ## Entry-point-to-test trace
-`swarm.yml` hourly plan → `scripts/swarm.py plan-workers` (matrix carries `slot` only) → `swarm-worker.yml` env (`SWARM_MODEL`/`SWARM_FORCE_MODEL` only) → `scripts/agent-run.sh run_agent` → `scripts/model-router.py resolve` → `.github/swarm/model-pricing.json` → `opencode run --model`. Asserted by `test_swarm.ModelOverrideTests`, `LaunchTaskTests.test_planned_worker_has_no_pinned_model`, `test_swarm_cli_coverage` slot-config tests, `test_gen_opencode_coverage`/`test_opencode_profile` registry tests and `test_agent_run.DeterministicRoutingE2ETests`.
+Workflow `SWARM_MODEL` env → `scripts/agent-run.sh run_agent` → one `opencode run --model "$SWARM_MODEL"` → `DirectModelEnvironmentTests`; slot image config → `scripts/swarm.py load_slots` → `ModelEnvironmentTests` and nested-model CLI test; runtime profile → `scripts/gen-opencode.py check_runtime` → runtime-profile suites.
+
+## Review verdicts
+- aurevia-coverage-auditor: GO (re-confirmed after fail-closed fix)
+- aurevia-devsecops: GO (re-confirmed after fail-closed fix)
+- aurevia-code-reviewer: re-review pending; initial NO-GO fail-open finding fixed
 
 ## Findings
-- Bounded design reviews: `aurevia-senior-python` GO, `aurevia-github-workflow` GO (conditional on companion edits, all applied), `aurevia-senior-shell` NO-GO on story scope (its Critical Python blockers were fixed; shell scope needed comment-only corrections, applied).
-- Pre-existing stale generated `.github/opencode.ci.json` from commit `b70e8969` blocked the pack gate; regenerated in this change (2 lines).
-- Evidence source: executed local commands and read-only specialist agents; no human or clinical evidence.
+- At 14:26:36 -0500 the workspace was reset twice to `be65c427`, discarding the first restored patch. The exact process was not proven; no intentional workspace reset was issued. All changes were reconstructed from the session diff.
+- Owner then directed: do not run any script that uses Git. Git-dependent verification remains outstanding.
+- Evidence sources: tool command output and read-only specialist reviews; no simulated user or human clinical feedback.
+
+## Why this is not finished
+The code and documentation are restored, non-Git checks pass, changed Python ranges have direct 100% line/branch coverage, and coverage/security re-reviews are GO. The canonical full tooling suite and `scripts/python-coverage.sh` have not been rerun after the reset because both invoke Git and the owner prohibited Git-using scripts. Final code re-review is pending. Next step: after owner authorization, run `python3 -I -m unittest discover -s scripts/tests -q` and `bash scripts/python-coverage.sh`, then record the final code-review verdict and close the task.

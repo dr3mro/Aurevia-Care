@@ -3707,38 +3707,93 @@ class TrustedCopyTests(unittest.TestCase):
             self.assertIn("-c safe.directory='*'", step["run"], step["name"])
 
 
-class ModelOverrideTests(unittest.TestCase):
-    def test_workflows_pass_precedence_to_the_central_router(self):
-        # The old `vars.SWARM_MODEL || ...` expressions made SWARM_MODEL the
-        # primary override. Selection now lives in scripts/model-router.py, so
-        # workflows pass only the two control variables, never a model.
-        routed = 0
-        for path in (ROOT / ".github/workflows").glob("*.yml"):
-            text = path.read_text()
-            if "SWARM_MODEL:" not in text:
-                continue
-            routed += 1
-            self.assertNotIn("vars.SWARM_MODEL ||", text, path.name)
-            self.assertIn("SWARM_MODEL: ${{ vars.SWARM_MODEL }}", text, path.name)
-            self.assertIn("SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}", text, path.name)
-        self.assertGreaterEqual(routed, 9)
+class ModelEnvironmentTests(unittest.TestCase):
+    WORKFLOWS = (
+        "swarm-worker.yml", "swarm-debugger.yml", "swarm-integrator.yml",
+        "swarm-strategist.yml", "swarm-issue-monitor.yml", "daily-audit.yml",
+        "daily-qa.yml", "daily-devsecops.yml", "daily-notes.yml",
+    )
 
-    def test_no_workflow_or_slot_selects_a_model(self):
+    def test_agent_workflows_pass_only_swarm_model_with_default(self):
+        expected = "SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}"
+        for name in self.WORKFLOWS:
+            with self.subTest(workflow=name):
+                text = (ROOT / ".github/workflows" / name).read_text()
+                self.assertIn(expected, text)
+                self.assertNotIn("SWARM_FORCE_MODEL", text)
+
+    def test_no_workflow_exports_a_second_model_variable(self):
         for path in (ROOT / ".github/workflows").glob("*.yml"):
             for line in path.read_text().splitlines():
-                # Match the exact env key: SWARM_MODEL is the router control,
-                # while a bare MODEL key would be a second model selector.
                 self.assertFalse(line.strip().startswith("MODEL:"),
                                  f"{path.name}: {line.strip()}")
-        slots = swarm.load_slots(ROOT / ".opencode/config/slots.json")
-        self.assertTrue(all("model" not in slot for slot in slots))
+                self.assertFalse(line.strip().startswith("SWARM_FORCE_MODEL:"),
+                                 f"{path.name}: {line.strip()}")
 
-    def test_the_router_enforces_strict_boolean_config(self):
-        router = load("model-router")
-        self.assertEqual(router.parse_force_model(""), 0)
-        self.assertEqual(router.parse_force_model("1"), 1)
-        with self.assertRaises(router.ConfigurationError):
-            router.parse_force_model("yes")
+    def test_router_and_registry_artifacts_are_absent(self):
+        self.assertFalse((ROOT / "scripts/model-router.py").exists())
+        self.assertFalse((ROOT / "scripts/tests/test_model_router.py").exists())
+        self.assertFalse((ROOT / ".opencode/model-pricing.json").exists())
+
+    def test_active_surfaces_have_no_router_references(self):
+        paths = [
+            ROOT / "scripts/agent-run.sh", ROOT / "scripts/swarm.py",
+            ROOT / "scripts/gen-opencode.py", ROOT / ".opencode/agents/orca.md",
+            ROOT / ".opencode/config/slots.json", ROOT / "docs/SWARM.md",
+            ROOT / ".github/agent-image/Dockerfile.slot",
+            ROOT / "docs/operations/workflow-changes/quality-verification-checklist.md",
+            ROOT / "docs/operations/workflow-changes/candidate-validation-isolation.md",
+            *(ROOT / ".github/workflows").glob("*.yml"),
+        ]
+        for path in paths:
+            text = path.read_text()
+            self.assertNotIn("model-router", text, str(path))
+            self.assertNotIn("model-pricing", text, str(path))
+            self.assertNotIn("SWARM_FORCE_MODEL", text, str(path))
+
+    def test_load_slots_rejects_direct_and_nested_model_configuration(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        cases = (
+            {"slot": 1, "model": "opencode/test"},
+            {"slot": 1, "config": {"model": "opencode/test"}},
+            {"slot": 1, "config": {"nested": [{"model": "opencode/test"}]}},
+        )
+        for value in cases:
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "slots.json"
+                path.write_text(json.dumps({"slots": [value]}))
+                with self.assertRaisesRegex(ValueError, "must not select a model"):
+                    swarm.load_slots(path)
+
+    def test_load_slots_allows_non_model_nested_configuration(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        value = {"slot": 1, "config": {"nested": [{"share": "disabled"}]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "slots.json"
+            path.write_text(json.dumps({"slots": [value]}))
+            self.assertEqual(swarm.load_slots(path), [value])
+
+    def test_every_rendered_slot_config_is_model_free(self):
+        slots = swarm.load_slots(ROOT / ".opencode/config/slots.json")
+
+        def assert_no_model(value):
+            if isinstance(value, dict):
+                self.assertNotIn("model", value)
+                for nested in value.values():
+                    assert_no_model(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    assert_no_model(nested)
+
+        for slot in slots:
+            assert_no_model(slot)
+            assert_no_model(swarm.slot_config(slots, slot["slot"]))
 
 
 class FailureReportTests(unittest.TestCase):

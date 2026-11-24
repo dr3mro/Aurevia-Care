@@ -113,7 +113,6 @@ OUTPUTS = {".opencode/opencode.json": False, ".opencode/opencode.ci.json": True}
 # needs its own gate. check-pack validates the generated local config for drift;
 # check-runtime validates the profile the workers actually load (OPS-06).
 RUNTIME_PROFILE = ".opencode/opencode.ci.json"
-MODEL_REGISTRY = ".opencode/model-pricing.json"
 CATCH_ALL_DENY = {"action": "*", "resource": "*", "effect": "deny"}
 BASH_ACTIONS = frozenset({"shell", "bash"})
 WRITE_ACTIONS = frozenset({"write", "edit", "patch"})
@@ -153,31 +152,18 @@ def check_runtime(root=ROOT):
 
     An empty list means the profile is safe for unattended swarm workers. The
     profile is judged on its own: a fresh generated config does not excuse a
-    runtime profile that grants write access, pins an unapproved model or
-    carries a credential. The verified pricing registry, not a slot image, is
-    the authoritative model allowlist; an unreadable registry rejects the profile.
+    runtime profile that grants write access or carries a credential. Model
+    selection is supplied at run time through ``SWARM_MODEL`` and is not a
+    runtime-profile policy input.
     """
     violations = []
     profile = _read_json(root / RUNTIME_PROFILE, "runtime profile", violations)
-    registry = _read_json(root / MODEL_REGISTRY, "model registry", violations)
-    if profile is None or registry is None:
+    if profile is None:
         return violations
 
     for path in profile.get("instructions", []):
         if not (root / path).is_file():
             violations.append(f"runtime profile: instruction file {path} does not exist")
-
-    entries = registry.get("models")
-    if not isinstance(entries, dict):
-        violations.append(f"model registry: {MODEL_REGISTRY} has no 'models' mapping")
-        entries = {}
-    models = set(entries)
-    declared_models = [("runtime profile", profile.get("model"))]
-    declared_models += [(name, config.get("model"))
-                        for name, config in profile.get("agents", {}).items()]
-    for label, declared in declared_models:
-        if declared is not None and declared not in models:
-            violations.append(f"{label}: model {declared!r} is not allowed by {MODEL_REGISTRY}")
 
     for name, config in profile.get("agents", {}).items():
         permissions = config.get("permissions", [])

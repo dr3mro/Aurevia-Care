@@ -1,8 +1,8 @@
 name: Swarm slot images
 # Builds one prepared image per worker slot (ghcr.io/<repo>-agent-<slot>) on top
 # of the base image. Each slot bakes only the shared OpenCode config from
-# .opencode/config/slots.json; no model is baked in. The router selects the model
-# at run time. Credentials are never baked in.
+# .opencode/config/slots.json; no model is baked in. The workflow supplies
+# SWARM_MODEL at run time. Credentials are never baked in.
 on:
   push:
     branches: [main]

@@ -277,6 +277,15 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertNotIn("model", printed)
         self.assertIs(printed["autoupdate"], False)
 
+    def test_main_slot_config_rejects_a_nested_model(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "slots.json"
+            path.write_text(json.dumps({"slots": [
+                {"slot": 1, "config": {"nested": {"model": "opencode/test"}}}
+            ]}))
+            with self.assertRaisesRegex(ValueError, "must not select a model"):
+                swarm.main(["slot-config", "--slot", "1", "--slots", str(path)])
+
     def test_main_plan_workers_reclaims_and_claims_on_every_push_retry(self):
         # The nested `mark` callback is passed to update_todo; a fake that invokes it
         # proves the newest TODO.md is re-claimed on every push retry.

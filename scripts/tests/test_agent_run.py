@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import stat
@@ -13,6 +12,7 @@ from helpers import ROOT
 FAKE_OPENCODE = """#!/usr/bin/env bash
 cp .opencode/opencode.json "$SEEN"
 printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
+if [[ -n "${ARGV_LOG:-}" ]]; then printf '%s\\0' "$@" >> "$ARGV_LOG"; fi
 case "$*" in *aurevia-task-advisor*)
   case "${BRIEF_MODE:-none}" in
     good) printf 'chatter\\n<<<BRIEF\\nGoal: advised goal\\nBRIEF>>>\\n' ;;
@@ -23,6 +23,8 @@ esac
 case "$FAKE_MODE" in
   commit) echo work > feature.txt; git add feature.txt; git commit -qm feature; echo done ;;
   rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
+  fail) echo "provider failed"; exit 1 ;;
+  rate-slow) echo "Error: 429 rate limit exceeded"; sleep 5 ;;
   dirty) echo work > feature.txt; echo done ;;
   edit) echo more >> feature.txt; echo findings ;;
   none) echo nothing ;;
@@ -52,7 +54,6 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / ".github").mkdir()
         shutil.copy(ROOT / "scripts/agent-run.sh", self.repo / "scripts/agent-run.sh")
         shutil.copy(ROOT / "scripts/route-task.py", self.repo / "scripts/route-task.py")
-        shutil.copy(ROOT / "scripts/model-router.py", self.repo / "scripts/model-router.py")
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
         (self.repo / "scripts/coverage-check.sh").write_text(
             "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
@@ -64,9 +65,6 @@ class AgentRunTests(unittest.TestCase):
             "echo \"$*\" >> \"${QUALITY_ARGS:-/dev/null}\"\nexit ${QUALITY_EXIT:-0}\n")
         (self.repo / ".github/pull_request_template.md").write_text("## Summary\n")
         (self.repo / ".opencode").mkdir(parents=True, exist_ok=True)
-        (self.repo / ".opencode/test-pricing.json").write_text(json.dumps({"models": {
-            "opencode/test": {"input": 0, "output": 0, "cache_read": 0,
-                              "pricing_source": "fixture", "verified_at": "2026-01-01"}}}))
         (self.repo / ".opencode/opencode.ci.json").write_text('{"ci": true}')
         (self.repo / ".opencode/opencode.json").write_text('{"real": true}')
         (self.repo / ".gitignore").write_text("/.agent/\n")
@@ -91,8 +89,8 @@ class AgentRunTests(unittest.TestCase):
                     "MODE": "story", "BRANCH_PREFIX": "opencode", "CHECK_SCRIPT": "scripts/check.sh",
                     "HOME": str(tmp / "home"), "GITHUB_WORKSPACE": str(self.repo),
                     "GITHUB_OUTPUT": str(tmp / "output"), "GITHUB_RUN_NUMBER": "9",
-                    "GH_LOG": str(self.gh_log), "SEEN": str(tmp / "seen.json"), "MODEL": "opencode/test",
-            "SWARM_REGISTRY": ".opencode/test-pricing.json",
+                    "GH_LOG": str(self.gh_log), "SEEN": str(tmp / "seen.json"),
+                    "SWARM_MODEL": "opencode/test",
                     "OPENCODE_API_KEY": "k-test", "STORY_ID": "issue-5",
                     "STORY_TITLE": "Add login", "STORY_BODY": "body", "ISSUE_NUMBER": "5",
                     "GH_TOKEN": "t-test", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
@@ -102,8 +100,12 @@ class AgentRunTests(unittest.TestCase):
         subprocess.run(["git", *args], cwd=self.repo, check=True, capture_output=True)
 
     def run_cmd(self, command, **env):
+        merged = {**self.fixture_environment(), **env}
+        for name in ("MODEL", "SWARM_FORCE_MODEL", "SWARM_MODEL"):
+            if name in env and env[name] is None:
+                merged.pop(name, None)
         return subprocess.run(["bash", "scripts/agent-run.sh", command], cwd=self.repo,
-                              env={**self.fixture_environment(), **env}, capture_output=True, text=True)
+                              env=merged, capture_output=True, text=True)
 
     def outputs(self):
         lines = (self.tmp / "output").read_text().splitlines()
@@ -543,57 +545,89 @@ class AgentRunTests(unittest.TestCase):
 
 
 
-if __name__ == "__main__":
-    unittest.main()
+class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentRunTests"]).AgentRunTests):
+    """The real wrapper passes one SWARM_MODEL value and never rotates models."""
 
+    def argv(self):
+        return (self.tmp / "argv.log").read_bytes().decode().split("\0")[:-1]
 
-class DeterministicRoutingE2ETests(__import__("test_agent_run", fromlist=["AgentRunTests"]).AgentRunTests):
-    """Real agent-run.sh + real model-router.py + controlled provider fixture.
-
-    Asserts the actual sequence of --model values passed to opencode run,
-    not merely configuration values.
-    """
-
-    def test_forced_mode_uses_only_configured_model(self):
-        prompts = self.tmp / "forced-prompts.log"
-        result = self.run_cmd("implement", FAKE_MODE="commit",
-                              SWARM_FORCE_MODEL="1", SWARM_MODEL="opencode/test",
-                              PROMPT_LOG=str(prompts))
-        self.assertEqual(result.returncode, 0, result.stderr)
-        calls = [line for line in prompts.read_text().splitlines() if "--model" in line]
-        self.assertTrue(calls)
-        for line in calls:
-            self.assertIn("--model opencode/test", line)
-        self.assertNotIn("ok\n", result.stdout[-20:])
-
-    def test_intelligent_mode_rotates_on_rate_limit_to_next_candidate(self):
-        # Fixture registry has two verified free models; make the first return a
-        # 429 so the real wrapper must rotate to the next verified candidate.
-        pricing = self.repo / ".opencode/test-pricing.json"
-        pricing.write_text(json.dumps({"models": {
-            "opencode/test": {"input": 0, "output": 0, "pricing_source": "fixture",
-                              "verified_at": "2026-01-01", "score": 99},
-            "opencode/second": {"input": 0, "output": 0, "pricing_source": "fixture",
-                                "verified_at": "2026-01-01", "score": 50}}}))
-        fake = """#!/usr/bin/env bash
-printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
-case "$*" in
-  *--model\\ opencode/test*) echo "429 rate limit exceeded"; exit 1 ;;
-esac
-echo done
-"""
-        (self.bin_dir / "opencode").write_text(fake)
-        (self.bin_dir / "opencode").chmod(0o755)
-        prompts = self.tmp / "rotate-prompts.log"
-        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_FORCE_MODEL="0",
-                              PROMPT_LOG=str(prompts))
+    def test_swarm_model_is_passed_exactly_and_legacy_values_are_ignored(self):
+        model = "opencode/custom model\nnext"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_MODEL=model,
+                              MODEL="opencode/ignored", SWARM_FORCE_MODEL="1",
+                              PROMPT_LOG=str(self.tmp / "prompts.log"),
+                              ARGV_LOG=str(self.tmp / "argv.log"))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.outputs()["result"], "ok")
-        calls = [line for line in prompts.read_text().splitlines() if "--model" in line]
-        self.assertIn("--model opencode/test", calls[0])
-        self.assertIn("--model opencode/second", calls[1])
+        argv = self.argv()
+        self.assertEqual(argv.count("--model"), 1)
+        self.assertEqual(argv[argv.index("--model") + 1], model)
+        self.assertNotIn("opencode/ignored", argv)
+        self.assertEqual(argv.count("run"), 1)
 
-    def test_invalid_force_value_fails_safely(self):
-        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_FORCE_MODEL="true")
-        self.assertEqual(result.returncode, 0)
-        self.assertIn("configuration_error", self.outputs()["result"])
+    def test_unset_swarm_model_fails_before_invocation(self):
+        prompts = self.tmp / "missing-unset.log"
+        argv = self.tmp / "missing-unset.argv"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_MODEL=None,
+                              PROMPT_LOG=str(prompts), ARGV_LOG=str(argv))
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "configuration_error")
+        self.assertEqual(self.outputs()["checks"], "skipped")
+        self.assertFalse(prompts.exists())
+        self.assertFalse(argv.exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_empty_swarm_model_fails_before_invocation(self):
+        prompts = self.tmp / "missing-empty.log"
+        argv = self.tmp / "missing-empty.argv"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_MODEL="",
+                              PROMPT_LOG=str(prompts), ARGV_LOG=str(argv))
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "configuration_error")
+        self.assertEqual(self.outputs()["checks"], "skipped")
+        self.assertFalse(prompts.exists())
+        self.assertFalse(argv.exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_rate_limit_is_terminal_after_one_invocation(self):
+        result = self.run_cmd("implement", FAKE_MODE="rate", SWARM_MODEL="opencode/test",
+                              PROMPT_LOG=str(self.tmp / "prompts.log"),
+                              ARGV_LOG=str(self.tmp / "argv.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "rate_limited")
+        self.assertEqual(self.argv().count("run"), 1)
+        self.assertEqual(self.argv().count("--model"), 1)
+
+    def test_generic_failure_is_terminal_after_one_invocation(self):
+        result = self.run_cmd("implement", FAKE_MODE="fail", SWARM_MODEL="opencode/test",
+                              PROMPT_LOG=str(self.tmp / "prompts.log"),
+                              ARGV_LOG=str(self.tmp / "argv.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "failed")
+        self.assertEqual(self.argv().count("run"), 1)
+        self.assertEqual(self.argv().count("--model"), 1)
+
+    def test_timeout_wins_over_rate_limit_output(self):
+        result = self.run_cmd("implement", FAKE_MODE="rate-slow", AGENT_TIMEOUT="1",
+                              SWARM_MODEL="opencode/test",
+                              PROMPT_LOG=str(self.tmp / "prompts.log"),
+                              ARGV_LOG=str(self.tmp / "argv.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "timeout")
+        self.assertEqual(self.argv().count("run"), 1)
+        self.assertEqual(self.argv().count("--model"), 1)
+
+    def test_production_has_one_direct_model_invocation(self):
+        text = (__import__("helpers").ROOT / "scripts/agent-run.sh").read_text()
+        lines = [line for line in text.splitlines()
+                 if "opencode run" in line and not line.strip().startswith("#")]
+        self.assertEqual(len(lines), 1)
+        self.assertIn('--model "$SWARM_MODEL"', lines[0])
+        self.assertNotIn("route_models", text)
+        self.assertNotIn("SWARM_FORCE_MODEL", text)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -206,9 +206,8 @@ jobs:
     env:
       CONFLICTED: ${{ needs.validate.outputs.conflicted }}
       BASE_BRANCH: ${{ github.event.repository.default_branch }}
-      # Only these repository variables select a model, through the centralized router.
-      SWARM_MODEL: ${{ vars.SWARM_MODEL }}
-      SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}
+      # One repository variable supplies the model name; the runner passes it through unchanged.
+      SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
       SWARM: '1'
       CHECK_SCRIPT: scripts/quick-check.sh
       MERGE_ATTEMPTS: '5'

@@ -11,7 +11,7 @@ on:
       slot: {type: string, required: true}
       # The planned task as JSON (the matrix entry): slot, kind, id, title,
       # body, branch, number and fix. One input keeps the interface small.
-      # No model travels in this input; the router selects the model at run time.
+      # No model travels in this input; the workflow supplies SWARM_MODEL at run time.
       task: {type: string, required: true}
       ignore_red_main:
         description: 'Carry the wave-level red-main override into slot refill'
@@ -76,9 +76,8 @@ jobs:
       run:
         shell: bash
     env:
-      # Only these repository variables select a model, through the centralized router.
-      SWARM_MODEL: ${{ vars.SWARM_MODEL }}
-      SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}
+      # One repository variable supplies the model name; the runner passes it through unchanged.
+      SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
       MODE: ${{ fromJSON(inputs.task).kind == 'fix' && 'fix' || 'story' }}
       BRANCH: ${{ fromJSON(inputs.task).branch }}
       BRANCH_PREFIX: swarm

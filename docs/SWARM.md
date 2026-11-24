@@ -142,34 +142,28 @@ Two native GitHub checks guard a protected merge, and they answer different ques
 
 The worker image installs Debian's `python3-yaml` and checks the import with `python3 -I` during the build. The hosted Delivery tooling, fix-PR validation and integrator jobs use `.github/actions/setup-tooling-python` before running the same script tests. For local runs, `python3 -I -c 'import yaml'` verifies that PyYAML is available to the interpreter used by the gates.
 
-### Centralized, zero-cost model routing
+### Direct model environment
 
-Every production `opencode run` obtains its model from `scripts/model-router.py`, invoked by the single wrapper in `scripts/agent-run.sh`. No workflow, image or slot config selects a model: the `model` field is gone from `.opencode/config/slots.json` and the inert `MODEL` hint has been removed from the workflows. Two repository variables, passed straight through to the router, are the only model inputs:
+Every production `opencode run` receives the exact model name from the required `SWARM_MODEL` environment variable through the single wrapper in `scripts/agent-run.sh`. The agent workflows export:
 
-- **`SWARM_FORCE_MODEL`** — a strict Boolean. `0` (the default when unset or empty) selects intelligent routing; `1` forces the exact configured model everywhere. Any other value is a configuration error that fails safely rather than being interpreted as true.
-- **`SWARM_MODEL`** — a provider-qualified model identifier. In intelligent mode it is reserved strictly for the **final fallback**, after all eligible primary models are exhausted; it never overrides an eligible primary. In forced mode it is the *only* model used for every role and phase, with no alternative selection. A forced configuration missing `SWARM_MODEL`, or one that names a paid, unauthorized or unverified model, is rejected.
+```yaml
+SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
+```
 
-The router classifies each task deterministically (L1–L4; security/auth/tenant/clinical paths are always critical), ranks verified zero-cost primary models by agent role and execution phase, and returns a bounded candidate list. A rate-limited model rotates to the next verified candidate; a timeout or implementation failure is terminal. `agent-run.sh` preserves task state across a rotation and never retries an exhausted model within one run.
+There is no secondary model variable, force flag, model registry, role/phase ranking or failover. A missing or empty `SWARM_MODEL` is a configuration error before OpenCode starts. A rate limit, timeout or implementation failure is terminal; the wrapper never invokes a second model.
 
-Zero-cost eligibility is a **hard constraint** enforced from the checked-in registry `.opencode/model-pricing.json`. A model is eligible only with $0.00/M input, output, cache, reasoning, tool and request prices, no subscription or automatic overage, and a verified pricing source. A `free` substring in a model id, or presence in OpenCode's inventory, never implies eligibility. If no verified zero-cost model is available, the task defers — a paid model is never selected. The registry is not a worker-editable file; changes require authorized maintenance review.
+Slot images carry only shared OpenCode settings. `.opencode/config/slots.json` must not contain a `model` key at any depth; `load_slots` rejects direct or nested model selection so the runtime environment remains the only model input.
 
 Configure:
 
 ```bash
-# Intelligent routing (default): SWARM_MODEL is the final fallback
-gh variable set SWARM_FORCE_MODEL --body "0" -R dr3mro/Aurevia-Care
 gh variable set SWARM_MODEL --body "opencode-go/hy4-flash-free" -R dr3mro/Aurevia-Care
-
-# Forced single-model routing
-gh variable set SWARM_FORCE_MODEL --body "1" -R dr3mro/Aurevia-Care
-
-# Intelligent routing with no designated fallback
-gh variable set SWARM_FORCE_MODEL --body "0" -R dr3mro/Aurevia-Care
+# Delete the variable to use the workflow's built-in default.
 gh variable delete SWARM_MODEL -R dr3mro/Aurevia-Care
 gh variable list -R dr3mro/Aurevia-Care
 ```
 
-The model id in these examples must still pass availability, capability and zero-cost validation. Do not change repository variables without authorization.
+Do not change repository variables without authorization.
 
 ### Two independent gates
 
@@ -182,7 +176,7 @@ Two separate native checks report on every revision; neither substitutes for the
 
 `pr-rebase.yml` refreshes a new pull request onto `main` on open so its gate runs against the current base. `dependabot-auto-merge.yml` merges low-risk dependency updates. `release-app-image.yml` publishes the tagged application image only when the tag points to a green default-branch commit; tags are restricted by the `PROTECT-TAGS` ruleset.
 
-`agent-image.yml` builds a base image once (OpenCode V2 CLI, Git, gh, JDK 21, Maven, the project's Maven dependencies). `swarm-images.yml` adds one small layer per slot, `ghcr.io/<owner>/<repo>-agent-<n>`, that bakes only the shared OpenCode settings (and any extra slot config) from `.opencode/config/slots.json`; no model is baked into any slot image. Each slot uses its own free account through the secret `OPENCODE_API_KEY_<n>`. Credentials are never baked into an image. Edit `slots.json` to add or remove a slot or to change OpenCode settings and the slot images rebuild; model choice is a runtime router decision from `SWARM_FORCE_MODEL`/`SWARM_MODEL`.
+`agent-image.yml` builds a base image once (OpenCode V2 CLI, Git, gh, JDK 21, Maven, the project's Maven dependencies). `swarm-images.yml` adds one small layer per slot, `ghcr.io/<owner>/<repo>-agent-<n>`, that bakes only the shared OpenCode settings (and any extra slot config) from `.opencode/config/slots.json`; no model is baked into any slot image. Each slot uses its own free account through the secret `OPENCODE_API_KEY_<n>`. Credentials are never baked into an image. Edit `slots.json` to add or remove a slot or to change OpenCode settings and the slot images rebuild; the workflow supplies the model through `SWARM_MODEL` at run time.
 
 **Reusable build, never per-task.** Images are built only when their own inputs change (the agent Dockerfile, `slots.json` or the image workflows), on the monthly refresh, or by manual dispatch. A change to `slots.json` — now slot entries and settings only, never a model — still rebuilds the slot images and is the signal that workers must pick up the new baked config. `swarm.yml` contains no build step: a worker only pulls its slot's `:latest` image, so running N tasks does not rebuild anything. Because a slot image layers on the base `:latest` tag, `swarm.yml` checks image health before planning a wave: while `agent-image` or `swarm-images` is running, or the last slot build is not green, it starts no workers (avoiding a stale-image race such as a V1 CLI after the base moved to V2). A successful `Swarm slot images` run re-triggers `swarm.yml`, so a wave skipped during a rebuild still picks up its task. To verify a CLI change reached workers, rebuild the base image, wait for slot images, then start a wave.
 

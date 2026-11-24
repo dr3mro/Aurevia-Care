@@ -1857,16 +1857,29 @@ def ensure_labels():
         )
 
 
+def _contains_model_key(value):
+    """Return whether a JSON value contains a model-selection key at any depth."""
+    if isinstance(value, dict):
+        return "model" in value or any(_contains_model_key(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_contains_model_key(item) for item in value)
+    return False
+
+
 def load_slots(path):
-    return json.loads(Path(path).read_text())["slots"]
+    """Load slot definitions, rejecting model selection in top-level or nested config."""
+    slots = json.loads(Path(path).read_text())["slots"]
+    if any(_contains_model_key(slot) for slot in slots):
+        raise ValueError("slot configuration must not select a model; use SWARM_MODEL at run time")
+    return slots
 
 
 def slot_config(slots, number):
     """The opencode.json baked into one slot's image: config defaults only.
 
-    The model is deliberately absent: scripts/model-router.py selects it at run
-    time from the verified zero-cost registry, so no image can pin a model. The
-    slot's free-account credential is injected at run time and never stored here.
+    The model is deliberately absent: ``SWARM_MODEL`` supplies it at run time,
+    so no image can pin a model. The slot's free-account credential is injected
+    at run time and never stored here.
     """
     slot = next(s for s in slots if s["slot"] == number)
     return {
@@ -3215,8 +3228,8 @@ def plan_workers(
             )
         ]
     )
-    # The matrix carries only slot identity; model selection belongs to the
-    # worker's router, not to a value baked into the image or the planner output.
+    # The matrix carries only slot identity; SWARM_MODEL is supplied by the
+    # workflow at run time, not baked into the image or planner output.
     return [{**t, "slot": s["slot"]} for t, s in zip(chosen, slots)]
 
 

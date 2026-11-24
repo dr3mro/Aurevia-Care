@@ -71,9 +71,8 @@ jobs:
       run:
         shell: bash
     env:
-      # Only these repository variables select a model, through the centralized router.
-      SWARM_MODEL: ${{ vars.SWARM_MODEL }}
-      SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}
+      # One repository variable supplies the model name; the runner passes it through unchanged.
+      SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
       SWARM: '1'
       MODE: fix
       PR_NUMBER: ${{ matrix.pr }}
