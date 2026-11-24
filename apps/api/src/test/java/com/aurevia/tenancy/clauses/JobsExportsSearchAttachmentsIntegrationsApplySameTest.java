@@ -391,10 +391,8 @@ class JobsExportsSearchAttachmentsIntegrationsApplySameTest {
                 tenantExportService.download(jobId);
                 throw new AssertionError("expected the download to be refused");
             } catch (ApiException exception) {
-                // The service's own participating transaction marked this transaction
-                // rollback-only when it refused. Flag it locally too so the callback
-                // returns a clean rollback instead of an UnexpectedRollbackException.
-                status.setRollbackOnly();
+                // The service owns its transaction and rolls it back on refusal;
+                // there is no outer transaction to mark rollback-only here.
                 return exception;
             }
         });
@@ -413,10 +411,8 @@ class JobsExportsSearchAttachmentsIntegrationsApplySameTest {
                 tenantExportService.start();
                 throw new AssertionError("expected the export start to be refused");
             } catch (ApiException exception) {
-                // The service's own participating transaction marked this transaction
-                // rollback-only when it refused. Flag it locally too so the callback
-                // returns a clean rollback instead of an UnexpectedRollbackException.
-                status.setRollbackOnly();
+                // The service owns its transaction and rolls it back on refusal;
+                // there is no outer transaction to mark rollback-only here.
                 return exception;
             }
         });
