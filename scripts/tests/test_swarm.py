@@ -3732,3 +3732,18 @@ class ReconcileTasksTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IntegratorTwoTierDispatchTest(unittest.TestCase):
+    """The workflow's read-only validate and trusted publish commands must run."""
+
+    def test_integrate_validate_dispatches_to_the_validator(self):
+        with mock.patch.object(swarm, "integrate_validate") as validate:
+            swarm.main(["integrate-validate", "--queue", "[7]", "--gate", "gate.sh", "--out", "validated"])
+        validate.assert_called_once_with([7], "gate.sh", "validated")
+
+    def test_integrate_publish_dispatches_to_the_publisher(self):
+        with mock.patch.object(swarm, "integrate_publish") as publish:
+            swarm.main(["integrate-publish", "--manifest", "m.json", "--bundle", "b.bundle",
+                        "--gate", "gate.sh"])
+        publish.assert_called_once_with("m.json", "b.bundle", "gate.sh")

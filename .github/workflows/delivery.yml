@@ -15,14 +15,14 @@ on:
 permissions:
   contents: read
 # Branch protection checks the exact SHA, so a push to main or a tag must keep
-# every verdict: never cancel it. A PR can only merge its current head, and an
-# older head is never merged, so a new push cancels the stale run instead of
-# queueing behind it -- otherwise the current head's "Delivery gate" check is
-# never reported and branch protection blocks the PR. queue:max still applies
-# to the non-cancelling triggers and keeps one queued run per ref.
+# every verdict: never cancel it. GitHub also rejects queue:max combined with
+# cancellation of a running run, so no trigger may cancel one. A PR can only
+# merge its current head: grouping PR runs by head SHA starts a new head at once
+# instead of queueing it behind a stale head whose verdict nobody needs. Other
+# triggers stay serialized per ref, and queue:max keeps every waiting verdict.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
+  cancel-in-progress: false
   queue: max
 
 jobs:

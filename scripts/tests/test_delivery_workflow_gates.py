@@ -125,7 +125,7 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertIn("Candidate was not validated", published)
         self.assertIn("VALIDATED_SHA", published)
 
-    def test_integrator_candidate_job_has_no_nvd_consumer_key(self):
+    def test_integrator_validate_job_has_no_nvd_consumer_key(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         job = workflow["jobs"]["validate"]
         self.assertNotIn("NVD_API_KEY", job.get("env", {}))
@@ -170,3 +170,12 @@ class WorkflowGateWiringTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IntegratorPublicationCoverageTest(unittest.TestCase):
+    """The publish job must run even when no PR was accepted or conflicted."""
+
+    def test_publish_job_runs_for_every_validation_decision(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
+        self.assertIn("report", workflow["jobs"]["validate"]["outputs"])
+        self.assertIn("needs.validate.outputs.report", workflow["jobs"]["publish"]["if"])
