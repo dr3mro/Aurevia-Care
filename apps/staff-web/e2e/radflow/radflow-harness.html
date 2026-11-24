@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Radiology worklist browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only browser harness for the bilingual radiology journey (WEB-10).
+         Vite dev serves this at /e2e/radflow/radflow-harness.html. The real
+         worklist screen is mounted with its production providers because the
+         pre-login shell hard-codes the reception role and denies /radiology.
+         No patient record, credential or production endpoint is used here. -->
+    <main>
+      <div id="radworklist-harness" data-testid="radworklist-harness"></div>
+    </main>
+    <script type="module" src="./radflow-harness.tsx"></script>
+  </body>
+</html>

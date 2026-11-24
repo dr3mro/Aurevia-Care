@@ -45,6 +45,26 @@ public final class InMemoryStaffAttachmentStore implements StaffAttachmentStore 
     }
 
     @Override
+    public boolean bindToMessage(StaffAttachment attachment) {
+        // The check and the write share one monitor: two concurrent publications
+        // of the same file can produce at most one successful binding.
+        synchronized (attachments) {
+            StaffAttachment current = java.util.Objects.requireNonNull(
+                    attachments.get(key(attachment.organizationId(), attachment.id())),
+                    "an attachment must exist before it can be bound");
+            if (current.sent()) {
+                if (attachment.messageId().equals(current.messageId())) {
+                    return false;
+                }
+                throw new com.aurevia.smartclinic.api.ApiException(409, "ALREADY_SENT",
+                        "the file has already been sent");
+            }
+            attachments.put(key(attachment.organizationId(), attachment.id()), attachment);
+            return true;
+        }
+    }
+
+    @Override
     public int countForDraft(String organizationId, String draftId) {
         return attachmentsForDraft(organizationId, draftId).size();
     }
@@ -52,6 +72,11 @@ public final class InMemoryStaffAttachmentStore implements StaffAttachmentStore 
     @Override
     public boolean isRecipient(String organizationId, String messageId, String subject) {
         return recipients.getOrDefault(key(organizationId, messageId), Set.of()).contains(subject);
+    }
+
+    @Override
+    public void grantRecipients(String organizationId, String messageId, Set<String> subjects) {
+        putRecipients(organizationId, messageId, subjects);
     }
 
     /**

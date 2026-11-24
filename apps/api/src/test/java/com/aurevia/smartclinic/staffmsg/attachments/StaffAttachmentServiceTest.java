@@ -242,6 +242,17 @@ class StaffAttachmentServiceTest {
     }
 
     @Test
+    void sendGrantsTheFrozenAudienceOnceWithoutAnyTestSideSeed() {
+        StaffAttachment clean = cleanAttachment();
+        service.send(uploader, new SendRequest(DRAFT, MESSAGE, List.of(clean.id()), Set.of(RECIPIENT), true));
+        assertTrue(store.isRecipient(ORG, MESSAGE, RECIPIENT));
+        assertFalse(store.isRecipient(ORG, MESSAGE, "nurse-c"));
+        assertEquals(1L, service.auditTrail(ORG, clean.id()).stream()
+                .filter(fact -> fact.type() == AuditType.SENT && "success".equals(fact.outcome()))
+                .count());
+    }
+
+    @Test
     void pendingListExcludesAlreadySentFiles() {
         StaffAttachment clean = cleanAttachment();
         store.putRecipients(ORG, MESSAGE, Set.of(RECIPIENT));

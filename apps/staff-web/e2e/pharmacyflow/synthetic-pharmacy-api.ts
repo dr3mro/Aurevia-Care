@@ -453,6 +453,17 @@ const handleStatusCommand: RouteHandler = async (context) => {
     await refuseStale(route);
     return true;
   }
+  // RX-02 keeps acceptance and dispensing as separate facts: a dispensing
+  // command before acceptance is an invalid transition, not a version problem.
+  // Refuse it at the boundary so a screen bypass cannot record dispensing
+  // evidence against a prescription the pharmacy has not accepted.
+  if (
+    match[2] === 'dispensing-evidence' &&
+    !store.events.some((event) => event.type === 'accepted')
+  ) {
+    await json(route, { code: 'INVALID_TRANSITION' }, 409);
+    return true;
+  }
   const event = applyStatusAction(store, prescription, match[2], bodyOf(request));
   if (event === undefined) {
     return false;

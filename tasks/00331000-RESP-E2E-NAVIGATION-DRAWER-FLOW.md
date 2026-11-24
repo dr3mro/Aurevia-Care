@@ -1,4 +1,6 @@
-- [ ] RESP-E2E-NAVIGATION-DRAWER-FLOW · Staff web end-to-end: navigationDrawerFlow across phone, tablet and desktop
+- [-] RESP-E2E-NAVIGATION-DRAWER-FLOW · Staff web end-to-end: navigationDrawerFlow across phone, tablet and desktop
+  - agent: swarm-7
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/navigationDrawerFlow.spec.ts
   - depends: RESP-E2E-PROJECTS
