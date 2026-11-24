@@ -391,6 +391,7 @@ class JobsExportsSearchAttachmentsIntegrationsApplySameTest {
                 tenantExportService.download(jobId);
                 throw new AssertionError("expected the download to be refused");
             } catch (ApiException exception) {
+
                 // The service owns its transaction and rolls it back on refusal;
                 // there is no outer transaction to mark rollback-only here.
                 return exception;
