@@ -192,6 +192,35 @@ class RoutingTests(unittest.TestCase):
                                      paths=("a.py", "b.py", "c.py", "d.py"))
         self.assertIn(review_qwen.selected, reg)
 
+    def test_opencode_go_is_preferred_for_routine_execution(self):
+        """An exhausted cheaper-ranked provider must not win a routine worker slot."""
+        reg = {
+            "opencode-go/beam-free": router.ModelInfo(
+                "opencode-go/beam-free", 0, 0, families=("beam",), roles=("worker",),
+                phases=("execution",), pricing_source="models.dev", score=60),
+            "opencode/hy4-flash-free": router.ModelInfo(
+                "opencode/hy4-flash-free", 0, 0, families=("hy4",), roles=("worker",),
+                phases=("execution",), pricing_source="models.dev", score=78),
+        }
+        decision = router.resolve("0", "", reg, role="worker", phase="execution")
+        self.assertEqual(decision.selected, "opencode-go/beam-free")
+        self.assertEqual(decision.candidates, ("opencode-go/beam-free",
+                                               "opencode/hy4-flash-free"))
+
+    def test_paid_and_unverified_opencode_go_models_are_never_candidates(self):
+        """Provider preference only orders models that already passed the $0 gate."""
+        reg = registry()
+        reg["opencode-go/paid"] = router.ModelInfo(
+            "opencode-go/paid", 0.01, 0, families=("hy4",), roles=("worker",),
+            phases=("execution",), pricing_source="models.dev", score=99)
+        reg["opencode-go/unverified"] = router.ModelInfo(
+            "opencode-go/unverified", 0, 0, families=("hy4",), roles=("worker",),
+            phases=("execution",), pricing_source="unverified", score=99)
+        decision = router.resolve("0", "", reg, role="worker", phase="execution")
+        self.assertNotIn("opencode-go/paid", decision.candidates)
+        self.assertNotIn("opencode-go/unverified", decision.candidates)
+        self.assertTrue(all(reg[c].is_zero_cost() for c in decision.candidates))
+
     def test_critical_complexity_prefers_role_reasoning(self):
         reg = registry()
         decision = router.resolve("0", "", reg, role="worker", phase="execution",

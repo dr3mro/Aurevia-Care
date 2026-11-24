@@ -168,6 +168,12 @@ def classify_task(paths=(), title="", attempts=0, security=False):
     return "L2"
 
 
+# The authorized zero-cost provider is preferred deterministically before other
+# free providers: a worker that starts on an exhausted provider makes no commits,
+# even when another verified $0 model is available. This only orders models that
+# already passed eligibility; it can never admit a paid or unverified one.
+PREFERRED_PROVIDERS = ("opencode-go",)
+
 # Initial role/phase preferences. These are configuration, not benchmark claims;
 # a family is preferred only when a verified zero-cost model of that family is
 # simultaneously eligible. Unknown families simply have no preference bonus.
@@ -195,16 +201,30 @@ def _family_bonus(model, preferences):
     return len(preferences) + 1
 
 
+def _provider_bonus(model):
+    """Return 0 for an authorized preferred provider, 1 for any other free provider."""
+    provider = model.id.split("/", 1)[0]
+    return 0 if provider in PREFERRED_PROVIDERS else 1
+
+
 def rank_primaries(models, role="", phase="", complexity="L2"):
-    """Rank eligible primaries by role/phase preference, complexity and configured score.
+    """Rank eligible zero-cost primaries by provider, role/phase, complexity and score.
 
     ``SWARM_MODEL`` is never passed here, so it can never outrank a primary.
-    Ties break deterministically by model id.
+    Every input is already verified free and authorized; provider and family
+    preferences only order that verified set. Ties break deterministically by id.
+
+    The provider preference applies to routine execution only: that is the phase
+    where a dead provider costs a whole worker. Critical (L3/L4) work and other
+    phases keep their reasoning-first ranking instead.
     """
     preferences = PHASE_PREFERENCES.get(phase) or ROLE_PREFERENCES.get(role) or ()
+    prefer_provider = phase == "execution" and complexity not in ("L3", "L4")
     if complexity in ("L3", "L4"):
         preferences = ROLE_PREFERENCES.get(role, preferences) or preferences
-    return sorted(models, key=lambda m: (_family_bonus(m, preferences), -m.score, m.id))
+    return sorted(models, key=lambda m: (
+        _provider_bonus(m) if prefer_provider else 0,
+        _family_bonus(m, preferences), -m.score, m.id))
 
 
 @dataclass(frozen=True)
