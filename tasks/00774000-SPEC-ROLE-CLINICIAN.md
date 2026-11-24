@@ -1,4 +1,5 @@
-- [ ] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
+- [x] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
+  - pr: #1569
   - attempts: 1
   - evidence: PR #1569 merged to main (auto-reconciled)
   - requirements: IAM-01, CLN-05
