@@ -85,6 +85,8 @@ const e2eSpecs = (): string[] =>
 
 /**
  * The exact e2e spec set committed today; a new journey must replace this pin.
+ * This is refreshed as per-role journeys land on main so the tripwire keeps
+ * detecting the *next* added spec rather than reporting a stale baseline.
  *
  * Keeping the whole set (not only the recognised journeys) is what makes the
  * tripwire below notice any newly added journey spec. Six specs landed after
