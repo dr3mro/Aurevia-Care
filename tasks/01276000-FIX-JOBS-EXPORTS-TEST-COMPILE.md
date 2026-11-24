@@ -24,3 +24,14 @@
     out-of-scope `status.setRollbackOnly()` calls were removed from a test.
     Evidence source: executed tool commands and GitHub Actions job log;
     no reviewer verdict yet.
+    Tool: `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q`
+    → `Ran 2 tests in 0.172s / OK`.
+    Tool (final tree): upstream commit on `main` landed the equivalent removal
+    of the two out-of-scope `status.setRollbackOnly()` calls, so
+    `git diff --name-only origin/main...HEAD` → only this task file and
+    `git diff origin/main...HEAD -- apps/api/src/test/.../JobsExports...Test.java`
+    → empty. No Java delta, threshold, pom or migration change remains on the
+    branch. The compile fix is already on `main`; this entry records the
+    diagnosis and verification only.
+    Reviewers: aurevia-senior-java-build GO; aurevia-code-reviewer required the
+    exact Java-conventions command and final line, added above.
