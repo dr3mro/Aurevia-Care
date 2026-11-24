@@ -375,28 +375,42 @@ class JobsExportsSearchAttachmentsIntegrationsApplySameTest {
                 .getBytes(StandardCharsets.UTF_8);
     }
 
-    /** Capture the service refusal for a download without asserting the exception type. */
+    /**
+     * Capture the service refusal for a download without asserting the exception type.
+     *
+     * <p>The service owns its tenant-guarded transaction, so it is called with only
+     * the tenant context bound. Wrapping it in a second outer transaction would make
+     * the caught refusal mark that shared transaction rollback-only and the outer
+     * commit would then throw {@code UnexpectedRollbackException} instead of returning
+     * the policy refusal under test.</p>
+     */
     private ApiException exportDownloadRefusal(String organization, String subject, String jobId) {
-        return as(organization, subject, () -> transactions.execute(status -> {
+        return as(organization, subject, () -> {
             try {
                 tenantExportService.download(jobId);
                 throw new AssertionError("expected the download to be refused");
             } catch (ApiException exception) {
                 return exception;
             }
-        }));
+        });
     }
 
-    /** Capture the service refusal when a role tries to start an export. */
+    /**
+     * Capture the service refusal when a role tries to start an export.
+     *
+     * <p>Called with only the tenant context bound for the same reason as
+     * {@link #exportDownloadRefusal(String, String, String)}: the service opens its
+     * own transaction, so no ambient transaction may wrap it.</p>
+     */
     private ApiException exportStartRefusal(String organization, String subject) {
-        return as(organization, subject, () -> transactions.execute(status -> {
+        return as(organization, subject, () -> {
             try {
                 tenantExportService.start();
                 throw new AssertionError("expected the export start to be refused");
             } catch (ApiException exception) {
                 return exception;
             }
-        }));
+        });
     }
 
     @Test
