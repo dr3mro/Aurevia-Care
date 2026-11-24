@@ -127,5 +127,5 @@ export function messengerTextWithValue(
   key: MessengerMessageKey,
   value: string | number,
 ): string {
-  return messengerText(locale, key).replace('{value}', String(value));
+  return messengerText(locale, key).replace('{value}', () => String(value));
 }

@@ -120,6 +120,7 @@ describe('MessengerPanel structure', () => {
     expect(screen.getByText('March 9, 2026')).toBeTruthy();
     expect(screen.getByText('March 10, 2026')).toBeTruthy();
     expect(screen.getByText('Synthetic incoming body')).toBeTruthy();
+    expect(screen.getByText(messengerText('en', 'incomingLabel'))).toBeTruthy();
     expect(screen.getByText('Synthetic outgoing body')).toBeTruthy();
     expect(screen.getByText(messengerText('en', 'deliveryDelivered'))).toBeTruthy();
   });
@@ -202,6 +203,27 @@ describe('MessengerPanel composer and send', () => {
     expect(props.onSend).toHaveBeenCalledWith(contentDraft.text, contentDraft.attachments);
   });
 
+  it('shows a later failure again after the author has edited an earlier one', () => {
+    const laterFailure = {
+      ...failedSend,
+      text: 'Synthetic retained from the second failure',
+      idempotencyKey: 'synthetic-idempotency-002',
+    };
+    const { props, rerender } = wrap({ draft: contentDraft, sendFailure: failedSend });
+    const textarea = screen.getByLabelText<HTMLTextAreaElement>(messengerText('en', 'bodyLabel'));
+    expect(textarea.value).toBe(failedSend.text);
+    fireEvent.change(textarea, { target: { value: 'Synthetic corrected reply' } });
+    expect(textarea.value).toBe(contentDraft.text);
+    rerender(
+      <ThemeProvider>
+        <I18nProvider initialLocale="en">
+          <MessengerPanel {...props} sendFailure={laterFailure} />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+    expect(textarea.value).toBe(laterFailure.text);
+  });
+
   it('reports composer edits through the change callback', () => {
     const { props } = wrap({ draft: contentDraft });
     fireEvent.change(screen.getByLabelText<HTMLTextAreaElement>(messengerText('en', 'bodyLabel')), {
@@ -257,8 +279,10 @@ describe('MessengerPanel connection and resilient states', () => {
     expect(realtime.schedule).toHaveBeenCalled();
   });
 
-  it('stops the old stream and clears prior rows when the tenant changes', () => {
+  it('stops the old stream and clears prior rows when the tenant changes', async () => {
     const { realtime, rerender } = wrap();
+    realtime.fireOpen();
+    await waitFor(() => expect(document.querySelector('[data-connection="streaming"]')).not.toBeNull());
     const nextView = {
       ...messengerView,
       conversations: [
@@ -301,6 +325,8 @@ describe('MessengerPanel connection and resilient states', () => {
     expect(realtime.cleanup.cancel).toHaveBeenCalled();
     expect(screen.queryByText(/Synthetic triage peer/)).toBeNull();
     expect(screen.getByText(/Synthetic beta peer/)).toBeTruthy();
+    expect(screen.getByText(messengerText('en', 'noConversation'))).toBeTruthy();
+    expect(document.querySelector('[data-connection="reconnecting"]')).not.toBeNull();
   });
 
   it('renders the loading state with the emergency notice still visible', () => {

@@ -5,6 +5,7 @@ import {
   deliveryWordKey,
   groupMessagesByDay,
   hasComposableText,
+  isIdentifierEvent,
 } from './domain';
 import { MESSENGER_VIEW_TIME_ZONE } from './types';
 import type { MessageView } from './types';
@@ -67,5 +68,14 @@ describe('messenger domain', () => {
   it('guards an empty composer without stripping typed work', () => {
     expect(hasComposableText('   ')).toBe(false);
     expect(hasComposableText('Synthetic draft')).toBe(true);
+  });
+
+  it('accepts only published identifier events with a usable cursor', () => {
+    const frame = (type: string, sequence: number) => ({ type, sequence });
+    expect(isIdentifierEvent(frame('message', 21))).toBe(true);
+    expect(isIdentifierEvent(frame('read', 0))).toBe(true);
+    expect(isIdentifierEvent(frame('bogus', 21))).toBe(false);
+    expect(isIdentifierEvent(frame('message', Number.MAX_SAFE_INTEGER + 1))).toBe(false);
+    expect(isIdentifierEvent(frame('message', -1))).toBe(false);
   });
 });

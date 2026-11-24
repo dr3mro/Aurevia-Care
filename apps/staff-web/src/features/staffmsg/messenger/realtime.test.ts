@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defined } from '../../../components/invariant';
 import { alphaOrganizationId, facilityId, wireMessageEvent } from './fixtures';
 import {
@@ -9,6 +9,10 @@ import {
 } from './realtime';
 import type { RealtimeDeps, StreamHandlers } from './realtime';
 import type { ConnectionStatus, RealtimePage } from './types';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /** A fake scheduler that records callbacks instead of waiting on real timers. */
 function fakeScheduler() {
@@ -94,6 +98,16 @@ describe('SSE buffer parsing', () => {
     expect(parseSseFrame('data: {not json')).toBeUndefined();
     expect(parseSseFrame('data: {"type":"message"}')).toBeUndefined();
   });
+
+  it('ignores an unknown event kind and an unusable sequence', () => {
+    const frame = (type: string, sequence: unknown) =>
+      `data: ${JSON.stringify({ id: 'e', sequence, type, conversationId: 'c', subject: 's' })}`;
+    expect(parseSseFrame(frame('bogus', 21))).toBeUndefined();
+    expect(parseSseFrame(frame('message', 'not-a-number'))).toBeUndefined();
+    expect(parseSseFrame(frame('message', Number.MAX_SAFE_INTEGER + 1))).toBeUndefined();
+    expect(parseSseFrame(frame('message', -1))).toBeUndefined();
+    expect(parseSseFrame(frame('read', 0))).toMatchObject({ id: 'e', type: 'read', sequence: 0 });
+  });
 });
 
 describe('realtime lifecycle', () => {
@@ -143,9 +157,99 @@ describe('realtime lifecycle', () => {
     session.start();
     stream.fireError();
     await vi.waitFor(() => expect(poll).toHaveBeenCalledTimes(1));
+    expect(deps.onDataChanged).not.toHaveBeenCalled();
+    session.stop();
+  });
+});
+
+describe('realtime lifecycle — polling fallback', () => {
+  it('refetches once for a whole page of identifier events', async () => {
+    const events = [1, 2, 3].map((sequence) => ({
+      id: `synthetic-event-${sequence}`,
+      sequence,
+      type: 'message' as const,
+      conversationId: 'c',
+      subject: 's',
+    }));
+    const stream = fakeStream();
+    const { deps, scheduler } = depsFor(
+      stream,
+      vi.fn(() => Promise.resolve({ events, nextCursor: 3 })),
+    );
+    const session = createMessengerRealtime(deps);
+    session.start();
+    stream.fireError();
+    await vi.waitFor(() => expect(deps.onDataChanged).toHaveBeenCalledTimes(1));
+    expect(scheduler.pending.some((entry) => !entry.cancelled)).toBe(true);
     session.stop();
   });
 
+  it('resumes the next poll from the page high-water cursor', async () => {
+    const stream = fakeStream();
+    const poll = vi.fn((_cursor: string | undefined) =>
+      Promise.resolve({
+        events: [{ id: 'synthetic-event', sequence: 21, type: 'message' as const, conversationId: 'c', subject: 's' }],
+        nextCursor: 21,
+      }),
+    );
+    const { deps, scheduler } = depsFor(stream, poll);
+    const session = createMessengerRealtime(deps);
+    session.start();
+    stream.fireError();
+    await vi.waitFor(() => expect(poll).toHaveBeenCalledTimes(1));
+    scheduler.pending.filter((entry) => !entry.cancelled).forEach((entry) => entry.callback());
+    await vi.waitFor(() => expect(poll).toHaveBeenCalledTimes(2));
+    expect(poll.mock.calls[1]?.[0]).toBe('21');
+    session.stop();
+  });
+
+  it('discards an in-flight poll result once the stream reopens', async () => {
+    const stream = fakeStream();
+    const { deps, statuses, scheduler } = depsFor(
+      stream,
+      vi.fn(() =>
+        Promise.resolve({
+          events: [{ id: 'synthetic-event', sequence: 21, type: 'message' as const, conversationId: 'c', subject: 's' }],
+          nextCursor: 21,
+        }),
+      ),
+    );
+    const session = createMessengerRealtime(deps);
+    session.start();
+    stream.fireOpen();
+    stream.fireError();
+    stream.fireOpen();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(deps.onDataChanged).not.toHaveBeenCalled();
+    expect(statuses).toEqual(['streaming', 'reconnecting', 'streaming']);
+    expect(scheduler.pending.some((entry) => !entry.cancelled)).toBe(false);
+    session.stop();
+  });
+
+  it('discards a failed poll once the stream reopens', async () => {
+    const stream = fakeStream();
+    let rejectPage: ((reason?: unknown) => void) | undefined;
+    const poll = vi.fn(
+      () =>
+        new Promise<RealtimePage>((_resolve, reject) => {
+          rejectPage = reject;
+        }),
+    );
+    const { deps, scheduler } = depsFor(stream, poll);
+    const session = createMessengerRealtime(deps);
+    session.start();
+    stream.fireError();
+    stream.fireOpen();
+    rejectPage?.(new Error('synthetic poll failure'));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(scheduler.pending.some((entry) => !entry.cancelled)).toBe(false);
+    session.stop();
+  });
+});
+
+describe('realtime lifecycle — stream frames and stop guards', () => {
   it('records an active frame and resumes the stream from its sequence', () => {
     const stream = fakeStream();
     const { deps, statuses } = depsFor(stream);
@@ -350,6 +454,17 @@ describe('fetch stream opener', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(handlers.onError).not.toHaveBeenCalled();
+  });
+
+  it('uses the ambient fetch when no opener function is supplied', async () => {
+    const fetchStub = vi.fn((_url?: string, _init?: RequestInit) => Promise.resolve({ ok: false, body: null }));
+    vi.stubGlobal('fetch', fetchStub);
+    const handlers: StreamHandlers = { onOpen: vi.fn(), onFrame: vi.fn(), onError: vi.fn() };
+    const opener = createFetchStreamOpener(alphaOrganizationId, facilityId);
+    opener(handlers, new AbortController().signal, undefined);
+    await vi.waitFor(() => expect(handlers.onError).toHaveBeenCalledTimes(1));
+    expect(fetchStub).toHaveBeenCalledTimes(1);
+    expect(fetchStub.mock.calls[0]?.[0]).toBe('/api/v1/staff/instant/events/stream?facilityId=facility-synthetic-main');
   });
 
   it('cancels a reader that has not opened yet without throwing', () => {

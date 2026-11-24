@@ -12,6 +12,7 @@
 import { formatCivilDate } from '../../../i18n/format';
 import type { Locale } from '../../../i18n/messages';
 import type { MessengerMessageKey } from './labels';
+import { REALTIME_EVENT_TYPES } from './types';
 import type {
   ConnectionStatus,
   DeliveryState,
@@ -103,6 +104,26 @@ export function advanceConnection(status: ConnectionStatus, event: ConnectionEve
     case 'resynced':
       return 'streaming';
   }
+}
+
+/** The two wire fields checked before a frame may drive a refetch or a resume. */
+interface IdentifierCandidate {
+  readonly type: string;
+  readonly sequence: number;
+}
+
+/**
+ * True only for a published identifier-only event with a usable cursor value.
+ * A malformed SSE payload can carry an unknown kind or a non-integral sequence;
+ * rejecting it here keeps a bad resume id out of the next stream and stops a
+ * bogus notification from triggering a full thread refetch.
+ */
+export function isIdentifierEvent(event: IdentifierCandidate): boolean {
+  return (
+    REALTIME_EVENT_TYPES.some((kind) => kind === event.type) &&
+    Number.isSafeInteger(event.sequence) &&
+    event.sequence >= 0
+  );
 }
 
 /** True only when the composer holds non-whitespace text worth sending. */

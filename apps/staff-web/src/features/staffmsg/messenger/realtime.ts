@@ -12,7 +12,7 @@
  */
 
 import { eventStreamDescriptor, narrowEvent } from './api';
-import { advanceConnection } from './domain';
+import { advanceConnection, isIdentifierEvent } from './domain';
 import type { ConnectionEvent } from './domain';
 import type { ConnectionStatus, RealtimeNotification, RealtimePage, WireEvent } from './types';
 
@@ -85,8 +85,9 @@ export function consumeSseBuffer(buffer: string): { frames: string[]; remainder:
 
 /**
  * Parse one SSE frame into a narrowed identifier-only notification. Frames
- * without a data line, malformed JSON and payloads missing required identifiers
- * are ignored: a bad notification can never trigger a refetch or a bad cursor.
+ * without a data line, malformed JSON, payloads missing required identifiers
+ * and payloads outside the published event vocabulary or cursor range are
+ * ignored: a bad notification can never trigger a refetch or a bad resume id.
  */
 export function parseSseFrame(frame: string): RealtimeNotification | undefined {
   const dataLine = frame.split('\n').find((line) => line.startsWith('data:'));
@@ -95,7 +96,8 @@ export function parseSseFrame(frame: string): RealtimeNotification | undefined {
   }
   try {
     const wire = JSON.parse(dataLine.slice('data:'.length).trim()) as WireEvent;
-    return narrowEvent(wire);
+    const event = narrowEvent(wire);
+    return isIdentifierEvent(event) ? event : undefined;
   } catch {
     return undefined;
   }
@@ -196,16 +198,23 @@ export function createMessengerRealtime(deps: RealtimeDeps): RealtimeSession {
     void deps
       .poll(cursor)
       .then((page) => {
-        if (stopped) {
+        // A stream may have reopened while this poll was in flight. Its result
+        // must not restart the fallback loop or advance a superseded cursor;
+        // poll has no abort signal, so the status check is the single guard.
+        if (stopped || status === 'streaming') {
           return;
         }
-        page.events.forEach(() => deps.onDataChanged());
+        // A page names changes; one refetch refreshes the whole thread and all
+        // unread counts, so a hundred events must not cause a hundred refetches.
+        if (page.events.length > 0) {
+          deps.onDataChanged();
+        }
         cursor = page.nextCursor === undefined ? cursor : String(page.nextCursor);
         emit('poll-succeeded');
         pollTimer = deps.schedule(runPoll, POLL_INTERVAL_MS);
       })
       .catch(() => {
-        if (stopped) {
+        if (stopped || status === 'streaming') {
           return;
         }
         pollTimer = deps.schedule(runPoll, POLL_RETRY_MS);
@@ -213,6 +222,9 @@ export function createMessengerRealtime(deps: RealtimeDeps): RealtimeSession {
   };
 
   const open = (resync: boolean): void => {
+    // Opening or reopening a stream ends the polling fallback: cancel its next
+    // timer and let in-flight results be discarded by the status guard above.
+    clearPolling();
     streamAbort?.abort();
     if (streamCleanup !== undefined) {
       streamCleanup.cancel();

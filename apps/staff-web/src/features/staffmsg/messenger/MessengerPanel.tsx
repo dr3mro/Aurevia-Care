@@ -271,11 +271,12 @@ function Composer({
   const { tokens } = useTheme();
   // A failed send keeps its own typed text so retry never depends on a cleared
   // draft. Once the author edits again, the live draft becomes authoritative:
-  // the retained text is a recovery aid, not a lock on the composer.
-  const [editedAfterFailure, setEditedAfterFailure] = useState(false);
-  useEffect(() => {
-    setEditedAfterFailure(false);
-  }, [sendFailure?.idempotencyKey]);
+  // the retained text is a recovery aid, not a lock on the composer. Tracking
+  // the key the edit belongs to resets retention when a new failure arrives by
+  // derivation, with no state write in an effect and no cascading render.
+  const failureKey = sendFailure?.idempotencyKey;
+  const [editedForFailureKey, setEditedForFailureKey] = useState<string | undefined>(undefined);
+  const editedAfterFailure = failureKey !== undefined && editedForFailureKey === failureKey;
   const text = sendFailure !== undefined && !editedAfterFailure ? sendFailure.text : draft.text;
   const files = sendFailure !== undefined && !editedAfterFailure ? sendFailure.files : draft.attachments;
   const canSend = hasComposableText(text);
@@ -293,7 +294,7 @@ function Composer({
         dir="auto"
         value={text}
         onChange={(event) => {
-          setEditedAfterFailure(true);
+          setEditedForFailureKey(failureKey);
           onDraftChange({ text: event.target.value });
         }}
         style={{ minHeight: '72px', padding: tokens.spacing.sm }}
@@ -311,11 +312,11 @@ function Composer({
         stagedFiles={stagedFiles}
         locale={locale}
         onStageFile={(file) => {
-          setEditedAfterFailure(true);
+          setEditedForFailureKey(failureKey);
           onStageFile(file);
         }}
         onRemoveFile={(id) => {
-          setEditedAfterFailure(true);
+          setEditedForFailureKey(failureKey);
           onRemoveFile(id);
         }}
       />
@@ -344,7 +345,15 @@ function Composer({
 export function MessengerPanel(props: MessengerPanelProps) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
-  const [connection, setConnection] = useState<ConnectionStatus>('reconnecting');
+  // The connection label belongs to the tenant that opened the session. While
+  // a new tenant's session starts, derive the quiet reconnecting label instead
+  // of carrying the previous tenant's "Connected" state into the new view.
+  const tenantKey = `${props.organizationId}\u0000${props.facilityId}`;
+  const [connectionState, setConnectionState] = useState<{ key: string; status: ConnectionStatus }>(() => ({
+    key: tenantKey,
+    status: 'reconnecting',
+  }));
+  const connection = connectionState.key === tenantKey ? connectionState.status : 'reconnecting';
   const callbacks = useRef({
     openStream: props.openStream,
     poll: props.poll,
@@ -368,13 +377,13 @@ export function MessengerPanel(props: MessengerPanelProps) {
       poll: (cursor) => callbacks.current.poll(cursor),
       schedule: (callback, delayMs) => callbacks.current.schedule(callback, delayMs),
       onDataChanged: () => callbacks.current.onRefresh(),
-      onStatus: setConnection,
+      onStatus: (status) => setConnectionState({ key: tenantKey, status }),
     });
     session.start();
     return () => {
       session.stop();
     };
-  }, [props.organizationId, props.facilityId]);
+  }, [tenantKey]);
 
   // The emergency notice is a safety invariant, so it stays visible in every
   // state: a user who cannot send still needs to know this is not an emergency
