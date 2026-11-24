@@ -203,6 +203,28 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertIn("repository rules", emitted["reason"])
         note.assert_not_called()
 
+    def test_main_plan_workers_explains_an_empty_wave(self):
+        text = (
+            "# TODO\n\n"
+            "- [ ] CW-001 · Ready\n  - scope: apps/api/a\n  - details:\n    Do it\n\n"
+        )
+        with mock.patch.object(swarm, "gh_json", return_value=[]), \
+                mock.patch.object(swarm, "main_is_red", return_value=True), \
+                mock.patch.object(swarm, "live_workers", return_value=["FIX-42"]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value=text), \
+                mock.patch.object(swarm, "reclaim", return_value=text), \
+                mock.patch.object(swarm, "plan_workers", return_value=[]), \
+                mock.patch.object(swarm, "update_todo"), mock.patch.object(swarm, "note_claims"), \
+                mock.patch.object(swarm, "emit"), \
+                mock.patch("builtins.print") as shown:
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        lines = [str(c.args[0]) for c in shown.call_args_list if c.args]
+        reason = next(line for line in lines if "no workers planned" in line)
+        self.assertIn("main_red=True", reason)
+        self.assertIn("live=1", reason)
+        self.assertIn("open_prs=0", reason)
+
     def test_main_reconcile_tasks_reports_a_blocked_push_without_crashing(self):
         with mock.patch.object(swarm, "reconcile_tasks",
                                side_effect=swarm.TrackerPushBlocked()), \

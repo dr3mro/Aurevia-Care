@@ -6396,6 +6396,7 @@ def main(argv=None):
         print(
             f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}."
         )
+        red = main_is_red()
         include = plan_workers(
             room,
             worker_slots(load_slots(a.slots), busy),
@@ -6405,8 +6406,21 @@ def main(argv=None):
             live,
             story_wave=a.max,
             focus=a.task,
-            red=main_is_red(),
+            red=red,
         )
+        if not include:
+            # An empty wave is a normal outcome, but the old log gave no reason:
+            # operators could not tell a red-main repair lock from a full pool.
+            repairs = [
+                f"{t['id']}({t['status']},scope={','.join(t['scope']) or 'none'})"
+                for t in parse_tasks(text)
+                if main_repair_id(t["id"], t["task"]) and t["status"] != "done"
+            ]
+            print(
+                "planner: no workers planned "
+                f"(main_red={red}, live={busy}, room={room}, open_prs={len(prs)}, "
+                f"main_repairs={','.join(repairs) or 'none'})"
+            )
         claims = {
             t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"
         }
