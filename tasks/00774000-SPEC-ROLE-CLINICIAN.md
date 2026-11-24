@@ -1,5 +1,5 @@
 - [ ] SPEC-ROLE-CLINICIAN · Spec section 2 role matrix (API test): Clinician
-  - attempts: 3
+  - attempts: 1
   - evidence: PR #1569 merged to main (auto-reconciled)
   - requirements: IAM-01, CLN-05
   - scope: apps/api/src/test/java/com/aurevia/authz/clauses/RoleClinicianTest.java, docs/spec/clauses/authz/role-clinician.md

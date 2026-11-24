@@ -1,5 +1,4 @@
-- [-] DAILY-AUDIT-ARTIFACT-PATHS · Use `.agents/` for daily and scheduled audit artifacts
-  - agent: orca
+- [ ] DAILY-AUDIT-ARTIFACT-PATHS · Use `.agents/` for daily and scheduled audit artifacts
   - branch: main
   - scope: .github/workflows/daily-audit.yml, .github/workflows/daily-qa.yml, .github/workflows/daily-devsecops.yml, .github/workflows/swarm-strategist.yml, scripts/agent-run.sh, scripts/tests/test_agent_run.py, scripts/tests/test_swarm.py
   - details: Direct user directive (2026-11-24): "use for daily or scheduled audits .agents". Scheduled read-only audit/review commands (`audit`, `daily-qa`, `daily-devsecops`, `strategy`) now set their scratch root to `.agents/` instead of `.agent/`; the four workflows upload the published JSON from the new root. `implement`, `debug`, `triage`, `reconcile` and other swarm commands keep `.agent/`. Notes and reports under `.agents/notes/` and `.agents/reports/` belong to task 01271000 and were not touched here; `.gitignore` is owned by that task.

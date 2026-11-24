@@ -2,7 +2,7 @@
   - pr: #1358
   - evidence: merged on main 1e148b43 (#897)
   - agent: swarm-8
-  - attempts: 3
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm_schedule_coverage.py
   - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02

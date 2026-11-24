@@ -2,7 +2,7 @@
   - pr: #1348
   - evidence: merged on main 716b1751 (#891)
   - agent: swarm-6
-  - attempts: 3
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/playwright.config.ts
   - depends: RESP-SHELL

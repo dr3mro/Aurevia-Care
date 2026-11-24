@@ -1,6 +1,6 @@
 - [x] SPEC-ROLE-CLINICAL-ASSISTANT · Spec section 2 role matrix (API test): Clinical assistant
   - pr: #1579
-  - attempts: 3
+  - attempts: 1
   - requirements: IAM-01, CLN-02
   - scope: apps/api/src/test/java/com/aurevia/authz/clauses/RoleClinicalAssistantTest.java, docs/spec/clauses/authz/role-clinical-assistant.md
   - details:

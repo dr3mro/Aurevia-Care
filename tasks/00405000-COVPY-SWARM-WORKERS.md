@@ -2,7 +2,7 @@
   - pr: #1364
   - evidence: merged on main 352ae2ae (#906)
   - agent: swarm-9
-  - attempts: 3
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm_workers_coverage.py
   - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02

@@ -1,5 +1,4 @@
-- [-] ZERO-COST-MODEL-ROUTER · Centralized zero-cost model router with SWARM_FORCE_MODEL control
-  - agent: main
+- [ ] ZERO-COST-MODEL-ROUTER · Centralized zero-cost model router with SWARM_FORCE_MODEL control
   - branch: swarm/zero-cost-model-router
   - scope: scripts/model-router.py, scripts/tests/test_model_router.py, scripts/agent-run.sh, .github/workflows/*.yml, docs/SWARM.md, .github/swarm/slots.json, scripts/swarm.py, scripts/gen-opencode.py, WORKSPACE.md, MEMORY.md
   - details: Audit found no SWARM_FORCE_MODEL anywhere and MODEL: ${{ vars.SWARM_MODEL || ... }}

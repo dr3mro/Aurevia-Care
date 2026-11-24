@@ -1,7 +1,7 @@
 - [x] RESP-BUTTON · Staff web: responsive `Button` component
   - evidence: PR #619 merged to main (reconciled 2026-11-23)
   - pr: #619
-  - attempts: 2
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/Button.tsx, apps/staff-web/tests/components/Button.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET

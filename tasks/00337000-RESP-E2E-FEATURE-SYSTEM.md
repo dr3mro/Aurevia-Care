@@ -1,7 +1,7 @@
 - [x] RESP-E2E-FEATURE-SYSTEM · Staff web end-to-end: the system screens work on phone, tablet and desktop
   - evidence: Swarm gate reconciliation on main 2026-11-24; worker note docs/pr/notes/RESP-E2E-FEATURE-SYSTEM-20261124-041525.md; PR #1623. Conflict resolution adopted the verified WEB-08 test from main; vitest 3/3 passed locally. Tool evidence (Actions logs, vitest); no simulated user or human feedback.
   - pr: #1623
-  - attempts: 5
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/responsive-system.spec.ts
   - depends: RESP-E2E-PROJECTS

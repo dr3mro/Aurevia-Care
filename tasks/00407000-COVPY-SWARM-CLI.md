@@ -1,7 +1,7 @@
 - [x] COVPY-SWARM-CLI · Script tests: swarm.py coverage, cli part (to 100% together with the other parts)
   - evidence: PR #1218 merged to main (reconciled 2026-11-23)
   - pr: #1218
-  - attempts: 2
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm_cli_coverage.py
   - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02

@@ -1,5 +1,5 @@
 - [ ] SPEC-ROLE-PT-CLINICIAN · Spec section 2 role matrix (API test): PT clinician
-  - attempts: 2
+  - attempts: 1
   - requirements: IAM-01, PT-01
   - scope: apps/api/src/test/java/com/aurevia/authz/clauses/RolePtClinicianTest.java, docs/spec/clauses/authz/role-pt-clinician.md
   - details:

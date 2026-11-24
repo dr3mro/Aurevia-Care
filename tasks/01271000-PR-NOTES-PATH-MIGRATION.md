@@ -1,5 +1,4 @@
-- [-] PR-NOTES-PATH-MIGRATION · Complete the worker-notes and daily-report path migration
-  - agent: orca
+- [ ] PR-NOTES-PATH-MIGRATION · Complete the worker-notes and daily-report path migration
   - branch: main
   - requirements: OPS-06
   - scope: .agents/notes, .agents/reports, .agent, .gitignore, .github/workflows, .opencode, scripts, scripts/tests, tasks, docs

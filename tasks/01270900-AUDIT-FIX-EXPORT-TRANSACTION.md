@@ -1,5 +1,4 @@
-- [-] AUDIT-FIX-EXPORT-TRANSACTION · Tenant export HTTP path returns 500 without a guarded transaction
-  - agent: orca
+- [ ] AUDIT-FIX-EXPORT-TRANSACTION · Tenant export HTTP path returns 500 without a guarded transaction
   - requirements: OPS-07, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/tenant/export/TenantExportService.java, apps/api/src/test/java/com/aurevia/tenant/export, apps/api/src/test/java/com/aurevia/configuration/clauses/ExportsUseExplicitScopeExpiryAuditTest.java, apps/api/src/test/java/com/aurevia/tenancy/clauses/IsolationAcrossSurfacesTest.java, tasks/01270900-AUDIT-FIX-EXPORT-TRANSACTION.md
   - details:

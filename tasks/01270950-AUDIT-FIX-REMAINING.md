@@ -1,5 +1,4 @@
-- [-] AUDIT-FIX-REMAINING · Repair the remaining naming, link-integrity and gate findings from the repository audit
-  - agent: orca
+- [ ] AUDIT-FIX-REMAINING · Repair the remaining naming, link-integrity and gate findings from the repository audit
   - requirements: OPS-06
   - scope: scripts/check-docs.py, scripts/tests/test_check_docs.py, docs/spec/clauses, docs/operations, apps/patient-mobile/app.json, apps/patient-mobile/src/app/appConfig.test.ts, apps/patient-mobile/package.json, apps/patient-mobile/package-lock.json, scripts/*.sh
   - delivery: interactive, human-reviewed scoped commit on main

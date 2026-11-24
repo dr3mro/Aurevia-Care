@@ -1,6 +1,6 @@
 - [x] FIX-INSTANT-SEND-CONTRACT · Bind instant message sends to the conversation in the URL
   - pr: #1562
-  - attempts: 4
+  - attempts: 1
   - evidence: PR #1562 merged to main (auto-reconciled)
   - requirements: MSG-02, ARC-07, WEB-05
   - scope: apps/api/src/main/java/com/aurevia/staffmsg/instant, apps/api/src/test/java/com/aurevia/staffmsg/instant, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts

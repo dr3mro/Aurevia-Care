@@ -1,6 +1,6 @@
 - [x] RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE · Staff web end-to-end: rightToLeftResponsive across phone, tablet and desktop
   - pr: #1611
-  - attempts: 5
+  - attempts: 1
   - evidence: `python3 -I scripts/check-docs.py` exit 0 on tested head 30d7d167; note `docs/pr/notes/RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE-20261124-050000.md`
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/rightToLeftResponsive.spec.ts

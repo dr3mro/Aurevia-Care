@@ -1,6 +1,6 @@
 - [x] RESP-E2E-TOUCH-TARGETS · Staff web end-to-end: touchTargets across phone, tablet and desktop
   - pr: #1609
-  - attempts: 5
+  - attempts: 1
   - evidence: `python3 -I scripts/check-docs.py` exit 0 on tested head 099a9c1e; note `docs/pr/notes/RESP-E2E-TOUCH-TARGETS-20261124-050000.md`
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/touchTargets.spec.ts

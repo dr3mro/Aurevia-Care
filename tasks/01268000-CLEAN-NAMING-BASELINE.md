@@ -1,5 +1,4 @@
-- [-] CLEAN-NAMING-BASELINE · Remove stale naming allow-list entries, refresh the bootstrap tooling placeholder and clean local remnants
-  - agent: orca
+- [ ] CLEAN-NAMING-BASELINE · Remove stale naming allow-list entries, refresh the bootstrap tooling placeholder and clean local remnants
   - requirements: OPS-06
   - scope: scripts/check-names.py, scripts/tests/test_check_names.py, tools/tooling.test.ts
   - delivery: interactive, human-reviewed scoped commit on main; not a swarm auto-merge (docs/SWARM.md:203 protects scripts/ and Dockerfiles)

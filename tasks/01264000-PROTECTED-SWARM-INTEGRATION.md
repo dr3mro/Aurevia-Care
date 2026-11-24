@@ -1,5 +1,4 @@
-- [-] PROTECTED-SWARM-INTEGRATION · Protected integration PR architecture with independent Swarm and Delivery gates
-  - agent: main
+- [ ] PROTECTED-SWARM-INTEGRATION · Protected integration PR architecture with independent Swarm and Delivery gates
   - branch: swarm/protected-integration-gates
   - requirements: OPS-06
   - scope: .github/workflows/delivery.yml, .github/workflows/swarm-gate.yml, scripts/swarm_gate.py, scripts/tests/test_swarm_gate.py, scripts/tests/test_workflow_concurrency.py, docs/SWARM.md

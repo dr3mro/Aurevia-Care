@@ -1,7 +1,7 @@
 - [x] RESP-CONFIG-EDITOR · Staff web: responsive `ConfigEditor` (features-admin)
   - evidence: PR #1048 merged to main (reconciled 2026-11-23)
   - pr: #1048
-  - attempts: 3
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/ConfigEditor.tsx, apps/staff-web/tests/responsive/features-admin/ConfigEditor.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

@@ -2,7 +2,7 @@
   - pr: #1352
   - evidence: merged on main 6b7e4ffa (#910)
   - agent: swarm-10
-  - attempts: 3
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm_integrator_coverage.py
   - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02
