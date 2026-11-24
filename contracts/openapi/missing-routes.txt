@@ -1,0 +1,7 @@
+# Pre-existing undocumented controller routes tolerated by the route-parity gate.
+# Format: METHOD /path, with path variables normalized to {} (one entry per line).
+# Frozen at the pinned base. Adding an entry is blocked by scripts/worker_gate.py;
+# removing one is allowed only after the contract and generated client document it.
+#
+# The pinned base's OpenApiRouteParityTest is green (2 tests, 0 failures), so there
+# is no parity debt to seed here. Comments-only is a valid, unambiguous clean base.

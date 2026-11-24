@@ -11,6 +11,9 @@ while the others are still open). A repair task that names no class stays strict
 The integrator's full gate still runs everything before anything merges.
 Only the private report directory passed by worker-check.sh decides a run; an
 older failing report left in the shared Surefire directory is never consulted.
+A worker also may not introduce an undocumented controller route or grow the
+frozen missing-route baseline: the route-parity check runs before every early
+return and fails closed when the pinned-base evidence cannot be read.
 """
 import glob
 import json
@@ -35,6 +38,177 @@ SCOPE_LINE = re.compile(r"^Scope \(stay inside these paths\):\s*(.*)$", re.M)
 SECTION = re.compile(r"^##\s+(.+?)\s*$", re.M)
 PLACEHOLDER = re.compile(r"<[^\s<>]+>")
 NOTES_PATH = re.compile(r"\.agent/pr-notes/[A-Za-z0-9._-]+\.md")
+
+# Route-parity gate. The baseline holds only pre-existing undocumented routes,
+# frozen at the pinned base; a worker may remove entries after documenting them
+# but never add one. Evidence comes from the pinned base ref and the private
+# Surefire report directory, so an unreadable source must fail closed.
+PARITY_TEST = "OpenApiRouteParityTest"
+DEFAULT_BASELINE = "contracts/openapi/missing-routes.txt"
+UNDOCUMENTED_HEADING = "NEW undocumented controller routes:"
+GHOST_HEADING = "Contract routes with no controller:"
+ROUTE_LINE = re.compile(r"^([A-Z]+)\s+(/\S*)$")
+PATH_VARIABLE = re.compile(r"\{[^}]*\}")
+
+
+def _normalized_route(method, path):
+    """Return `METHOD /path` with path variables replaced by a stable `{}`."""
+    return method.upper() + " " + PATH_VARIABLE.sub("{}", path)
+
+
+def parse_route_lines(text):
+    """Parse a frozen baseline file into normalized `METHOD /path` entries.
+
+    Blank lines and `#` comments carry no route. A malformed route yields None so
+    the caller fails closed rather than treating corrupt evidence as zero debt.
+    """
+    routes = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = ROUTE_LINE.fullmatch(line)
+        if match is None:
+            return None
+        routes.add(_normalized_route(match.group(1), match.group(2)))
+    return routes
+
+
+def base_ref_exists(base_ref):
+    """True when the pinned base ref resolves to a Git object."""
+    out = subprocess.run(["git", "rev-parse", "--verify", "-q", base_ref],
+                         capture_output=True, text=True)
+    return out.returncode == 0
+
+
+def pinned_base_routes(base_ref, baseline_path):
+    """Routes tolerated at the pinned base, or None when the evidence is unusable.
+
+    An unresolved base ref, a file that cannot be read, or a blank or malformed
+    file fails closed. A baseline file absent at the base is a valid clean base:
+    the strict parity suite was green when that base was cut, so there was no
+    debt to freeze. The separate cat-file probe ensures an unrelated git failure
+    cannot be mistaken for an absent file.
+    """
+    if not base_ref:
+        return None
+    try:
+        if not base_ref_exists(base_ref):
+            return None
+        probe = subprocess.run(["git", "cat-file", "-e", f"{base_ref}:{baseline_path}"],
+                               capture_output=True, text=True)
+        if probe.returncode != 0:
+            return set()
+        out = subprocess.run(["git", "show", f"{base_ref}:{baseline_path}"],
+                             capture_output=True, text=True)
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    if not out.stdout.strip():
+        return None
+    return parse_route_lines(out.stdout)
+
+
+def candidate_baseline(path):
+    """Routes in the candidate's working-tree baseline, or None when unusable.
+
+    A missing file fails closed: deleting the baseline must not look like a clean
+    empty set, and the Java parity suite also needs the file to exist.
+    """
+    try:
+        text = Path(path).read_text()
+    except OSError:
+        return None
+    return parse_route_lines(text)
+
+
+def parse_parity_message(message):
+    """Normalized undocumented routes in a JUnit failure message.
+
+    Returns None when the undocumented-route section is absent: a ghost route, a
+    missing success response or an unexpected assertion cannot prove that no new
+    controller route was introduced, so the caller must fail closed.
+    """
+    routes = set()
+    undocumented = False
+    heading_seen = False
+    for raw in message.splitlines():
+        line = raw.strip()
+        if line == UNDOCUMENTED_HEADING:
+            undocumented = True
+            heading_seen = True
+            continue
+        if line == GHOST_HEADING:
+            undocumented = False
+            continue
+        if not undocumented:
+            continue
+        match = ROUTE_LINE.fullmatch(line)
+        if match:
+            routes.add(_normalized_route(match.group(1), match.group(2)))
+    if not heading_seen:
+        return None
+    return routes
+
+
+def reported_parity_routes(reports_dir):
+    """New undocumented routes named by a failing parity suite, or None if unusable.
+
+    A green parity suite contributes no routes; a missing parity report is
+    unusable, because a suite that never ran cannot prove the candidate clean.
+    A parseable suite that fails without a route section is unusable too, and
+    unparseable XML fails closed so a truncated report cannot clear a candidate.
+    """
+    routes = set()
+    seen = False
+    for report in sorted(Path(reports_dir).glob("TEST-*.xml")):
+        try:
+            root = ET.parse(report).getroot()
+        except ET.ParseError:
+            return None
+        if not root.get("name", "").endswith(PARITY_TEST):
+            continue
+        seen = True
+        failures = [node for node in root.iter() if node.tag in ("failure", "error")]
+        if not failures:
+            continue
+        messages = []
+        for node in failures:
+            attribute = node.get("message") or ""
+            text = node.text or ""
+            messages.append(attribute + "\n" + text)
+        parsed = parse_parity_message("\n".join(messages))
+        if parsed is None:
+            return None
+        routes |= parsed
+    if not seen:
+        return None
+    return routes
+
+
+def check_parity(parity):
+    """(ok, message) for frozen-baseline growth and new undocumented routes.
+
+    The baseline may shrink after a documented repair. It may not grow, and a
+    route reported by the parity suite must already be tolerated at the base.
+    Each set difference is over exact METHOD + normalized-path entries.
+    """
+    base = pinned_base_routes(parity["base_ref"], parity["baseline"])
+    candidate = candidate_baseline(parity["baseline"])
+    reported = reported_parity_routes(parity["reports"])
+    if base is None or candidate is None or reported is None:
+        return False, "route parity: pinned-base evidence is missing or unusable"
+    grown = candidate - base
+    new = reported - base
+    if grown or new:
+        details = []
+        if grown:
+            details.append("baseline growth: " + ", ".join(sorted(grown)))
+        if new:
+            details.append("new undocumented routes: " + ", ".join(sorted(new)))
+        return False, "route parity: " + "; ".join(details)
+    return True, "route parity: no new undocumented routes or baseline growth"
 
 
 def failing_classes(reports_dir):
@@ -101,8 +275,17 @@ def named_classes(text):
     return set(re.findall(r"`([A-Z][A-Za-z0-9]*(?:Test|IT))`", text or ""))
 
 
-def decide(failing, changed, story_id, task_text=""):
-    """(ok, message)."""
+def decide(failing, changed, story_id, task_text="", parity=None):
+    """(ok, message) for a pinned worker candidate.
+
+    When a parity context is supplied it is checked before any early return, so
+    growing the baseline or adding a route is still blocked when the integration
+    suites are green. Without it the original related/unrelated triage stands.
+    """
+    if parity is not None:
+        ok, message = check_parity(parity)
+        if not ok:
+            return False, message
     if not failing:
         return True, "integration tests passed"
     if story_id.startswith(STRICT_PREFIXES):
@@ -265,9 +448,15 @@ def main(argv=None):
     if mvn_failed and not failing:
         print("integration run failed without a failing test class (compile or setup error)")
         return 1
+    # Arguments 3 and 4 carry the pinned base and the frozen baseline path. They
+    # are independent of the report directory, which stays private to this run.
+    base_ref = args[2] if len(args) > 2 and args[2] else ""
+    baseline = args[3] if len(args) > 3 and args[3] else DEFAULT_BASELINE
+    parity = ({"base_ref": base_ref, "baseline": baseline, "reports": reports}
+              if base_ref else None)
     changed = changed_paths()
     ok, message = decide(failing, changed, os.environ.get("STORY_ID", ""),
-                         os.environ.get("STORY_BODY", ""))
+                         os.environ.get("STORY_BODY", ""), parity)
     print(message)
     violations = candidate_from_env(changed=changed)
     if violations is not None:
