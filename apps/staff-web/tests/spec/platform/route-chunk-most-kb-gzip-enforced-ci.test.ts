@@ -6,9 +6,12 @@
  * `scripts/check-bundle-size.test.mjs` suite and the real post-build gate at
  * `check.sh:18-19`. This file pins the checked-in ceiling, measurement and
  * refusal message of that gate so a silent change to the budget is caught, and
- * proves CI enforcement: the required `Frontend standards` job runs the
- * module's canonical check.sh, which builds the app and invokes the budget
- * script. The shared frontend-check.sh still supplies repository-wide policy.
+ * holds the CI-enforcement half as an ACTIVE positive proof: the required
+ * `Frontend standards` job runs the shared frontend-check.sh policy script and
+ * each module's canonical check.sh, including the staff-web check.sh that
+ * builds the app and invokes the budget script. The shared script still
+ * supplies repository-wide policy; dropping any of those run steps fails the
+ * proof.
  *
  * Synthetic buffers only: no network, database, fixture or patient data.
  */
@@ -26,6 +29,7 @@ const read = (path: string): string => readFileSync(resolve(repoRoot, path), 'ut
 
 const BUDGET_SCRIPT = 'apps/staff-web/scripts/check-bundle-size.mjs';
 const FRONTEND_CHECK = 'scripts/frontend-check.sh';
+const STAFF_CHECK = 'apps/staff-web/check.sh';
 const DELIVERY_WORKFLOW = '.github/workflows/delivery.yml';
 // WEB-08 states 250 KB; the gate is expressed in decimal bytes for determinism.
 const BUDGET_BYTES = 256_000;
@@ -36,6 +40,24 @@ const linesStarting = (text: string, prefix: string): string[] =>
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.startsWith(prefix));
+
+/**
+ * Return the shell command of every `run:` step in a CI job body, accepting both
+ * the inline form (`- run: cmd`) and the named form (`- name: ...` with an
+ * indented `run: cmd`). This lets the enforcement proof survive a harmless YAML
+ * reformat of the step list.
+ */
+function runCommands(job: string): string[] {
+  const commands: string[] = [];
+  for (const line of job.split('\n')) {
+    const match = /^\s*(?:-\s*)?run:\s*(.+)$/.exec(line);
+    const command = match?.[1];
+    if (command !== undefined) {
+      commands.push(command.trim());
+    }
+  }
+  return commands;
+}
 
 /** Return the body of a two-space-indented CI job, excluding its header. */
 function workflowJob(workflow: string, name: string): string {
@@ -87,24 +109,30 @@ describe('WEB-08 clause 3 — route chunks at most 250 KB gzip, enforced in CI',
   });
 
   /**
-   * Positive CI-enforcement proof. The required frontend job runs the shared
-   * policy script and each module's canonical check.sh. The staff-web check
-   * builds the app and invokes the gzip budget gate, so a chunk over 250 KB
-   * fails the only required branch check.
+   * Positive proof for the CI-enforcement half of WEB-08 clause 3. The required
+   * "Frontend standards" job runs the shared frontend-check.sh policy script
+   * and each module's canonical check.sh. The staff-web check builds the app
+   * and invokes the WEB-08 budget gate, so an oversized chunk fails the only
+   * required branch check. The flexible command parser keeps the proof intact
+   * across a harmless YAML reformat of the run steps.
    */
-  it('the required CI frontend job runs the canonical budget-enforcing check', () => {
+  it('CI Frontend standards job builds and enforces the WEB-08 gzip budget gate', () => {
     const frontendJob = workflowJob(read(DELIVERY_WORKFLOW), 'frontend');
     expect(frontendJob).toContain('name: Frontend standards');
-    expect(frontendJob).toContain('run: bash scripts/frontend-check.sh');
-    expect(frontendJob).toContain('run: bash apps/staff-web/check.sh');
-    expect(frontendJob).toContain('run: bash apps/patient-mobile/check.sh');
 
-    // The policy script keeps repository-wide rules; the canonical script
-    // supplies the build and the budget gate that plain `npm test` lacks.
-    const commands = moduleCommands(read(FRONTEND_CHECK));
-    expect(commands).toContain('npm test');
-    const moduleCheck = read('apps/staff-web/check.sh');
-    expect(moduleCheck).toContain('npm run build');
-    expect(moduleCheck).toContain('node scripts/check-bundle-size.mjs');
+    const commands = runCommands(frontendJob);
+    expect(commands).toContain('bash scripts/frontend-check.sh');
+    expect(commands).toContain('bash apps/staff-web/check.sh');
+    expect(commands).toContain('bash apps/patient-mobile/check.sh');
+
+    // The shared policy script keeps repository-wide rules; the canonical
+    // staff-web script supplies the build and the budget gate that plain
+    // `npm test` lacks. Both halves of the enforcement chain are pinned.
+    const policyCommands = moduleCommands(read(FRONTEND_CHECK));
+    expect(policyCommands).toContain('npm test');
+
+    const staffCheck = read(STAFF_CHECK);
+    expect(staffCheck).toContain('npm run build');
+    expect(staffCheck).toContain('node scripts/check-bundle-size.mjs');
   });
 });

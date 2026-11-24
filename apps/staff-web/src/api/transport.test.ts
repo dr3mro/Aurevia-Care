@@ -322,3 +322,67 @@ describe('send — failures and retries', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('send — caller cancellation', () => {
+  /** Keep the fetch pending until its own abort signal fires. */
+  function pendingFetch(): void {
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    );
+  }
+
+  it('cancels an in-flight GET with a caller signal and does not retry', async () => {
+    pendingFetch();
+    const controller = new AbortController();
+    const settled = send(descriptor('GET'), { signal: controller.signal }).catch(
+      (reason: unknown) => reason,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const signal = initAt(0).signal;
+    expect(signal?.aborted).toBe(false);
+
+    controller.abort();
+
+    await expect(settled).resolves.toMatchObject({ kind: 'timeout' });
+    expect(signal?.aborted).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects an already-aborted caller signal without issuing a fetch', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(send(descriptor('GET'), { signal: controller.signal })).rejects.toMatchObject({
+      kind: 'timeout',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still retries a GET on internal timeout when the caller signal is un-aborted', async () => {
+    vi.useFakeTimers();
+    fetchMock
+      .mockImplementationOnce(
+        (_url, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            );
+          }),
+      )
+      .mockResolvedValueOnce(response(200, { recovered: true }));
+
+    const controller = new AbortController();
+    const pending = send(descriptor('GET'), { signal: controller.signal, timeoutMs: 25 });
+    await vi.advanceTimersByTimeAsync(25);
+
+    await expect(pending).resolves.toEqual({ recovered: true });
+    expect(controller.signal.aborted).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
