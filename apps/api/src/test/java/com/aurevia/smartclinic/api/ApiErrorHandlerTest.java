@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import com.aurevia.smartclinic.tenant.TenantContext;
 
@@ -46,6 +47,19 @@ class ApiErrorHandlerTest {
         var response = handler.handleMissingContext(new IllegalStateException("no context"));
         assertEquals(500, response.getStatusCode().value());
         assertEquals("corr-9", response.getBody().correlationId());
+    }
+
+    @Test
+    void malformedBodyReturnsBadRequestWithMachineCode() {
+        TenantContext.set(new TenantContext("org", "subject", "purpose", "corr-body"));
+        var response = handler.handleUnreadableBody(
+                new HttpMessageNotReadableException("bad payload fragment", null));
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals("MALFORMED_REQUEST_BODY", response.getBody().code());
+        // A fixed detail proves the binding exception text (which may contain
+        // payload fragments) is never echoed to the caller.
+        assertEquals("request body could not be read", response.getBody().message());
+        assertEquals("corr-body", response.getBody().correlationId());
     }
 
     @Test
