@@ -1,4 +1,6 @@
-- [ ] RESP-E2E-MOBILE-PERFORMANCE · Staff web end-to-end: mobilePerformance across phone, tablet and desktop
+- [x] RESP-E2E-MOBILE-PERFORMANCE · Staff web end-to-end: mobilePerformance across phone, tablet and desktop
+  - pr: #1540
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/mobilePerformance.spec.ts
   - depends: RESP-E2E-PROJECTS

@@ -1,5 +1,5 @@
-- [-] FIX-STAFF-ATTACHMENT-WIRING · Verify attachment authorization and send end to end for both staff messaging modes
-  - agent: swarm-6
+- [x] FIX-STAFF-ATTACHMENT-WIRING · Verify attachment authorization and send end to end for both staff messaging modes
+  - pr: #1448
   - attempts: 1
   - requirements: MSG-03, CLN-07
   - scope: apps/api/src/main/java/com/aurevia/staffmsg, apps/api/src/test/java/com/aurevia/staffmsg, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts

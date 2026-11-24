@@ -191,18 +191,32 @@ public class InstantMessagingService {
     }
 
     /**
-     * Publish one message, or return the first message for a retried key.
+     * Publish one message to the conversation named in the route, or return the
+     * first message for a retried key.
      *
-     * @param request        facility, conversation and body
+     * <p>The route conversation is the sole authorization and durable-write
+     * target. The body field is accepted for client compatibility but must name
+     * the same conversation; a mismatch is refused before the store is touched,
+     * so neither conversation can receive the message.</p>
+     *
+     * @param conversationId owning conversation from the request path
+     * @param request        facility, body conversation (must match the path) and body
      * @param idempotencyKey durable client message id from the HTTP header
      * @return the published (or original) message view
-     * @throws ApiException on denial or invalid input
+     * @throws ApiException on a body/path mismatch, denial or invalid input
      */
-    public MessageView send(SendRequest request, String idempotencyKey) {
+    public MessageView send(String conversationId, SendRequest request, String idempotencyKey) {
         TenantContext context = context();
         String key = requireKey(idempotencyKey);
         String body = requireBody(request.body());
-        Access access = requireAccess(request.facilityId(), request.conversationId(), true);
+        String routeId = requireSubject(conversationId, "conversationId");
+        String bodyId = requireSubject(request.conversationId(), "conversationId");
+        // The route selects the thread: authorizing or writing from the body would
+        // let a client send into a different conversation it can also access.
+        if (!routeId.equals(bodyId)) {
+            throw invalid("body conversationId must match the conversation in the URL");
+        }
+        Access access = requireAccess(request.facilityId(), routeId, true);
         Optional<StaffMessage> previous = store.messageByClientId(
                 context.organizationId(), access.conversation().id(), key);
         StaffMessage message;

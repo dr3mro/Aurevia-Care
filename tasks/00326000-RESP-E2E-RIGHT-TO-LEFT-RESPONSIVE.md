@@ -1,4 +1,6 @@
 - [ ] RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE · Staff web end-to-end: rightToLeftResponsive across phone, tablet and desktop
+  - evidence: PR #1556 merged to main (auto-reconciled)
+  - attempts: 3
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/rightToLeftResponsive.spec.ts
   - depends: RESP-E2E-PROJECTS

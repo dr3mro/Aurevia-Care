@@ -1,4 +1,6 @@
-- [ ] RESP-E2E-DARK-MODE-RESPONSIVE · Staff web end-to-end: darkModeResponsive across phone, tablet and desktop
+- [x] RESP-E2E-DARK-MODE-RESPONSIVE · Staff web end-to-end: darkModeResponsive across phone, tablet and desktop
+  - pr: #1543
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/darkModeResponsive.spec.ts
   - depends: RESP-E2E-PROJECTS

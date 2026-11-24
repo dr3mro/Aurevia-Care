@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -19,7 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
@@ -29,7 +27,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 
-import com.aurevia.messaging.instructions.InstructionStore;
 import com.aurevia.tenant.TenantContext;
 
 import tools.jackson.databind.JsonNode;
@@ -52,14 +49,16 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p>One directory is used throughout: the production {@code JdbcMessagingStore}
  * reads the {@code care_unit} and {@code eligible_relationship} rows seeded
- * below. The instruction domain's production bean is
- * {@link com.aurevia.messaging.instructions.InstructionStore.InMemory};
- * it is seeded under an explicit tenant context because its keys are scoped by
- * the active organization. No production code is changed by this test.</p>
+ * below. The instruction domain also uses its production bean,
+ * {@link com.aurevia.messaging.instructions.JdbcInstructionStore},
+ * which derives roles, verified charts and unit assignment from the
+ * authoritative folds seeded in {@code prepare()} and reads the patient-unit
+ * connection written by the HTTP connect command. No production code is
+ * changed by this test.</p>
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/orevia_arc07_commands_it")
+        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_arc07_commands_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
@@ -78,13 +77,10 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
     private static final AtomicInteger REFERENCE_INDEX = new AtomicInteger();
     private static final String DUE_AT = "2026-12-01T00:00:00Z";
     private static final String URL =
-            "jdbc:postgresql://127.0.0.1:5432/orevia_arc07_commands_it";
+            "jdbc:postgresql://127.0.0.1:5432/smartclinic_arc07_commands_it";
     private static final String ADMIN = System.getenv().getOrDefault(
-            "OREVIA_PG_ADMIN", System.getProperty("user.name"));
+            "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
     private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    @Autowired
-    InstructionStore.InMemory instructionStore;
 
     RestClient rest;
 
@@ -98,18 +94,18 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
             statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN "
-                    + "CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN "
-                    + "CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc07_commands_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE orevia_arc07_commands_it OWNER orevia_migrate");
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_migrate') THEN "
+                    + "CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
+                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_app') THEN "
+                    + "CREATE ROLE smartclinic_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
+            statement.execute("DROP DATABASE IF EXISTS smartclinic_arc07_commands_it WITH (FORCE)");
+            statement.execute("CREATE DATABASE smartclinic_arc07_commands_it OWNER smartclinic_migrate");
         }
         Flyway.configure()
-                .dataSource(URL, "orevia_migrate", "")
+                .dataSource(URL, "smartclinic_migrate", "")
                 .locations("filesystem:../../db/migrations")
                 .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "orevia_migrate", "");
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
             seedMember(statement, ORG, PATIENT_SUBJECT, "patient");
             seedMember(statement, ORG, CLINICIAN_SUBJECT, "clinician");
@@ -158,7 +154,7 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
         try (Connection root = DriverManager.getConnection(
                      "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS orevia_arc07_commands_it WITH (FORCE)");
+            statement.execute("DROP DATABASE IF EXISTS smartclinic_arc07_commands_it WITH (FORCE)");
         }
     }
 
@@ -184,19 +180,10 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
                 + "' AND u.subject = '" + subject + "'");
     }
 
-    /** Bind the HTTP client and seed the in-memory instruction store under an explicit tenant. */
+    /** Bind the HTTP client; instruction folds are seeded by {@code prepare()}. */
     @BeforeEach
     void setUp(@LocalServerPort int port) {
         rest = RestClient.builder().baseUrl("http://localhost:" + port).build();
-        TenantContext.set(new TenantContext(ORG, CLINICIAN_SUBJECT, "MSG04", "arc07-seed"));
-        try {
-            instructionStore.seedMember(CLINICIAN_SUBJECT, List.of("clinician"));
-            instructionStore.seedMember(PATIENT_SUBJECT, List.of("patient"));
-            instructionStore.seedUnitStaff(CLINICIAN_SUBJECT, UNIT);
-            instructionStore.linkPatientChart(PATIENT_SUBJECT, PATIENT);
-        } finally {
-            TenantContext.clear();
-        }
     }
 
     /** Never leak a thread-bound tenant into another test. */
@@ -209,7 +196,6 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
     void connectSendAssignResolveAcknowledgeAndWithdrawOrReplaceInstructionsAreExposedOverHttp() {
         // Connect: POST /api/v1/patient-unit-connections returns 201 and an active connection.
         String connection = connect();
-        seedConnection(connection);
         JsonNode connectionView = tree(get("/api/v1/patient-unit-connections?patientId=" + PATIENT,
                 PATIENT_SUBJECT, ORG, null));
         assertTrue(containsConnection(connectionView, connection),
@@ -308,7 +294,6 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
     @Test
     void staleVersionCannotAssignResolveWithdrawOrReplace() {
         String connection = connect();
-        seedConnection(connection);
         String conversation = openConversation(connection);
         assertEquals(412, post("/api/v1/conversations/" + conversation + "/assign",
                 "{\"assigneeSubject\":\"" + CLINICIAN_SUBJECT + "\",\"reason\":\"cover\"}",
@@ -354,7 +339,6 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
     @Test
     void withdrawnInstructionCannotBeReplaced() {
         String connection = connect();
-        seedConnection(connection);
         String thread = sendInstruction(connection);
         assertEquals(200, post("/api/v1/patient-instructions/" + thread + "/withdraw",
                 "{\"reason\":\"terminal\"}", CLINICIAN_SUBJECT, ORG, "\"1\"")
@@ -378,16 +362,6 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
                 PATIENT_SUBJECT, ORG, null);
         assertEquals(201, response.getStatusCode().value(), response.getBody());
         return tree(response).at("/id").asText();
-    }
-
-    /** Mirror the HTTP-created connection into the instruction domain's store. */
-    private void seedConnection(String connection) {
-        TenantContext.set(new TenantContext(ORG, CLINICIAN_SUBJECT, "MSG04", "arc07-seed"));
-        try {
-            instructionStore.seedConnectionOrg(ORG, connection, PATIENT, UNIT);
-        } finally {
-            TenantContext.clear();
-        }
     }
 
     /** Open a conversation at version 1 through the verified connection. */

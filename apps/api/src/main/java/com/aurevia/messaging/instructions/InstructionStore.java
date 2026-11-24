@@ -7,8 +7,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.stereotype.Repository;
-
 import com.aurevia.api.ApiException;
 import com.aurevia.messaging.instructions.InstructionContract.Fact;
 import com.aurevia.messaging.instructions.InstructionContract.Revision;
@@ -77,10 +75,9 @@ public interface InstructionStore {
     List<Fact> facts(String threadId);
 
     /**
-     * Synthetic, in-memory adapter used by the fast unit tier and by the
-     * self-contained Spring slice. It is thread-safe and keyed by organization.
+     * Synthetic in-memory adapter used only by fast unit tests. It is thread-safe
+     * and keyed by organization; production uses the durable JDBC adapter.
      */
-    @Repository
     class InMemory implements InstructionStore {
 
         private final ConcurrentHashMap<String, List<String>> roles = new ConcurrentHashMap<>();
