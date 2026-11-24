@@ -29,7 +29,7 @@ boundary was changed. Real patient and clinical acceptance remains a G5 gate.
 
 ## Review owner
 
-Senior React Native and Expo specialist (`smartclinic-senior-mobile`). The
+Senior React Native and Expo specialist (`orevia-senior-mobile`). The
 integrator and Delivery own final acceptance.
 
 ## Data changes
@@ -158,7 +158,7 @@ acceptance stays a separate G5 launch gate and is not claimed here.
    fixed height, line clamp or clipping that could defeat 200% text.
 4. `git grep -nE '^(<<<<<<<|>>>>>>>) '` after the `origin/main` merge reports
    conflict markers in committed Java files under
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/`. The merge
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/`. The merge
    itself was "Already up to date"; `git status` shows only the two scoped files
    changed. These markers are pre-existing on the base branch, outside this
    scope and untouched. They need an owner-owned defect task.

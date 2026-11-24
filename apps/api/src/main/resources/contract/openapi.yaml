@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: SmartClinic Staff API
+  title: Orevia Staff API
   version: 0.1.0
   description: G0 tenant-isolated facility administration and staff lifecycle. Synthetic use only.
 servers:
@@ -5166,7 +5166,7 @@ paths:
       description: >-
         Unauthenticated scrape. The source address is allowlisted by
         MetricsAccessPolicy; loopback is always permitted and additional CIDRs
-        come from SMARTCLINIC_METRICS_ALLOW. A disallowed source receives a bare
+        come from OREVIA_METRICS_ALLOW. A disallowed source receives a bare
         404 with an empty body so the endpoint is not discoverable from an
         untrusted network. The body holds aggregate counters only, never request
         bodies, tokens, tenant or patient fields.

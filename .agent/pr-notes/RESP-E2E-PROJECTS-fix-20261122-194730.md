@@ -46,7 +46,7 @@ production file was changed in this fix pass.
 
 ## Review owner
 
-`smartclinic-senior-react` (bounded, advisory review from the first worker).
+`orevia-senior-react` (bounded, advisory review from the first worker).
 Strict TypeScript rules were applied with a focused `tsc` and ESLint because the
 module `tsconfig.json` excludes `e2e/`. No specialist edited any file. The
 read-only verdicts for this pass are under "Review verdicts".
@@ -133,7 +133,7 @@ All commands were run from the repository root unless a `cd` is shown.
     - `gen:api: generated client matches the contract`
     - typecheck final lines (mandatory paste; no `error TS…`):
       ```
-      > smartclinic-staff-web@0.1.0 typecheck
+      > orevia-staff-web@0.1.0 typecheck
       > tsc --noEmit -p tsconfig.json
       ```
     - `✓ built in 164ms` (`vite`)
@@ -205,12 +205,12 @@ involved; all evidence is synthetic and tool-generated.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- orevia-plan-reviewer: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: GO
 
-Disposition of reviewer findings: the `smartclinic-plan-reviewer` first returned
+Disposition of reviewer findings: the `orevia-plan-reviewer` first returned
 NO-GO on this fix pass's plan with two Required findings — (a) diagnose the gate
 that actually sets the integrator's `checks` value rather than re-running green
 sub-checks, and (b) narrow the task-requests. Both are addressed above: Finding 1
@@ -242,13 +242,13 @@ reviewers returned GO on the first pass with no Critical or Required findings.
 2. **Committed merge-conflict markers outside scope (executed `git grep`, tool
    evidence).** `git grep -nE '^(<<<<<<<|=======|>>>>>>>) ' -- ':!*.md'` finds
    nine marker lines in three Javadoc comments:
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`
    (lines 6, 8, 10), `Hl7Parser.java` (14, 16, 18) and `Hl7Segment.java`
    (10, 12, 14). Both sides of each conflict are identical duplicated Javadoc
    lines. They are in HEAD and in `origin/main`, introduced by `b6b349f0
    BUILD-37`, and are tracked by the **open** task `AUD-20261122-20` (TODO.md
    "Remove unresolved Git conflict markers committed in production HL7 Javadoc",
-   scope `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7`). They sit
+   scope `apps/api/src/main/java/com/aurevia/exchange/hl7`). They sit
    inside `/** … */`, so `mvn -q -B -f apps/api/pom.xml -Pno-security,fast
    -DskipTests compile` (exit 0) and `bash scripts/docs.sh` (exit 0) both pass
    here and runtime behavior is unchanged. I did not edit them because the task

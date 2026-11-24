@@ -14,7 +14,7 @@ Files changed (only the two paths in the task's `scope`):
 | PAT-02 | No persistent clinical cache, no new API call, no new data. | Only window metrics, safe-area context and the existing props are read; no storage, effect, fetch or dependency added. |
 | UX-01 | 200% text without clipping; 44x44 touch target; unchanged roles/labels/focus order; English and Arabic RTL mirroring; safe-area insets. | `twoPane` disabled at fontScale 2; `minHeight`/`minWidth` 44; logical `paddingStart`/`paddingEnd`; `row-reverse` for RTL; asserted by `assertContentAndLabels` and the RTL cases. |
 
-Governing evidence: `docs/decisions/0005-patient-app-tablets.md` (600/840 dp classes, layout from window not device, 200% text, two panes on large, screen-reader parity, PAT-02 boundary); `docs/design/accessibility-patterns.md` §9; `docs/design/rtl-and-localization.md` §1.1 and §2; `SMARTCLINIC_V1_SPEC.md` lines 85–86, 90 and 110.
+Governing evidence: `docs/decisions/0005-patient-app-tablets.md` (600/840 dp classes, layout from window not device, 200% text, two panes on large, screen-reader parity, PAT-02 boundary); `docs/design/accessibility-patterns.md` §9; `docs/design/rtl-and-localization.md` §1.1 and §2; `PROJECT_V1_SPEC.md` lines 85–86, 90 and 110.
 
 ## Risk class
 
@@ -22,7 +22,7 @@ Routine. Contained, presentation-only change to one React Native component plus 
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`), with `smartclinic-senior-typescript` and `smartclinic-ux-reviewer` contracts loaded. The specialist was a bounded simulated subagent review (findings reported below); no human, clinician, simulated patient or real-user evidence is claimed.
+Senior React Native and Expo (`orevia-senior-mobile`), with `orevia-senior-typescript` and `orevia-ux-reviewer` contracts loaded. The specialist was a bounded simulated subagent review (findings reported below); no human, clinician, simulated patient or real-user evidence is claimed.
 
 ## Data changes
 

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.events.clauses.SendFailuresRestrictedDeadLetterQueueReviewTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/events/clauses/SendFailuresRestrictedDeadLetterQueueReviewTest.java`),
+Test class: `com.aurevia.events.clauses.SendFailuresRestrictedDeadLetterQueueReviewTest`
+(`apps/api/src/test/java/com/aurevia/events/clauses/SendFailuresRestrictedDeadLetterQueueReviewTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile. It uses an isolated
 database, applies only the production Flyway migrations from `db/migrations`, seeds two
 organizations with worker, operator, integration-admin, tenant-admin and privacy-auditor
@@ -51,23 +51,23 @@ string.
 
 Production classes and files exercised by these request paths:
 
-- `com.aurevia.smartclinic.events.DeliveryController` — the thin HTTP adapter for the
+- `com.aurevia.events.DeliveryController` — the thin HTTP adapter for the
   delivery routes under `/api/v1/delivery`: retry, dead-letter, restricted queue read,
   reasoned review and audited trail read.
-- `com.aurevia.smartclinic.events.DurableEventService` — the bounded retry and dead-letter
+- `com.aurevia.events.DurableEventService` — the bounded retry and dead-letter
   decision (`retry`, `deadLetter`), the reviewed resolution (`reviewDeadLetter`,
   `deadLetters`) and the append-only audit facts; a reviewer is recorded with the active
   subject and the application clock, once only.
-- `com.aurevia.smartclinic.events.DeliveryActions` — the bounded action matrix reserving
+- `com.aurevia.events.DeliveryActions` — the bounded action matrix reserving
   `REVIEW` for `integration_admin` and `tenant_admin`, `DEAD_LETTER` for delivery roles and
   `AUDIT_READ` for `tenant_admin` and `privacy_auditor`.
-- `com.aurevia.smartclinic.events.DurableEventContract` — the `RetryResult`,
+- `com.aurevia.events.DurableEventContract` — the `RetryResult`,
   `DeadLetterEntry`, `ReviewRequest` and `Resolution` records carrying only non-sensitive
   delivery metadata.
-- `com.aurevia.smartclinic.events.JdbcDeliveryStore` and `DeliveryStore` — the tenant-scoped
+- `com.aurevia.events.JdbcDeliveryStore` and `DeliveryStore` — the tenant-scoped
   persistence boundary behind the service; the integration test reads dead-letter and event
   rows through it to prove each refusal left state unchanged.
-- `com.aurevia.smartclinic.api.IfMatch`, `ApiException` and `ApiErrorHandler` — the version
+- `com.aurevia.api.IfMatch`, `ApiException` and `ApiErrorHandler` — the version
   precondition and the machine-readable status and error code contract asserted by the
   negative tests.
 - `db/migrations/V55__durable_event_outbox.sql` — the `delivery_dead_letter` ledger with

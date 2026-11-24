@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.RevokingConnectionStopsNewMessagingFutureAttachmentTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/RevokingConnectionStopsNewMessagingFutureAttachmentTest.java`).
+Test class: `com.aurevia.messaging.clauses.RevokingConnectionStopsNewMessagingFutureAttachmentTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/RevokingConnectionStopsNewMessagingFutureAttachmentTest.java`).
 All eight tests are active; none are skipped. Fixtures are synthetic tenants,
 subjects, identifiers and a fixed clock over `InMemoryMessagingGovernanceStore`.
 

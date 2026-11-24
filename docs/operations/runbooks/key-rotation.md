@@ -40,8 +40,8 @@ The repository contains configuration keys and tests only.
 
 | Configuration key | Where it is read | Purpose |
 |---|---|---|
-| `SMARTCLINIC_DB_URL`, `SMARTCLINIC_DB_USER`, `SMARTCLINIC_DB_PASSWORD` | [application.yml](../../../apps/api/src/main/resources/application.yml) | Database connection; password defaults to empty |
-| `SMARTCLINIC_OIDC_ISSUER_URI`, `SMARTCLINIC_OIDC_AUDIENCE` | [application.yml](../../../apps/api/src/main/resources/application.yml) | Managed OIDC validation; blank issuer fails startup outside the synthetic profile |
+| `OREVIA_DB_URL`, `OREVIA_DB_USER`, `OREVIA_DB_PASSWORD` | [application.yml](../../../apps/api/src/main/resources/application.yml) | Database connection; password defaults to empty |
+| `OREVIA_OIDC_ISSUER_URI`, `OREVIA_OIDC_AUDIENCE` | [application.yml](../../../apps/api/src/main/resources/application.yml) | Managed OIDC validation; blank issuer fails startup outside the synthetic profile |
 | `NVD_API_KEY` | OWASP plugin via `nvdApiKeyEnvironmentVariable` in [pom.xml](../../../apps/api/pom.xml) | Fresh NVD data for dependency analysis; absent from the tree, cached-data fallback |
 | `OPENCODE_API_KEY_<slot>`, fallback `OPENCODE_API_KEY`, `SWARM_TOKEN` | Workflows and [docs/SWARM.md](../../../docs/SWARM.md) | Swarm worker authentication and workflow-file pushes |
 
@@ -50,7 +50,7 @@ and the Delivery policy job) scans tracked text for credential shapes, including
 a hard-coded NVD key. A passing scan is evidence that no literal is in the tree,
 not that a value was rotated.
 
-A historical exposure of `NVD_API_KEY` is recorded in [BUGS.md](../../../BUGS.md)
+A historical exposure of `NVD_API_KEY` is recorded in [BUGS.md](../../../.opencode/config/BUGS.md)
 (`DS-G0-01-01`) and the durable decision in [MEMORY.md](../../../MEMORY.md) was
 **not** to rotate it and not to rewrite published history. That decision is an
 owner decision about that incident, not a general rule that secrets need not be
@@ -78,8 +78,8 @@ force-push are out of scope for a worker.
 5. **Check the service came back.** Call `GET /health/live` and
    `GET /health/ready`. A blank OIDC issuer fails startup outside the synthetic
    profile; a wrong database password shows up as readiness HTTP 503
-   ([HealthController](../../../apps/api/src/main/java/com/aurevia/smartclinic/web/HealthController.java),
-   [SecurityConfiguration](../../../apps/api/src/main/java/com/aurevia/smartclinic/web/SecurityConfiguration.java)).
+   ([HealthController](../../../apps/api/src/main/java/com/aurevia/web/HealthController.java),
+   [SecurityConfiguration](../../../apps/api/src/main/java/com/aurevia/web/SecurityConfiguration.java)).
 6. **Check nothing broke in behavior.** Read structured request logs for the
    affected routes: no new 401/403 wave for OIDC changes, no new 503 for database
    changes, and status and p95 within OPS-03. Use correlation IDs only.

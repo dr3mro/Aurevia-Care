@@ -77,12 +77,12 @@ Not required for this slice. No patient identity, result release, order, prescri
 
 ## Review verdicts
 
-- smartclinic-test-engineer: GO — all three `DetachedCollectionStatus` arcs have named, assertion-bearing tests; pharmacy `waitFor` proves both flags after the committed reload. Four Optional hardening ideas recorded under Findings.
-- smartclinic-senior-react: GO — status lifecycle, `role="status"` accessibility, RTL queries, failure/tenant-switch/select resets and pharmacy both-flag assertions all correct. Two Optional (non-blocking) observations recorded under Findings.
-- smartclinic-code-reviewer: GO — no Critical/Required finding; no API/route/OpenAPI/migration change introduced; success-notice lifecycle and pharmacy assertions correct. Three Optional observations recorded under Findings.
-- smartclinic-coverage-auditor: GO — mapped every new/changed branch (both sides of `hasRows || message === ''`, the JSX return, both try/catch arms for collect/reject/print, the render ternary chain and the pharmacy post-reload `waitFor`) to an assertion-bearing test; no missing test, no suppression.
-- smartclinic-devsecops: GO
-- smartclinic-plan-reviewer: not consulted — no new code in this pass (verification and documentation only).
+- orevia-test-engineer: GO — all three `DetachedCollectionStatus` arcs have named, assertion-bearing tests; pharmacy `waitFor` proves both flags after the committed reload. Four Optional hardening ideas recorded under Findings.
+- orevia-senior-react: GO — status lifecycle, `role="status"` accessibility, RTL queries, failure/tenant-switch/select resets and pharmacy both-flag assertions all correct. Two Optional (non-blocking) observations recorded under Findings.
+- orevia-code-reviewer: GO — no Critical/Required finding; no API/route/OpenAPI/migration change introduced; success-notice lifecycle and pharmacy assertions correct. Three Optional observations recorded under Findings.
+- orevia-coverage-auditor: GO — mapped every new/changed branch (both sides of `hasRows || message === ''`, the JSX return, both try/catch arms for collect/reject/print, the render ternary chain and the pharmacy post-reload `waitFor`) to an assertion-bearing test; no missing test, no suppression.
+- orevia-devsecops: GO
+- orevia-plan-reviewer: not consulted — no new code in this pass (verification and documentation only).
 
 ## Findings
 

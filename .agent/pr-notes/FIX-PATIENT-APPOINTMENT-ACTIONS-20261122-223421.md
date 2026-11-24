@@ -16,7 +16,7 @@ Cross-boundary (patient-app UI plus authenticated command boundary), with defens
 
 ## Review owner
 
-smartclinic-senior-mobile (implementation), smartclinic-plan-reviewer (plan), smartclinic-code-reviewer, smartclinic-coverage-auditor, smartclinic-devsecops (independent read-only stages).
+orevia-senior-mobile (implementation), orevia-plan-reviewer (plan), orevia-code-reviewer, orevia-coverage-auditor, orevia-devsecops (independent read-only stages).
 
 ## Data changes
 
@@ -103,10 +103,10 @@ Not required for this slice: no signed data, cross-organization sharing, patient
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (first pass NO-GO on ScreenStack and the double-press test; both closed, and the ScreenStack waiver was accepted on the shared-component/push-API evidence)
-- smartclinic-devsecops: GO (no Critical or Required finding; one Optional dev-loopback-IP note, not adopted because the strict localhost rule is deliberately fail-closed; OWASP/SpotBugs not applicable to this frontend-only change)
-- smartclinic-code-reviewer: GO (reachability gap documented with the exact next step and task-requests; dead key removed; scoped-input invariant documented)
-- smartclinic-coverage-auditor: GO (all branch arms now named with asserting tests; unreachable optional chain removed; no suppression, skip or threshold change)
+- orevia-plan-reviewer: GO (first pass NO-GO on ScreenStack and the double-press test; both closed, and the ScreenStack waiver was accepted on the shared-component/push-API evidence)
+- orevia-devsecops: GO (no Critical or Required finding; one Optional dev-loopback-IP note, not adopted because the strict localhost rule is deliberately fail-closed; OWASP/SpotBugs not applicable to this frontend-only change)
+- orevia-code-reviewer: GO (reachability gap documented with the exact next step and task-requests; dead key removed; scoped-input invariant documented)
+- orevia-coverage-auditor: GO (all branch arms now named with asserting tests; unreachable optional chain removed; no suppression, skip or threshold change)
 
 ## Why this is not finished
 
@@ -120,7 +120,7 @@ Not required for this slice: no signed data, cross-organization sharing, patient
 - No DELETE-capable transport and no server device-list GET exist (`src/api/transport.ts:108-113`; `PatientAppointmentController.java` exposes POST/DELETE/POST-invalid only). The real DELETE adapter is built in scope; the host-owned device seed is empty by default, so a clinic must supply a tenant-scoped registry before a patient sees a revoke control. `withRevokedDevice` is the deterministic V1 refresh. This is recorded as a follow-up below, not hidden.
 - The backend conceals an already-revoked or unknown device as 404 `NOT_FOUND` (`PatientAppointmentService.java:154-162`); the brief also asks that 409/412 settle as `alreadyRevoked`, so conflict is mapped the same way. Other failures remain typed `failure`.
 - The DELETE route is implemented by the API but absent from the published OpenAPI (`contracts/openapi/missing-routes.txt:6`); no contract or generated client was edited in this scope.
-- Pre-existing, unrelated conflict markers are committed in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java` on this base. They were present before this story, are outside scope and were not touched.
+- Pre-existing, unrelated conflict markers are committed in `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java` on this base. They were present before this story, are outside scope and were not touched.
 - `scripts/check.sh` was not run: it invokes the long Java verification owned by the integrator. The canonical module gate `bash apps/patient-mobile/check.sh` was run and passed.
 
 ```task-requests

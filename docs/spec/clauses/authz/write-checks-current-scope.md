@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.authz.clauses.WriteChecksCurrentScopeTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/WriteChecksCurrentScopeTest.java`),
+Test class `com.aurevia.authz.clauses.WriteChecksCurrentScopeTest`
+(`apps/api/src/test/java/com/aurevia/authz/clauses/WriteChecksCurrentScopeTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants:
 
 - `writeSucceedsWhenActorHasActiveMembershipInCurrentScope` — a `tenant_admin` of
@@ -25,22 +25,22 @@ an HTTP-level integration test on real PostgreSQL with two synthetic tenants:
   write permission is refused (403) and no row is created.
 
 Production classes exercised by the entry point:
-`com.aurevia.smartclinic.web.TenantContextInterceptor` (binds the current scope only
+`com.aurevia.web.TenantContextInterceptor` (binds the current scope only
 from `X-Active-Organization` plus the authenticated subject),
-`com.aurevia.smartclinic.tenant.TenantContext`,
-`com.aurevia.smartclinic.web.FacilityController`,
-`com.aurevia.smartclinic.tenancy.FacilityService` (re-checks active membership and
+`com.aurevia.tenant.TenantContext`,
+`com.aurevia.web.FacilityController`,
+`com.aurevia.tenancy.FacilityService` (re-checks active membership and
 action permission inside the tenant-guarded transaction on every write),
-`com.aurevia.smartclinic.tenancy.FacilityRepository` (RLS-bounded store) and
-`com.aurevia.smartclinic.authz.ActionPolicy`, with tenant RLS/FORCE RLS supplied by
+`com.aurevia.tenancy.FacilityRepository` (RLS-bounded store) and
+`com.aurevia.authz.ActionPolicy`, with tenant RLS/FORCE RLS supplied by
 the Flyway migrations under `db/migrations`.
 
 Discovery also found the same current-scope re-check in
-`com.aurevia.smartclinic.staff.StaffService`,
-`com.aurevia.smartclinic.staff.StaffInvitationService`,
-`com.aurevia.smartclinic.configuration.ConfigurationService`, the other domain
+`com.aurevia.staff.StaffService`,
+`com.aurevia.staff.StaffInvitationService`,
+`com.aurevia.configuration.ConfigurationService`, the other domain
 `*Service.authorize(...)` methods and the central command gate
-`com.aurevia.smartclinic.api.authorization.CommandAuthorization`; those are
+`com.aurevia.api.authorization.CommandAuthorization`; those are
 exercised by their own suites and are not re-tested here (this story proves the
 clause through one representative write entry point).
 

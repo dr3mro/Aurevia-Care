@@ -2,9 +2,9 @@
 
 Synthetic-only wire contract for API versioning, idempotency, cursor pagination,
 correlation IDs and machine-readable errors. The Java primitives live in
-`apps/api/src/main/java/com/aurevia/smartclinic/api/contract`; the worked HTTP example
+`apps/api/src/main/java/com/aurevia/api/contract`; the worked HTTP example
 is in [openapi.yaml](openapi.yaml). Requirement text is in
-[SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md).
+[PROJECT_V1_SPEC.md](../../.opencode/config/PROJECT_V1_SPEC.md).
 
 This slice adds the missing wire primitives. Correlation IDs, the uniform error
 body, the `If-Match` parser and the tenant interceptor were already implemented

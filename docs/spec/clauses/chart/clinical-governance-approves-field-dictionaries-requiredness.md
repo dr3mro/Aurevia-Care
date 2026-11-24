@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.chart.clauses.ClinicalGovernanceApprovesFieldDictionariesRequirednessTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/ClinicalGovernanceApprovesFieldDictionariesRequirednessTest.java`).
+Test class: `com.aurevia.chart.clauses.ClinicalGovernanceApprovesFieldDictionariesRequirednessTest`
+(path: `apps/api/src/test/java/com/aurevia/chart/clauses/ClinicalGovernanceApprovesFieldDictionariesRequirednessTest.java`).
 All five tests are active (none disabled) and pass with synthetic data only, using the same
 `InMemoryTemplateStore` fixtures as the neighbouring template tests.
 
@@ -35,24 +35,24 @@ All five tests are active (none disabled) and pass with synthetic data only, usi
 
 Production classes exercised through the normal domain-service entry point:
 
-- `com.aurevia.smartclinic.clinical.templates.TemplateService` — `defineDictionary`,
+- `com.aurevia.clinical.templates.TemplateService` — `defineDictionary`,
   `approveDictionary`, `defineVersion`, `approveVersion` and `effective`. Only the
   `clinical_governance` role may perform `TEMPLATE_APPROVE`; approving a version first
   checks that every referenced dictionary is approved, then copies the field definitions
   (including `required`) into the immutable approved version, recording `approvedBy`.
-- `com.aurevia.smartclinic.clinical.templates.FieldDictionary`, `TemplateVersion`,
+- `com.aurevia.clinical.templates.FieldDictionary`, `TemplateVersion`,
   `FieldDefinition` and `TemplateActor` — immutable records that freeze entries, field
   meanings, requiredness and the caller's tenant/roles; the actor is a fresh snapshot
   supplied by the integrating caller (IAM-01), never taken from the command body.
-- `com.aurevia.smartclinic.clinical.templates.InMemoryTemplateStore` — synthetic,
+- `com.aurevia.clinical.templates.InMemoryTemplateStore` — synthetic,
   tenant-keyed persistence boundary used by the test; `JdbcTemplateStore` is the production
   store. Dictionary, version and audit facts are all scoped by the active organization.
 
 Source survey (not changed by this task): the CLN-04 template workflow lives in
-`apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates`, not in the `chart.record`
+`apps/api/src/main/java/com/aurevia/clinical/templates`, not in the `chart.record`
 package (which implements CLN-03 entry capture). Field dictionaries and approval rules are
 defined in `FieldDictionary`/`FieldDefinition`; no controller under
-`apps/api/src/main/java/com/aurevia/smartclinic/web` and no path under `contracts/openapi.yaml`
+`apps/api/src/main/java/com/aurevia/web` and no path under `contracts/openapi.yaml`
 currently publishes the template-approval workflow — it is reached through `TemplateService`
 and covered by the existing `it/clinical/TemplateVersioningTest` and
 `clinical/templates/TemplateNoteAcceptanceTest`. The clinical-note draft/sign workflow that

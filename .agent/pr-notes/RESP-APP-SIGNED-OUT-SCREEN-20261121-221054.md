@@ -31,7 +31,7 @@ is introduced by this change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`), simulated review.
+Senior React Native and Expo (`orevia-senior-mobile`), simulated review.
 Review brief sent with story ID, paths, acceptance criteria and observed evidence
 only. The reviewer performed a file-read review (no shell in its session); it
 reported two MEDIUM and two LOW findings, all four applied below. Explicit

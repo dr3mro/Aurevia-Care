@@ -20,7 +20,7 @@ Scope respected: only `messaging/attachments` main/test packages and `db/migrati
 
 ## Implementation
 
-- **New** `db/migrations/V82__attachment_store.sql`: `attachment`, `attachment_connection_grant`, `attachment_event`. Each table has ENABLE + FORCE RLS with a `tenant_isolation` policy (`USING`/`WITH CHECK` = `public.app_org()`), explicit GRANT/REVOKE to `smartclinic_app`. Append-only triggers on `attachment_event` cover every role including the owner; `attachment_binding_immutable` rejects rebinding of uploader/conversation/unit/patient/checksum for every role. `Change: expand` header.
+- **New** `db/migrations/V82__attachment_store.sql`: `attachment`, `attachment_connection_grant`, `attachment_event`. Each table has ENABLE + FORCE RLS with a `tenant_isolation` policy (`USING`/`WITH CHECK` = `public.app_org()`), explicit GRANT/REVOKE to `orevia_app`. Append-only triggers on `attachment_event` cover every role including the owner; `attachment_binding_immutable` rejects rebinding of uploader/conversation/unit/patient/checksum for every role. `Change: expand` header.
 - **New** `JdbcAttachmentStore` (`@Repository`): the single `src/main` `AttachmentStore` bean. Uses `NamedParameterJdbcTemplate` + the tenant-guarded `TransactionTemplate`; `INSERT … ON CONFLICT DO UPDATE … WHERE <binding matches> RETURNING id` yields an empty result when a draft would be rebound, which raises `ApiException(409, "WRONG_CONVERSATION")`.
 - **Moved** `InMemoryAttachmentStore` from `src/main` to `src/test` (same package), so all existing tests compile unchanged and no in-memory fake remains in production.
 - `AttachmentService` is now a `@Service` bean; constructor unchanged.

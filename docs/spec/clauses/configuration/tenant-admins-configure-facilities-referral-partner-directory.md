@@ -10,10 +10,10 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.configuration.clauses.TenantAdminsConfigureFacilitiesReferralPartnerDirectoryTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/configuration/clauses/TenantAdminsConfigureFacilitiesReferralPartnerDirectoryTest.java`).
+Test class: `com.aurevia.configuration.clauses.TenantAdminsConfigureFacilitiesReferralPartnerDirectoryTest`
+(`apps/api/src/test/java/com/aurevia/configuration/clauses/TenantAdminsConfigureFacilitiesReferralPartnerDirectoryTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, using the `synthetic-auth`
-profile, a dedicated throwaway database `smartclinic_admin_configuration_it`, Flyway
+profile, a dedicated throwaway database `orevia_admin_configuration_it`, Flyway
 `filesystem:../../db/migrations`, two synthetic tenants and three synthetic subjects
 (`admin-a`, `admin-b`, `reception-a`). All names and values are synthetic.
 
@@ -43,8 +43,8 @@ Test methods (two positive rule proofs and five negative refusals):
 
 HTTP entry point to production class to test method trace:
 
-- `POST /api/v1/facilities` → `com.aurevia.smartclinic.web.FacilityController.create` →
-  `com.aurevia.smartclinic.tenancy.FacilityService.create` —
+- `POST /api/v1/facilities` → `com.aurevia.web.FacilityController.create` →
+  `com.aurevia.tenancy.FacilityService.create` —
   `tenantAdminDefinesFacilityReferralPartnerAndSchedulingPolicy`,
   `facilityCreationIsRefusedForWrongRole`.
 - `POST /api/v1/catalogs/{family}/entries`,
@@ -81,7 +81,7 @@ by this class. The facility and catalog routes are wired and served, while
 is outside this test-only evidence, so no contract or client change is needed here.
 
 The second ADM-01 sentence — named approval, effective dates, audit and version history —
-is proven by `com.aurevia.smartclinic.it.ConfigurationIsolationTest` methods
+is proven by `com.aurevia.it.ConfigurationIsolationTest` methods
 `approveMakesConfigurationEffective`, `configurationActionsAreAudited` and
 `entriesAndApprovalsAreAppendOnly`. It will be proven for the clinical/market policy framing
 by the sibling clause test `ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest`, which is
@@ -115,7 +115,7 @@ policy object rather than to an opaque key:
    The pending site-approval document task does not create any of these surfaces.
 
 Files that would change for a dedicated surface (backend/configuration): a new domain
-package and service under `apps/api/src/main/java/com/aurevia/smartclinic/configuration/`
+package and service under `apps/api/src/main/java/com/aurevia/configuration/`
 (or the relevant domain package) for each policy object, a thin controller under
 `web/`, a `Jdbc*` store behind a `*Store` interface, a Flyway migration under
 `db/migrations/` with `ENABLE` and `FORCE ROW LEVEL SECURITY`, tenant policies and an

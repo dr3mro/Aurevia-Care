@@ -10,11 +10,11 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.BindAcknowledgmentExactInstructionRevisionTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/BindAcknowledgmentExactInstructionRevisionTest.java`).
+Test class: `com.aurevia.messaging.clauses.BindAcknowledgmentExactInstructionRevisionTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/BindAcknowledgmentExactInstructionRevisionTest.java`).
 All six tests are active (none are disabled) and use synthetic data. They drive the real HTTP entry
 point with the synthetic-auth profile, the same wire-up, fixtures and style as the neighbouring
-`com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactControllerHttpTest`.
+`com.aurevia.messaging.acknowledgment.InstructionFactControllerHttpTest`.
 
 - `acknowledgingTheLatestRevisionRecordsOneReceiptBoundToThatRevision` — positive proof. Revisions
   1 and 2 are published with acknowledgment requested; the patient acknowledges revision 2 through
@@ -44,24 +44,24 @@ Classes and contracts traced from the normal HTTP entry point (this proof wires 
 `InMemoryInstructionFactStore`; persistence and forced row-level security are proven by the existing
 JDBC integration tests, not by this document's test class):
 
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactController` — thin adapter;
+- `com.aurevia.messaging.acknowledgment.InstructionFactController` — thin adapter;
   `POST /api/v1/instructions/acknowledge` binds the command and delegates to the service.
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactService` — `acknowledge` resolves
+- `com.aurevia.messaging.acknowledgment.InstructionFactService` — `acknowledge` resolves
   the exact revision through `publishedInstruction`, re-checks patient membership, verified chart
   and active connection through `requirePatientAccess`, enforces the `requiresAcknowledgment`
   guard, refuses a newer latest revision with `STALE_REVISION`, and keys the idempotency digest on
   `id + "|" + revision`.
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactActions` — `ACKNOWLEDGE` is a
+- `com.aurevia.messaging.acknowledgment.InstructionFactActions` — `ACKNOWLEDGE` is a
   patient-only action.
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts` — `AcknowledgeCommand`,
+- `com.aurevia.messaging.acknowledgment.InstructionFacts` — `AcknowledgeCommand`,
   `Instruction` and the receipt-only `Acknowledgment` carrying the bound revision and `RECEIPT`
   scope.
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactStore` — the organization-keyed
+- `com.aurevia.messaging.acknowledgment.InstructionFactStore` — the organization-keyed
   store contract exercised here through the test-only `InMemoryInstructionFactStore`: revision
   lookup, latest-revision lookup, publication check, per-subject idempotency digest and append-only
   acknowledgment. Its production implementation `JdbcInstructionFactStore` is exercised by the
   existing integration and acceptance tests.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` and `com.aurevia.smartclinic.web.TenantContextInterceptor`
+- `com.aurevia.api.ApiErrorHandler` and `com.aurevia.web.TenantContextInterceptor`
   — the uniform error contract (`$.code`) and the tenant context derived from the authenticated
   request.
 - `db/migrations/V63__instruction_facts.sql` — the production tenant-owned fact tables with forced

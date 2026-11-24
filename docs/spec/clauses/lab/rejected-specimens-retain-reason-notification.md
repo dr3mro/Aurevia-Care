@@ -10,17 +10,17 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.lab.clauses.RejectedSpecimensRetainReasonNotificationTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/RejectedSpecimensRetainReasonNotificationTest.java`).
+Test class: `com.aurevia.lab.clauses.RejectedSpecimensRetainReasonNotificationTest`
+(path: `apps/api/src/test/java/com/aurevia/lab/clauses/RejectedSpecimensRetainReasonNotificationTest.java`).
 All eight tests are active (none disabled) and use synthetic data on a dedicated PostgreSQL
 database migrated from `db/migrations` with forced row-level security. They drive the real HTTP
 entry point with the synthetic-auth profile, the same `RestClient` + `tools.jackson` + Flyway
-fixtures as the neighbouring `com.aurevia.smartclinic.it.lab.AccessionListIntegrationTest` and
-`com.aurevia.smartclinic.scheduling.clauses.RescheduleAtomicallyRetainHistoryTest`. Prior specimen
+fixtures as the neighbouring `com.aurevia.it.lab.AccessionListIntegrationTest` and
+`com.aurevia.scheduling.clauses.RescheduleAtomicallyRetainHistoryTest`. Prior specimen
 state is seeded directly so each negative isolates one refusal cause; the rejection itself and the
 read-back always go through HTTP.
 
-Verification command: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RejectedSpecimensRetainReasonNotificationTest -Dgroups=integration test`
+Verification command: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=RejectedSpecimensRetainReasonNotificationTest -Dgroups=integration test`
 — final Surefire line: `Tests run: 8, Failures: 0, Errors: 0, Skipped: 0` (no test disabled or skipped).
 
 - `rejectRetainsReasonAndNotification` — positive proof. A received specimen is rejected through
@@ -57,25 +57,25 @@ values, so a mis-bound database scope cannot make the assertions pass vacuously.
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.lab.accession.LabAccessionController` — thin adapter;
+- `com.aurevia.lab.accession.LabAccessionController` — thin adapter;
   `POST /api/v1/lab/accessions/{id}/reject` binds `RejectRequest` and delegates,
   `GET /api/v1/lab/accessions/{id}` returns the accession with its history.
-- `com.aurevia.smartclinic.lab.accession.LabAccessionService` — `reject(String, RejectRequest)`
+- `com.aurevia.lab.accession.LabAccessionService` — `reject(String, RejectRequest)`
   validates reason, notification and version, then `transition(...)` authorizes `SPECIMEN_REJECT`,
   checks version and source state, carries the prior specimen fields forward, persists both
   rejection values, appends the immutable `rejected` event with the reason and audits the commit.
-- `com.aurevia.smartclinic.lab.accession.LabAccessionRepository` — `findById`, `update`
+- `com.aurevia.lab.accession.LabAccessionRepository` — `findById`, `update`
   (version compare-and-set that writes `rejection_reason` and `rejection_notification`) and
   `appendEvent` / `history` for the append-only ledger.
-- `com.aurevia.smartclinic.lab.accession.LabInputs` — bounded validation that yields
+- `com.aurevia.lab.accession.LabInputs` — bounded validation that yields
   `INVALID_REASON`, `INVALID_NOTIFICATION` and `INVALID_VERSION`.
-- `com.aurevia.smartclinic.lab.accession.LabActionPolicy` — `SPECIMEN_REJECT` is allowed for
+- `com.aurevia.lab.accession.LabActionPolicy` — `SPECIMEN_REJECT` is allowed for
   `lab_verifier`, not for the `lab_collector` used by the wrong-role test.
-- `com.aurevia.smartclinic.lab.accession.AccessionState` — the state machine permits only
+- `com.aurevia.lab.accession.AccessionState` — the state machine permits only
   `collected | received -> rejected`.
-- `com.aurevia.smartclinic.lab.accession.LabAccession`, `AccessionView`, `AccessionEvent` and
+- `com.aurevia.lab.accession.LabAccession`, `AccessionView`, `AccessionEvent` and
   `AccessionCommands.RejectRequest` — the stored projection, read view, history entry and command.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` — the uniform error body carrying `$.code` and
+- `com.aurevia.api.ApiErrorHandler` — the uniform error body carrying `$.code` and
   `$.message` used by the negative assertions.
 - `db/migrations/V26__laboratory_accession.sql` — the `lab_accession` and `lab_accession_event`
   tables with forced RLS, the CHECK that requires both rejection columns when `state='rejected'`,

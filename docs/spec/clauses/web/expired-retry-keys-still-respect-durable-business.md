@@ -10,13 +10,13 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.web.clauses.ExpiredRetryKeysStillRespectDurableBusinessTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/ExpiredRetryKeysStillRespectDurableBusinessTest.java`).
+Test class: `com.aurevia.web.clauses.ExpiredRetryKeysStillRespectDurableBusinessTest`
+(path: `apps/api/src/test/java/com/aurevia/web/clauses/ExpiredRetryKeysStillRespectDurableBusinessTest.java`).
 All three tests are active (none skipped) and use synthetic identifiers, keys and digests
 on a dedicated PostgreSQL database migrated from `db/migrations` with forced row-level
 security. They drive the real HTTP entry point with the synthetic-auth profile, reusing
-the fixture style of `com.aurevia.smartclinic.events.clauses.CommitStateAuditOutboxRecordAtomicallyApplicableTest`
-and `com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionPersistenceIntegrationTest`.
+the fixture style of `com.aurevia.events.clauses.CommitStateAuditOutboxRecordAtomicallyApplicableTest`
+and `com.aurevia.pharmacyflow.substitution.SubstitutionPersistenceIntegrationTest`.
 Direct JDBC assertions bind `app.current_org` under the same tenant.
 
 The proof surface is the pharmacy substitution decision, an external clinical action that
@@ -56,21 +56,21 @@ after the first action has committed and its claim has been evicted in the test 
 
 Production classes and objects exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionController` — thin
+- `com.aurevia.pharmacyflow.substitution.SubstitutionController` — thin
   adapter binding `Idempotency-Key` and `If-Match` on the approve command.
-- `com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionService` — `decide` and
+- `com.aurevia.pharmacyflow.substitution.SubstitutionService` — `decide` and
   `decideInside`: trust-boundary validation, role check, durable claim, version
   precondition, the `CLOSED_PROPOSAL` business guard, signed revision insertion and the
   one-time proposal close.
-- `com.aurevia.smartclinic.pharmacyflow.substitution.JdbcSubstitutionStore` — `claim`,
+- `com.aurevia.pharmacyflow.substitution.JdbcSubstitutionStore` — `claim`,
   `replay`, `findRevision`, `insertRevision` and `closeProposal` behind `SubstitutionStore`.
-- `com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionRules`,
+- `com.aurevia.pharmacyflow.substitution.SubstitutionRules`,
   `SubstitutionInputs` and `SubstitutionApplication` — role matrix, input validation and
   entitlement recheck.
-- `com.aurevia.smartclinic.api.contract.IdempotencyKey`, `com.aurevia.smartclinic.api.IfMatch`
-  and `com.aurevia.smartclinic.api.ApiErrorHandler` — key and precondition parsing and the
+- `com.aurevia.api.contract.IdempotencyKey`, `com.aurevia.api.IfMatch`
+  and `com.aurevia.api.ApiErrorHandler` — key and precondition parsing and the
   asserted `403`/`404`/`409`/`422`/`428` machine-readable bodies.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` — binds the synthetic tenant and
+- `com.aurevia.web.TenantContextInterceptor` — binds the synthetic tenant and
   actor for each request.
 - `db/migrations/V94__durable_pharmacy_substitution.sql` — the
   `UNIQUE (organization_id, proposal_id)` constraint on `pharmacy_substitution_revision`,

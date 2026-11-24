@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.KeepQualifiersSuchLessGreaterQualitativeResultsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/KeepQualifiersSuchLessGreaterQualitativeResultsTest.java`),
+Test class: `com.aurevia.exchange.clauses.KeepQualifiersSuchLessGreaterQualitativeResultsTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/KeepQualifiersSuchLessGreaterQualitativeResultsTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the
 HTTP entry points `POST /api/v1/trends/observations`,
 `POST /api/v1/trends/comparability` and
@@ -46,32 +46,32 @@ migrations from `db/migrations`.
 
 Production classes and files exercised by this request path:
 
-- `com.aurevia.smartclinic.exchange.trend.TrendController` — the thin HTTP adapter
+- `com.aurevia.exchange.trend.TrendController` — the thin HTTP adapter
   for the observation-recording, comparability and trend-read routes under
   `/api/v1/trends`.
-- `com.aurevia.smartclinic.exchange.trend.TrendService` — tenant-guarded commands;
+- `com.aurevia.exchange.trend.TrendService` — tenant-guarded commands;
   it validates input, authorizes each action, records observations, reads the
   effective comparability rule and returns a `TrendView`.
-- `com.aurevia.smartclinic.exchange.trend.TrendAnalyzer` — the pure comparability
+- `com.aurevia.exchange.trend.TrendAnalyzer` — the pure comparability
   decision: `classify` returns `QUALIFIED_NUMERIC`, `QUALITATIVE` or
   `INCOMPATIBLE_UNIT`, and `analyze` places those observations in
   `TrendView.excluded()` while only unqualified, final, numeric results in the
   canonical unit become `TrendPoint`s.
-- `com.aurevia.smartclinic.exchange.trend.Qualifier` — parses `<`, `>`,
+- `com.aurevia.exchange.trend.Qualifier` — parses `<`, `>`,
   `less_than` and `greater_than` into enum values, serializes the stable wire
   values `less_than`/`greater_than`, and refuses unknown values with HTTP 422.
-- `com.aurevia.smartclinic.exchange.trend.TrendObservation` — the immutable
+- `com.aurevia.exchange.trend.TrendObservation` — the immutable
   observation with its validation guard that requires a numeric value whenever a
   qualifier is present.
-- `com.aurevia.smartclinic.exchange.trend.ExclusionReason`,
-  `com.aurevia.smartclinic.exchange.trend.ExcludedObservation`,
-  `com.aurevia.smartclinic.exchange.trend.TrendView`,
-  `com.aurevia.smartclinic.exchange.trend.TrendPoint` — the wire model of a trend
+- `com.aurevia.exchange.trend.ExclusionReason`,
+  `com.aurevia.exchange.trend.ExcludedObservation`,
+  `com.aurevia.exchange.trend.TrendView`,
+  `com.aurevia.exchange.trend.TrendPoint` — the wire model of a trend
   read: typed exclusion reasons and the original observation kept unchanged beside
   the comparable points.
-- `com.aurevia.smartclinic.exchange.trend.TrendActionPolicy` — the role matrix that
+- `com.aurevia.exchange.trend.TrendActionPolicy` — the role matrix that
   reserves clinical trend read and observation write for the `clinician` role.
-- `com.aurevia.smartclinic.exchange.trend.TrendRepository` — the RLS-bounded SQL
+- `com.aurevia.exchange.trend.TrendRepository` — the RLS-bounded SQL
   boundary that persists observations and the versioned comparability rule.
 - `db/migrations/V25__observation_trending.sql` — the `trend_observation` and
   `trend_comparability` tables with their qualifier check constraint, composite

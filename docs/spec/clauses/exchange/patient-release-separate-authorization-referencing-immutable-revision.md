@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.PatientReleaseSeparateAuthorizationReferencingImmutableRevisionTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/PatientReleaseSeparateAuthorizationReferencingImmutableRevisionTest.java`).
+Test class: `com.aurevia.exchange.clauses.PatientReleaseSeparateAuthorizationReferencingImmutableRevisionTest`
+(path: `apps/api/src/test/java/com/aurevia/exchange/clauses/PatientReleaseSeparateAuthorizationReferencingImmutableRevisionTest.java`).
 All five tests are active (none disabled) and pass against a real PostgreSQL database with
 synthetic fixtures only. The suite recreates its own database from the authoritative Flyway
 migrations, seeds two tenants with bounded roles, and drives the authorization through the
@@ -42,18 +42,18 @@ normal HTTP entry point `POST /api/v1/releases` using the `synthetic-auth` profi
 
 Production classes exercised through the entry point and its guarded transaction:
 
-- `com.aurevia.smartclinic.exchange.release.PatientReleaseController` — thin adapter for
+- `com.aurevia.exchange.release.PatientReleaseController` — thin adapter for
   `POST /api/v1/releases`, `POST /api/v1/releases/{id}/correct` and `GET /api/v1/releases/{id}`;
   it accepts no actor or organization from the request body.
-- `com.aurevia.smartclinic.exchange.release.ReleaseService` — `authorize` validates the three
+- `com.aurevia.exchange.release.ReleaseService` — `authorize` validates the three
   references, re-derives membership and roles, commits the release and its decision records
   in one transaction, and `correct` rejects a correction onto the same immutable revision.
-- `com.aurevia.smartclinic.exchange.release.ReleaseActionPolicy` — bounds the separate
+- `com.aurevia.exchange.release.ReleaseActionPolicy` — bounds the separate
   `RELEASE_AUTHORIZE` decision to the clinician and tenant administrator roles.
-- `com.aurevia.smartclinic.exchange.release.AuthorizeRelease` and `PatientRelease` — the
+- `com.aurevia.exchange.release.AuthorizeRelease` and `PatientRelease` — the
   command and immutable projection carrying the revision id, revision version, policy version
   and effective instant.
-- `com.aurevia.smartclinic.exchange.release.ReleaseRepository` — tenant-guarded writes and
+- `com.aurevia.exchange.release.ReleaseRepository` — tenant-guarded writes and
   reads of the three release tables.
 - `db/migrations/V24__patient_release.sql` — `patient_release`, `release_event` and
   `release_notification`, each with row-level security, forced row-level security and

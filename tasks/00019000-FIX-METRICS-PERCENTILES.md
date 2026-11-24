@@ -3,7 +3,7 @@
   - pr: #1215
   - attempts: 2
   - requirements: OPS-03, WEB-06
-  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, docs/operations/production-readiness/README.md
+  - scope: apps/api/src/main/java/com/aurevia/web, apps/api/src/test/java/com/aurevia/web, docs/operations/production-readiness/README.md
   - depends: READY-44
   - details:
     Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.

@@ -4,7 +4,7 @@
 # with the job. Safe to run twice.
 set -euo pipefail
 bin=/usr/lib/postgresql/17/bin
-data=${PGDATA_DIR:-/tmp/smartclinic-pgdata}
+data=${PGDATA_DIR:-/tmp/orevia-pgdata}
 as_postgres() {
   if [[ "$(id -u)" -eq 0 ]]; then runuser -u postgres -- "$@"; else "$@"; fi
 }
@@ -19,6 +19,6 @@ fi
 if [[ ! -s "$data/PG_VERSION" ]]; then
   as_postgres "$bin/initdb" -D "$data" -A trust -U postgres >/dev/null
 fi
-as_postgres "$bin/pg_ctl" -D "$data" -l /tmp/smartclinic-pg.log -w start \
+as_postgres "$bin/pg_ctl" -D "$data" -l /tmp/orevia-pg.log -w start \
   -o "-c listen_addresses=127.0.0.1 -c port=5432 -c fsync=off -c synchronous_commit=off -c full_page_writes=off"
 "$bin/pg_isready" -h 127.0.0.1 -p 5432

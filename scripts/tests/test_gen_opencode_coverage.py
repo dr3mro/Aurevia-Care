@@ -25,6 +25,12 @@ gen = load("gen-opencode")
 READ_ALL = {"action": "read", "resource": "*", "effect": "allow"}
 SHELL_ALL = {"action": "shell", "resource": "*", "effect": "allow"}
 ALLOWED_MODEL = "opencode-go/hy4-flash-free"
+ZERO_COST = {
+    "input": 0, "output": 0, "cache_read": 0, "reasoning": 0, "tool": 0, "request": 0,
+    "subscription": False, "overage": False, "authorized": True,
+    "pricing_source": "models.dev/api.json", "verified_at": "2026-11-23",
+    "roles": ["*"], "phases": ["*"],
+}
 
 
 def catch_all_deny():
@@ -91,13 +97,13 @@ class BuildAndRenderCoverageTests(unittest.TestCase):
                 self.assertEqual(json.loads(text),
                                  gen.build([], ci))
                 self.assertTrue(text.endswith("\n"))
-        (agents / "smartclinic-z.md").write_text("synthetic\n")
-        (agents / "smartclinic-a.md").write_text("synthetic\n")
+        (agents / "orevia-z.md").write_text("synthetic\n")
+        (agents / "orevia-a.md").write_text("synthetic\n")
         for ci in (False, True):
             with self.subTest(ci=ci, agents=2):
                 config = json.loads(gen.render(root, ci))
                 self.assertEqual(set(config["agents"]),
-                                 {gen.PRIMARY, "smartclinic-a", "smartclinic-z"})
+                                 {gen.PRIMARY, "orevia-a", "orevia-z"})
 
 
 class ReadJsonCoverageTests(unittest.TestCase):
@@ -146,16 +152,16 @@ class RuntimeCoverageTests(unittest.TestCase):
                 "reviewer": {"permissions": [catch_all_deny(), dict(READ_ALL)]},
             },
         }
-        self.slots = {"slots": [{"model": ALLOWED_MODEL}]}
+        self.registry = {"models": {ALLOWED_MODEL: dict(ZERO_COST)}}
         for name in gen.INSTRUCTIONS:
             target = self.tmp / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("synthetic instruction\n")
 
     def write(self):
-        """Persist the synthetic profile and slots into the temporary root."""
+        """Persist the synthetic profile and model registry into the temporary root."""
         (self.tmp / gen.RUNTIME_PROFILE).write_text(json.dumps(self.profile))
-        (self.tmp / gen.SLOTS_FILE).write_text(json.dumps(self.slots))
+        (self.tmp / gen.MODEL_REGISTRY).write_text(json.dumps(self.registry))
 
     def violations(self):
         """Write the synthetic files and return check_runtime's findings."""
@@ -168,18 +174,18 @@ class RuntimeCoverageTests(unittest.TestCase):
     def reviewer(self):
         return self.profile["agents"]["reviewer"]
 
-    def test_missing_profile_and_slots_accumulate_both_violations(self):
+    def test_missing_profile_and_registry_accumulate_both_violations(self):
         found = gen.check_runtime(self.tmp)
         self.assertEqual(len(found), 2)
         self.assertTrue(any("runtime profile" in v for v in found), found)
-        self.assertTrue(any("swarm slots" in v for v in found), found)
+        self.assertTrue(any("model registry" in v for v in found), found)
 
-    def test_missing_slots_alone_returns_early(self):
+    def test_missing_registry_alone_returns_early(self):
         self.write()
-        (self.tmp / gen.SLOTS_FILE).unlink()
+        (self.tmp / gen.MODEL_REGISTRY).unlink()
         found = gen.check_runtime(self.tmp)
         self.assertEqual(len(found), 1)
-        self.assertIn("swarm slots", found[0])
+        self.assertIn("model registry", found[0])
 
     def test_clean_synthetic_profile_has_no_violations(self):
         self.assertEqual(self.violations(), [])
@@ -192,11 +198,20 @@ class RuntimeCoverageTests(unittest.TestCase):
         self.profile["instructions"] = []
         self.assertFalse(any("instruction" in v for v in self.violations()))
 
-    def test_absent_optional_keys_are_treated_as_empty(self):
+    def test_absent_optional_profile_keys_are_treated_as_empty(self):
         self.profile.pop("instructions")
         self.profile.pop("agents")
-        self.slots.pop("slots")
         self.assertEqual(self.violations(), [])
+
+    def test_a_registry_without_a_models_mapping_fails_closed(self):
+        self.registry.pop("models")
+        found = self.violations()
+        self.assertTrue(any("model registry" in v for v in found), found)
+
+    def test_a_non_mapping_models_entry_fails_closed(self):
+        self.registry["models"] = ["opencode-go/hy4-flash-free"]
+        found = self.violations()
+        self.assertTrue(any("model registry" in v for v in found), found)
 
     def test_model_declaration_branches(self):
         self.reviewer()["model"] = "other/expensive-model"
@@ -246,7 +261,7 @@ class RuntimeCoverageTests(unittest.TestCase):
     def test_write_protection_for_every_protected_file(self):
         for resource, protected in (
             (".github/workflows/delivery.yml", ".github/"),
-            ("TODO.md", "TODO.md"),
+            (".opencode/config/MEMORY.md", ".opencode/config/MEMORY.md"),
             (".opencode/agents/example.md", ".opencode/"),
         ):
             with self.subTest(resource=resource):
@@ -258,15 +273,15 @@ class RuntimeCoverageTests(unittest.TestCase):
 
     def test_write_permission_guards(self):
         self.editor()["permissions"] = [dict(SHELL_ALL),
-                                        {"action": "edit", "resource": "TODO.md",
+                                        {"action": "edit", "resource": ".opencode/config/MEMORY.md",
                                          "effect": "allow"}]
-        self.assertTrue(any("TODO.md" in v for v in self.violations()))
+        self.assertTrue(any(".opencode/config/MEMORY.md" in v for v in self.violations()))
         self.editor()["permissions"] = [dict(SHELL_ALL),
-                                        {"action": "write", "resource": "TODO.md",
+                                        {"action": "write", "resource": ".opencode/config/MEMORY.md",
                                          "effect": "deny"}]
         self.assertEqual(self.violations(), [])
         self.editor()["permissions"] = [dict(SHELL_ALL),
-                                        {"action": "read", "resource": "TODO.md",
+                                        {"action": "read", "resource": ".opencode/config/MEMORY.md",
                                          "effect": "allow"}]
         self.assertEqual(self.violations(), [])
         self.editor()["permissions"] = [dict(SHELL_ALL),
@@ -342,14 +357,14 @@ class MainCoverageTests(unittest.TestCase):
         with patch.object(gen, "ROOT", tmp), redirect_stderr(io.StringIO()) as err:
             self.assertEqual(gen.main(["--check"]), 0)
         self.assertEqual(err.getvalue(), "")
-        (tmp / "opencode.json").write_text("stale\n")
+        (tmp / ".opencode/opencode.json").write_text("stale\n")
         with patch.object(gen, "ROOT", tmp), redirect_stderr(io.StringIO()) as err:
             self.assertEqual(gen.main(["--check"]), 1)
         self.assertIn("opencode.json is out of date", err.getvalue())
-        (tmp / ".github/opencode.ci.json").unlink()
+        (tmp / ".opencode/opencode.ci.json").unlink()
         with patch.object(gen, "ROOT", tmp), redirect_stderr(io.StringIO()) as err:
             self.assertEqual(gen.main(["--check"]), 1)
-        self.assertIn(".github/opencode.ci.json is out of date", err.getvalue())
+        self.assertIn(".opencode/opencode.ci.json is out of date", err.getvalue())
 
     def test_script_entry_point_exits_cleanly(self):
         with patch.object(sys, "argv", ["gen-opencode.py", "--check-runtime"]):

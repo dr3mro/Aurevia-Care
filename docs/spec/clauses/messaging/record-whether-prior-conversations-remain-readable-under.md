@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.RecordWhetherPriorConversationsRemainReadableUnderTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/RecordWhetherPriorConversationsRemainReadableUnderTest.java`).
+Test class: `com.aurevia.messaging.clauses.RecordWhetherPriorConversationsRemainReadableUnderTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/RecordWhetherPriorConversationsRemainReadableUnderTest.java`).
 All seven tests are active (none are disabled). They drive the real controller,
 service and tenant-scoped governance store through the Spring MVC pipeline
 (standalone MockMvc, `ApiErrorHandler` and `TenantContextInterceptor`, a fixed
@@ -53,16 +53,16 @@ Executed proof (tool evidence): `mvn -q -B -f apps/api/pom.xml -Pno-security -Dt
 Production classes exercised through the real HTTP entry point
 (`MessagingGovernanceController`):
 
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceController` —
+- `com.aurevia.messaging.governance.MessagingGovernanceController` —
   thin adapter for `POST /connections/{id}/revocation-effects` and `GET /audit`.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceService` —
+- `com.aurevia.messaging.governance.MessagingGovernanceService` —
   `recordRevocation` validates the connection is revoked, reads the tenant's
   verified `RecordAccessPolicy`, copies `priorConversationsReadable()` and
   `policyVersion()` into the effect, persists it and appends a `restrict` audit
   fact; the fail-closed default comes from the store.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceActions` —
+- `com.aurevia.messaging.governance.MessagingGovernanceActions` —
   grants RESTRICT only to `tenant_admin` (negative proof above).
-- `com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.RevocationEffect`
+- `com.aurevia.messaging.governance.MessagingAuditContract.RevocationEffect`
   and `RecordAccessPolicy` — the wire and stored facts carrying readability and
   its provenance basis.
 

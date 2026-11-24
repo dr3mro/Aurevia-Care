@@ -9,7 +9,7 @@ Proven by tests
 ## Evidence
 
 Test class `DraftSignedSeparateAmendmentDraftsSignedAddendaTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/`):
+(`apps/api/src/test/java/com/aurevia/chart/clauses/`):
 
 - `draftSignsThenSeparateAmendmentDraftSignsAsAddendum` — walks the HTTP entry
   points `POST /api/v1/clinical-notes` (draft, version 1),
@@ -30,7 +30,7 @@ Test class `DraftSignedSeparateAmendmentDraftsSignedAddendaTest`
   so permission to sign is separate from permission to author.
 
 Production classes exercised through these entry points:
-`com.aurevia.smartclinic.clinical.notes.ClinicalNoteController` (thin HTTP
+`com.aurevia.clinical.notes.ClinicalNoteController` (thin HTTP
 adapter), `ClinicalNoteService` (state machine, signer attestation, version
 preconditions, role checks and audit), `NoteState` (`DRAFT`, `SIGNED`,
 `AMENDMENT_DRAFT`, `ADDENDUM`), `ClinicalNoteRevision`, `NoteView` and

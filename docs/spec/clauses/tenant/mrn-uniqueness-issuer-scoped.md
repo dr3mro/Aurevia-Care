@@ -10,13 +10,13 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.tenant.clauses.MrnUniquenessIssuerScopedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenant/clauses/MrnUniquenessIssuerScopedTest.java`).
+Test class: `com.aurevia.tenant.clauses.MrnUniquenessIssuerScopedTest`
+(`apps/api/src/test/java/com/aurevia/tenant/clauses/MrnUniquenessIssuerScopedTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic tenants, following the fixtures and database setup of
-`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/RecordPatientrecordIssuerScopedMrnOrganizationTest.java`
+`apps/api/src/test/java/com/aurevia/patient/clauses/RecordPatientrecordIssuerScopedMrnOrganizationTest.java`
 (the IAM-03 clause 1 proof, which exercises the same rule). A dedicated database
-(`smartclinic_arc01_clause3_it`) is migrated from `db/migrations` so the durable
+(`orevia_arc01_clause3_it`) is migrated from `db/migrations` so the durable
 rows are read back under forced row-level security.
 
 Test methods (one positive rule proof and two negative refusals):
@@ -38,18 +38,18 @@ Test methods (one positive rule proof and two negative refusals):
 
 Production classes the test exercises:
 
-- HTTP entry point: `com.aurevia.smartclinic.web.PatientController`
+- HTTP entry point: `com.aurevia.web.PatientController`
   (`POST /api/v1/patients`, `GET /api/v1/patients/{id}`), which injects the service.
-- Domain service and boundary: `com.aurevia.smartclinic.patient.PatientService`
+- Domain service and boundary: `com.aurevia.patient.PatientService`
   (`register` returns 409 "MRN already exists for this issuer" through its
   `mrnExists` pre-check and the `DuplicateKeyException` fallback),
-  `com.aurevia.smartclinic.patient.PatientRepository`,
-  `com.aurevia.smartclinic.patient.Patient`,
-  `com.aurevia.smartclinic.patient.PatientView`,
-  `com.aurevia.smartclinic.authz.ActionPolicy`.
-- Tenant scope: `com.aurevia.smartclinic.tenant.TenantContext`,
-  `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager`,
-  `com.aurevia.smartclinic.web.TenantContextInterceptor`.
+  `com.aurevia.patient.PatientRepository`,
+  `com.aurevia.patient.Patient`,
+  `com.aurevia.patient.PatientView`,
+  `com.aurevia.authz.ActionPolicy`.
+- Tenant scope: `com.aurevia.tenant.TenantContext`,
+  `com.aurevia.tenant.TenantGuardTransactionManager`,
+  `com.aurevia.web.TenantContextInterceptor`.
 - Schema: `db/migrations/V7__patient_registration.sql` defines `patient_record`
   with `UNIQUE (organization_id, mrn_issuer, mrn, version)` plus enabled and
   forced row-level security and the `tenant_isolation` policy.

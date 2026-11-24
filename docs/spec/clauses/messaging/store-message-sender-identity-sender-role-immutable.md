@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.StoreMessageSenderIdentitySenderRoleImmutableTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/StoreMessageSenderIdentitySenderRoleImmutableTest.java`),
+Test class `com.aurevia.messaging.clauses.StoreMessageSenderIdentitySenderRoleImmutableTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/StoreMessageSenderIdentitySenderRoleImmutableTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants.
 Every test seeds its own uniquely identified conversation and asserts stored
 state on `public.conversation_message` under the correct forced-RLS scope and
@@ -40,16 +40,16 @@ through `GET /api/v1/conversations/{id}`:
   the monotonic per-conversation sequence.
 
 Production classes exercised by the entry-point-to-assertion trace:
-`com.aurevia.smartclinic.web.TenantContextInterceptor` and
-`com.aurevia.smartclinic.tenant.TenantGuardTransactionManager` (bind the
+`com.aurevia.web.TenantContextInterceptor` and
+`com.aurevia.tenant.TenantGuardTransactionManager` (bind the
 synthetic subject, active organization and transaction-local `app.actor`),
-`com.aurevia.smartclinic.messaging.conversations.ConversationController`
+`com.aurevia.messaging.conversations.ConversationController`
 (`POST /api/v1/conversations/{id}/reply` and `GET /api/v1/conversations/{id}`),
-`com.aurevia.smartclinic.messaging.conversations.ConversationService` (authorizes
+`com.aurevia.messaging.conversations.ConversationService` (authorizes
 and appends the message with the caller subject and active role),
-`com.aurevia.smartclinic.messaging.conversations.ConversationRepository`
+`com.aurevia.messaging.conversations.ConversationRepository`
 (`nextSequence`, `insertMessage`, `messages`),
-`com.aurevia.smartclinic.messaging.conversations.ConversationContract.Message`
+`com.aurevia.messaging.conversations.ConversationContract.Message`
 (the observable stored value), and the V33 Flyway migration
 `db/migrations/V33__conversation_lifecycle.sql` (table, `clock_timestamp()`
 server default, RLS and FORCE RLS, no-update trigger, sender-actor trigger).

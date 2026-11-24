@@ -17,9 +17,9 @@ GOOD = """# Notes
 ## Summary
 x
 ## Review verdicts
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- `smartclinic-devsecops` — GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- `orevia-devsecops` — GO
 Optional: rename a helper
 ## Test evidence
 done
@@ -28,17 +28,17 @@ done
 
 class ParsingTests(unittest.TestCase):
     def test_the_section_ends_at_the_next_heading_or_the_end(self):
-        self.assertIn("smartclinic-devsecops", verdicts.review_section(GOOD))
+        self.assertIn("orevia-devsecops", verdicts.review_section(GOOD))
         self.assertNotIn("Test evidence", verdicts.review_section(GOOD))
         self.assertEqual(verdicts.review_section("## review verdicts\n- a: GO\n"), "\n- a: GO\n")
         self.assertIsNone(verdicts.review_section("## Summary\nx\n"))
 
     def test_verdicts_and_unresolved_findings_are_read(self):
-        section = ("- smartclinic-code-reviewer: go\n* smartclinic-x - NO-GO\n"
+        section = ("- orevia-code-reviewer: go\n* orevia-x - NO-GO\n"
                    "Critical: injection in Foo\nRequired: add a test (resolved in abc)\n"
                    "Optional: style\nplain line\n")
         found, findings = verdicts.verdicts_and_findings(section)
-        self.assertEqual(found, {"smartclinic-code-reviewer": "GO", "smartclinic-x": "NO-GO"})
+        self.assertEqual(found, {"orevia-code-reviewer": "GO", "orevia-x": "NO-GO"})
         self.assertEqual(findings, ["Critical: injection in Foo"])
 
     def test_the_word_unresolved_does_not_count_as_resolved(self):
@@ -57,12 +57,12 @@ class ProblemTests(unittest.TestCase):
                          ['the notes have no "## Review verdicts" section'])
 
     def test_a_missing_reviewer_a_no_go_and_an_open_finding_each_fail(self):
-        text = ("## Review verdicts\n- smartclinic-code-reviewer: NO-GO\n"
-                "- smartclinic-coverage-auditor: GO\nRequired: the false side has no test\n")
+        text = ("## Review verdicts\n- orevia-code-reviewer: NO-GO\n"
+                "- orevia-coverage-auditor: GO\nRequired: the false side has no test\n")
         found = verdicts.problems(text, verdicts.REQUIRED)
         self.assertEqual(len(found), 3)
-        self.assertIn("smartclinic-code-reviewer answered NO-GO", found[0])
-        self.assertIn("no verdict from smartclinic-devsecops", found[1])
+        self.assertIn("orevia-code-reviewer answered NO-GO", found[0])
+        self.assertIn("no verdict from orevia-devsecops", found[1])
         self.assertIn("unresolved finding: Required: the false side", found[2])
 
 
@@ -93,7 +93,7 @@ class MainTests(unittest.TestCase):
         self.assertEqual(self.run_main(self.notes(GOOD))[0], 0)
         status, _, err = self.run_main(self.notes("## Review verdicts\n"))
         self.assertEqual(status, 1)
-        self.assertIn("verdicts: no verdict from smartclinic-code-reviewer", err)
+        self.assertIn("verdicts: no verdict from orevia-code-reviewer", err)
 
     def test_an_unreadable_notes_file_fails(self):
         status, _, err = self.run_main(str(self.root / "missing.md"))
@@ -101,8 +101,8 @@ class MainTests(unittest.TestCase):
         self.assertIn("cannot read the notes file", err)
 
     def test_required_reviewers_can_be_chosen(self):
-        notes = self.notes("## Review verdicts\n- smartclinic-qa-reviewer: GO\n")
-        self.assertEqual(self.run_main(notes, "--require", "smartclinic-qa-reviewer, ,")[0], 0)
+        notes = self.notes("## Review verdicts\n- orevia-qa-reviewer: GO\n")
+        self.assertEqual(self.run_main(notes, "--require", "orevia-qa-reviewer, ,")[0], 0)
 
     def test_a_documentation_only_change_needs_no_review(self):
         (self.root / "docs").mkdir()

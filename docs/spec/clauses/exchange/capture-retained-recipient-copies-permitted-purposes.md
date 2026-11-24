@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.CaptureRetainedRecipientCopiesPermittedPurposesTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/CaptureRetainedRecipientCopiesPermittedPurposesTest.java`).
+Test class `com.aurevia.exchange.clauses.CaptureRetainedRecipientCopiesPermittedPurposesTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/CaptureRetainedRecipientCopiesPermittedPurposesTest.java`).
 It is a synthetic, database-free clause test in the `clauses` style of
 `docs/spec/clauses/scheduling/transfer-handoff-requires-active-assignee.md`:
 mocked `ExchangeResponseRepository` and `AuditAppender`, a `TransactionTemplate`
@@ -56,29 +56,29 @@ the captured values rather than an independent fixture.
 
 Production classes and files surveyed and exercised by the entry points:
 
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseService.accept` —
+- `com.aurevia.exchange.response.ExchangeResponseService.accept` —
   validates the association, permitted purpose and approved retention policy,
   then inserts one immutable retained copy in the same transaction as the state
   change and response event.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseService.changeResponse`
+- `com.aurevia.exchange.response.ExchangeResponseService.changeResponse`
   — retains a promoted revision under the purpose and policy captured at
   acceptance, carries a legal hold forward, and fails closed when either value
   or the released revision is missing.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseService.get` —
+- `com.aurevia.exchange.response.ExchangeResponseService.get` —
   exposes the append-only retained-copy ledger in `OrderView`.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseInputs` —
+- `com.aurevia.exchange.response.ExchangeResponseInputs` —
   `code` and `retentionPolicy` validators and the approved `RETENTION_POLICIES`
   set (`STANDARD`, `EXTENDED`, `LEGAL_HOLD`).
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy` —
+- `com.aurevia.exchange.response.ExchangeResponseActionPolicy` —
   recipient actions are limited to active recipient roles; `privacy_auditor` is
   read-only.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands` —
+- `com.aurevia.exchange.response.ExchangeResponseCommands` —
   `AcceptRequest`, `ChangeResponseRequest`, `RetainedCopy`, `Revision` and the
   defensively copied `OrderView`.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseRepository` —
+- `com.aurevia.exchange.response.ExchangeResponseRepository` —
   `insertRetained` writes the copy and `retained` reads its ledger, both under
   the active tenant context.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseController` —
+- `com.aurevia.exchange.response.ExchangeResponseController` —
   `POST /api/v1/xch03/orders/{id}/accept` and the change-response route are the
   HTTP entry points; the controller injects the service and parses `If-Match`.
 - `db/migrations/V21__xch03_order_response.sql` — creates

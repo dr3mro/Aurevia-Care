@@ -122,9 +122,9 @@ CREATE INDEX attachment_event_attachment_idx
 -- The runtime role advances attachment state and seeds/sweeps synthetic grants.
 -- Deletion and fact mutation are never granted; soft REMOVED is a state, not a
 -- row delete. The append-only triggers above cover the migrate owner too.
-GRANT SELECT, INSERT, UPDATE ON public.attachment TO smartclinic_app;
-GRANT SELECT, INSERT, UPDATE ON public.attachment_connection_grant TO smartclinic_app;
-GRANT SELECT, INSERT ON public.attachment_event TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.attachment FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.attachment_connection_grant FROM smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.attachment_event FROM smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.attachment TO orevia_app;
+GRANT SELECT, INSERT, UPDATE ON public.attachment_connection_grant TO orevia_app;
+GRANT SELECT, INSERT ON public.attachment_event TO orevia_app;
+REVOKE DELETE, TRUNCATE ON public.attachment FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.attachment_connection_grant FROM orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.attachment_event FROM orevia_app;

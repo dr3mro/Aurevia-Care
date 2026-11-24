@@ -17,10 +17,10 @@ the authoritative application entry point that does exist — the real
 `MessagingGovernanceService` — against a real PostgreSQL database under forced row-level
 security, and leaves the remaining HTTP exposure as the documented gap.
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.PreserveSenderRecipientRetentionDutiesTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/PreserveSenderRecipientRetentionDutiesTest.java`),
+Test class: `com.aurevia.messaging.clauses.PreserveSenderRecipientRetentionDutiesTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/PreserveSenderRecipientRetentionDutiesTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile. It migrates a fresh
-`smartclinic_retention_duty_it` database from `db/migrations`, seeds two isolated tenants
+`orevia_retention_duty_it` database from `db/migrations`, seeds two isolated tenants
 with a tracked resource and directly seeded duty rows (organization A: sender 30 days,
 recipient 90 days; organization B: sender 10 days, recipient 20 days), binds a synthetic
 `TenantContext` for each proof and calls the injected service. All fixtures are synthetic.
@@ -49,29 +49,29 @@ cannot prove this clause.
 
 Other active green tests proving the layers that do exist:
 
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceServiceTest.retentionDutiesPreserveSenderAndRecipientWindows`
+- `com.aurevia.messaging.governance.MessagingGovernanceServiceTest.retentionDutiesPreserveSenderAndRecipientWindows`
   — stores a 30/90 pair, reads it back with both fields and its resource/organization
   intact, gets 404 for a missing resource, then places a legal hold and confirms the
   recipient window is still 90. Executed locally: `Tests run: 30, Failures: 0, Errors: 0,
   Skipped: 0` for the whole `MessagingGovernanceServiceTest` class.
-- `com.aurevia.smartclinic.messaging.governance.it.JdbcMessagingGovernanceStoreIntegrationTest.resourcesAndRetentionDutiesAreTenantScoped`
+- `com.aurevia.messaging.governance.it.JdbcMessagingGovernanceStoreIntegrationTest.resourcesAndRetentionDutiesAreTenantScoped`
   — under forced row-level security, organization A stores `(10, 20)` and organization B
   stores `(30, 40)` on the same resource id; each reads back only its own pair and A gets
   an empty result for an unrecorded resource.
 
 Production types and data exercised by the preserved behavior:
 
-- `com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.RetentionDuty` —
+- `com.aurevia.messaging.governance.MessagingAuditContract.RetentionDuty` —
   the immutable sender/recipient pair; its contract states a hold on one party never
   waives the other's duty.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceStore` —
+- `com.aurevia.messaging.governance.MessagingGovernanceStore` —
   `putRetentionDuty` / `retentionDuty`, with `JdbcMessagingGovernanceStore` (tenant-filtered
   upsert and read) and a test-only in-memory fake.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceService.retentionDuty` —
+- `com.aurevia.messaging.governance.MessagingGovernanceService.retentionDuty` —
   UUID validation, `requireContext`, `AUDIT_READ` authorization and 404 `NOT_FOUND`
   concealment. `placeHold` never reads or mutates the duty pair, which is why both windows
   survive a hold.
-- `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceController` — the thin
+- `com.aurevia.messaging.governance.MessagingGovernanceController` — the thin
   HTTP adapter; it has no duty route today (see Gap).
 - `db/migrations/V62__messaging_governance.sql` — `messaging_retention_duty`, with RLS and
   FORCE RLS, a tenant policy, `GRANT SELECT, INSERT, UPDATE` and explicit
@@ -80,7 +80,7 @@ Production types and data exercised by the preserved behavior:
 Verification command and result (tool evidence):
 
 ```
-SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=PreserveSenderRecipientRetentionDutiesTest test
 Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 ```

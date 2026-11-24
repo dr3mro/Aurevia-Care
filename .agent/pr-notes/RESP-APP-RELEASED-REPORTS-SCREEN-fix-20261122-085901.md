@@ -11,8 +11,8 @@ I rehydrated the governing context as instructed: `.agent/context-files.txt`,
 `AGENTS.md`, `CODING_STYLE.md`, `PROJECT.md`, `WORKSPACE.md`, `MEMORY.md`, `TODO.md`
 ("Instructions for every agent" + this story's entry), `docs/WORKFLOW.md`, BUGS-relevant
 history, the `0005-patient-app-tablets.md` decision, the product clause for
-verified-adult self-access, and the `smartclinic-delivery`, `smartclinic-senior-mobile`
-and `smartclinic-senior-typescript` skills. I surveyed `features/reports` and
+verified-adult self-access, and the `orevia-delivery`, `orevia-senior-mobile`
+and `orevia-senior-typescript` skills. I surveyed `features/reports` and
 `app/layout` and confirmed reuse of the existing `windowClassFor` classifier,
 `patientDesign` tokens and `ReleasedReport` type.
 
@@ -61,10 +61,10 @@ contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) is the domain owner; its
+Senior React Native and Expo (`orevia-senior-mobile`) is the domain owner; its
 mandatory definition of done was executed and met this pass (module `check.sh` green,
 typecheck final lines and coverage summary below, zero `error TS…`). Senior
-TypeScript (`smartclinic-senior-typescript`) owns the strict
+TypeScript (`orevia-senior-typescript`) owns the strict
 `exactOptionalPropertyTypes` rule that produced TS2375; the root strict typecheck,
 the exact failing gate `scripts/frontend-check.sh` and `scripts/frontend-typecheck-check.sh`
 are green. A prior bounded mobile-specialist advisory review confirmed the fix is
@@ -100,7 +100,7 @@ Sync at the start: `git merge --no-edit origin/main` → `Already up to date.`
 Working tree clean before and after; no scoped file has a conflict marker. The
 pre-existing `<<<<<<<`/`>>>>>>>` markers reported repo-wide by `git grep` are inside
 committed Javadoc comments in
-`apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
+`apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
 on `origin/main` itself — my branch has zero diff there, they compile inertly, and
 they are out of this task's scope (documented in the 08:57 debugger findings).
 

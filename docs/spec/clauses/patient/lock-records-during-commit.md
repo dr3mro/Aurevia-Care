@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.patient.clauses.LockRecordsDuringCommitTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/LockRecordsDuringCommitTest.java`),
+Test class `com.aurevia.patient.clauses.LockRecordsDuringCommitTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/LockRecordsDuringCommitTest.java`),
 an HTTP-level and SQL-level integration test on real PostgreSQL with synthetic
 patients and staff in one synthetic tenant:
 
@@ -36,14 +36,14 @@ patients and staff in one synthetic tenant:
   consolidation is appended.
 
 Production classes and database objects exercised by the entry points:
-`com.aurevia.smartclinic.patient.consolidation.ConsolidationController` (thin
+`com.aurevia.patient.consolidation.ConsolidationController` (thin
 HTTP adapter for `/api/v1/duplicate-reviews`),
-`com.aurevia.smartclinic.patient.consolidation.ConsolidationService` (locks the
+`com.aurevia.patient.consolidation.ConsolidationService` (locks the
 pair before reading versions and commits association, event and audit in one
 tenant-guarded transaction),
-`com.aurevia.smartclinic.patient.consolidation.DuplicateRepository`
-(`lockPair` SQL boundary), `com.aurevia.smartclinic.tenant.TenantContext` and
-`com.aurevia.smartclinic.api.IfMatch`; the lock itself is
+`com.aurevia.patient.consolidation.DuplicateRepository`
+(`lockPair` SQL boundary), `com.aurevia.tenant.TenantContext` and
+`com.aurevia.api.IfMatch`; the lock itself is
 `public.lock_patient_pair(uuid, uuid)` in
 `db/migrations/V9__duplicate_review_consolidation.sql`, which takes an ordered
 advisory lock and `SELECT ... FOR UPDATE` on both `patient_record` rows under

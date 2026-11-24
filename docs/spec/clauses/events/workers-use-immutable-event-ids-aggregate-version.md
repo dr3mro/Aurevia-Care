@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.events.clauses.WorkersUseImmutableEventIdsAggregateVersionTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/events/clauses/WorkersUseImmutableEventIdsAggregateVersionTest.java`),
+Test class `com.aurevia.events.clauses.WorkersUseImmutableEventIdsAggregateVersionTest`
+(`apps/api/src/test/java/com/aurevia/events/clauses/WorkersUseImmutableEventIdsAggregateVersionTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants.
 Every command goes through the real `POST /api/v1/delivery` routes and the stored
 snapshot is read back through the same RLS-bounded store.
@@ -36,22 +36,22 @@ snapshot is read back through the same RLS-bounded store.
   refused (422 `INVALID_IF_MATCH`) before any state change.
 
 Production classes exercised by the entry point:
-`com.aurevia.smartclinic.events.DeliveryController` (the thin HTTP adapter that binds
+`com.aurevia.events.DeliveryController` (the thin HTTP adapter that binds
 `If-Match` and maps the created event to its Location header),
-`com.aurevia.smartclinic.events.DurableEventService` (`publish` stamps
+`com.aurevia.events.DurableEventService` (`publish` stamps
 `DeliveryInputs.newId()` with version 1; `snapshot` preserves `eventId` and sets
 `aggregateVersion() + 1` on every transition, retry, dead-letter and review;
 `requireVersion` raises 412 `STALE_VERSION`; `authorize` raises 403 `FORBIDDEN`;
 `requireEvent` raises 404 `NOT_FOUND` to conceal another tenant's event),
-`com.aurevia.smartclinic.events.DeliveryActions` (the bounded role matrix),
-`com.aurevia.smartclinic.events.DeliveryInputs` and
-`com.aurevia.smartclinic.api.IfMatch` (boundary validation),
-`com.aurevia.smartclinic.events.JdbcDeliveryStore` (the RLS-bounded store) and
-`com.aurevia.smartclinic.tenant.TenantContext`, with tenant RLS/FORCE RLS supplied
+`com.aurevia.events.DeliveryActions` (the bounded role matrix),
+`com.aurevia.events.DeliveryInputs` and
+`com.aurevia.api.IfMatch` (boundary validation),
+`com.aurevia.events.JdbcDeliveryStore` (the RLS-bounded store) and
+`com.aurevia.tenant.TenantContext`, with tenant RLS/FORCE RLS supplied
 by the Flyway migrations under `db/migrations`.
 
 The immutable-identity and version rule is also covered at domain level by
-`com.aurevia.smartclinic.events.DurableEventServiceTest`; that suite is not
+`com.aurevia.events.DurableEventServiceTest`; that suite is not
 repeated here (this story proves the clause through the real HTTP entry point).
 
 Verified locally:

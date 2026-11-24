@@ -301,14 +301,14 @@ CREATE TRIGGER exchange_work_item_update_guard
 
 GRANT SELECT, INSERT ON public.exchange_authorization, public.exchange_order,
                         public.exchange_order_snapshot, public.exchange_disclosure
-    TO smartclinic_app;
+    TO orevia_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON public.exchange_authorization,
                                   public.exchange_order_snapshot,
-                                  public.exchange_disclosure FROM smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.exchange_order FROM smartclinic_app;
+                                  public.exchange_disclosure FROM orevia_app;
+REVOKE DELETE, TRUNCATE ON public.exchange_order FROM orevia_app;
 
-GRANT SELECT, INSERT, UPDATE ON public.exchange_work_item TO smartclinic_app;
-REVOKE DELETE, TRUNCATE ON public.exchange_work_item FROM smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.exchange_work_item TO orevia_app;
+REVOKE DELETE, TRUNCATE ON public.exchange_work_item FROM orevia_app;
 
 REVOKE ALL ON FUNCTION public.set_exchange_created_by_from_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.set_exchange_actor_id_from_actor() FROM PUBLIC;

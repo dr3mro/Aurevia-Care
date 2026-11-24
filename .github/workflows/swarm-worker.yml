@@ -9,8 +9,9 @@ on:
     inputs:
       image: {type: string, required: true}
       slot: {type: string, required: true}
-      # The planned task as JSON (the matrix entry): model, kind, id, title,
+      # The planned task as JSON (the matrix entry): slot, kind, id, title,
       # body, branch, number and fix. One input keeps the interface small.
+      # No model travels in this input; the router selects the model at run time.
       task: {type: string, required: true}
 permissions:
   contents: read
@@ -45,9 +46,9 @@ jobs:
       run:
         shell: bash
     env:
-      # Optional repository variable SWARM_MODEL overrides the model baked into
-      # the slot image. The slot model remains the default when it is not set.
-      MODEL: ${{ vars.SWARM_MODEL || fromJSON(inputs.task).model }}
+      # Only these repository variables select a model, through the centralized router.
+      SWARM_MODEL: ${{ vars.SWARM_MODEL }}
+      SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}
       MODE: ${{ fromJSON(inputs.task).kind == 'fix' && 'fix' || 'story' }}
       BRANCH: ${{ fromJSON(inputs.task).branch }}
       BRANCH_PREFIX: swarm
@@ -58,7 +59,7 @@ jobs:
       FIX_COMMENT: ${{ fromJSON(inputs.task).fix }}
       PR_NUMBER: ${{ fromJSON(inputs.task).number }}
       CHECK_SCRIPT: scripts/worker-check.sh
-      SMARTCLINIC_PG_ADMIN: postgres
+      OREVIA_PG_ADMIN: postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

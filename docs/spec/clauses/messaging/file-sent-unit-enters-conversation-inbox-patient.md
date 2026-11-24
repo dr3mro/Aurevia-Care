@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.FileSentUnitEntersConversationInboxPatientTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/FileSentUnitEntersConversationInboxPatientTest.java`),
+Test class `com.aurevia.messaging.clauses.FileSentUnitEntersConversationInboxPatientTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/FileSentUnitEntersConversationInboxPatientTest.java`),
 service-level tests over the synthetic `InMemoryAttachmentStore` with the same
 fixtures and fixed-clock style as `messaging/attachments/AttachmentAcceptanceTest`.
 No production file was changed by this story.
@@ -39,7 +39,7 @@ Enabled tests and the production behaviour they exercise:
   from the store key and RLS in the real implementation.
 
 Production classes exercised by these tests:
-`com.aurevia.smartclinic.messaging.attachments.AttachmentService` (`upload`,
+`com.aurevia.messaging.attachments.AttachmentService` (`upload`,
 `scan`, `publish`, `inbox`, `events` and the append-only fact writer),
 `AttachmentContract` (`Actor`, `ConnectionGrant`, `Attachment`,
 `AttachmentEvent`, `PublishRequest`, `ScanRequest`, `UploadRequest`,
@@ -77,7 +77,7 @@ The domain rule is implemented and service-level provenance is proven, but the
 clause is not reachable end to end, so this is not "Proven by tests":
 
 1. **No HTTP publication route.** `AttachmentController`
-   (`apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentController.java:83-128`)
+   (`apps/api/src/main/java/com/aurevia/messaging/attachments/AttachmentController.java:83-128`)
    exposes only `/upload`, `/{id}/scan` and `/{id}/download`. There is no route
    calling `AttachmentService.publish`, `inbox` or `fileIntoChart`; no production
    caller of those methods exists anywhere under `apps/api/src/main`.

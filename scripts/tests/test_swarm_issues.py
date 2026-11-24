@@ -229,8 +229,7 @@ class StuckTests(unittest.TestCase):
         self.assertIn("needs-human", self.stuck(False))
 
     def test_gate_configuration_files_are_never_auto_merged(self):
-        gates = ["apps/api/pom.xml", "apps/api/spotbugs-exclude.xml", "CODING_STYLE.md", "apps/staff-web/vite.config.ts",
-                 "apps/patient-mobile/jest.config.ts"]
+        gates = ["apps/api/pom.xml", *swarm.GATE_CONFIG]
         self.assertEqual(swarm.protected_files(gates + ["apps/api/src/main/java/A.java"]), gates)
 
     def test_a_repair_may_change_scripts_but_never_the_gate_configuration(self):
@@ -431,7 +430,7 @@ class WatchdogTests(unittest.TestCase):
         self.old = os.getcwd()
         self.tmp = tempfile.mkdtemp()
         os.chdir(self.tmp)
-        Path("TODO.md").write_text(TODO)
+        swarm.store().write(TODO)
         self.addCleanup(os.chdir, self.old)
 
     def run_dog(self, runs, issues=None, red=False, pr_state="OPEN"):
@@ -460,11 +459,11 @@ class WatchdogTests(unittest.TestCase):
         self.assertFalse(fake.said("issue", "create"))
 
     def test_the_watchdog_leaves_a_recent_wave_a_running_wave_and_an_empty_queue_alone(self):
-        Path("TODO.md").write_text("# TODO\n\n## Tasks\n")
+        swarm.store().write("# TODO\n\n## Tasks\n")
         for runs, todo in (([self.run_at(10)], TODO), ([self.run_at(300, "in_progress")], TODO),
                            ([self.run_at(300)], "# TODO\n\n## Tasks\n")):
             with self.subTest(runs=runs[0]["status"], todo=len(todo)):
-                Path("TODO.md").write_text(todo)
+                swarm.store().write(todo)
                 self.assertFalse(self.run_dog(runs).said("--ref"))
 
     def test_a_recent_wave_is_not_a_stall(self):
@@ -477,12 +476,12 @@ class WatchdogTests(unittest.TestCase):
         self.assertTrue(fake.said("issue", "close", "3"))
 
     def test_no_work_waiting_is_not_a_stall(self):
-        Path("TODO.md").write_text("# TODO\n\n## Tasks\n")
+        swarm.store().write("# TODO\n\n## Tasks\n")
         fake = self.run_dog([self.run_at(300)])
         self.assertFalse(fake.said("issue", "create"))
 
     def test_a_red_main_with_no_wave_is_a_stall(self):
-        Path("TODO.md").write_text("# TODO\n\n## Tasks\n")
+        swarm.store().write("# TODO\n\n## Tasks\n")
         fake = self.run_dog([self.run_at(300)], red=True)
         self.assertTrue(fake.said("issue", "create"))
 
@@ -497,7 +496,7 @@ class WatchdogTests(unittest.TestCase):
         self.assertTrue(fake.said("issue", "close", "6", "closed"))
 
     def test_an_issue_task_closes_its_issue_when_done(self):
-        Path("TODO.md").write_text(TODO + "\n- [x] ISS-8 · Fixed it\n  - scope: a\n")
+        swarm.store().write(TODO + "\n- [x] ISS-8 · Fixed it\n  - scope: a\n")
         fake = self.run_dog([self.run_at(10)], issues=[issue(8, "")])
         self.assertTrue(fake.said("issue", "close", "8", "ISS-8 is done"))
 
@@ -506,7 +505,7 @@ class WatchdogTests(unittest.TestCase):
         self.assertFalse(fake.said("issue", "close"))
 
     def test_a_handoff_closes_when_its_task_is_done(self):
-        Path("TODO.md").write_text(TODO.replace("- [ ] CW-001", "- [x] CW-001"))
+        swarm.store().write(TODO.replace("- [ ] CW-001", "- [x] CW-001"))
         body = "<!-- swarm-task:CW-001 -->"
         fake = self.run_dog([self.run_at(10)], issues=[issue(6, body, labels=("swarm-issue", "worker-handoff"))])
         self.assertTrue(fake.said("issue", "close", "6", "done"))

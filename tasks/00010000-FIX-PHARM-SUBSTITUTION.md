@@ -3,12 +3,12 @@
   - evidence: PR #683; integrator ran scripts/repair-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/FIX-PHARM-SUBSTITUTION.md; simulated review only
   - attempts: 1
   - requirements: RX-01, RX-02, ARC-02
-  - scope: apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/substitution, apps/api/src/test/java/com/aurevia/smartclinic/pharmacyflow/substitution, apps/api/src/main/java/com/aurevia/smartclinic/prescription, apps/api/src/test/java/com/aurevia/smartclinic/prescription, apps/api/src/main/java/com/aurevia/smartclinic/audit, apps/api/src/test/java/com/aurevia/smartclinic/audit, db/migrations/V94__durable_pharmacy_substitution.sql
+  - scope: apps/api/src/main/java/com/aurevia/pharmacyflow/substitution, apps/api/src/test/java/com/aurevia/pharmacyflow/substitution, apps/api/src/main/java/com/aurevia/prescription, apps/api/src/test/java/com/aurevia/prescription, apps/api/src/main/java/com/aurevia/audit, apps/api/src/test/java/com/aurevia/audit, db/migrations/V94__durable_pharmacy_substitution.sql
   - depends: PHARM-04
   - reserved: V94
   - details:
     Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
-    Current reference points to verify against that delivery are `apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/substitution/SubstitutionStore.java`, `apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/substitution/SubstitutionService.java`.
+    Current reference points to verify against that delivery are `apps/api/src/main/java/com/aurevia/pharmacyflow/substitution/SubstitutionStore.java`, `apps/api/src/main/java/com/aurevia/pharmacyflow/substitution/SubstitutionService.java`.
 
     SubstitutionService stores proposals and signed revisions in maps. Approval does not update the authoritative transmitted prescription.
     Write a failing HTTP/PostgreSQL regression before changing behavior. Use a tenant-guarded transactional JDBC store with RLS and FORCE RLS. Atomically recheck version and prescribing entitlement, persist the approval and provenance, apply the signed revision through the existing prescription workflow, and append the audit event. Preserve the original revision and decline behavior.

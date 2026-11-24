@@ -1,10 +1,10 @@
 spring:
   application:
-    name: smartclinic-api
+    name: orevia-api
   datasource:
-    url: ${SMARTCLINIC_DB_URL:jdbc:postgresql://127.0.0.1:5432/smartclinic_it}
-    username: ${SMARTCLINIC_DB_USER:smartclinic_app}
-    password: ${SMARTCLINIC_DB_PASSWORD:}
+    url: ${OREVIA_DB_URL:jdbc:postgresql://127.0.0.1:5432/orevia_it}
+    username: ${OREVIA_DB_USER:orevia_app}
+    password: ${OREVIA_DB_PASSWORD:}
     hikari:
       maximum-pool-size: 2
       initialization-fail-timeout: -1
@@ -14,23 +14,23 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${SMARTCLINIC_OIDC_ISSUER_URI:}
-          # WEB-03/WEB-05: SMARTCLINIC_OIDC_AUDIENCE is required. Outside the
+          issuer-uri: ${OREVIA_OIDC_ISSUER_URI:}
+          # WEB-03/WEB-05: OREVIA_OIDC_AUDIENCE is required. Outside the
           # synthetic-auth profile SecurityConfiguration fails startup when it
           # is blank, and every bearer token must carry this value in `aud`.
-          audiences: ${SMARTCLINIC_OIDC_AUDIENCE:}
-smartclinic:
+          audiences: ${OREVIA_OIDC_AUDIENCE:}
+orevia:
   rate-limit:
     # WEB-04 instance-local guard; the edge WAF supplies the global limit.
-    per-minute: ${SMARTCLINIC_RATE_LIMIT_PER_MINUTE:600}
+    per-minute: ${OREVIA_RATE_LIMIT_PER_MINUTE:600}
   # WEB-03 staff web browser OIDC client. Placeholders only: values come from
   # the environment, and the StaffWebLoginConfiguration fails startup closed
   # when any of them is missing outside the synthetic-auth profile.
   oidc:
-    client-id: ${SMARTCLINIC_OIDC_CLIENT_ID:}
-    client-secret: ${SMARTCLINIC_OIDC_CLIENT_SECRET:}
+    client-id: ${OREVIA_OIDC_CLIENT_ID:}
+    client-secret: ${OREVIA_OIDC_CLIENT_SECRET:}
 server:
-  port: ${SMARTCLINIC_SERVER_PORT:8081}
+  port: ${OREVIA_SERVER_PORT:8081}
   servlet:
     session:
       # WEB-03 idle ceiling; the absolute 12h ceiling is enforced by the

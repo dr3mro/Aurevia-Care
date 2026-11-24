@@ -72,8 +72,9 @@ jobs:
       run:
         shell: bash
     env:
-      # A repository variable lets an operator change the agent model without editing workflows.
-      MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
+      # Only these repository variables select a model, through the centralized router.
+      SWARM_MODEL: ${{ vars.SWARM_MODEL }}
+      SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}
       SWARM: '1'
       MODE: fix
       PR_NUMBER: ${{ matrix.pr }}
@@ -81,7 +82,7 @@ jobs:
       BRANCH: ${{ matrix.branch }}
       STORY_ID: ${{ matrix.task }}
       BASE_BRANCH: ${{ github.event.repository.default_branch }}
-      SMARTCLINIC_PG_ADMIN: postgres
+      OREVIA_PG_ADMIN: postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

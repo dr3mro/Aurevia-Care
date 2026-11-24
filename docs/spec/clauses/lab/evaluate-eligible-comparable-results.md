@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.lab.clauses.EvaluateEligibleComparableResultsTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/EvaluateEligibleComparableResultsTest.java`).
+Test class: `com.aurevia.lab.clauses.EvaluateEligibleComparableResultsTest`
+(path: `apps/api/src/test/java/com/aurevia/lab/clauses/EvaluateEligibleComparableResultsTest.java`).
 All seven tests are active (none disabled) and pass with synthetic data only. The tests are
 kernel-level service-API tests in the style of the neighbouring clause proofs (no MockMvc): they
 reuse the fixture shapes of `lab.result.DocumentedUnitConversionTest` (`numeric(...)`,
@@ -48,9 +48,9 @@ contract or migration was changed.
 
 Production classes exercised through their normal kernel entry points:
 
-- `com.aurevia.smartclinic.lab.result.LabRules` — `eligible` (present exact numeric only) and
+- `com.aurevia.lab.result.LabRules` — `eligible` (present exact numeric only) and
   `comparable` (eligibility, test identity, unit equality, documented bidirectional conversion).
-- `com.aurevia.smartclinic.lab.result.LabResultService` — `comparable(org, reportId)` filters the
+- `com.aurevia.lab.result.LabResultService` — `comparable(org, reportId)` filters the
   current revision with `LabRules::eligible`; `verify` reaches the private `evaluate`, which
   interprets only present numeric observations and sets `AbnormalFlag.NONE` for every other kind
   or presence; `load` conceals another tenant's report as 404.

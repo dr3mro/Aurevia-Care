@@ -40,7 +40,7 @@ association, data, contract, migration or release change
 ## Review owner
 
 Senior React Native and Expo specialist. A bounded advisory review was run this
-pass (subagent `smartclinic-senior-mobile`, read-only, no edits) and returned
+pass (subagent `orevia-senior-mobile`, read-only, no edits) and returned
 **no blocking findings**: rest-omission is the smallest correct fix;
 `Omit<ReleasedReport, 'result'>` is assignable to the `reports` prop;
 `_discardedResult` is exempt from `noUnusedLocals` (rest-sibling rule) and from
@@ -68,7 +68,7 @@ flow.
 ## Test evidence
 
 Evidence sources: **tool** (primary agent executed every command below) and
-**reviewer** (bounded `smartclinic-senior-mobile` advisory report). No simulated
+**reviewer** (bounded `orevia-senior-mobile` advisory report). No simulated
 user or human participant was involved.
 
 Entry-point-to-test trace: `ReleasedReportsScreen` → `ScreenFrame` →

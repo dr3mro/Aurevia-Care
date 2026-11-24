@@ -45,7 +45,7 @@ clinical decision or migration boundary changed.
 ## Review owner
 
 Senior React and Vite specialist (bounded plan/risks requested and received from
-`smartclinic-senior-react`); primary agent owned the edits and all commands.
+`orevia-senior-react`); primary agent owned the edits and all commands.
 The specialist's two material recommendations were adopted: keep hooks above the
 empty-state early return, and style the existing `<li>` instead of inserting new
 `<span>` nodes (zero DOM change, no risk to existing Testing Library queries).
@@ -76,7 +76,7 @@ Red seen first: the new test file against the unchanged component gave
   tests (including `components.test.tsx` `RevisionHistory`, `DocumentList`,
   `EnteredInErrorBanner`, `NoteEditor`) still pass unchanged.
 - `npm run typecheck` (from `apps/staff-web`) final lines:
-  `> smartclinic-staff-web@0.1.0 typecheck` /
+  `> orevia-staff-web@0.1.0 typecheck` /
   `> tsc --noEmit -p tsconfig.json` — exit 0, no `error TS…`.
 - `npm run lint` → `> eslint . --max-warnings 0` — exit 0.
 - `bash apps/staff-web/check.sh` → `exit=0`; generated-client check, typecheck
@@ -181,7 +181,7 @@ clinical fields remain rendered at every band.
   card treatment and the shared child rule supplies wrapping; no logical inline
   style had to fill a stylesheet gap.
 - Pre-existing (not introduced here): three committed files under
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` contain Git
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/` contain Git
   conflict markers in `HEAD`. They are outside this task's scope and untouched;
   recorded here so the integrator/owner can route a separate repair.
 

@@ -1,4 +1,4 @@
-"""scripts/taskstore.py: one file per task, with TODO.md as a generated view."""
+"""scripts/taskstore.py: one file per task, with no single-file tracker."""
 import os
 import shutil
 import sys
@@ -20,13 +20,16 @@ TEXT = (
 
 
 class Base(unittest.TestCase):
+    """Each test gets a scratch repository whose tracker lives only in tasks/."""
+
     def setUp(self):
         self.dir = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.dir)
         original = Path.cwd()
         os.chdir(self.dir)
         self.addCleanup(os.chdir, original)
-        Path("TODO.md").write_text(TEXT)
+        taskstore.write(TEXT)
+        (Path("tasks") / taskstore.MARK).write_text("one file per task\n")
 
     def names(self):
         return sorted(p.name for p in Path("tasks").glob("*.md") if p.name != "_head.md")
@@ -80,80 +83,50 @@ class SequenceTests(unittest.TestCase):
 
 
 class StoreTests(Base):
-    def test_migrate_moves_every_task_and_keeps_the_view_exact(self):
-        self.assertEqual(taskstore.migrate(), 3)
+    def test_the_files_rebuild_the_joined_text(self):
         self.assertTrue(taskstore.active())
         self.assertEqual(self.names(), ["00001000-A-01.md", "00002000-A-02.md", "00003000-A-03.md"])
-        self.assertEqual(Path("TODO.md").read_text(), TEXT)
         self.assertEqual(taskstore.read(), TEXT)
 
-    def test_migrate_twice_does_nothing(self):
-        taskstore.migrate()
-        self.assertEqual(taskstore.migrate(), 0)
-
-    def test_migrate_without_a_todo_file_does_nothing(self):
-        Path("TODO.md").unlink()
-        self.assertEqual(taskstore.migrate(), 0)
-
-    def test_migrate_refuses_when_the_files_would_not_rebuild_the_text(self):
-        with mock.patch.object(taskstore, "joined", return_value="different"):
-            with self.assertRaises(SystemExit):
-                taskstore.migrate()
-
     def test_save_rewrites_only_the_changed_task(self):
-        taskstore.migrate()
         for path in Path("tasks").glob("0*.md"):
             os.utime(path, (1, 1))
         taskstore.save(TEXT.replace("[-] A-02", "[x] A-02"))
         changed = [p.name for p in Path("tasks").glob("0*.md") if p.stat().st_mtime > 1]
         self.assertEqual(changed, ["00002000-A-02.md"])
-        self.assertIn("[x] A-02", Path("TODO.md").read_text())
+        self.assertIn("[x] A-02", taskstore.read())
 
     def test_a_new_task_is_inserted_without_renaming_others(self):
-        taskstore.migrate()
         taskstore.save(TEXT.replace("- [-] A-02", "- [ ] A-01b · New\n  - scope: z\n- [-] A-02"))
         self.assertEqual(self.names(), ["00001000-A-01.md", "00001500-A-01b.md", "00002000-A-02.md",
                                         "00003000-A-03.md"])
 
     def test_a_removed_task_loses_its_file(self):
-        taskstore.migrate()
         taskstore.save(TEXT.replace("- [x] A-03 · Third\n  - scope: c\n", ""))
         self.assertEqual(self.names(), ["00001000-A-01.md", "00002000-A-02.md"])
 
     def test_a_task_file_without_an_entry_line_keeps_its_name_as_id(self):
-        taskstore.migrate()
         Path("tasks/00009000-ODD.md").write_text("stray text\n")
         self.assertEqual(taskstore.first_id(Path("tasks/00009000-ODD.md")), "ODD")
 
-    def test_an_edit_to_the_local_view_is_overwritten_by_the_files(self):
-        taskstore.migrate()
-        Path("TODO.md").write_text(TEXT.replace("[ ] A-01", "[-] A-01"))
-        self.assertEqual(taskstore.read(), TEXT)
-        self.assertEqual(Path("TODO.md").read_text(), TEXT)
+    def test_an_edit_outside_the_files_is_ignored(self):
+        Path("tasks/00001000-A-01.md").write_text("- [ ] A-01 · Changed\n")
+        Path("tasks/NOTES.md").write_text("stale")
+        self.assertNotIn("stale", taskstore.read())
 
-    def test_the_marker_never_changes_after_the_move(self):
-        taskstore.migrate()
+    def test_the_marker_never_changes_after_a_save(self):
         before = Path("tasks/.sharded").read_text()
         taskstore.save(TEXT.replace("[ ] A-01", "[-] A-01"))
         taskstore.read()
         self.assertEqual(Path("tasks/.sharded").read_text(), before)
 
-    def test_a_missing_view_is_regenerated(self):
-        taskstore.migrate()
-        Path("TODO.md").unlink()
-        self.assertEqual(taskstore.read(), TEXT)
-        self.assertEqual(Path("TODO.md").read_text(), TEXT)
-
-    def test_a_stale_view_is_regenerated_from_the_files(self):
-        taskstore.migrate()
+    def test_a_stale_file_is_regenerated_from_the_joined_text(self):
         taskstore.write(TEXT.replace("[ ] A-01", "[-] A-01"))
         self.assertIn("[-] A-01", taskstore.read())
-        self.assertIn("[-] A-01", Path("TODO.md").read_text())
 
 
 class ArchiveTests(Base):
     def test_finished_entries_are_kept_one_file_each(self):
-        taskstore.migrate()
         taskstore.archive(["- [x] A-03 · Third\n  - scope: c\n", "- [x] B/9 · Odd id\n"])
         self.assertTrue(Path("tasks/done/A-03.md").exists())
         self.assertTrue(Path("tasks/done/B_9.md").exists())
@@ -164,23 +137,11 @@ class ArchiveTests(Base):
 
 
 class MainTests(Base):
-    def test_migrate_command(self):
+    def test_view_prints_the_joined_tracker(self):
         with mock.patch("builtins.print") as shown:
-            self.assertEqual(taskstore.main(["migrate"]), 0)
-            self.assertEqual(taskstore.main(["migrate"]), 0)
-        self.assertIn("moved 3", shown.call_args_list[0].args[0])
-        self.assertEqual(shown.call_args_list[1].args[0], "nothing to migrate")
-
-    def test_view_command_rebuilds_the_local_view(self):
-        taskstore.migrate()
-        Path("TODO.md").unlink()
-        self.assertEqual(taskstore.main(["view"]), 0)
-        self.assertEqual(Path("TODO.md").read_text(), TEXT)
-
-    def test_view_command_before_the_move_changes_nothing(self):
-        self.assertEqual(taskstore.main(["view"]), 0)
-        self.assertEqual(Path("TODO.md").read_text(), TEXT)
-        self.assertFalse(Path("tasks").exists())
+            self.assertEqual(taskstore.main(["view"]), 0)
+        self.assertEqual(shown.call_args.args[0], TEXT)
+        self.assertEqual(shown.call_args.kwargs, {"end": ""})
 
     def test_unknown_command_prints_usage(self):
         with mock.patch("builtins.print"):
@@ -196,7 +157,3 @@ class MainTests(Base):
             with self.assertRaises(SystemExit) as ended:
                 runpy.run_path(str(Path(taskstore.__file__)), run_name="__main__")
         self.assertEqual(ended.exception.code, 2)
-
-
-if __name__ == "__main__":
-    unittest.main()

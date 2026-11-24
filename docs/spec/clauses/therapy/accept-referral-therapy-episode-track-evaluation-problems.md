@@ -15,8 +15,8 @@ migrated from `db/migrations`, two seeded tenants with identical local identifie
 fixtures only). Evidence source: **tool** — an executed targeted integration test; no clinical,
 human or simulated-user evidence is claimed.
 
-- Test class: `com.aurevia.smartclinic.therapy.clauses.AcceptReferralTherapyEpisodeTrackEvaluationProblemsTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/therapy/clauses/AcceptReferralTherapyEpisodeTrackEvaluationProblemsTest.java`).
+- Test class: `com.aurevia.therapy.clauses.AcceptReferralTherapyEpisodeTrackEvaluationProblemsTest`
+  (path: `apps/api/src/test/java/com/aurevia/therapy/clauses/AcceptReferralTherapyEpisodeTrackEvaluationProblemsTest.java`).
 - `acceptsReferralAndTracksEvaluationProblemsBaselinesGoalsAndPlan` — positive proof. Through the
   wired `TherapyController` HTTP entry point, `POST /api/v1/therapy/episodes` returns 201 with an
   `ACTIVE` episode bound to the patient and `GET /api/v1/therapy/episodes/{id}` returns the same
@@ -57,18 +57,18 @@ human or simulated-user evidence is claimed.
 
 Production classes exercised:
 
-- `com.aurevia.smartclinic.therapy.TherapyController` — the thin HTTP adapter publishing
+- `com.aurevia.therapy.TherapyController` — the thin HTTP adapter publishing
   `POST /api/v1/therapy/episodes` (accept) and `GET /api/v1/therapy/episodes/{episodeId}` (read).
   Only these two commands are reachable over HTTP.
-- `com.aurevia.smartclinic.therapy.TherapyService` — the domain service that implements every
+- `com.aurevia.therapy.TherapyService` — the domain service that implements every
   clause operation (`acceptReferral`, `recordEvaluation`, `recordIntervention`, `recordOutcome`,
   `defineOutcomeScale`/`approveOutcomeScale`, `recordNote`/`signNote`) and enforces the role matrix,
   version preconditions, input validation and `ACTIVE → IN_TREATMENT → DISCHARGED` state machine.
   The tracking operations are invoked **directly on the injected service**, not over REST.
-- `com.aurevia.smartclinic.therapy.TherapyContract` — `Actor`, `ReferralRequest`,
+- `com.aurevia.therapy.TherapyContract` — `Actor`, `ReferralRequest`,
   `EvaluationRequest`, `Measurement`, `Goal`, `OutcomeRequest`, `NoteRequest`, `NoteKind`,
   `EpisodeState` and `TherapyAggregate`, the immutable command and view types.
-- `com.aurevia.smartclinic.therapy.JdbcTherapyStore` — the tenant-guarded JDBC boundary, backed by
+- `com.aurevia.therapy.JdbcTherapyStore` — the tenant-guarded JDBC boundary, backed by
   the therapy tables created by `db/migrations/V77__build_12.sql` and `db/migrations/V85__therapy_store.sql`
   (enabled and forced row level security, tenant policies, append-only notes and problems).
 

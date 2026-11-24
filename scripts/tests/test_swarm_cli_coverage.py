@@ -25,8 +25,8 @@ from helpers import load
 
 swarm = load("swarm")
 
-# Small synthetic slot table, matching the shape of .github/swarm/slots.json.
-SLOTS = [{"slot": n, "model": f"m{n}"} for n in range(1, 4)]
+# Small synthetic slot table, matching the shape of .opencode/config/slots.json.
+SLOTS = [{"slot": n} for n in range(1, 4)]
 
 
 class FakeGh:
@@ -231,7 +231,7 @@ class MainDispatchCoverageTests(CliTestCase):
         with mock.patch.object(swarm, "load_slots", return_value=SLOTS):
             self.assertEqual(swarm.main(["slot-config", "--slot", "2"]), 0)
         printed = json.loads(self.stdout.getvalue())
-        self.assertEqual(printed["model"], "m2")
+        self.assertNotIn("model", printed)
         self.assertIs(printed["autoupdate"], False)
 
     def test_main_plan_workers_reclaims_and_claims_on_every_push_retry(self):
@@ -298,7 +298,7 @@ class MainDispatchCoverageTests(CliTestCase):
     def test_main_task_field_prints_the_field(self):
         with mock.patch.object(swarm, "task_field", return_value="A title") as task_field:
             self.assertEqual(swarm.main(["task-field", "--id", "CW-1", "--field", "title"]), 0)
-        task_field.assert_called_once_with("CW-1", "title", "TODO.md")
+        task_field.assert_called_once_with("CW-1", "title", "")
         self.assertIn("A title", self.stdout.getvalue())
 
     def run_continue(self, go, waiting, live):
@@ -405,7 +405,7 @@ class MainDispatchCoverageTests(CliTestCase):
     def test_main_add_audit_tasks_routes_to_add_audit_tasks(self):
         with mock.patch.object(swarm, "add_audit_tasks") as add:
             self.assertEqual(swarm.main(["add-audit-tasks", "--findings", "f.json"]), 0)
-        add.assert_called_once_with("f.json", "TODO.md")
+        add.assert_called_once_with("f.json", "")
 
     def test_main_add_repair_task_exits_without_a_run(self):
         with self.assertRaises(SystemExit) as stop:
@@ -529,7 +529,9 @@ class MainDispatchCoverageTests(CliTestCase):
             with self.assertRaises(SystemExit) as stop:
                 runpy.run_path(swarm.__file__, run_name="__main__")
         self.assertEqual(stop.exception.code, 0)
-        self.assertIn('"model":"m1"', self.stdout.getvalue())
+        printed = json.loads(self.stdout.getvalue())
+        self.assertNotIn("model", printed)
+        self.assertIs(printed["autoupdate"], False)
 
 
 if __name__ == "__main__":

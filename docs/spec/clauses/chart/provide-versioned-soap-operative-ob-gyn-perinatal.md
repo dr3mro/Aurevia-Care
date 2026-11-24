@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.chart.clauses.ProvideVersionedSoapOperativeObGynPerinatalTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/ProvideVersionedSoapOperativeObGynPerinatalTest.java`),
+Test class `com.aurevia.chart.clauses.ProvideVersionedSoapOperativeObGynPerinatalTest`
+(`apps/api/src/test/java/com/aurevia/chart/clauses/ProvideVersionedSoapOperativeObGynPerinatalTest.java`),
 a real-PostgreSQL integration test with Flyway V80/V87 applied, the production
 JDBC store and the tenant context bound as the HTTP layer binds it. Each test
 uses its own pair of synthetic organizations. No `@Disabled` test and no
@@ -38,28 +38,28 @@ patient data.
   version is refused (404) rather than silently accepted.
 
 Production classes exercised through the test entry point:
-`com.aurevia.smartclinic.clinical.templates.TemplateService` (define, approve,
+`com.aurevia.clinical.templates.TemplateService` (define, approve,
 effective, history and validate commands plus role gating),
-`com.aurevia.smartclinic.clinical.templates.JdbcTemplateStore` (production
-`TemplateStore` adapter), `com.aurevia.smartclinic.clinical.templates.BaselineTemplates`,
+`com.aurevia.clinical.templates.JdbcTemplateStore` (production
+`TemplateStore` adapter), `com.aurevia.clinical.templates.BaselineTemplates`,
 `TemplateKind`, `TemplateVersion`, `FieldDefinition`, `FieldType`, `TemplateActor`,
-`TemplateNoteRevision`, and `com.aurevia.smartclinic.tenant.TenantContext`.
+`TemplateNoteRevision`, and `com.aurevia.tenant.TenantContext`.
 Durable structure comes from `db/migrations/V80__template_store.sql` (tenant
 tables with ENABLE/FORCE RLS, immutable published versions, append-only
 revisions) and `db/migrations/V87__baseline_templates.sql` (governance baselines
 for all five families).
 
-Discovery also found `com.aurevia.smartclinic.clinical.templates.InMemoryTemplateStore`
-in `src/main`, `apps/api/src/test/java/com/aurevia/smartclinic/clinical/templates/BaselineTemplatesTest.java`,
+Discovery also found `com.aurevia.clinical.templates.InMemoryTemplateStore`
+in `src/main`, `apps/api/src/test/java/com/aurevia/clinical/templates/BaselineTemplatesTest.java`,
 `JdbcTemplateStoreTest.java`, `TemplateNoteAcceptanceTest.java` and
 `TemplatePersistenceTest.java` covering the same domain, and the CLN-05
-`com.aurevia.smartclinic.clinical.notes.ClinicalNoteController` HTTP adapter for
+`com.aurevia.clinical.notes.ClinicalNoteController` HTTP adapter for
 saved notes. No HTTP controller exposes the template definition commands, so the
 entry point here is the domain service behind the production JDBC store; that
 is a separate gap from this clause and is recorded in the task notes.
 
 Verified locally:
-`SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=ProvideVersionedSoapOperativeObGynPerinatalTest test`
+`OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=ProvideVersionedSoapOperativeObGynPerinatalTest test`
 — `Tests run: 6, Failures: 0, Errors: 0, Skipped: 0`.
 
 ## Gap

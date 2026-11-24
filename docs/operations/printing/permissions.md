@@ -75,5 +75,5 @@ the required state; **No** = no print permission for that kind in this flow;
   is a defect against IAM-01, IAM-02 and ARC-02.
 
 The specification's full role table and the authoritative clauses are in the
-[product specification](../../../SMARTCLINIC_V1_SPEC.md). This matrix adds no
+[product specification](../../../.opencode/config/PROJECT_V1_SPEC.md). This matrix adds no
 new role, requirement ID or permission beyond them.

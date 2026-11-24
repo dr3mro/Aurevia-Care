@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.prescription.clauses.RequirePrescriberAttestationMarketEntitlementTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/RequirePrescriberAttestationMarketEntitlementTest.java`).
+Test class: `com.aurevia.prescription.clauses.RequirePrescriberAttestationMarketEntitlementTest`
+(path: `apps/api/src/test/java/com/aurevia/prescription/clauses/RequirePrescriberAttestationMarketEntitlementTest.java`).
 All twelve tests are active (none are disabled) and pass with synthetic data only. The real
 `RxController` and `RxService` are driven through MockMvc over a mocked `RxRepository` and a
 synchronous transaction template, so the HTTP entry point and the domain rule are both
@@ -60,22 +60,22 @@ Entry-point-to-test trace:
 
 Production classes exercised (all pre-existing, none changed by this task):
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxController.java` — thin
+- `apps/api/src/main/java/com/aurevia/prescription/rx/RxController.java` — thin
   HTTP adapter; parses `If-Match` at the boundary and delegates every decision to the service.
-- `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxService.java` — `attest`,
+- `apps/api/src/main/java/com/aurevia/prescription/rx/RxService.java` — `attest`,
   `lockedByPrescriber`, `requirePrescriber`, `requireVersion`, `requireState`,
   `requireEntitlement`, `authorize` and `execute`; entitlement is re-derived inside the
   tenant-guarded transaction so a revocation fails closed.
-- `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxActions.java` — binds
+- `apps/api/src/main/java/com/aurevia/prescription/rx/RxActions.java` — binds
   `RX_ATTEST` to the clinician role.
-- `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxContract.java` —
+- `apps/api/src/main/java/com/aurevia/prescription/rx/RxContract.java` —
   `State`, `EventType.ATTESTED` and `AttestRequest`.
-- `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxRepository.java` —
+- `apps/api/src/main/java/com/aurevia/prescription/rx/RxRepository.java` —
   `loadForUpdate`, `approvedSetting`, `attest`, `appendEvent` and `find`.
-- `apps/api/src/main/java/com/aurevia/smartclinic/api/IfMatch.java` and
-  `apps/api/src/main/java/com/aurevia/smartclinic/api/ApiErrorHandler.java` — precondition
+- `apps/api/src/main/java/com/aurevia/api/IfMatch.java` and
+  `apps/api/src/main/java/com/aurevia/api/ApiErrorHandler.java` — precondition
   parsing and the uniform error body.
-- `apps/api/src/main/java/com/aurevia/smartclinic/web/TenantContextInterceptor.java` — derives
+- `apps/api/src/main/java/com/aurevia/web/TenantContextInterceptor.java` — derives
   tenant identity from the synthetic headers; the request body cannot select a tenant.
 - `db/migrations/V44__rx02_prescription_transmission.sql` — the durable tables, RLS with
   FORCE RLS and the immutable-event/state guards behind the mocked repository.

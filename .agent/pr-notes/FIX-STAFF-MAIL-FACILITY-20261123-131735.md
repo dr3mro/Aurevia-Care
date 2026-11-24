@@ -7,19 +7,19 @@ Story FIX-STAFF-MAIL-FACILITY (requirements MSG-02, ARC-07). Work started from b
 commands) and simulated reviewers; no human, clinical or patient-participant evidence.
 
 ## Specification / acceptance mapping
-- MSG-02 (`SMARTCLINIC_V1_SPEC.md:99`): role-scoped recipients must resolve for the
+- MSG-02 (`PROJECT_V1_SPEC.md:99`): role-scoped recipients must resolve for the
   selected facility at send time; confirmation before send.
-- ARC-07 (`SMARTCLINIC_V1_SPEC.md:128`): staff access through membership, unit
+- ARC-07 (`PROJECT_V1_SPEC.md:128`): staff access through membership, unit
   assignment and role; tenant-scoped transaction; durable publication.
 - Acceptance: two facilities sharing a role produce different recipient sets;
   inactive staff and other organizations excluded; changing eligible holders between
   compose and send requires recipient reconfirmation (428/409 contract).
 
 ## Scope
-- `apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/mail`
-- `apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/mail`
-- `apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/directory`
-- `apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/directory`
+- `apps/api/src/main/java/com/aurevia/staffmsg/mail`
+- `apps/api/src/test/java/com/aurevia/staffmsg/mail`
+- `apps/api/src/main/java/com/aurevia/staffmsg/directory`
+- `apps/api/src/test/java/com/aurevia/staffmsg/directory`
 
 ## Brief correction
 The advisor brief said to reuse `StaffDirectoryService.findFacility(String code)` directly for
@@ -226,12 +226,12 @@ line and branch still has its named test from the `## Coverage` section above):
   lowered threshold was added.
 
 ## Review verdicts
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
-- smartclinic-senior-spring-security: GO
-- smartclinic-senior-backend: GO
+- orevia-plan-reviewer: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: GO
+- orevia-senior-spring-security: GO
+- orevia-senior-backend: GO
 Plan review needed one revision, which closed all seven Required gaps. Coverage and code review
 needed one re-check each because they read a stale notes snapshot before `## Test evidence` and
 `## Coverage` were written; both returned GO against the completed file.

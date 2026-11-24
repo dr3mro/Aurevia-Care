@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.prescription.clauses.ShowTaggedCatalogAlternativesPrescriberReviewTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/ShowTaggedCatalogAlternativesPrescriberReviewTest.java`).
+Test class: `com.aurevia.prescription.clauses.ShowTaggedCatalogAlternativesPrescriberReviewTest`
+(path: `apps/api/src/test/java/com/aurevia/prescription/clauses/ShowTaggedCatalogAlternativesPrescriberReviewTest.java`).
 All six tests are active (none are disabled) and use synthetic catalog keys, subjects and
 provenance strings only; no patient data or credentials are involved. Five tests drive
 `PrescriptionService.searchCatalog`, the entry point that `DrugCatalogController.search`
@@ -45,24 +45,24 @@ the sixth asserts the null-selected fold directly on `DrugCatalog`.
 Production classes exercised through the normal command entry point
 (`PrescriptionService.searchCatalog`):
 
-- `com.aurevia.smartclinic.prescription.PrescriptionService` — owns the tenant-guarded
+- `com.aurevia.prescription.PrescriptionService` — owns the tenant-guarded
   authorization, the catalog fold, per-hit alternative attachment and the `SUCCESS`/`DENIED`
   audit pair for the search command.
-- `com.aurevia.smartclinic.prescription.DrugCatalog` — the effective-dated fold: `search`,
+- `com.aurevia.prescription.DrugCatalog` — the effective-dated fold: `search`,
   `alternativesFor`, `effectiveEntries` and `sharesIdentity` decide which entries and tagged
   suggestions are visible to the prescriber.
-- `com.aurevia.smartclinic.prescription.PrescriptionContract` — `Alternative`, `AlternativeKind`,
+- `com.aurevia.prescription.PrescriptionContract` — `Alternative`, `AlternativeKind`,
   `CatalogHit`, `DrugEntry` and `Ingredient` carry the suggestion tag, reason, provenance and
   structured identity that make a review-only alternative safe to display.
-- `com.aurevia.smartclinic.prescription.PrescriptionActions` — `SEARCH_CATALOG` is granted to
+- `com.aurevia.prescription.PrescriptionActions` — `SEARCH_CATALOG` is granted to
   clinician, tenant admin and privacy auditor, and withheld from other roles such as reception.
-- `com.aurevia.smartclinic.prescription.PrescriptionRepository.loadCatalog` — the tenant-guarded
+- `com.aurevia.prescription.PrescriptionRepository.loadCatalog` — the tenant-guarded
   SQL boundary; mocked here. The real RLS/FORCE RLS behaviour is proven by the existing HTTP-level
   integration tests, not by this mocked-repository test.
-- `com.aurevia.smartclinic.audit.AuditAppender` — the transactional audit sink asserted above.
+- `com.aurevia.audit.AuditAppender` — the transactional audit sink asserted above.
 
 Neighbouring implementations observed in the source survey (not changed by this task): the
-thin HTTP adapter `com.aurevia.smartclinic.prescription.DrugCatalogController` for
+thin HTTP adapter `com.aurevia.prescription.DrugCatalogController` for
 `GET /api/v1/drug-catalog/search`, which delegates to the service but is not directly exercised
 by this service-level proof; the existing unit proof in `it.prescription.DrugCatalogTest`, the action-matrix proof in
 `it.prescription.PrescriptionDomainTest.actionMatrixGrantsWritesOnlyToClinicians`, the real

@@ -1,4 +1,4 @@
-"""Generate opencode.json and .github/opencode.ci.json from the agent inventory in .opencode/agents.
+"""Generate .opencode/opencode.json and .opencode/opencode.ci.json from the agent inventory in .opencode/agents.
 
 The committed file is generated so the 33 permission blocks cannot drift.
 Usage: gen-opencode.py [--check | --check-runtime]. Without a flag the file is
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PRIMARY = "smartclinic-orchestrator"
+PRIMARY = "orca"
 
 # Project instructions loaded into every agent session: only the short rules every
 # task needs (about 5,000 words). The specification, trackers, architecture decisions,
@@ -22,9 +22,9 @@ PRIMARY = "smartclinic-orchestrator"
 # of them to read for their task, so they are read on demand instead of paying for
 # them in every session, including the read-only reviewers.
 INSTRUCTIONS = [
-    "AGENTS.md",
-    "CODING_STYLE.md",
-    "README-SETUP.md",
+    ".opencode/setup/AGENTS.md",
+    ".opencode/setup/CODING_STYLE.md",
+    ".opencode/config/README-SETUP.md",
     "docs/WORKFLOW.md",
 ]
 
@@ -107,13 +107,13 @@ def build(names, ci=False):
     }
 
 
-OUTPUTS = {"opencode.json": False, ".github/opencode.ci.json": True}
+OUTPUTS = {".opencode/opencode.json": False, ".opencode/opencode.ci.json": True}
 
 # The CI profile is copied over opencode.json in unattended workers, so its policy
 # needs its own gate. check-pack validates the generated local config for drift;
 # check-runtime validates the profile the workers actually load (OPS-06).
-RUNTIME_PROFILE = ".github/opencode.ci.json"
-SLOTS_FILE = ".github/swarm/slots.json"
+RUNTIME_PROFILE = ".opencode/opencode.ci.json"
+MODEL_REGISTRY = ".opencode/model-pricing.json"
 CATCH_ALL_DENY = {"action": "*", "resource": "*", "effect": "deny"}
 BASH_ACTIONS = frozenset({"shell", "bash"})
 WRITE_ACTIONS = frozenset({"write", "edit", "patch"})
@@ -121,7 +121,7 @@ READ_ONLY_ACTIONS = frozenset({"read", "glob", "grep", "skill"})
 # Representative files prove whether a write rule can reach a protected tree.
 PROTECTED_FILES = (
     ".github/workflows/delivery.yml",
-    "TODO.md",
+    ".opencode/config/MEMORY.md",
     ".opencode/agents/example.md",
 )
 SECRET_PATTERNS = (
@@ -154,25 +154,30 @@ def check_runtime(root=ROOT):
     An empty list means the profile is safe for unattended swarm workers. The
     profile is judged on its own: a fresh generated config does not excuse a
     runtime profile that grants write access, pins an unapproved model or
-    carries a credential.
+    carries a credential. The verified pricing registry, not a slot image, is
+    the authoritative model allowlist; an unreadable registry rejects the profile.
     """
     violations = []
     profile = _read_json(root / RUNTIME_PROFILE, "runtime profile", violations)
-    slots = _read_json(root / SLOTS_FILE, "swarm slots", violations)
-    if profile is None or slots is None:
+    registry = _read_json(root / MODEL_REGISTRY, "model registry", violations)
+    if profile is None or registry is None:
         return violations
 
     for path in profile.get("instructions", []):
         if not (root / path).is_file():
             violations.append(f"runtime profile: instruction file {path} does not exist")
 
-    models = {slot.get("model") for slot in slots.get("slots", [])}
+    entries = registry.get("models")
+    if not isinstance(entries, dict):
+        violations.append(f"model registry: {MODEL_REGISTRY} has no 'models' mapping")
+        entries = {}
+    models = set(entries)
     declared_models = [("runtime profile", profile.get("model"))]
     declared_models += [(name, config.get("model"))
                         for name, config in profile.get("agents", {}).items()]
     for label, declared in declared_models:
         if declared is not None and declared not in models:
-            violations.append(f"{label}: model {declared!r} is not allowed by {SLOTS_FILE}")
+            violations.append(f"{label}: model {declared!r} is not allowed by {MODEL_REGISTRY}")
 
     for name, config in profile.get("agents", {}).items():
         permissions = config.get("permissions", [])

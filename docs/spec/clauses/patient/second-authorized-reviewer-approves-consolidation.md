@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.SecondAuthorizedReviewerApprovesConsolidationTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/SecondAuthorizedReviewerApprovesConsolidationTest.java`).
+Test class: `com.aurevia.patient.clauses.SecondAuthorizedReviewerApprovesConsolidationTest`
+(path: `apps/api/src/test/java/com/aurevia/patient/clauses/SecondAuthorizedReviewerApprovesConsolidationTest.java`).
 All four tests are active (none are disabled) and use synthetic fixtures with a mocked
 repository boundary.
 
@@ -34,23 +34,23 @@ repository boundary.
 Production classes exercised through the normal service entry point
 `ConsolidationService.consolidate`:
 
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService` — re-authorizes
+- `com.aurevia.patient.consolidation.ConsolidationService` — re-authorizes
   the approver on every call, refuses an approver equal to `openedBySubject` with
   `SECOND_REVIEWER_REQUIRED`, locks both records, re-checks current state inside the lock
   and appends the association, event and audit in one transaction.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicatePolicy` — bounds the approval
+- `com.aurevia.patient.consolidation.DuplicatePolicy` — bounds the approval
   action to the `tenant_admin` and `privacy_auditor` reviewer roles; `reception` is denied.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateReview` and
-  `com.aurevia.smartclinic.patient.consolidation.Consolidation` — carry the opener and
+- `com.aurevia.patient.consolidation.DuplicateReview` and
+  `com.aurevia.patient.consolidation.Consolidation` — carry the opener and
   approver as distinct provenance fields on the ticket and the appended event.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateRepository` — the SQL boundary
+- `com.aurevia.patient.consolidation.DuplicateRepository` — the SQL boundary
   for membership/role folds, the pair lock and the append-only event inserts.
 
 Source survey (unchanged by this task): the implementation lives in the
-`com.aurevia.smartclinic.patient.consolidation` package (`ConsolidationService`,
+`com.aurevia.patient.consolidation` package (`ConsolidationService`,
 `ConsolidationController`, `DuplicateRepository`, `DuplicatePolicy`, `DuplicateReview`,
 `ReviewDetail`, `Consolidation`); the controller under
-`apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation/ConsolidationController.java`
+`apps/api/src/main/java/com/aurevia/patient/consolidation/ConsolidationController.java`
 delegates to the injected service; the tenant-owned tables and forced-RLS policies for
 reviews, associations, dependencies and consolidations are in the Flyway migrations under
 `db/migrations` (the `V9` duplicate-review schema and its later append-only version folds);

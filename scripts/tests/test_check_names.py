@@ -31,7 +31,7 @@ class CheckNamesTest(unittest.TestCase):
     def test_java_package_segment_is_checked(self):
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp, "src/Foo.java"); p.parent.mkdir()
-            p.write_text("package com.aurevia.smartclinic.api.x_07;\nclass Foo {}\n")
+            p.write_text("package com.aurevia.api.x_07;\nclass Foo {}\n")
             out = check_names.violations(tmp, ["src/Foo.java"], set())
         self.assertEqual(len(out), 1)
         self.assertIn("x_07", out[0])

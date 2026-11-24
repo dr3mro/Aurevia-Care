@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.PreserveOriginalsChecksumsProvenanceTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/PreserveOriginalsChecksumsProvenanceTest.java`),
+Test class: `com.aurevia.messaging.clauses.PreserveOriginalsChecksumsProvenanceTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/PreserveOriginalsChecksumsProvenanceTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile. It recreates a
 fresh database with Flyway, seeds two synthetic tenants with identical local connection,
 unit and patient identifiers, binds tenant context exactly as the HTTP interceptor does,
@@ -47,17 +47,17 @@ and checks the append-only fact ledger under forced row-level security.
 
 Production classes and files exercised by the service/store path:
 
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentService` — `upload` binds the
+- `com.aurevia.messaging.attachments.AttachmentService` — `upload` binds the
   originals into a version-1 attachment, `withState` advances only lifecycle columns on
   scan/publish, `download` returns a mediated handle carrying the preserved checksum and
   object handle, and `view`/`events` expose the append-only fact trail.
-- `com.aurevia.smartclinic.messaging.attachments.JdbcAttachmentStore` — the guarded
+- `com.aurevia.messaging.attachments.JdbcAttachmentStore` — the guarded
   `putAttachment` upsert writes the binding columns once, `attachment` reads them under
   the tenant transaction and `appendEvent` records actor-attributed facts.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentContract` — the `Attachment`,
+- `com.aurevia.messaging.attachments.AttachmentContract` — the `Attachment`,
   `MediatedDownload`, `AttachmentEvent` and `UploadRequest` records that carry the
   metadata, checksum and provenance without exposing payload bytes.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentController` — referenced for
+- `com.aurevia.messaging.attachments.AttachmentController` — referenced for
   the SHA-256/`HexFormat` derivation pattern in `uploadRequest` only; it is not driven by
   this class. The HTTP-side checksum evidence is
   `AttachmentControllerHttpTest.uploadsThroughMultipartScansAndDownloads`, which asserts
@@ -76,7 +76,7 @@ Production classes and files exercised by the service/store path:
 Verified locally with the command and Surefire report:
 
 ```
-SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dgroups=integration -Dtest=PreserveOriginalsChecksumsProvenanceTest test
 <testsuite ... tests="5" errors="0" skipped="0" failures="0" flakes="0">
 ```
@@ -87,7 +87,7 @@ Byte-for-byte original preservation and verification is missing on the patient
 attachment path. The upload adapter hashes the multipart bytes and then discards them;
 the durable row keeps only metadata, a checksum, a private object key/version and an
 event trail, and `MediatedDownload` is a handle with no bytes or URL. No object-store
-port is injected into `com.aurevia.smartclinic.messaging.attachments`, so neither a
+port is injected into `com.aurevia.messaging.attachments`, so neither a
 durable original nor a re-hash verification exists there. A parallel staff slice does
 have such a boundary (`JdbcStaffAttachmentStore.putBytes`/`bytes`,
 `FileSystemObjectStore.getVerified`), but it is a separate, explicitly decoupled table

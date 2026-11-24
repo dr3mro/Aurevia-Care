@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.authz.clauses.MaintainOrganizationFacilityUseridentityMembershipRoleassignmentTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/authz/clauses/MaintainOrganizationFacilityUseridentityMembershipRoleassignmentTest.java`).
+Test class: `com.aurevia.authz.clauses.MaintainOrganizationFacilityUseridentityMembershipRoleassignmentTest`
+(`apps/api/src/test/java/com/aurevia/authz/clauses/MaintainOrganizationFacilityUseridentityMembershipRoleassignmentTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` using the synthetic-auth
 profile and two synthetic tenants with identical local identifiers, following the
 fixtures and database setup of the neighbouring `StaffLifecycleIsolationTest` and
@@ -37,22 +37,22 @@ Test methods (one positive rule proof, four negative refusals):
 
 Production classes the test exercises:
 
-- HTTP entry points: `com.aurevia.smartclinic.web.FacilityController`,
-  `com.aurevia.smartclinic.web.StaffController`,
-  `com.aurevia.smartclinic.staff.StaffInvitationController`,
-  `com.aurevia.smartclinic.authz.history.RoleHistoryController`.
-- Domain services and boundaries: `com.aurevia.smartclinic.tenancy.FacilityService`,
-  `com.aurevia.smartclinic.tenancy.FacilityRepository`,
-  `com.aurevia.smartclinic.staff.StaffService`,
-  `com.aurevia.smartclinic.staff.StaffRepository`,
-  `com.aurevia.smartclinic.staff.StaffInvitationService`,
-  `com.aurevia.smartclinic.authz.ActionPolicy`,
-  `com.aurevia.smartclinic.authz.history.RoleHistoryService`,
-  `com.aurevia.smartclinic.authz.history.JdbcRoleHistoryStore`.
-- Tenant scope: `com.aurevia.smartclinic.tenant.TenantContext`,
-  `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager`,
-  `com.aurevia.smartclinic.web.TenantContextInterceptor`,
-  `com.aurevia.smartclinic.web.ClaimsTenantResolver`.
+- HTTP entry points: `com.aurevia.web.FacilityController`,
+  `com.aurevia.web.StaffController`,
+  `com.aurevia.staff.StaffInvitationController`,
+  `com.aurevia.authz.history.RoleHistoryController`.
+- Domain services and boundaries: `com.aurevia.tenancy.FacilityService`,
+  `com.aurevia.tenancy.FacilityRepository`,
+  `com.aurevia.staff.StaffService`,
+  `com.aurevia.staff.StaffRepository`,
+  `com.aurevia.staff.StaffInvitationService`,
+  `com.aurevia.authz.ActionPolicy`,
+  `com.aurevia.authz.history.RoleHistoryService`,
+  `com.aurevia.authz.history.JdbcRoleHistoryStore`.
+- Tenant scope: `com.aurevia.tenant.TenantContext`,
+  `com.aurevia.tenant.TenantGuardTransactionManager`,
+  `com.aurevia.web.TenantContextInterceptor`,
+  `com.aurevia.web.ClaimsTenantResolver`.
 
 Where the clause is implemented today (survey result):
 

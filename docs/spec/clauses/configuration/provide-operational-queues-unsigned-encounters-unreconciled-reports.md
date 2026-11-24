@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.configuration.clauses.ProvideOperationalQueuesUnsignedEncountersUnreconciledReportsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/configuration/clauses/ProvideOperationalQueuesUnsignedEncountersUnreconciledReportsTest.java`),
+Test class: `com.aurevia.configuration.clauses.ProvideOperationalQueuesUnsignedEncountersUnreconciledReportsTest`
+(`apps/api/src/test/java/com/aurevia/configuration/clauses/ProvideOperationalQueuesUnsignedEncountersUnreconciledReportsTest.java`),
 a pure unit suite over synthetic two-organization fixtures with no Spring context, database
 or HTTP server. It proves only the two projections that exist today:
 
@@ -36,16 +36,16 @@ recorded under Gap instead.
 
 Production classes and files exercised by these tests:
 
-- `com.aurevia.smartclinic.clinical.queues.UnsignedEncounterQueue` — derives
+- `com.aurevia.clinical.queues.UnsignedEncounterQueue` — derives
   `unsigned_encounters` from note revisions (CLN-05).
-- `com.aurevia.smartclinic.config.rosters.MissingCoverageQueue` — derives
+- `com.aurevia.config.rosters.MissingCoverageQueue` — derives
   `missing_coverage` from coverage rosters (XCH-05, ADM-01).
-- `com.aurevia.smartclinic.config.queues.OperationalQueueItem`,
+- `com.aurevia.config.queues.OperationalQueueItem`,
   `OperationalWorkState` and `QueueAction` — the shared work-item model; only `assign`
   and `resolve` verbs exist, with no `retry`, `escalate` or audit-id field.
-- `com.aurevia.smartclinic.clinical.queues.EncounterNoteFact`,
-  `com.aurevia.smartclinic.config.rosters.CoverageRosterFact`,
-  `com.aurevia.smartclinic.clinical.notes.ClinicalNoteRevision` and `NoteState` — the
+- `com.aurevia.clinical.queues.EncounterNoteFact`,
+  `com.aurevia.config.rosters.CoverageRosterFact`,
+  `com.aurevia.clinical.notes.ClinicalNoteRevision` and `NoteState` — the
   immutable, tenant-scoped projection inputs.
 - `infra/ops-queues/ops_queues.py` and `docs/operations/ops-queues/queue-catalog.md` — the
   enforced seven-queue vocabulary, operator roles, action/state rules and audit/export
@@ -53,7 +53,7 @@ Production classes and files exercised by these tests:
 
 Discovery finding: there is **no** operational-queues HTTP controller, Jdbc store, Flyway
 migration or OpenAPI entry under `apps/api/src/main`, `db/migrations` or `contracts`.
-`com.aurevia.smartclinic.web.ConfigurationController` serves `/api/v1/configuration`
+`com.aurevia.web.ConfigurationController` serves `/api/v1/configuration`
 draft, approval and history operations and is unrelated to ADM-02 queues. Adjacent
 controllers in other domains (exchange work items, delivery dead letters, overdue
 follow-ups) do not implement the seven catalog queues.
@@ -61,7 +61,7 @@ follow-ups) do not implement the seven catalog queues.
 Verified locally:
 
 ```
-SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=ProvideOperationalQueuesUnsignedEncountersUnreconciledReportsTest test
 Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
 ```

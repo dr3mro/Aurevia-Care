@@ -23,7 +23,7 @@ repository cannot prove.
 | Commit in controlled batches; reconcile counts and hashes | [Dry run and controlled batches](dry-run-and-batches.md) — bounded, ordered, non-overlapping batches with recomputed digests |
 | Authorized sign-off before changing the source of truth | [Sign-off, provenance and commit gate](sign-off-and-provenance.md) — named approval bound to a content digest, gating `commit_allowed` |
 
-The approved clause itself is in the [product specification](../../../SMARTCLINIC_V1_SPEC.md).
+The approved clause itself is in the [product specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 No new threshold or requirement ID is introduced by this handoff.
 
 ## Three evidence tiers

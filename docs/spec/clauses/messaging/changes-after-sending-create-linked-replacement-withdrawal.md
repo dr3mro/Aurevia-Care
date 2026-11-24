@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.ChangesAfterSendingCreateLinkedReplacementWithdrawalTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ChangesAfterSendingCreateLinkedReplacementWithdrawalTest.java`).
+Test class: `com.aurevia.messaging.clauses.ChangesAfterSendingCreateLinkedReplacementWithdrawalTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/ChangesAfterSendingCreateLinkedReplacementWithdrawalTest.java`).
 All seven tests are active (none are disabled) and use synthetic fixtures only. They drive the real
 HTTP entry point with a standalone MockMvc over the real `InstructionController`, `ApiErrorHandler` and
 `TenantContextInterceptor` under the `synthetic-auth` profile. The store is the Spring
@@ -56,20 +56,20 @@ below are infrastructure, not a behaviour that can be asserted over an existing 
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.messaging.instructions.InstructionController` — thin adapter publishing
+- `com.aurevia.messaging.instructions.InstructionController` — thin adapter publishing
   `POST /api/v1/patient-instructions` and `POST /api/v1/patient-instructions/{threadId}/replace|withdraw`
   with `If-Match` parsing at the boundary, plus the read routes used to assert the stored result.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionService` — `send`, `replace` and `withdraw`
+- `com.aurevia.messaging.instructions.InstructionService` — `send`, `replace` and `withdraw`
   re-derive roles and unit assignment, check the version precondition and drive the revision state
   machine; `replace` links a new revision, appends the notification facts and calls `supersede`.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionContract` — `State.canTransitionTo`
+- `com.aurevia.messaging.instructions.InstructionContract` — `State.canTransitionTo`
   (`SENT` to `SUPERSEDED` or `WITHDRAWN`), `FactType` (`REPLACED`, `SUPERSEDED`, `WITHDRAWN`,
   `DISPATCHED`) and the immutable `Revision`, `Fact` and `View` records.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionActions` — the bounded `WITHDRAW` and
+- `com.aurevia.messaging.instructions.InstructionActions` — the bounded `WITHDRAW` and
   `CLINICAL_SEND` matrix that admits the withdrawal but refuses a non-clinician replacement.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionStore.InMemory` — tenant-keyed synthetic
+- `com.aurevia.messaging.instructions.InstructionStore.InMemory` — tenant-keyed synthetic
   adapter for `supersede`, `withdraw`, `save` and `append` (see Gap for its durability status).
-- `com.aurevia.smartclinic.api.IfMatch` and `ApiErrorHandler` — precondition parsing and the uniform
+- `com.aurevia.api.IfMatch` and `ApiErrorHandler` — precondition parsing and the uniform
   error codes asserted by the negative tests; `web.TenantContextInterceptor` — synthetic identity and
   active-organization binding.
 

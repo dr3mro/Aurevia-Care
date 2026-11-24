@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.NewInboundPatientMessageCreatesReopensWorkTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/NewInboundPatientMessageCreatesReopensWorkTest.java`).
+Test class `com.aurevia.messaging.clauses.NewInboundPatientMessageCreatesReopensWorkTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/NewInboundPatientMessageCreatesReopensWorkTest.java`).
 It is a synthetic, database-free HTTP-level clause test in the same `clauses`
 style as `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: a real
 `ConversationService` and `ConversationController` under standalone MockMvc,
@@ -58,24 +58,24 @@ names are present.
 
 Production classes and files surveyed and exercised by these entry points:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController` —
+- `com.aurevia.messaging.conversations.ConversationController` —
   `POST /api/v1/conversations`, `POST /api/v1/conversations/{id}/reply` and
   `GET /api/v1/conversations/work-queue`; it injects the service and parses
   `If-Match`.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService` —
+- `com.aurevia.messaging.conversations.ConversationService` —
   `open` (derives the patient, unit and connection identities from the verified
   connection, then writes the conversation and the `CREATED` work fact),
   `reply` (re-resolves the connection, writes the message and state transition,
   and appends `REOPENED` only from `RESOLVED`), `workQueue`, `authorize`,
   `requireAccess`, `requireVersion` and `requireWritable`.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationContract`
+- `com.aurevia.messaging.conversations.ConversationContract`
   (`State`, `WorkEventType`, `OpenRequest`, `ReplyRequest`, `View`, `WorkQueue`),
   `ConversationActions` (patient work-item role matrix), `ConversationInputs`,
   `ConversationRepository` (`insertConversation`, `appendEvent`,
   `insertMessage`, `updateState`, `find`, `messages`, `events`, `workQueue`),
   `PatientConnectionVerifier`, `PatientConnectionVerifier.VerifiedConnection`,
-  `com.aurevia.smartclinic.api.ApiErrorHandler`, `com.aurevia.smartclinic.api.IfMatch`
-  and `com.aurevia.smartclinic.tenant.TenantContext`.
+  `com.aurevia.api.ApiErrorHandler`, `com.aurevia.api.IfMatch`
+  and `com.aurevia.tenant.TenantContext`.
 - `db/migrations/V33__conversation_lifecycle.sql` — creates
   `public.work_item_event` as an append-only transition ledger with tenant keys,
   FORCE ROW LEVEL SECURITY and immutability triggers; `public.conversation_message`
@@ -103,7 +103,7 @@ half is proven at the work-item-state level rather than by a first message row.
 
 Verified locally: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=NewInboundPatientMessageCreatesReopensWorkTest test`
 — `Tests run: 9, Failures: 0, Errors: 0, Skipped: 0` (Surefire report for
-`com.aurevia.smartclinic.messaging.clauses.NewInboundPatientMessageCreatesReopensWorkTest`).
+`com.aurevia.messaging.clauses.NewInboundPatientMessageCreatesReopensWorkTest`).
 
 ## Gap
 

@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.documents.clauses.KeepProtectedClinicalPayloadsOutOrdinaryOperationalTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/documents/clauses/KeepProtectedClinicalPayloadsOutOrdinaryOperationalTest.java`),
+Test class `com.aurevia.documents.clauses.KeepProtectedClinicalPayloadsOutOrdinaryOperationalTest`
+(`apps/api/src/test/java/com/aurevia/documents/clauses/KeepProtectedClinicalPayloadsOutOrdinaryOperationalTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants and a distinctive
 synthetic protected-value marker in the original file name:
 
@@ -35,12 +35,12 @@ synthetic protected-value marker in the original file name:
   no detail.
 
 Production classes exercised through the entry point:
-`com.aurevia.smartclinic.documents.DocumentArtifactController` (download and view routes),
-`com.aurevia.smartclinic.documents.QuarantineService`,
-`com.aurevia.smartclinic.documents.DocumentGuard`,
-`com.aurevia.smartclinic.documents.DocumentContract` (`MediatedDownload`, `DocumentEvent`),
-`com.aurevia.smartclinic.documents.UploadValidation`,
-`com.aurevia.smartclinic.api.ApiErrorHandler`, and the RLS-backed `document_event` table from
+`com.aurevia.documents.DocumentArtifactController` (download and view routes),
+`com.aurevia.documents.QuarantineService`,
+`com.aurevia.documents.DocumentGuard`,
+`com.aurevia.documents.DocumentContract` (`MediatedDownload`, `DocumentEvent`),
+`com.aurevia.documents.UploadValidation`,
+`com.aurevia.api.ApiErrorHandler`, and the RLS-backed `document_event` table from
 `db/migrations/V81__document_store.sql`. The routes are described in
 `contracts/documents/document-artifacts.md`; no new route was added, so no OpenAPI edit was needed.
 
@@ -48,12 +48,12 @@ URLs: the mediated handle emits no URL at all and every 201 `Location` header in
 controllers uses an opaque identifier. No HTTP endpoint emits a signed URL. The separate
 `SignedAccessPort` / `S3ObjectStore.signedDownloadUrl` capability is not called outside the storage
 package; its opaque-key-only request, 60-second lifetime and four refusal paths are already proved
-by `apps/api/src/test/java/com/aurevia/smartclinic/documents/storage/S3ObjectStoreTest.java`
+by `apps/api/src/test/java/com/aurevia/documents/storage/S3ObjectStoreTest.java`
 (`signedAccessIsShortLivedAndOnlyForPromotedVerifiedObjects` and the `signedAccessIsDeniedFor*`
 tests). No duplicate adapter test was added here.
 
 Logs, analytics and notifications: static evidence only. A scoped search of
-`apps/api/src/main/java/com/aurevia/smartclinic/documents` and `.../web` found no logger or
+`apps/api/src/main/java/com/aurevia/documents` and `.../web` found no logger or
 `System.out` statement carrying a payload, file name, patient field or URL; no notification,
 outbox or analytics/metrics code exists in the `documents` package, and the request metrics carry
 no document-payload label. The fixtures install no log appender, as required by the brief, so these

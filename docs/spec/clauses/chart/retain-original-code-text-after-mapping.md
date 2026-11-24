@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.chart.clauses.RetainOriginalCodeTextAfterMappingTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/RetainOriginalCodeTextAfterMappingTest.java`),
+Test class `com.aurevia.chart.clauses.RetainOriginalCodeTextAfterMappingTest`
+(`apps/api/src/test/java/com/aurevia/chart/clauses/RetainOriginalCodeTextAfterMappingTest.java`),
 an HTTP-level integration test on real PostgreSQL with Flyway production
 migrations and two synthetic tenants. It proves only this clause:
 
@@ -36,23 +36,23 @@ migrations and two synthetic tenants. It proves only this clause:
 
 Production classes and files exercised by the entry point:
 
-- `com.aurevia.smartclinic.chart.record.ChartController` — the `POST
+- `com.aurevia.chart.record.ChartController` — the `POST
   /api/v1/chart/records/entries`, `POST /entries/{id}/verify` and `GET
   /entries/{id}` entry points.
-- `com.aurevia.smartclinic.chart.record.ChartService` — performs the optional
+- `com.aurevia.chart.record.ChartService` — performs the optional
   catalog mapping inside the tenant transaction and constructs the entry with
   `command.originalText()`/`command.originalCode()` retained verbatim and the
   mapping result in separate fields; `verified(...)` carries both originals to
   the next version; `validate(...)` refuses missing text or unpaired code/system.
-- `com.aurevia.smartclinic.chart.record.ChartEntry` and
-  `com.aurevia.smartclinic.chart.record.RecordEntryCommand` — the domain types
+- `com.aurevia.chart.record.ChartEntry` and
+  `com.aurevia.chart.record.RecordEntryCommand` — the domain types
   whose Javadoc states that submitted code/text are retained on every version.
-- `com.aurevia.smartclinic.chart.record.ChartRepository` — `lookupCatalog(...)`,
+- `com.aurevia.chart.record.ChartRepository` — `lookupCatalog(...)`,
   `insert(...)` and `mapEntry(...)`/read-back of the retained columns.
-- `com.aurevia.smartclinic.web.CatalogController` and
-  `com.aurevia.smartclinic.catalog.CatalogService` — seed the effective diagnosis
+- `com.aurevia.web.CatalogController` and
+  `com.aurevia.catalog.CatalogService` — seed the effective diagnosis
   catalog code that the mapping resolves.
-- `com.aurevia.smartclinic.tenant.TenantContext` and the synthetic-auth headers —
+- `com.aurevia.tenant.TenantContext` and the synthetic-auth headers —
   bind the active organization and actor for each request.
 - `db/migrations/V13__longitudinal_chart.sql` — defines `original_code`,
   `original_text`, `code_system`, `mapped_code`, `mapped_text` and

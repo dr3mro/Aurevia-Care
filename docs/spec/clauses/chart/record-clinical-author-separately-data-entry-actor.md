@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.chart.clauses.RecordClinicalAuthorSeparatelyDataEntryActorTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/RecordClinicalAuthorSeparatelyDataEntryActorTest.java`),
+Test class `com.aurevia.chart.clauses.RecordClinicalAuthorSeparatelyDataEntryActorTest`
+(`apps/api/src/test/java/com/aurevia/chart/clauses/RecordClinicalAuthorSeparatelyDataEntryActorTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from
 the production Flyway migrations, with synthetic subjects and one synthetic
 patient:
@@ -45,37 +45,37 @@ patient:
 
 Production classes exercised through `POST /api/v1/chart/records/entries` and
 `POST /api/v1/chart/records/entries/{id}/verify`:
-`com.aurevia.smartclinic.chart.record.ChartController` (thin HTTP adapter),
-`com.aurevia.smartclinic.chart.record.ChartService` (derives `dataEntryActor`
+`com.aurevia.chart.record.ChartController` (thin HTTP adapter),
+`com.aurevia.chart.record.ChartService` (derives `dataEntryActor`
 from the tenant context, validates authorship and assigns the verifier to an
-open author), `com.aurevia.smartclinic.chart.record.RecordEntryCommand`,
-`com.aurevia.smartclinic.chart.record.ChartEntry`,
-`com.aurevia.smartclinic.chart.record.ChartRepository` (separate
+open author), `com.aurevia.chart.record.RecordEntryCommand`,
+`com.aurevia.chart.record.ChartEntry`,
+`com.aurevia.chart.record.ChartRepository` (separate
 `clinical_author` / `data_entry_actor` columns and the compare-and-set that
-fills the author), `com.aurevia.smartclinic.chart.record.ChartActionPolicy`
+fills the author), `com.aurevia.chart.record.ChartActionPolicy`
 (clinician-only verification) and the tenant RLS/FORCE RLS supplied by
 `db/migrations/V13__longitudinal_chart.sql`.
 
 Corroborating suites already on `main` (not re-tested here):
-`com.aurevia.smartclinic.it.chart.record.ChartRecordIntegrationTest`
+`com.aurevia.it.chart.record.ChartRecordIntegrationTest`
 (`verificationOfRecorderOpenEntryAssignsAccountableClinicalAuthor` asserts the
-same open-author assignment), `com.aurevia.smartclinic.it.chart.record.ChartRecordServiceTest`
+same open-author assignment), `com.aurevia.it.chart.record.ChartRecordServiceTest`
 (service-level author/actor distinctions) and
-`com.aurevia.smartclinic.chart.record.ChartRepositoryVerifyTest` (both outcomes
+`com.aurevia.chart.record.ChartRepositoryVerifyTest` (both outcomes
 of the verification compare-and-set).
 
 Discovery also found the same separation in the clinical-note slice:
-`com.aurevia.smartclinic.clinical.notes.ClinicalNoteService`,
-`com.aurevia.smartclinic.clinical.notes.ClinicalNoteRevision`,
-`com.aurevia.smartclinic.clinical.notes.RevisionInput`,
-`com.aurevia.smartclinic.clinical.notes.NoteRepository` and
+`com.aurevia.clinical.notes.ClinicalNoteService`,
+`com.aurevia.clinical.notes.ClinicalNoteRevision`,
+`com.aurevia.clinical.notes.RevisionInput`,
+`com.aurevia.clinical.notes.NoteRepository` and
 `db/migrations/V15__clinical_note_signing.sql`, which persist
 `clinical_author_subject` and `data_entry_subject` independently. Those classes
 are exercised by their own suite and are not re-tested here. No controller or
 migration outside these two slices stores the pair; the committed OpenAPI
 contract contains no chart-records path or provenance fields.
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=RecordClinicalAuthorSeparatelyDataEntryActorTest test` —
 `tests="8" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Proven by tests" is limited to the clause behaviour above; it does not claim

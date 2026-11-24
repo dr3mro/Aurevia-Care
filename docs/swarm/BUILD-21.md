@@ -43,8 +43,8 @@ contract change. Clinical and human-patient acceptance are not implied.
 
 ## Review owner
 
-`smartclinic-senior-mobile` (bounded, read-only) with `smartclinic-patient-user` and
-`smartclinic-senior-typescript` skills loaded. The specialist returned a static review
+`orevia-senior-mobile` (bounded, read-only) with `orevia-patient-user` and
+`orevia-senior-typescript` skills loaded. The specialist returned a static review
 and **ran no commands** (reviewer/simulated evidence, not tool evidence); it found no
 blocking issue. Its RTL observation was applied (the generic failure text now uses
 `getTextAlign(isRTL)`). No simulated user, clinician or human participant ran the app.

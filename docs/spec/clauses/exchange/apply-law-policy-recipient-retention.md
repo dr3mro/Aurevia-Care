@@ -10,12 +10,12 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.ApplyLawPolicyRecipientRetentionTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/ApplyLawPolicyRecipientRetentionTest.java`).
+Test class: `com.aurevia.exchange.clauses.ApplyLawPolicyRecipientRetentionTest`
+(path: `apps/api/src/test/java/com/aurevia/exchange/clauses/ApplyLawPolicyRecipientRetentionTest.java`).
 All seven tests are active (none are disabled) and use synthetic data on a dedicated PostgreSQL
-database (`smartclinic_xch03_retention_it`) migrated from `db/migrations` with forced row-level
+database (`orevia_xch03_retention_it`) migrated from `db/migrations` with forced row-level
 security. They drive the real HTTP entry point with the synthetic-auth profile, the same fixtures
-and the same style as the neighbouring `com.aurevia.smartclinic.it.exchangetask.ExchangeResponseExchangeTest`.
+and the same style as the neighbouring `com.aurevia.it.exchangetask.ExchangeResponseExchangeTest`.
 
 - `acceptAppliesApprovedPolicyAndLegalHoldToRetainedCopy` — positive proof. A recipient accepts a
   released order with `LEGAL_HOLD` through `POST /api/v1/xch03/orders/{id}/accept` under an
@@ -46,22 +46,22 @@ and the same style as the neighbouring `com.aurevia.smartclinic.it.exchangetask.
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseController` — thin adapter;
+- `com.aurevia.exchange.response.ExchangeResponseController` — thin adapter;
   `POST /api/v1/xch03/orders/{id}/accept` parses `If-Match` and delegates, `GET /api/v1/xch03/orders/{id}`
   returns the view with the retained-copy ledger.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseService` — `accept(String, int, AcceptRequest)`
+- `com.aurevia.exchange.response.ExchangeResponseService` — `accept(String, int, AcceptRequest)`
   validates the policy at the trust boundary before a transaction opens; authorization, version and
   state checks and the retained-copy insert with the `LEGAL_HOLD` flag then run inside one
   tenant-guarded `TransactionTemplate`. `changeResponse` reuses the captured purpose and policy for
   a linked change.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseInputs` — `retentionPolicy(String)`
+- `com.aurevia.exchange.response.ExchangeResponseInputs` — `retentionPolicy(String)`
   accepts only `STANDARD`, `EXTENDED` and `LEGAL_HOLD` and reports other codes as 422
   `INVALID_RETENTION_POLICY`; `code` and `text` validate the permitted purpose.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy` — `EXCHANGE_ACCEPT` is
+- `com.aurevia.exchange.response.ExchangeResponseActionPolicy` — `EXCHANGE_ACCEPT` is
   allowed for recipient roles, not for `reception`, which is the wrong-role test's actor.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseRepository` — `insertRetained` writes
+- `com.aurevia.exchange.response.ExchangeResponseRepository` — `insertRetained` writes
   the purpose, policy and hold flag; `retained` reads the immutable ledger used by the HTTP view.
-- `com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.AcceptRequest` and
+- `com.aurevia.exchange.response.ExchangeResponseCommands.AcceptRequest` and
   `RetainedCopy` — the command payload and the immutable retained-copy projection.
 - `db/migrations/V21__xch03_order_response.sql` — `xch03_retained_copy` with `retention_policy`,
   `legal_hold`, an append-only guard and ENABLE/FORCE row-level security; the forced-RLS check is

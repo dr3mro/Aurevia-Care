@@ -97,7 +97,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.next_patient_version(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.current_patients() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.next_patient_version(uuid) TO smartclinic_app;
-GRANT EXECUTE ON FUNCTION public.current_patients() TO smartclinic_app;
-GRANT SELECT, INSERT ON public.patient_record TO smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.patient_record FROM smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.next_patient_version(uuid) TO orevia_app;
+GRANT EXECUTE ON FUNCTION public.current_patients() TO orevia_app;
+GRANT SELECT, INSERT ON public.patient_record TO orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.patient_record FROM orevia_app;

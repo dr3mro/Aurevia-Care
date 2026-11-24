@@ -1,6 +1,6 @@
 """Evaluate an OPS-07 tenant lifecycle evidence artifact.
 
-The specification fixes the clauses (SMARTCLINIC_V1_SPEC.md, OPS-07): a tenant
+The specification fixes the clauses (PROJECT_V1_SPEC.md, OPS-07): a tenant
 export must carry a manifest, schema version, checksums, authorized documents,
 provenance and audit history; retention jobs must respect legal holds, track
 deletion of active data and expire backups only with approval; representative

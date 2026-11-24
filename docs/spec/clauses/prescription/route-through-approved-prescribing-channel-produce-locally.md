@@ -10,10 +10,10 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.prescription.clauses.RouteThroughApprovedPrescribingChannelProduceLocallyTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/RouteThroughApprovedPrescribingChannelProduceLocallyTest.java`).
+Test class `com.aurevia.prescription.clauses.RouteThroughApprovedPrescribingChannelProduceLocallyTest`
+(`apps/api/src/test/java/com/aurevia/prescription/clauses/RouteThroughApprovedPrescribingChannelProduceLocallyTest.java`).
 It is a synthetic, database-free **service-boundary** proof in the same `clauses` style as
-[TransferHandoffRequiresActiveAssigneeTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest.java):
+[TransferHandoffRequiresActiveAssigneeTest.java](../../../../apps/api/src/test/java/com/aurevia/scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest.java):
 mocked `RxRepository` and `AuditAppender`, a `TransactionTemplate` that runs the real guarded
 callback inline, a real `RxActions` matrix, `TenantContext.set(...)` with a synthetic subject and
 organization, and a synthetic amoxicillin prescription. Every case enters through the command the
@@ -46,7 +46,7 @@ HTTP-plus-database path is the integrator's gate.
 
 Production classes and files surveyed and exercised by these entry points:
 
-- [RxService.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxService.java):
+- [RxService.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxService.java):
   `transmit` (lines 136–162) validates the channel and outcome, re-derives authorization,
   entitlement and channel approval in one tenant-guarded transaction, then branches on
   `RxChannel.isElectronic()` — electronic routes insert one stable submission, record `SUBMITTED`
@@ -55,19 +55,19 @@ Production classes and files surveyed and exercised by these entry points:
   document. `authorize` (433–444), `requireEntitlement` (490–499), `requireApprovedChannel`
   (501–508), `parseChannel` (510–516) and the `locked*`/`require*` guards (446–535) supply the
   refusal paths asserted above.
-- [RxChannel.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxChannel.java):
+- [RxChannel.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxChannel.java):
   `E_PRESCRIBE` (electronic) and `PRINTABLE_LOCAL` (local) wire keys and their families.
-- [LocalPrescriptionPrint.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/LocalPrescriptionPrint.java):
+- [LocalPrescriptionPrint.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/LocalPrescriptionPrint.java):
   `issue(View)` requires state `PRINTED`, the `PRINTABLE_LOCAL` channel and an `ATTESTED` event,
-  producing an immutable [PrintablePrescription.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/PrintablePrescription.java)
+  producing an immutable [PrintablePrescription.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/PrintablePrescription.java)
   that copies the recorded channel and carries no submission or pharmacy outcome.
-- [RxContract.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxContract.java),
-  [RxInputs.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxInputs.java),
-  [RxRepository.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxRepository.java)
-  and [RxActions.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxActions.java):
+- [RxContract.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxContract.java),
+  [RxInputs.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxInputs.java),
+  [RxRepository.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxRepository.java)
+  and [RxActions.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxActions.java):
   commands, state and event vocabularies, input guards, the single SQL boundary and the
   clinician-only transmit permission.
-- [RxController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxController.java):
+- [RxController.java](../../../../apps/api/src/main/java/com/aurevia/prescription/rx/RxController.java):
   `POST /api/v1/prescriptions/{id}/transmit` (line 106) and `GET /api/v1/prescriptions/{id}/printable`
   (line 79) are the HTTP entry points; the controller injects `RxService` and parses `If-Match`.
 - [V44__rx02_prescription_transmission.sql](../../../../db/migrations/V44__rx02_prescription_transmission.sql):

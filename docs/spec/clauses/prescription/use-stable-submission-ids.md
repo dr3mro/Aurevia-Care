@@ -10,13 +10,13 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.prescription.clauses.UseStableSubmissionIdsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/UseStableSubmissionIdsTest.java`),
+Test class: `com.aurevia.prescription.clauses.UseStableSubmissionIdsTest`
+(`apps/api/src/test/java/com/aurevia/prescription/clauses/UseStableSubmissionIdsTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the normal HTTP
 entry points `POST /api/v1/prescriptions`, `/attest`, `/transmit`, `/verify-partner-status`, `/retry`,
 `/renew`, `/confirm-delivery`, `/pharmacy-response` and `/dispensing`. Every test is active (none
 disabled) and uses synthetic fixtures only. The suite recreates its own database
-(`smartclinic_use_stable_submission_ids_it`) from the authoritative Flyway migrations, seeds two
+(`orevia_use_stable_submission_ids_it`) from the authoritative Flyway migrations, seeds two
 tenants with bounded roles, market/entitlement/channel policies and one synthetic patient each, and
 asserts against both the HTTP response and the persisted `rx02_submission` ledger.
 
@@ -51,16 +51,16 @@ the same id.
 
 Production classes exercised through the routes and their transactions:
 
-- `com.aurevia.smartclinic.prescription.rx.RxController` — thin adapter binding the nine prescription
+- `com.aurevia.prescription.rx.RxController` — thin adapter binding the nine prescription
   routes to the service and parsing `If-Match` versions.
-- `com.aurevia.smartclinic.prescription.rx.RxService` — mints the id once on transmit, reuses it on
+- `com.aurevia.prescription.rx.RxService` — mints the id once on transmit, reuses it on
   retry and renewal, and refuses a mismatch on confirm, verify, retry, pharmacy response and
   dispensing.
-- `com.aurevia.smartclinic.prescription.rx.RxInputs` — `newSubmissionId` and canonical UUID
+- `com.aurevia.prescription.rx.RxInputs` — `newSubmissionId` and canonical UUID
   validation of every supplied `submissionId`.
-- `com.aurevia.smartclinic.prescription.rx.RxRepository` — `insertSubmission` (idempotent ledger
+- `com.aurevia.prescription.rx.RxRepository` — `insertSubmission` (idempotent ledger
   insert), `retrySubmission`, `submissionAttempts` and the RLS-bounded reads.
-- `com.aurevia.smartclinic.prescription.rx.RxActions` and `RxContract` — bounded prescriber/pharmacy
+- `com.aurevia.prescription.rx.RxActions` and `RxContract` — bounded prescriber/pharmacy
   roles, state transitions and the view/event wire shape.
 
 The existing suites `it/prescription/RxTransmissionFlowTest` and `prescription/rx/RxUnitTest` cover

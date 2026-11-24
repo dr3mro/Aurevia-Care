@@ -10,10 +10,10 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.events.clauses.ConfirmOrderPatientIdentifiersBeforeLinkingExternalTest`
-(path: [ConfirmOrderPatientIdentifiersBeforeLinkingExternalTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/events/clauses/ConfirmOrderPatientIdentifiersBeforeLinkingExternalTest.java)).
+Test class: `com.aurevia.events.clauses.ConfirmOrderPatientIdentifiersBeforeLinkingExternalTest`
+(path: [ConfirmOrderPatientIdentifiersBeforeLinkingExternalTest.java](../../../../apps/api/src/test/java/com/aurevia/events/clauses/ConfirmOrderPatientIdentifiersBeforeLinkingExternalTest.java)).
 All twelve tests are active, use synthetic UUID fixtures and a fixed clock, and share the synthetic
-[InMemoryDeliveryStore.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/events/InMemoryDeliveryStore.java).
+[InMemoryDeliveryStore.java](../../../../apps/api/src/test/java/com/aurevia/events/InMemoryDeliveryStore.java).
 No production code, existing test, contract or migration was changed by this note.
 
 - `clinicianLinksExternalDataAfterAnAcceptedReceiptConfirmsBothIdentifiers` — positive proof. A clinician
@@ -45,32 +45,32 @@ No production code, existing test, contract or migration was changed by this not
   that is absent in the active tenant is refused; the existence check is re-run at link time.
 - `linkExternalRejectsReceiptWhenTheConfirmedPatientNoLongerExists` — the same re-check for the patient.
 
-The requirement and its boundary are defined in [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md),
+The requirement and its boundary are defined in [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md),
 section 7, row ARC-05.
 
 Production classes exercised through the normal command entry point:
 
-- [DurableEventService.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/events/DurableEventService.java)
+- [DurableEventService.java](../../../../apps/api/src/main/java/com/aurevia/events/DurableEventService.java)
   — `linkExternal` (receipt lookup, `ACCEPTED` outcome, order and patient equality, tenant-scoped existence
   re-check, 404 concealment, link write and audit), `consume` (produces the confirmed or rejected receipt).
-- [DeliveryActions.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/events/DeliveryActions.java)
+- [DeliveryActions.java](../../../../apps/api/src/main/java/com/aurevia/events/DeliveryActions.java)
   — grants `LINK_EXTERNAL` only to `clinician` and `integration_admin`.
-- [DeliveryStore.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/events/DeliveryStore.java)
-  and [JdbcDeliveryStore.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/events/JdbcDeliveryStore.java)
+- [DeliveryStore.java](../../../../apps/api/src/main/java/com/aurevia/events/DeliveryStore.java)
+  and [JdbcDeliveryStore.java](../../../../apps/api/src/main/java/com/aurevia/events/JdbcDeliveryStore.java)
   — `receiptById`, `orderExists`, `patientExists` and `putLink`; the JDBC adapter runs inside a
   tenant-guarded transaction under forced row-level security.
-- [DeliveryController.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/events/DeliveryController.java)
+- [DeliveryController.java](../../../../apps/api/src/main/java/com/aurevia/events/DeliveryController.java)
   — thin HTTP adapter for `POST /api/v1/delivery/external-links`.
-- [DurableEventContract.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/events/DurableEventContract.java)
+- [DurableEventContract.java](../../../../apps/api/src/main/java/com/aurevia/events/DurableEventContract.java)
   — the immutable `ExternalLink`, `ConsumerReceipt`, `LinkRequest` and audit records.
 - [V55__durable_event_outbox.sql](../../../../db/migrations/V55__durable_event_outbox.sql) — creates
   `delivery_receipt` and `delivery_link` with forced row-level security.
-- [TenantContextInterceptor.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/web/TenantContextInterceptor.java)
-  and [ApiErrorHandler.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/api/ApiErrorHandler.java)
+- [TenantContextInterceptor.java](../../../../apps/api/src/main/java/com/aurevia/web/TenantContextInterceptor.java)
+  and [ApiErrorHandler.java](../../../../apps/api/src/main/java/com/aurevia/api/ApiErrorHandler.java)
   — bind the synthetic subject and tenant to the HTTP request and map failures to machine-readable errors.
 
-Complementary existing evidence, not duplicated here: [DurableEventServiceTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/events/DurableEventServiceTest.java)
-already covers the service-level happy path, concealment and existence re-check; [JdbcDeliveryStoreIntegrationTest.java](../../../../apps/api/src/test/java/com/aurevia/smartclinic/it/JdbcDeliveryStoreIntegrationTest.java)
+Complementary existing evidence, not duplicated here: [DurableEventServiceTest.java](../../../../apps/api/src/test/java/com/aurevia/events/DurableEventServiceTest.java)
+already covers the service-level happy path, concealment and existence re-check; [JdbcDeliveryStoreIntegrationTest.java](../../../../apps/api/src/test/java/com/aurevia/it/JdbcDeliveryStoreIntegrationTest.java)
 exercises receipt persistence, cross-tenant row-level security and link insertion against real PostgreSQL.
 
 Contract status observed during the survey (not changed by this task): the route is described in

@@ -176,7 +176,7 @@ class SlotImageCoverageTests(unittest.TestCase):
 
     def test_an_unknown_slot_number_has_no_config(self):
         with self.assertRaises(StopIteration):
-            swarm.slot_config([{"slot": 1, "model": "m1"}], 2)
+            swarm.slot_config([{"slot": 1}], 2)
 
     def test_a_registry_error_means_the_image_is_missing(self):
         class FailingGh:

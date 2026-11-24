@@ -10,13 +10,13 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.PatientIdentityProofingUsesSiteVerifiedEnrollmentTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/PatientIdentityProofingUsesSiteVerifiedEnrollmentTest.java`).
+Test class: `com.aurevia.patient.clauses.PatientIdentityProofingUsesSiteVerifiedEnrollmentTest`
+(path: `apps/api/src/test/java/com/aurevia/patient/clauses/PatientIdentityProofingUsesSiteVerifiedEnrollmentTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration` using the
 `synthetic-auth` profile and two synthetic tenants, applying Flyway migrations
 from `db/migrations`. It follows the fixtures and database setup of the
 neighbouring clause tests and of
-`com.aurevia.smartclinic.it.patient.identity.StaleInvitationIntegrationTest`.
+`com.aurevia.it.patient.identity.StaleInvitationIntegrationTest`.
 All four tests are active (none disabled) and pass with synthetic data only.
 
 Test methods (one positive rule proof, three negative refusals):
@@ -44,18 +44,18 @@ Test methods (one positive rule proof, three negative refusals):
 
 Production classes exercised through the normal HTTP entry points:
 
-- Controller: `com.aurevia.smartclinic.patient.identity.IdentityProofingController`
+- Controller: `com.aurevia.patient.identity.IdentityProofingController`
   (`POST /api/v1/patient-identity/accounts`, `/invitations`, `/links/claim`,
   `/links/unlink`, `/links/reverify` and `GET /accounts/{subject}/access`).
-- Domain and boundary: `com.aurevia.smartclinic.patient.identity.IdentityProofingService`,
+- Domain and boundary: `com.aurevia.patient.identity.IdentityProofingService`,
   `IdentityProofingRepository`, `IdentityActionPolicy` and the value types
   `PatientAccount`, `InvitationIssue`, `InvitationRecord` and `ChartLink`.
-- Platform: `com.aurevia.smartclinic.tenant.TenantContext` and the
-  `com.aurevia.smartclinic.web.TenantContextInterceptor`.
+- Platform: `com.aurevia.tenant.TenantContext` and the
+  `com.aurevia.web.TenantContextInterceptor`.
 
 Where the clause is implemented today (source survey result):
 
-- Package `apps/api/src/main/java/com/aurevia/smartclinic/patient/identity` holds
+- Package `apps/api/src/main/java/com/aurevia/patient/identity` holds
   the controller, service, SQL repository, bounded action policy and immutable
   value records listed above. `IdentityProofingService.enroll` performs
   site-verified enrollment; `issueInvitation` bounds purpose and TTL and stores
@@ -72,9 +72,9 @@ Where the clause is implemented today (source survey result):
   `/api/v1/patient-identity/**` paths. The routes are live in the controller and
   exercised over HTTP by this test; publishing them in the contract is a
   separate cross-boundary documentation change and was not made here.
-- Neighbouring evidence: `com.aurevia.smartclinic.it.patientidentity.IdentityProofingCoverageTest`,
+- Neighbouring evidence: `com.aurevia.it.patientidentity.IdentityProofingCoverageTest`,
   `IdentityProofingIsolationTest`, `IdentityProofingUnitTest`, and
-  `com.aurevia.smartclinic.it.patient.identity.StaleInvitationIntegrationTest`,
+  `com.aurevia.it.patient.identity.StaleInvitationIntegrationTest`,
   `OutstandingInvitationRevocationTest`, `IdentityLinkProjectionContractTest`.
 
 ## Gap

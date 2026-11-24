@@ -15,7 +15,7 @@ _AMBIENT_EXACT = {
     "BASE_BRANCH", "BRANCH", "BRANCH_PREFIX", "CHECK_SCRIPT", "CONFLICTED", "EVENT_NAME",
     "FIX_COMMENT", "ISSUE_NUMBER", "MERGE_ATTEMPTS", "MODE", "MODEL", "PR_NUMBER",
     "REQUIRE_POSTGRES", "REVIEWERS", "SCHEDULE", "SEGMENT", "SEGMENTS", "SYNC_ONLY",
-    "AGENT_TIMEOUT", "AUDIT_FOCUS", "SMARTCLINIC_PG_ADMIN", "NVD_API_KEY",
+    "AGENT_TIMEOUT", "AUDIT_FOCUS", "OREVIA_PG_ADMIN", "NVD_API_KEY",
 }
 _AMBIENT_PREFIXES = ("GITHUB_", "GH_", "RUNNER_", "SWARM", "PUSH_", "OPENCODE", "STORY_",
                      "GIT_")
@@ -43,9 +43,14 @@ def copy_pack():
     """Copy the files the pack checks use into a scratch repository."""
     tmp = Path(tempfile.mkdtemp())
     (tmp / ".github").mkdir()
-    for name in ("opencode.json", "SMARTCLINIC_V1_SPEC.md", ".github/opencode.ci.json"):
+    (tmp / ".opencode").mkdir()
+    for folder in ("agents", "skills", "config", "setup"):
+        shutil.copytree(ROOT / ".opencode" / folder, tmp / ".opencode" / folder,
+                        ignore=shutil.ignore_patterns("__pycache__", "tests"))
+    for name in (".opencode/opencode.json", ".opencode/config/PROJECT_V1_SPEC.md",
+                 ".opencode/opencode.ci.json"):
         shutil.copy(ROOT / name, tmp / name)
-    for folder in (".opencode", "scripts", "tasks"):
+    for folder in ("scripts", "tasks"):
         shutil.copytree(ROOT / folder, tmp / folder,
                         ignore=shutil.ignore_patterns("__pycache__", "tests"))
     return tmp

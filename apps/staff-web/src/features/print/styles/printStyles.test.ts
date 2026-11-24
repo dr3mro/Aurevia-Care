@@ -3,7 +3,7 @@ import { printStyleId, printStylesheet } from './printStyles';
 
 describe('browser print stylesheet', () => {
   it('has a stable element id for the injected stylesheet', () => {
-    expect(printStyleId).toBe('smartclinic-print-preview-styles');
+    expect(printStyleId).toBe('orevia-print-preview-styles');
   });
 
   it('uses A4 paper with 15 mm margins for the browser print path', () => {

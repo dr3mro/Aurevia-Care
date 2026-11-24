@@ -16,12 +16,12 @@ site sign-off — is external evidence that a repository test cannot produce.
 
 ## Evidence
 
-Requirement: RAD-01, row at [SMARTCLINIC_V1_SPEC.md](../../../../SMARTCLINIC_V1_SPEC.md)
+Requirement: RAD-01, row at [PROJECT_V1_SPEC.md](../../../../.opencode/config/PROJECT_V1_SPEC.md)
 line 77. All paths below are repository files; no external or invented artifact
 is cited.
 
-Test class `com.aurevia.smartclinic.radiology.clauses.UsePartnerDiagnosticWorkstationTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/radiology/clauses/UsePartnerDiagnosticWorkstationTest.java`),
+Test class `com.aurevia.radiology.clauses.UsePartnerDiagnosticWorkstationTest`
+(`apps/api/src/test/java/com/aurevia/radiology/clauses/UsePartnerDiagnosticWorkstationTest.java`),
 a synthetic, database-free standalone MockMvc test using the same harness as
 `ImagingControllerHttpTest`: `ApiErrorHandler` as controller advice,
 `TenantContextInterceptor` under the `synthetic-auth` profile, the
@@ -55,18 +55,18 @@ code, and `service.read` / `service.events` prove the refusal appended nothing.
 
 Production classes exercised by that path:
 
-- `com.aurevia.smartclinic.radiology.ImagingController.linkStudy` binds
+- `com.aurevia.radiology.ImagingController.linkStudy` binds
   `StudyLinkRequest.workstationRef` from the wire into the domain command;
   identity and active roles come from the request context, never the body.
-- `com.aurevia.smartclinic.radiology.ImagingService.associateStudy` requires a
+- `com.aurevia.radiology.ImagingService.associateStudy` requires a
   non-blank workstation reference, enforces the `ACCESSIONED` to
   `STUDY_ASSOCIATED` transition and records the reference on the new revision;
   `copyOrder` carries it into later revisions.
-- `com.aurevia.smartclinic.radiology.ImagingOrder` stores `workstationRef`
+- `com.aurevia.radiology.ImagingOrder` stores `workstationRef`
   beside the Study Instance UID; `RadCommands.AssociateStudyCommand` and
   `RadRules.mayAssociate` carry the value and the role gate.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` and
-  `com.aurevia.smartclinic.api.ApiErrorHandler` provide the tenant boundary and
+- `com.aurevia.web.TenantContextInterceptor` and
+  `com.aurevia.api.ApiErrorHandler` provide the tenant boundary and
   the machine-readable error bodies the refusals assert.
 
 "No image pixels are fetched" is structural evidence, not an executable

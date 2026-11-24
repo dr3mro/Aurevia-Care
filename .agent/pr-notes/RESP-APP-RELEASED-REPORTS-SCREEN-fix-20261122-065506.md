@@ -26,7 +26,7 @@ I re-proved that conclusion with fresh tool runs this pass:
 
 Evidence provenance: **tool** evidence for every command below (I executed and
 observed each run). **Reviewer** evidence is the earlier advisory
-`smartclinic-senior-mobile` review carried forward; no new delegation was made
+`orevia-senior-mobile` review carried forward; no new delegation was made
 because there is no code delta to review. No simulated-user or human-participant
 evidence was collected this pass and no clinical or patient acceptance is
 claimed. No patient data, credential or raw log appears in this note.
@@ -38,7 +38,7 @@ PAT-01, PAT-02, UX-01 per
 `docs/decisions/0005-patient-app-tablets.md`,
 `docs/design/accessibility-patterns.md` §9 and
 `docs/design/rtl-and-localization.md` §1. Specification wording confirmed from
-`SMARTCLINIC_V1_SPEC.md` lines 85–86 and 90.
+`PROJECT_V1_SPEC.md` lines 85–86 and 90.
 
 Acceptance mapping (entry point → test), all green this run:
 
@@ -63,7 +63,7 @@ patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) definition of done
+Senior React Native and Expo (`orevia-senior-mobile`) definition of done
 met. The advisory senior-mobile review recorded in earlier hand-off notes found
 no material gap; its two non-blocking observations (no `rowGap` on wrapped
 panes; RTL test uses `toContain` while exact order is asserted by the matrix)
@@ -215,7 +215,7 @@ device remains a separate launch gate and is not claimed here.
    `needs-human` and cannot merge.
 5. **Pre-existing conflict markers in three Java HL7 files (out of scope,
    flagged, not fixed).** Markers exist inside comments in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
    and on `origin/main` too; compile/tests are unaffected and they are unrelated
    to this story.
 6. **Non-failing React `act()` warning** from `src/app/PatientResource.tsx:54`

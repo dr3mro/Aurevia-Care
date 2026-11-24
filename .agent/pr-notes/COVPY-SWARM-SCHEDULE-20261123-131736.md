@@ -24,8 +24,8 @@ Routine — one in-scope test file, no runtime, contract, schema or gate change.
 
 ## Review owner
 
-smartclinic-test-engineer, smartclinic-plan-reviewer, smartclinic-code-reviewer,
-smartclinic-coverage-auditor, smartclinic-devsecops (read-only, advisory).
+orevia-test-engineer, orevia-plan-reviewer, orevia-code-reviewer,
+orevia-coverage-auditor, orevia-devsecops (read-only, advisory).
 
 ## Data changes
 
@@ -152,10 +152,10 @@ or critical results.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- orevia-plan-reviewer: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: GO
 
 ## Findings
 

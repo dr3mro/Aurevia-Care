@@ -30,8 +30,8 @@ Verified acceptance mapping (each item present in the record):
 
 ## Affected requirements
 
-- Primary (task): WEB-07 (`SMARTCLINIC_V1_SPEC.md:155`) and UX-01 (`:90`) — both defined in the specification.
-- Referenced in the record and validated by `check-docs.py`: PRD-06, PAT-02, WEB-02, WEB-10, IAM-01, IAM-02 — all defined in `SMARTCLINIC_V1_SPEC.md`.
+- Primary (task): WEB-07 (`PROJECT_V1_SPEC.md:155`) and UX-01 (`:90`) — both defined in the specification.
+- Referenced in the record and validated by `check-docs.py`: PRD-06, PAT-02, WEB-02, WEB-10, IAM-01, IAM-02 — all defined in `PROJECT_V1_SPEC.md`.
 - Authoritative source cross-check performed in this pass (tool reads): WEB-07 at `:155` confirms the 1280/768 floors and plain unsupported-browser message; `docs/design/screens-and-navigation.md:21` confirms the sub-768 "use a larger screen" notice with no data and `:16` confirms the 768–1279 icon rail; `docs/design/accessibility-patterns.md:27` (1.4.10) and `:111` confirm 320 px reflow, the labelled scroll region and the `display: none` prohibition; `docs/design/token-contract.md:492` confirms `size.target.min` 24 × 24 px and `size.target.comfortable` 44 × 44 px. The record is accurate against all of them.
 
 ## Risk class
@@ -40,7 +40,7 @@ Routine — documentation only (`docs/WORKFLOW.md`). No code, configuration, API
 
 ## Review owner
 
-Product (record owner per the story; status Proposed). The earlier run recorded a simulated `smartclinic-ux-reviewer` review that found no blocking defect. This pass re-checked the record directly against the TODO/task acceptance items (tool/file-read evidence, not a new independent reviewer). No human, clinical or patient evidence.
+Product (record owner per the story; status Proposed). The earlier run recorded a simulated `orevia-ux-reviewer` review that found no blocking defect. This pass re-checked the record directly against the TODO/task acceptance items (tool/file-read evidence, not a new independent reviewer). No human, clinical or patient evidence.
 
 ## Data changes
 
@@ -65,14 +65,14 @@ Commands run from the repository root unless stated, with their final lines:
 - Explicit typecheck final lines, as requested in the task prompt:
   `cd apps/staff-web && npm run typecheck` →
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   typecheck EXIT=0
   ```
   No `error TS…` was produced.
 
-Entry-point-to-test trace: not applicable to the changed file — the change adds only a Markdown decision record with no executable entry point. The authoritative verification for the record's content is the read-back against `docs/decisions/template.md`, WEB-07, the design/accessibility/token docs and the requirement IDs of `SMARTCLINIC_V1_SPEC.md`, plus the passing `check-docs.py` link/ID gate. The staff-web gate was run as the prompt's mandatory whole-repository health check and to capture typecheck evidence; no staff-web file was changed by this story.
+Entry-point-to-test trace: not applicable to the changed file — the change adds only a Markdown decision record with no executable entry point. The authoritative verification for the record's content is the read-back against `docs/decisions/template.md`, WEB-07, the design/accessibility/token docs and the requirement IDs of `PROJECT_V1_SPEC.md`, plus the passing `check-docs.py` link/ID gate. The staff-web gate was run as the prompt's mandatory whole-repository health check and to capture typecheck evidence; no staff-web file was changed by this story.
 
 ## Coverage
 
@@ -87,13 +87,13 @@ Not required: a documentation record does not change signed data, cross-organiza
 - The story work was already complete on this branch when this fix pass began: `git diff --name-status origin/main...HEAD` showed only the two added files (the decision record and the earlier run's notes file). No document or code edit was therefore required; re-verification and this hand-off are the deliverable.
 - Deliberate non-execution (recorded, not a failure): `scripts/check.sh` was not run. It chains `apps/api/check.sh`, the full `mvn verify` Java/database/integration gate, which the task prompt explicitly forbids workers from running (it takes over ten minutes and ends the run as a timeout). The applicable, story-scoped gate is `python3 -I scripts/check-docs.py`, which passed.
 - `bash scripts/quick-check.sh` exits 1 on a pre-existing shellcheck **SC2015** info in protected `scripts/agent-run.sh:51` (`[[ -f ... ]] && python3 ... || true`). The same line is present on `origin/main` (`git show origin/main:scripts/agent-run.sh`), so this is unrelated to this documentation-only change and outside the story's scope; it was not edited. The worker/integrator gate judges pre-existing failures separately.
-- Spec drift (hand-off, not fixed here): `SMARTCLINIC_V1_SPEC.md` WEB-07 (`:155`) and `docs/design/screens-and-navigation.md:21` still state the 768 px floor and the sub-768 "use a larger screen" notice with no data. Per the story and AGENTS.md the swarm may not edit the specification; a person must amend WEB-07 and the design doc. Until then the compact layout floor in code follows this decision (down to 320 px; width alone must not trigger the unsupported-browser page). The concrete code point a later implementation story must change is `isSupportedBrowser(userAgent, width)` in `apps/staff-web/src/features/system/browserSupport.ts` (READY-32), which currently returns false below 768 px.
+- Spec drift (hand-off, not fixed here): `PROJECT_V1_SPEC.md` WEB-07 (`:155`) and `docs/design/screens-and-navigation.md:21` still state the 768 px floor and the sub-768 "use a larger screen" notice with no data. Per the story and AGENTS.md the swarm may not edit the specification; a person must amend WEB-07 and the design doc. Until then the compact layout floor in code follows this decision (down to 320 px; width alone must not trigger the unsupported-browser page). The concrete code point a later implementation story must change is `isSupportedBrowser(userAgent, width)` in `apps/staff-web/src/features/system/browserSupport.ts` (READY-32), which currently returns false below 768 px.
 - No defects found in the record and no decision or evidence missing, so work was not stopped.
 
 ## Lessons for workers
 
 - A documentation-only story's canonical gate is `python3 -I scripts/check-docs.py` (plus `check-secrets.py`). Do not run `scripts/check.sh` from a worker: it chains `apps/api/check.sh` (`mvn verify`, the full integration gate) that the prompt forbids. `scripts/quick-check.sh` may fail on pre-existing protected-script shellcheck findings — check whether the same line exists on `origin/main` before treating it as caused by your change.
 - When a fix-pass branch already contains the complete story work, verify it against the acceptance items and record the evidence rather than rewriting the file; one notes file per run keeps parallel workers from colliding.
-- `check-docs.py` validates every requirement ID mentioned in Markdown outside the spec against the IDs in `SMARTCLINIC_V1_SPEC.md`; only use defined IDs and verify every relative link target exists before claiming the gate passes.
+- `check-docs.py` validates every requirement ID mentioned in Markdown outside the spec against the IDs in `PROJECT_V1_SPEC.md`; only use defined IDs and verify every relative link target exists before claiming the gate passes.
 - The decision-record house style (records 0001–0003) uses frontmatter Status / Date / Requirement IDs / Owner and the template headings Context / Decision / Alternatives considered / Consequences and evidence; follow it rather than inventing a new shape.
 - For the mandated frontend definition of done on a docs-only story, run `bash apps/staff-web/check.sh` and paste the explicit `npm run typecheck` final lines; the console stack traces from deliberate throw/guard tests do not indicate a failure — the test summary and exit code do.

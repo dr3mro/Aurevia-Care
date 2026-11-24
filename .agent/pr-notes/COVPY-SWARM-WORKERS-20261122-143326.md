@@ -22,8 +22,8 @@ contract, migration or deployment change.
 
 ## Review owner
 
-Senior Python Tooling (`smartclinic-senior-python`) and Test Engineer
-(`smartclinic-test-engineer`). Evidence is from executed tool commands, not a
+Senior Python Tooling (`orevia-senior-python`) and Test Engineer
+(`orevia-test-engineer`). Evidence is from executed tool commands, not a
 reviewer, simulated user or human participant.
 
 ## Data changes
@@ -116,7 +116,7 @@ information, tenant boundary or downtime behavior is touched.
   so nothing needed removal.
 - Pre-existing defect outside this task's scope: `origin/main` (and my branch
   HEAD `1db647eb`) contains committed Git conflict markers in three files:
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`
   (lines 6, 10), `Hl7Parser.java` (14, 18) and `Hl7Segment.java` (10, 14), all
   from `origin/swarm/BUILD-37-469`. `git grep -nE '^(<<<<<<<|>>>>>>>) '` lists
   them. A merge was already clean (`Already up to date`), so these are committed

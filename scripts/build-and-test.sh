@@ -299,7 +299,7 @@ fi
 if [[ "$SKIP_DOCKER" == "0" ]]; then
   if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
     # The gates above already ran; do not repeat the whole check suite inside verify.sh.
-    run_step "docker image build and smoke test" env SMARTCLINIC_SKIP_CHECKS=1 bash scripts/verify.sh
+    run_step "docker image build and smoke test" env OREVIA_SKIP_CHECKS=1 bash scripts/verify.sh
   else
     skip_step "docker image build and smoke test" "docker not available"
   fi

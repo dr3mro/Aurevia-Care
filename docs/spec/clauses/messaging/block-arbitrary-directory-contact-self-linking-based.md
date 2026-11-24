@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.BlockArbitraryDirectoryContactSelfLinkingBasedTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/BlockArbitraryDirectoryContactSelfLinkingBasedTest.java`),
+Test class `com.aurevia.messaging.clauses.BlockArbitraryDirectoryContactSelfLinkingBasedTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/BlockArbitraryDirectoryContactSelfLinkingBasedTest.java`),
 eight active tests with synthetic fixtures only (no `@Disabled`, no real patient data):
 
 - `patientOpensOnlyThroughVerifiedActiveConnection` — a patient open command persists the
@@ -47,27 +47,27 @@ eight active tests with synthetic fixtures only (no `@Disabled`, no real patient
 Production classes exercised through their normal server-side command entry points
 (the same ones the controllers call), with deterministic test fixtures at the store boundary:
 
-- `com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService` —
+- `com.aurevia.messaging.units.CareUnitDirectoryService` —
   `eligibleUnits` lists only active, unconsumed, unexpired verified relationships; `connect`
   requires an exact unit, context and reference match (422 `NO_ELIGIBLE_RELATIONSHIP` when
   absent); `requireActive`, `requireActiveConnectionById`, `resolveConnection` and `isUsable`
   re-resolve the connection on every protected action and conceal foreign charts and tenants.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService` — `open` persists only
+- `com.aurevia.messaging.conversations.ConversationService` — `open` persists only
   the identities derived from the verified connection; `reply`, `requireAccess`, `requireVersion`
   and `requireWritable` re-authorize and re-resolve on every action, refuse wrong-unit staff
   and closed or stale threads, and bind a conversation to one connection and one unit.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationUnitResolver.fromDirectory`,
+- `com.aurevia.messaging.conversations.ConversationUnitResolver.fromDirectory`,
   `PatientConnectionVerifier` and `ConversationActions.allowsUnit` — derive the bounded unit
   key from tenant directory data, deny an unknown category and bind each staff role to a
   single care unit; no route or field moves a conversation to another unit.
-- `com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.RelationshipRef` — a verified
+- `com.aurevia.messaging.enrollment.EnrollmentContract.RelationshipRef` — a verified
   care relationship with no demographic fields, so a shared phone, name or date of birth can
   never establish a connection on its own.
 
 Source survey (unchanged by this task): the relevant production packages are
-`apps/api/src/main/java/com/aurevia/smartclinic/messaging/units`,
-`apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations` and
-`apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment`; the web controllers are
+`apps/api/src/main/java/com/aurevia/messaging/units`,
+`apps/api/src/main/java/com/aurevia/messaging/conversations` and
+`apps/api/src/main/java/com/aurevia/messaging/enrollment`; the web controllers are
 `CareUnitController` and `ConversationController`; the forced-RLS tables are `care_unit`,
 `eligible_relationship`, `patient_unit_connection` and `messaging_audit` from
 `db/migrations/V60__care_units.sql`, and `patient_link`, `conversation`, `conversation_message`

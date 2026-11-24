@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.UseAuditedSupportWorkflowCorrectErroneousConsolidationTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/UseAuditedSupportWorkflowCorrectErroneousConsolidationTest.java`).
+Test class: `com.aurevia.patient.clauses.UseAuditedSupportWorkflowCorrectErroneousConsolidationTest`
+(path: `apps/api/src/test/java/com/aurevia/patient/clauses/UseAuditedSupportWorkflowCorrectErroneousConsolidationTest.java`).
 All five tests are active (no `@Disabled`) and pass with synthetic UUID fixtures only.
 Each request goes through the real HTTP entry point
 `POST /api/v1/duplicate-reviews/{reviewId}/correct` in
@@ -47,35 +47,35 @@ Mockito boundary.
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationController` — thin
+- `com.aurevia.patient.consolidation.ConsolidationController` — thin
   adapter binding `POST /{reviewId}/correct`, `If-Match` and `ReasonRequest`; it
   injects the service and maps domain failures through
-  `com.aurevia.smartclinic.api.ApiErrorHandler`.
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService.correct` — the
+  `com.aurevia.api.ApiErrorHandler`.
+- `com.aurevia.patient.consolidation.ConsolidationService.correct` — the
   audited support workflow: admin-only authorization, current-version precondition,
   `CONSOLIDATED` state check, pair lock, post-lock patient read, append of a `REVERSED`
   association and a `CORRECTED` event, and `CONSOLIDATION_CORRECT` audit.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicatePolicy` — `CORRECT` is
+- `com.aurevia.patient.consolidation.DuplicatePolicy` — `CORRECT` is
   granted only to `tenant_admin` (reviewers and reception are refused).
-- `com.aurevia.smartclinic.patient.consolidation.Consolidation` — immutable event
+- `com.aurevia.patient.consolidation.Consolidation` — immutable event
   whose prior version, approver and reason survive a later correction.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateRepository` — RLS-bounded
+- `com.aurevia.patient.consolidation.DuplicateRepository` — RLS-bounded
   append operations (`lockPair`, `insertAssociation`, `insertConsolidation`,
   `appendAudit`) mocked at the boundary; the migration-backed implementation is in
   `db/migrations` and is proven by the real-database HTTP suite below.
-- `com.aurevia.smartclinic.api.IfMatch`, `com.aurevia.smartclinic.tenant.TenantContext`
-  and `com.aurevia.smartclinic.web.TenantContextInterceptor` — precondition parsing
+- `com.aurevia.api.IfMatch`, `com.aurevia.tenant.TenantContext`
+  and `com.aurevia.web.TenantContextInterceptor` — precondition parsing
   and per-request tenant binding used by the entry point.
 
 Source survey (found, not changed by this task): the implementation lives in
-`apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation/`
+`apps/api/src/main/java/com/aurevia/patient/consolidation/`
 (`ConsolidationService.correct`, `ConsolidationController.correct`,
 `DuplicatePolicy.CORRECT`, `Consolidation`, `DuplicateReview`, `ReviewDetail`,
 `DuplicateRepository.insertAssociation` / `insertConsolidation` / `appendAudit`),
 with neighbouring identity code in `patient/identity/` (`IdentityProofingService`,
 `IdentityProofingController`, `ChartLink`, `IdentityActionPolicy`). The real-PostgreSQL
 HTTP-level acceptance already exists in
-`apps/api/src/test/java/com/aurevia/smartclinic/it/patientidentity/ConsolidationIsolationTest.java`
+`apps/api/src/test/java/com/aurevia/it/patientidentity/ConsolidationIsolationTest.java`
 (`correctionReversesVisibilityAndAuditsAndHistoryIsImmutable`) and
 `ConsolidationServiceTest` covers the unit branches of `correct`. The append-only
 association and consolidation tables are created by Flyway migration

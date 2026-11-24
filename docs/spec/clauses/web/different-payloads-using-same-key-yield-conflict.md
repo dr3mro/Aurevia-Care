@@ -10,12 +10,12 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.web.clauses.DifferentPayloadsUsingSameKeyYieldConflictTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/DifferentPayloadsUsingSameKeyYieldConflictTest.java`).
+Test class: `com.aurevia.web.clauses.DifferentPayloadsUsingSameKeyYieldConflictTest`
+(path: `apps/api/src/test/java/com/aurevia/web/clauses/DifferentPayloadsUsingSameKeyYieldConflictTest.java`).
 All seven tests are active (none are disabled) and use synthetic data only. They drive the real
 `POST /api/v1/order-entry/drafts/{id}/place` route through the Spring MVC pipeline with the
 synthetic-auth profile, reusing the same controller, service, interceptor, error handler and fixture
-style as the neighbouring `com.aurevia.smartclinic.orderentry.place.PlaceOrderControllerTest`.
+style as the neighbouring `com.aurevia.orderentry.place.PlaceOrderControllerTest`.
 
 - `differentPayloadsUnderOneKeyConflict` — positive proof of this clause. Two drafts carry different
   catalog items, clinical questions and delivery modes. Placing the first with key `shared-key`
@@ -41,27 +41,27 @@ style as the neighbouring `com.aurevia.smartclinic.orderentry.place.PlaceOrderCo
 
 Production classes and contracts traced from the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.orderentry.place.PlaceOrderController` — thin adapter;
+- `com.aurevia.orderentry.place.PlaceOrderController` — thin adapter;
   `POST /api/v1/order-entry/drafts/{id}/place` binds `If-Match` and `Idempotency-Key` and delegates to
   the injected service. `GET /api/v1/order-entry/orders/{id}` is used to prove which orders exist.
-- `com.aurevia.smartclinic.orderentry.place.OrderPlacementService` — `place` builds a scope of
+- `com.aurevia.orderentry.place.OrderPlacementService` — `place` builds a scope of
   `(organizationId, subject, "orders.place", key)`, checks the ordering role, and when that scope was
   already processed compares `existing.draftId()` with the incoming draft: a different draft raises
   `ApiException(409, IDEMPOTENCY_CONFLICT)`, while the same draft replays the original order. The
   version precondition is checked only on the first placement, before the processed entry is
   recorded. `get` conceals another tenant's order with 404.
-- `com.aurevia.smartclinic.orderentry.place.PlacedOrderRequest` — validates the payload at the trust
+- `com.aurevia.orderentry.place.PlacedOrderRequest` — validates the payload at the trust
   boundary and stores its `canonicalPayload()` fingerprint on the placed order; that fingerprint is
   recorded but is not compared on replay. The idempotency decision in this implementation compares
   draft identifiers, and each saved draft is an immutable payload snapshot, so distinct drafts in
   this proof carry distinct payloads.
-- `com.aurevia.smartclinic.api.contract.IdempotencyKey` and `ApiErrorCode` — parse the header into
+- `com.aurevia.api.contract.IdempotencyKey` and `ApiErrorCode` — parse the header into
   428 `IDEMPOTENCY_KEY_REQUIRED` / 422 `INVALID_IDEMPOTENCY_KEY`, and own the 409
-  `IDEMPOTENCY_CONFLICT` code. `com.aurevia.smartclinic.api.IfMatch` supplies the 428/422 version
+  `IDEMPOTENCY_CONFLICT` code. `com.aurevia.api.IfMatch` supplies the 428/422 version
   precondition parsing; the 412 `STALE_VERSION` is decided by `OrderPlacementService.requireVersion`.
-- `com.aurevia.smartclinic.orderentry.place.OrderDraft` and `PlacedOrder` — the immutable snapshot
+- `com.aurevia.orderentry.place.OrderDraft` and `PlacedOrder` — the immutable snapshot
   and placed-order records carried through the responses; placement consumes the draft.
-- `com.aurevia.smartclinic.api.ApiErrorHandler` and `com.aurevia.smartclinic.web.TenantContextInterceptor`
+- `com.aurevia.api.ApiErrorHandler` and `com.aurevia.web.TenantContextInterceptor`
   — the machine-readable `$.code` error contract and the tenant/subject context derived from the
   authenticated request.
 

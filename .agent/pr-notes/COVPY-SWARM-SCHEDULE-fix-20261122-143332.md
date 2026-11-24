@@ -31,8 +31,8 @@ Routine — one new synthetic test file; no runtime, contract, schema or gate ch
 
 ## Review owner
 
-smartclinic-senior-python (bounded review requested for this fix pass) and
-smartclinic-test-engineer. Advisory only; no production change.
+orevia-senior-python (bounded review requested for this fix pass) and
+orevia-test-engineer. Advisory only; no production change.
 
 ## Data changes
 
@@ -145,12 +145,12 @@ prescribing or critical results.
   (`python coverage: every changed script line is covered`, exit 0) and the
   assigned range is at 100%.
 - Three unrelated Java files in `HEAD` and `origin/main` still contain committed
-  conflict markers: `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`
+  conflict markers: `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`
   (lines 6–10), `Hl7Parser.java` (14–18) and `Hl7Segment.java` (10–14), all
   `>>>>>>> origin/swarm/BUILD-37-469`. They predate this change and are outside
   this task's `scope`; left untouched for the integrator. A `git grep` check
   confirms these are the only markers and they are identical in `origin/main`.
-- A bounded `smartclinic-senior-python` review found one weak assertion:
+- A bounded `orevia-senior-python` review found one weak assertion:
   `test_a_reset_leaves_every_other_task_alone` seeded the "other" task `CW-002`
   with `attempts: 0` and asserted it stayed `"0"`, which passes even if a reset
   wrongly rewrote every task. Fixed in this pass by seeding `CW-002` with

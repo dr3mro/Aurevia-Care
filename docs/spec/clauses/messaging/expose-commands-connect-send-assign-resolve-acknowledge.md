@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.ExposeCommandsConnectSendAssignResolveAcknowledgeTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ExposeCommandsConnectSendAssignResolveAcknowledgeTest.java`),
+Test class `com.aurevia.messaging.clauses.ExposeCommandsConnectSendAssignResolveAcknowledgeTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/ExposeCommandsConnectSendAssignResolveAcknowledgeTest.java`),
 a real-PostgreSQL HTTP integration test under the `synthetic-auth` profile with a
 fresh Flyway database, `RestClient` and the `X-Synthetic-Subject` /
 `X-Active-Organization` headers. Every request goes through the real Spring MVC
@@ -46,21 +46,21 @@ charts and subjects are used.
 
 Production classes and routes exercised by this entry point:
 
-- connect — `com.aurevia.smartclinic.messaging.units.CareUnitController`
+- connect — `com.aurevia.messaging.units.CareUnitController`
   (`POST /api/v1/patient-unit-connections`) and
   `CareUnitDirectoryService.connect`, backed by `JdbcMessagingStore` and the
   `care_unit` / `eligible_relationship` tables of `db/migrations/V60__care_units.sql`.
-- send (message) — `com.aurevia.smartclinic.messaging.conversations.ConversationController`
+- send (message) — `com.aurevia.messaging.conversations.ConversationController`
   (`POST /api/v1/conversations`, `POST /api/v1/conversations/{id}/reply`) and
   `ConversationService`, backed by `ConversationRepository` and
   `db/migrations/V33__conversation_lifecycle.sql`.
-- send (instruction) — `com.aurevia.smartclinic.messaging.instructions.InstructionController`
+- send (instruction) — `com.aurevia.messaging.instructions.InstructionController`
   (`POST /api/v1/patient-instructions`) and `InstructionService.send`.
 - assign / resolve — `ConversationController` (`POST /api/v1/conversations/{id}/assign`,
   `POST /api/v1/conversations/{id}/resolve`) and `ConversationService.assign` /
   `ConversationService.resolve`, guarded by `ConversationActions` and
   `IfMatch` version preconditions.
-- acknowledge — `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactController`
+- acknowledge — `com.aurevia.messaging.acknowledgment.InstructionFactController`
   (`POST /api/v1/instructions/acknowledge`) and `InstructionFactService.acknowledge`,
   backed by `JdbcInstructionFactStore` and `db/migrations/V63__instruction_facts.sql`;
   retries are deduplicated by a durable client id.
@@ -69,8 +69,8 @@ Production classes and routes exercised by this entry point:
   `InstructionService.withdraw` / `InstructionService.replace`, whose legal
   transitions are defined by `InstructionContract.State.canTransitionTo`.
 
-`com.aurevia.smartclinic.web.TenantContextInterceptor` binds the tenant from the
-synthetic headers and `com.aurevia.smartclinic.api.IfMatch` parses the optimistic
+`com.aurevia.web.TenantContextInterceptor` binds the tenant from the
+synthetic headers and `com.aurevia.api.IfMatch` parses the optimistic
 version precondition used by the irreversible commands.
 
 ## Gap
@@ -79,7 +79,7 @@ All six commands have live HTTP routes; none needs a disabled placeholder. Two
 adjacent gaps prevent the clause from being called fully proven:
 
 1. Instruction send, withdraw and replace are served by
-   `apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions/InstructionStore.java:83`
+   `apps/api/src/main/java/com/aurevia/messaging/instructions/InstructionStore.java:83`
    (`InstructionStore.InMemory`), the only instruction store in `src/main`.
    There is no `JdbcInstructionStore` and no instruction-thread/revision
    migration (`V63` creates only `instruction_fact_*` tables), so instruction

@@ -1,6 +1,8 @@
-# One small layer per worker slot on top of the base image. It bakes that slot's
-# own OpenCode setup (model and config). The slot's free account credential is
-# never in the image: it is injected at run time from OPENCODE_API_KEY_<slot>.
+# One small layer per worker slot on top of the base image. It bakes only shared
+# OpenCode settings (autoupdate, share and any slot config); the model is chosen
+# at run time by scripts/model-router.py and is never baked into an image.
+# The slot's free account credential is never in the image: it is injected at
+# run time from OPENCODE_API_KEY_<slot>.
 ARG BASE
 FROM ${BASE}
 ARG SLOT

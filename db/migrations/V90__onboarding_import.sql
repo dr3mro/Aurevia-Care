@@ -51,5 +51,5 @@ CREATE TRIGGER import_record_provenance_no_truncate
     BEFORE TRUNCATE ON public.import_record_provenance
     FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation();
 
-GRANT SELECT, INSERT ON public.import_record_provenance TO smartclinic_app;
-REVOKE UPDATE, DELETE, TRUNCATE ON public.import_record_provenance FROM smartclinic_app;
+GRANT SELECT, INSERT ON public.import_record_provenance TO orevia_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.import_record_provenance FROM orevia_app;

@@ -48,12 +48,12 @@ data-flow boundary changed.
 
 ## Review owner
 
-- `smartclinic-senior-react` — simulated review: **no actionable in-scope
+- `orevia-senior-react` — simulated review: **no actionable in-scope
   findings**. Confirmed logical-only styling, `.page`/`.grid-2`/`.touch`
   behaviour, preserved exports and 100 % per-file coverage. Flagged that a real
   "no horizontal scroll at 320 px" measurement needs a Playwright project
   (out of scope, owned by the RESP-E2E stories).
-- `smartclinic-ux-reviewer` — simulated review: **no blocking structural or
+- `orevia-ux-reviewer` — simulated review: **no blocking structural or
   semantic defects**. Confirmed roles/labels, single keyboard stop, BDI
   isolation, RTL mirroring, wrapping and no hidden clinical fields. Two
   optional suggestions (label the patient ID; make duplicate candidates
@@ -106,7 +106,7 @@ Commands actually run (tool evidence):
 4. Typecheck (final lines pasted as required):
    `cd apps/staff-web && npm run typecheck` →
    ```
-   > smartclinic-staff-web@0.1.0 typecheck
+   > orevia-staff-web@0.1.0 typecheck
    > tsc --noEmit -p tsconfig.json
    ```
    `TYPECHECK_EXIT=0` (no errors emitted).
@@ -163,7 +163,7 @@ Playwright/E2E work and are not claimed here.
 
 - Pre-existing defect outside scope: three committed files on `HEAD` still
   contain unresolved merge-conflict markers (`<<<<<<< HEAD` / `>>>>>>> origin/swarm/BUILD-37-469`):
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `.../Hl7Parser.java`, `.../Hl7Segment.java`. Verified with
   `git show HEAD:<path> | grep -nE '^(<<<<<<<|>>>>>>>) '`. This is inherited
   from `origin/main`, not introduced by this story, and is outside the declared
@@ -208,7 +208,7 @@ Playwright/E2E work and are not claimed here.
   `./node_modules/.bin/vitest` for targeted runs.
 
 Evidence provenance: all commands above were executed with tools in this
-worker; the two specialist reviews were simulated (`smartclinic-senior-react`,
-`smartclinic-ux-reviewer`). No simulated-user walkthrough, human or clinical
+worker; the two specialist reviews were simulated (`orevia-senior-react`,
+`orevia-ux-reviewer`). No simulated-user walkthrough, human or clinical
 participant evidence is claimed. All data is synthetic; no patient data,
 credential or real identifier appears in the change or this note.

@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.chart.clauses.PerinatalCapturesBirthNeonatalHistoryTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/PerinatalCapturesBirthNeonatalHistoryTest.java`).
+Test class: `com.aurevia.chart.clauses.PerinatalCapturesBirthNeonatalHistoryTest`
+(`apps/api/src/test/java/com/aurevia/chart/clauses/PerinatalCapturesBirthNeonatalHistoryTest.java`).
 It uses the same synthetic fixtures and service construction as the neighbouring
 CLN-04 acceptance test `TemplateNoteAcceptanceTest`: an `InMemoryTemplateStore`
 behind `TemplateService`, one synthetic organization, and a tenant_admin,
@@ -49,22 +49,22 @@ Missing API surface (recorded here rather than as a skipped test):
 
 Production classes and files exercised by the enabled request path:
 
-- `com.aurevia.smartclinic.clinical.templates.BaselineTemplates` —
+- `com.aurevia.clinical.templates.BaselineTemplates` —
   `fieldsFor(PERINATAL)` supplies the synthetic `birthHistory` and `neonatalHistory`
   field definitions; the same definitions are frozen in
   `db/migrations/V87__baseline_templates.sql` as approved baseline version one.
-- `com.aurevia.smartclinic.clinical.templates.TemplateKind`, `FieldType`,
+- `com.aurevia.clinical.templates.TemplateKind`, `FieldType`,
   `FieldDefinition`, `FieldValue`, `TemplateNoteRevision`, `TemplateVersion`,
   `ValidationReport` and `SavedNoteRevision` — the domain types that carry and
   freeze the two histories and their field meanings.
-- `com.aurevia.smartclinic.clinical.templates.TemplateService` — the public entry
+- `com.aurevia.clinical.templates.TemplateService` — the public entry
   point for `defineVersion`, `approveVersion`, `validate`, `saveNote` and
   `savedNote`, including role gating and the required-field, blank-value and
   frozen-snapshot rules.
-- `com.aurevia.smartclinic.clinical.templates.TemplateStore`, instantiated with the
-  synthetic `com.aurevia.smartclinic.clinical.templates.InMemoryTemplateStore` adapter
+- `com.aurevia.clinical.templates.TemplateStore`, instantiated with the
+  synthetic `com.aurevia.clinical.templates.InMemoryTemplateStore` adapter
   that currently lives under `src/main` (a pre-existing condition, unchanged here).
-  The durable adapter is `com.aurevia.smartclinic.clinical.templates.JdbcTemplateStore`
+  The durable adapter is `com.aurevia.clinical.templates.JdbcTemplateStore`
   over `db/migrations/V80__template_store.sql` (tenant-owned, forced-RLS tables).
 
 The production migrations `V80__template_store.sql` and
@@ -83,7 +83,7 @@ status is "Partly proven" rather than "Proven by tests".
 
 To close the gap:
 
-1. Add a thin controller under `apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates`
+1. Add a thin controller under `apps/api/src/main/java/com/aurevia/clinical/templates`
    that injects `TemplateService`, derives each `TemplateActor` from active
    membership on every request, and exposes the define, approve, validate, save
    and read commands (including perinatal note capture).

@@ -8,7 +8,7 @@ Result: the in-scope deliverable is complete, correct and already committed on t
 
 ## Affected requirements
 
-XCH-06 and IAM-05 (primary). Supporting IDs cited in the pack and confirmed defined in `SMARTCLINIC_V1_SPEC.md`: OPS-01, OPS-02, PAT-02, PAT-03, ADM-01, PRD-06, plus the G5 row of section 9 and section 10. Acceptance mapping: task steps 1–3 → the eight required headings; "Not approved" status line and empty approval cells → the "decide nothing" constraint (task step 3); `python3 -I scripts/check-docs.py` → the mandatory check (task step 3 / TODO.md step 6).
+XCH-06 and IAM-05 (primary). Supporting IDs cited in the pack and confirmed defined in `PROJECT_V1_SPEC.md`: OPS-01, OPS-02, PAT-02, PAT-03, ADM-01, PRD-06, plus the G5 row of section 9 and section 10. Acceptance mapping: task steps 1–3 → the eight required headings; "Not approved" status line and empty approval cells → the "decide nothing" constraint (task step 3); `python3 -I scripts/check-docs.py` → the mandatory check (task step 3 / TODO.md step 6).
 
 ## Risk class
 
@@ -16,7 +16,7 @@ Safety-critical by subject matter (patient release, sensitive information, ident
 
 ## Review owner
 
-Privacy lead and clinical safety lead (section 10 of `SMARTCLINIC_V1_SPEC.md`), who own the human decision in `S-G5-03`. No human clinical or privacy feedback was supplied or claimed. The original run recorded a bounded independent `smartclinic-qa-reviewer` review (simulated reviewer evidence) with "no findings".
+Privacy lead and clinical safety lead (section 10 of `PROJECT_V1_SPEC.md`), who own the human decision in `S-G5-03`. No human clinical or privacy feedback was supplied or claimed. The original run recorded a bounded independent `orevia-qa-reviewer` review (simulated reviewer evidence) with "no findings".
 
 ## Data changes
 
@@ -64,7 +64,7 @@ All eight required headings present in order; status line is `Not approved`. Bot
 
 3. "Decide nothing" safety scan (executed `grep -nEi`): no dates, jurisdiction names (e.g. HIPAA/GDPR/New York/California), partner/person names or invented values in the pack. All named roles are the generic section-10 roles.
 
-4. Section 10 row read directly from `SMARTCLINIC_V1_SPEC.md:184` and matched against the pack: decision text "Result release, sensitive information handling and patient identity recovery", accountable roles "Privacy lead and clinical safety lead", evidence "Approved rules, enrollment rehearsal and access review" — exact match.
+4. Section 10 row read directly from `PROJECT_V1_SPEC.md:184` and matched against the pack: decision text "Result release, sensitive information handling and patient identity recovery", accountable roles "Privacy lead and clinical safety lead", evidence "Approved rules, enrollment rehearsal and access review" — exact match.
 
 5. Reported check failure traced (executed `shellcheck` / `git log` / `git show`):
 
@@ -87,7 +87,7 @@ Not applicable: this pass added no production line, branch, method, class, scrip
 
 ## Clinical and architecture review
 
-Not claimed. The pack was prepared for the privacy lead and clinical safety lead and attests to no clinical or human acceptance. The original run recorded a bounded independent `smartclinic-qa-reviewer` review (simulated reviewer evidence) with "no findings" covering the "decides nothing" constraints, link/heading accuracy and requirement-ID validity; this pass independently re-verified those points with tool evidence and reached the same conclusion. No human clinical or privacy feedback was supplied or claimed.
+Not claimed. The pack was prepared for the privacy lead and clinical safety lead and attests to no clinical or human acceptance. The original run recorded a bounded independent `orevia-qa-reviewer` review (simulated reviewer evidence) with "no findings" covering the "decides nothing" constraints, link/heading accuracy and requirement-ID validity; this pass independently re-verified those points with tool evidence and reached the same conclusion. No human clinical or privacy feedback was supplied or claimed.
 
 ## Findings
 

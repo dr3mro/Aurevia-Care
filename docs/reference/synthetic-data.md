@@ -64,16 +64,16 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
   `apps/staff-web/tests/fixtures/synthetic.test.ts`.
 - The same two tenant UUIDs, under constant names such as `ORG`, `ORG_A`, `ORG_B`
   and `OTHER_ORG`, are used throughout the API tests, for example
-  `apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffInvitationIntegrationTest.java`,
-  `apps/api/src/test/java/com/aurevia/smartclinic/web/ClaimsTenantResolverTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask/Xch03ExchangeTest.java`.
-- `apps/api/src/test/java/com/aurevia/smartclinic/api/contract/ApiContractPrimitivesTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/api/contract/IdempotencyLedgerTest.java`
+  `apps/api/src/test/java/com/aurevia/staff/StaffInvitationIntegrationTest.java`,
+  `apps/api/src/test/java/com/aurevia/web/ClaimsTenantResolverTest.java`
+  and `apps/api/src/test/java/com/aurevia/it/exchangetask/Xch03ExchangeTest.java`.
+- `apps/api/src/test/java/com/aurevia/api/contract/ApiContractPrimitivesTest.java`
+  and `apps/api/src/test/java/com/aurevia/api/contract/IdempotencyLedgerTest.java`
   use stepped and reversed-stepped UUIDs for a tenant and its peer.
 - Textual tenant IDs such as `org-a`, `org-b`, `org-rad` and `org-other` appear in
   pure-domain tests, for example
-  `apps/api/src/test/java/com/aurevia/smartclinic/api/authorization/CommandAuthorizationTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/radiology/StudyLinkReviewTest.java`.
+  `apps/api/src/test/java/com/aurevia/api/authorization/CommandAuthorizationTest.java`
+  and `apps/api/src/test/java/com/aurevia/radiology/StudyLinkReviewTest.java`.
 - The onboarding fixture declares issuer `ORG-A` in
   `infra/s_g5_09/fixtures/synthetic_onboarding_manifest.json`.
 
@@ -83,14 +83,14 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
   beginning with `Synthetic`, scoped to tenant A, is in
   `apps/staff-web/src/fixtures/synthetic.ts`; the same UUID is the `FACILITY`
   constant in
-  `apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffInvitationServiceTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/staff/JdbcStaffInvitationStoreTest.java`.
+  `apps/api/src/test/java/com/aurevia/staff/StaffInvitationServiceTest.java`
+  and `apps/api/src/test/java/com/aurevia/staff/JdbcStaffInvitationStoreTest.java`.
 - Short facility/collection codes `MAIN`, `LAB` and `SYN` appear in
   `apps/staff-web/src/features/scheduling/fixtures.ts` (the `LAB` code belongs to
   tenant B and the `SYN` code to a generated walk-in booking).
 - Tenant-scoped care units are seeded in the messaging store tests, for example
-  `apps/api/src/test/java/com/aurevia/smartclinic/messaging/units/CareUnitDirectoryServiceTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/messaging/units/InMemoryMessagingStore.java`.
+  `apps/api/src/test/java/com/aurevia/messaging/units/CareUnitDirectoryServiceTest.java`
+  and `apps/api/src/test/java/com/aurevia/messaging/units/InMemoryMessagingStore.java`.
 
 ## Staff, subjects and roles
 
@@ -100,22 +100,22 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
 - HTTP tests pass the `X-Synthetic-Subject` header with role-like subjects (an
   admin, a reception user, a clinician, an auditor, a patient and an "unlinked"
   value) alongside `X-Active-Organization`; see
-  `apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffListControllerTest.java`,
-  `apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffInvitationControllerTest.java`,
-  `apps/api/src/test/java/com/aurevia/smartclinic/messaging/evidence/GateEvidenceControllerHttpTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentControllerHttpTest.java`.
+  `apps/api/src/test/java/com/aurevia/staff/StaffListControllerTest.java`,
+  `apps/api/src/test/java/com/aurevia/staff/StaffInvitationControllerTest.java`,
+  `apps/api/src/test/java/com/aurevia/messaging/evidence/GateEvidenceControllerHttpTest.java`
+  and `apps/api/src/test/java/com/aurevia/messaging/appointments/PatientAppointmentControllerHttpTest.java`.
   The `X-Synthetic-Subject` header is only honoured under the `synthetic-auth`
   profile and is not an authentication mechanism.
 - Unit tests set a `TenantContext` with subjects such as `admin-a`, `reception-a`,
   `clinician-a`, `patient-user`, `user-123` and `subject-1`; representative files
-  are `apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffServiceTest.java`,
-  `apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions/InstructionControllerTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/web/TenantContextInterceptorJwtTest.java`.
+  are `apps/api/src/test/java/com/aurevia/staff/StaffServiceTest.java`,
+  `apps/api/src/test/java/com/aurevia/messaging/instructions/InstructionControllerTest.java`
+  and `apps/api/src/test/java/com/aurevia/web/TenantContextInterceptorJwtTest.java`.
 - Invitation acceptance tests use the `synthetic-token-` prefix token; see
-  `apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffInvitationServiceTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffInvitationControllerTest.java`.
+  `apps/api/src/test/java/com/aurevia/staff/StaffInvitationServiceTest.java`
+  and `apps/api/src/test/java/com/aurevia/staff/StaffInvitationControllerTest.java`.
 - Synthetic in-memory membership/role seeds are in
-  `apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance/InMemoryMessagingGovernanceStore.java`.
+  `apps/api/src/test/java/com/aurevia/messaging/governance/InMemoryMessagingGovernanceStore.java`.
 
 ## Patients
 
@@ -126,13 +126,13 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
   under a different issuer scope to prove issuer-scoped uniqueness.
 - Reception-side registration is exercised with a synthetic tenant and a
   `reception-a` actor in
-  `apps/api/src/test/java/com/aurevia/smartclinic/patient/PatientServiceTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/it/PatientRegistrationTest.java`.
+  `apps/api/src/test/java/com/aurevia/patient/PatientServiceTest.java`
+  and `apps/api/src/test/java/com/aurevia/it/PatientRegistrationTest.java`.
 - Repeated-letter patient UUIDs (the `a`, `b`, `c` variants) are used across the
   messaging, events, instructions and lab tests, for example
-  `apps/api/src/test/java/com/aurevia/smartclinic/events/DurableEventServiceTest.java`,
-  `apps/api/src/test/java/com/aurevia/smartclinic/messaging/acknowledgment/InstructionFactsTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/lab/accession/AccessionListServiceTest.java`.
+  `apps/api/src/test/java/com/aurevia/events/DurableEventServiceTest.java`,
+  `apps/api/src/test/java/com/aurevia/messaging/acknowledgment/InstructionFactsTest.java`
+  and `apps/api/src/test/java/com/aurevia/lab/accession/AccessionListServiceTest.java`.
 - The partner event fixture uses a repeated-letter patient UUID in
   `contracts/events/fixtures/partner-events.json`.
 - Patient names are never copied into documentation: only the pattern (a synthetic
@@ -142,19 +142,19 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
 
 - A short `order-1` / `order-2` identifier with an `ACC-`-prefixed accession and
   synthetic source/destination labels (`src-lab`, `dest-clinic`) is used in
-  `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/ResultRulesTest.java`
-  and `apps/api/src/test/java/com/aurevia/smartclinic/exchange/result/ResultRepositoryInsertOrderTest.java`.
+  `apps/api/src/test/java/com/aurevia/it/exchangeresult/ResultRulesTest.java`
+  and `apps/api/src/test/java/com/aurevia/exchange/result/ResultRepositoryInsertOrderTest.java`.
 - HTTP result tests use an `ORD-`-prefixed example order ID in
-  `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/ResultControllerHttpTest.java`
+  `apps/api/src/test/java/com/aurevia/it/exchangeresult/ResultControllerHttpTest.java`
   and `ORD-S`-prefixed IDs in
-  `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/ResultRoutingIntegrationTest.java`.
+  `apps/api/src/test/java/com/aurevia/it/exchangeresult/ResultRoutingIntegrationTest.java`.
 - The XCH-03 exchange tests build order IDs from a tenant and a small index and
   use a `LAB-REQ-`-prefixed requisition association in
-  `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask/Xch03ExchangeTest.java`.
+  `apps/api/src/test/java/com/aurevia/it/exchangetask/Xch03ExchangeTest.java`.
 - A repeated-letter report UUID and order ID are in
-  `apps/api/src/test/java/com/aurevia/smartclinic/exchange/result/ResultRepositoryInsertReportTest.java`.
+  `apps/api/src/test/java/com/aurevia/exchange/result/ResultRepositoryInsertReportTest.java`.
 - The partner conformance fixture drives a six-revision history for `order-1` in
-  `apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/PartnerConformanceFixturesTest.java`.
+  `apps/api/src/test/java/com/aurevia/it/exchange/PartnerConformanceFixturesTest.java`.
 - `contracts/events/fixtures/partner-events.json` holds external event IDs with an
   `ext-` prefix, an `observation.result` event type, a `partner-lab` namespace and
   scenarios for duplicate delivery, correction, out-of-order replay, a partial
@@ -170,7 +170,7 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
   `apps/staff-web/src/features/scheduling/fixtures.ts`; appointment IDs use the
   `apt-` prefix and resource IDs use `room-` / `clinician-` prefixes.
 - Fixed instants, including a spring-forward gap, are in
-  `apps/api/src/test/java/com/aurevia/smartclinic/messaging/service/ServiceHoursCalculatorTest.java`.
+  `apps/api/src/test/java/com/aurevia/messaging/service/ServiceHoursCalculatorTest.java`.
 
 ## Other synthetic fixture files
 
@@ -208,7 +208,7 @@ ID is a deliberate isolation test, not a data-quality problem.
 1. Reuse an existing value or pattern from this catalogue before inventing a new
    one. Put shared web fixtures in `apps/staff-web/src/fixtures/synthetic.ts` or the
    relevant `apps/staff-web/src/features/<domain>/fixtures.ts`, API fixtures in the
-   owning test class under `apps/api/src/test/java/com/aurevia/smartclinic/`, and
+   owning test class under `apps/api/src/test/java/com/aurevia/`, and
    mobile fixtures in the relevant `apps/patient-mobile/src/features/<domain>/`
    file. Keep the fixture next to the test that uses it.
 2. Use a repeated-digit/letter UUID or a typed prefix plus a small number. Give a

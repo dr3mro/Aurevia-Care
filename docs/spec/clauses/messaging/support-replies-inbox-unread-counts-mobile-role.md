@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.SupportRepliesInboxUnreadCountsMobileRoleTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/SupportRepliesInboxUnreadCountsMobileRoleTest.java`).
+Test class: `com.aurevia.messaging.clauses.SupportRepliesInboxUnreadCountsMobileRoleTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/SupportRepliesInboxUnreadCountsMobileRoleTest.java`).
 All six tests are active (none disabled), use synthetic data only and drive existing
 HTTP routes against a real PostgreSQL database seeded with the production Flyway
 migrations. Two synthetic organizations share the local patient MRN and account
@@ -50,22 +50,22 @@ subject so tenant isolation is observable.
 
 Production classes exercised through the normal HTTP entry points:
 
-- `com.aurevia.smartclinic.messaging.conversations.ConversationController` —
+- `com.aurevia.messaging.conversations.ConversationController` —
   thin adapter binding `POST /api/v1/conversations/{id}/reply`,
   `GET /api/v1/conversations/inbox` and `GET /api/v1/conversations/work-queue`;
   the service is injected, not constructed in the controller.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationService` —
+- `com.aurevia.messaging.conversations.ConversationService` —
   `reply`, `inbox` and `workQueue` re-derive membership, roles and unit
   capability inside the tenant transaction, enforce the version and closed-state
   guards, and reopen a resolved work item with a `REOPENED` work event.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationRepository` —
+- `com.aurevia.messaging.conversations.ConversationRepository` —
   `inbox` derives the unread count in SQL from staff messages with sequence
   greater than `patient_read_sequence`; `workQueue` filters `unit_key` to the
   caller's eligible units and excludes `closed` threads.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationContract` —
+- `com.aurevia.messaging.conversations.ConversationContract` —
   `Inbox`/`InboxEntry.unreadCount`, `WorkQueue`, the four lifecycle states and
   the `WorkEventType.REOPENED` fact.
-- `com.aurevia.smartclinic.messaging.conversations.ConversationActions` —
+- `com.aurevia.messaging.conversations.ConversationActions` —
   patient versus staff permission sets and the per-unit role matrix
   (`lab_verifier` is LAB-only; patient has `INBOX_READ` but no `WORK_QUEUE_READ`).
 - `db/migrations/V33__conversation_lifecycle.sql` — the existing conversation,

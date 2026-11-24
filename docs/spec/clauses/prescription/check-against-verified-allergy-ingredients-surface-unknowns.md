@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.prescription.clauses.CheckAgainstVerifiedAllergyIngredientsSurfaceUnknownsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/prescription/clauses/CheckAgainstVerifiedAllergyIngredientsSurfaceUnknownsTest.java`),
+Test class: `com.aurevia.prescription.clauses.CheckAgainstVerifiedAllergyIngredientsSurfaceUnknownsTest`
+(`apps/api/src/test/java/com/aurevia/prescription/clauses/CheckAgainstVerifiedAllergyIngredientsSurfaceUnknownsTest.java`),
 a real-PostgreSQL HTTP integration test under the `synthetic-auth` profile. It drives
 `POST /api/v1/prescription-drafts/{id}/allergy-check` and the conflict-guarded
 `POST /api/v1/prescription-drafts/{id}/select-medication` through the real HTTP
@@ -54,23 +54,23 @@ synthetic patients whose allergy statuses are verified-list, verified-none, abse
 
 Production classes and files exercised by this request path:
 
-- `com.aurevia.smartclinic.prescription.PrescriptionController` — the thin HTTP
+- `com.aurevia.prescription.PrescriptionController` — the thin HTTP
   adapter for `POST /api/v1/prescription-drafts/{id}/allergy-check` and the
   medication-selection route.
-- `com.aurevia.smartclinic.prescription.PrescriptionService` — tenant-guarded,
+- `com.aurevia.prescription.PrescriptionService` — tenant-guarded,
   version-checked commands; folds the allergy check, refuses an unreviewed
   conflict with `ALLERGY_OVERRIDE_REQUIRED`, and binds the override snapshot to
   the exact draft revision.
-- `com.aurevia.smartclinic.prescription.AllergyChecker` — the pure decision rule:
+- `com.aurevia.prescription.AllergyChecker` — the pure decision rule:
   only verified exact ingredient matches conflict, only approved group matches
   warn, and absent, unknown, unverified or unmapped data is retained and surfaced
   as unresolved; free-text name similarity is never evidence.
-- `com.aurevia.smartclinic.prescription.PrescriptionContract` — the allergy status,
+- `com.aurevia.prescription.PrescriptionContract` — the allergy status,
   finding kind, check outcome, ingredient identity and check result types.
-- `com.aurevia.smartclinic.prescription.PrescriptionActions` — the action matrix
+- `com.aurevia.prescription.PrescriptionActions` — the action matrix
   that reserves prescribing and grants decision support only to clinical and
   governance roles.
-- `com.aurevia.smartclinic.prescription.PrescriptionRepository` — the RLS-bounded
+- `com.aurevia.prescription.PrescriptionRepository` — the RLS-bounded
   fold over the latest allergy status and all allergy statements; absence of a
   status row maps to the explicit `UNKNOWN` state.
 - `db/migrations/V43__prescription_drafts.sql` — the catalog, allergy, draft and

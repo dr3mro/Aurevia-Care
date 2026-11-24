@@ -22,7 +22,7 @@ notes, which become the pull request description.
 Evidence source: executed tool commands run by me in this cloud worker, plus
 the first worker's committed tool-run notes for the strict-typecheck rationale.
 No reviewer, simulated user or human participant produced new evidence in this
-pass. The earlier bounded `smartclinic-senior-react` review was simulated and
+pass. The earlier bounded `orevia-senior-react` review was simulated and
 advisory (it edited no files).
 
 ## Affected requirements
@@ -49,7 +49,7 @@ production file was changed in this fix pass either.
 
 ## Review owner
 
-`smartclinic-senior-react` (bounded, advisory review recorded by the first
+`orevia-senior-react` (bounded, advisory review recorded by the first
 worker). Strict TypeScript rules were applied with a focused `tsc` and ESLint
 on the config because the module `tsconfig.json` excludes `e2e/`. No specialist
 edited any file.
@@ -86,7 +86,7 @@ worker; evidence is from executed tool commands, not a reviewer or human.
    - `gen:api: generated client matches the contract`
    - typecheck final lines (mandatory paste, no `error TS…`):
      ```
-     > smartclinic-staff-web@0.1.0 typecheck
+     > orevia-staff-web@0.1.0 typecheck
      > tsc --noEmit -p tsconfig.json
      ```
    - `> eslint . --max-warnings 0` (no warnings)
@@ -202,7 +202,7 @@ involved; all evidence is synthetic and tool-generated.
    green, and nothing in those areas changed since.
 3. **Pre-existing committed conflict markers outside scope (tool evidence).**
    `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds three markers in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/`
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/`
    (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). They are in
    HEAD **and** in `origin/main`, introduced by `b6b349f0 BUILD-37`. They are
    unrelated to this task and outside its scope, so I did not edit them. The

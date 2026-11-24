@@ -1,6 +1,6 @@
 # Git workflow and conflict policy
 
-How SmartClinic work moves from a branch to `main`. This is the short reference for
+How Orevia work moves from a branch to `main`. This is the short reference for
 workers and integrators; the authoritative rules for gates, trackers and release
 authority live in `AGENTS.md`, `docs/WORKFLOW.md` and `README-SETUP.md`.
 

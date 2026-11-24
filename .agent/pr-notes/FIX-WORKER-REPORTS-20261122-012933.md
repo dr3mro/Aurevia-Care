@@ -123,7 +123,7 @@ No threshold, exclusion, pragma or skip was added or changed.
   is left for the maintainer to update.
 - Two pre-existing environment facts, unrelated to this change and not edited: (1) `main`
   carries unresolved conflict markers in
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7{ParseException,Parser,Segment}.java`
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7{ParseException,Parser,Segment}.java`
   (found by `git grep -nE '^(<<<<<<<|>>>>>>>) '`); (2) the worktree `opencode.json` is the CI
   profile under `skip-worktree`, causing six `test_check_pack` failures locally.
 - The coverage package is absent from this image and `pip` is unavailable. A pure-Python

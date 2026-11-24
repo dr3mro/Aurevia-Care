@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.radiology.clauses.IntakeImagingOrderCaptureUrgencyClinicalQuestionTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/radiology/clauses/IntakeImagingOrderCaptureUrgencyClinicalQuestionTest.java`)
+Test class `com.aurevia.radiology.clauses.IntakeImagingOrderCaptureUrgencyClinicalQuestionTest`
+(`apps/api/src/test/java/com/aurevia/radiology/clauses/IntakeImagingOrderCaptureUrgencyClinicalQuestionTest.java`)
 proves the rule at the imaging domain service entry point with synthetic facts and a fixed clock.
 It does not claim HTTP, persistence or partner-system proof.
 
@@ -38,7 +38,7 @@ It does not claim HTTP, persistence or partner-system proof.
 - `otherTenantCannotReadTheOrder` — a second tenant cannot read the order by its known local
   identifier; the service conceals it with `404 NOT_FOUND`.
 
-Production classes exercised: `com.aurevia.smartclinic.radiology.ImagingService` (`intake`,
+Production classes exercised: `com.aurevia.radiology.ImagingService` (`intake`,
 `schedule`, `accession`, `associateStudy`, `read`, `history`, `events`, `studyLinkReviews`,
 `matches` and the version/transition guards), `RadCommands` (`IntakeCommand`, `ScheduleCommand`,
 `AccessionCommand`, `AssociateStudyCommand`), `RadRules` (role checks), `RadPolicyCatalog`

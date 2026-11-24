@@ -12,8 +12,8 @@ Proven by tests
 
 Active HTTP-level proof (`synthetic-auth` profile, a fresh PostgreSQL database migrated
 from `db/migrations`, synthetic fixtures only). Test class:
-`com.aurevia.smartclinic.chart.clauses.SigningDiffersPatientReleasePdfRenderingTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/SigningDiffersPatientReleasePdfRenderingTest.java`).
+`com.aurevia.chart.clauses.SigningDiffersPatientReleasePdfRenderingTest`
+(path: `apps/api/src/test/java/com/aurevia/chart/clauses/SigningDiffersPatientReleasePdfRenderingTest.java`).
 Entry point to test trace: `POST /api/v1/clinical-notes` (create draft) →
 `POST /api/v1/clinical-notes/{id}/sign` (sign) → `GET /api/v1/patients/{patientId}/released-revisions`
 (release channel) → `GET /api/v1/clinical-notes/{id}` (append-only history).
@@ -38,21 +38,21 @@ Entry point to test trace: `POST /api/v1/clinical-notes` (create draft) →
 
 Production classes exercised through those entry points:
 
-- `com.aurevia.smartclinic.clinical.notes.ClinicalNoteService` — the signing workflow;
+- `com.aurevia.clinical.notes.ClinicalNoteService` — the signing workflow;
   its class contract states that signing neither releases content to a patient nor
   renders a PDF. `ClinicalNoteRevision` carries signer, attestation, signed instant,
   checksum and template version; `NoteState` distinguishes editable drafts from
   immutable signed/addendum revisions; `NoteView` exposes the append-only history.
-- `com.aurevia.smartclinic.clinical.notes.ClinicalNoteController` — thin adapter on
+- `com.aurevia.clinical.notes.ClinicalNoteController` — thin adapter on
   `/api/v1/clinical-notes`; it publishes sign/amend/entered-in-error routes but no
   release or PDF route.
-- `com.aurevia.smartclinic.exchange.release.PatientReleasedRevisionsController` and
-  `com.aurevia.smartclinic.exchange.release.ReleaseService` — the separate XCH-06
+- `com.aurevia.exchange.release.PatientReleasedRevisionsController` and
+  `com.aurevia.exchange.release.ReleaseService` — the separate XCH-06
   patient-release workflow and patient-scoped visibility query.
-- `com.aurevia.smartclinic.exchange.release.ReleaseActionPolicy` — release's own action
+- `com.aurevia.exchange.release.ReleaseActionPolicy` — release's own action
   policy, independent of the note sign permission matrix.
-- `com.aurevia.smartclinic.documents.PdfRenderer` and
-  `com.aurevia.smartclinic.documents.DocumentController` — the separate CLN-07 PDF
+- `com.aurevia.documents.PdfRenderer` and
+  `com.aurevia.documents.DocumentController` — the separate CLN-07 PDF
   rendering workflow on `/api/v1/documents/rendered`.
 - Storage boundaries: `db/migrations/V15__clinical_note_signing.sql` (`clinical_note_revision`,
   append-only with RLS and FORCE RLS), `V24__patient_release.sql` (`patient_release`,
@@ -60,7 +60,7 @@ Production classes exercised through those entry points:
   (`rendered_document`), all with their own tenant policies.
 
 An adjacent integration test,
-`com.aurevia.smartclinic.it.clinical.ClinicalNoteRevisionIntegrationTest.noReleaseOrRenderingStateIsIntroduced`,
+`com.aurevia.it.clinical.ClinicalNoteRevisionIntegrationTest.noReleaseOrRenderingStateIsIntroduced`,
 also asserts that the signed response carries no release/render state and that the note
 controller has no `/release` route. This task adds only the dedicated proof class above.
 

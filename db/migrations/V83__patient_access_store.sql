@@ -12,7 +12,7 @@
 --
 -- Every table is tenant-owned: organization_id is in every key, forced RLS
 -- confines each statement to public.app_org(), and the runtime role is the
--- non-owner smartclinic_app without BYPASSRLS. Lock/volume impact is negligible
+-- non-owner orevia_app without BYPASSRLS. Lock/volume impact is negligible
 -- (six empty tables and one function). A later removal is a contract migration
 -- with Forward-fix per docs/decisions/0002.
 
@@ -152,15 +152,15 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION public.consume_patient_access_invitation(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.consume_patient_access_invitation(text) TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.consume_patient_access_invitation(text) TO orevia_app;
 
 GRANT SELECT, INSERT, UPDATE ON public.patient_access_account,
                                 public.patient_access_invitation,
                                 public.patient_access_token,
-                                public.patient_access_support_case TO smartclinic_app;
+                                public.patient_access_support_case TO orevia_app;
 GRANT SELECT, INSERT ON public.patient_access_event,
-                       public.patient_access_notification TO smartclinic_app;
+                       public.patient_access_notification TO orevia_app;
 REVOKE DELETE, TRUNCATE ON public.patient_access_account,
                           public.patient_access_invitation,
                           public.patient_access_token,
-                          public.patient_access_support_case FROM smartclinic_app;
+                          public.patient_access_support_case FROM orevia_app;

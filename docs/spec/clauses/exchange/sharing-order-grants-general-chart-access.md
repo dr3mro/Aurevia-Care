@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-New API-level test (this task): `com.aurevia.smartclinic.exchange.clauses.SharingOrderGrantsGeneralChartAccessTest`
-under `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/`. It drives the real
+New API-level test (this task): `com.aurevia.exchange.clauses.SharingOrderGrantsGeneralChartAccessTest`
+under `apps/api/src/test/java/com/aurevia/exchange/clauses/`. It drives the real
 `OrderService` through `OrderController` and the request interceptor with synthetic headers.
 
 - `receiverListsOnlyBoundedWorkItemProjection` — `GET /api/v1/exchange/work-items` as a receiver
@@ -29,14 +29,14 @@ under `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/`. It dri
   match the projected issuer-scoped MRN receives 403 `IDENTITY_MISMATCH` before any projection update.
 
 Production classes exercised (read-only; none changed by this task):
-`com.aurevia.smartclinic.exchange.order.OrderController` (work-items and verify-patient HTTP entries),
+`com.aurevia.exchange.order.OrderController` (work-items and verify-patient HTTP entries),
 `OrderService` (`workItems`, `get`, `verifyPatient`, `deny`), `OrderRepository` (`workItems`, `find`,
 `workItem`, `verifyPatient`), `WorkItemView`, `VerifyPatientRequest`, `OrderInputs`,
-`com.aurevia.smartclinic.api.ApiErrorHandler`, `com.aurevia.smartclinic.web.TenantContextInterceptor`
-and `com.aurevia.smartclinic.tenant.TenantContext`.
+`com.aurevia.api.ApiErrorHandler`, `com.aurevia.web.TenantContextInterceptor`
+and `com.aurevia.tenant.TenantContext`.
 
 Existing evidence cited, not modified:
-`com.aurevia.smartclinic.it.exchangeorder.OrderExchangeIntegrationTest.verifiesTheLocalPatientAndNeverGrantsGeneralChartAccess`
+`com.aurevia.it.exchangeorder.OrderExchangeIntegrationTest.verifiesTheLocalPatientAndNeverGrantsGeneralChartAccess`
 drives the real endpoints against PostgreSQL and proves that the sender order is 404 to the receiver,
 a direct chart read of the sender patient is refused (403/404), a mismatched local patient cannot be
 bound, and an unrelated tenant sees no projected work items. The enforcement lives in

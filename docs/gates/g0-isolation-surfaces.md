@@ -6,7 +6,7 @@
 
 ## Purpose
 
-The G0 row of section 9 of `SMARTCLINIC_V1_SPEC.md` requires that two tenants with identical
+The G0 row of section 9 of `PROJECT_V1_SPEC.md` requires that two tenants with identical
 local IDs remain isolated across API, search, files, workers and exports. `S-G0-04` in
 tasks/ was blocked because several of those surfaces did not exist. This note records which
 surfaces exist today, the test that proves each one, and the stories still needed for the rest.
@@ -36,11 +36,11 @@ before SQL. No real patient data, credential or token is used.
 
 | Surface | Exists | Serving class | Test method | Status |
 |---|---|---|---|---|
-| API reads and writes | Yes | `com.aurevia.smartclinic.web.FacilityController`, `com.aurevia.smartclinic.tenancy.FacilityService` | `apiReadsAndWritesStayTenantScopedWithTheSameFacilityCode` | Proven |
-| Patient search | Yes | `com.aurevia.smartclinic.web.PatientController`, `com.aurevia.smartclinic.patient.PatientRepository` | `patientSearchNeverReturnsThePeerTenantsRecordWithTheSameMrn` | Proven |
-| Files and attachment retrieval | Partly | `com.aurevia.smartclinic.documents.DocumentController`, `com.aurevia.smartclinic.documents.DocumentService`; `com.aurevia.smartclinic.messaging.attachments.AttachmentController` for patient-unit files | `filesAndRendersWithTheSameNameAreConcealedAcrossTenants` | Partly proven |
-| Worker/outbox processing | Yes | `com.aurevia.smartclinic.events.DeliveryController`, `com.aurevia.smartclinic.events.DurableEventService`, `com.aurevia.smartclinic.events.JdbcDeliveryStore` | `workerAndOutboxProcessingStaysTenantScopedWithTheSameEventKey` | Proven |
-| Tenant export | No | None. `com.aurevia.smartclinic.tenant.importing.ImportController` is import-only; `com.aurevia.smartclinic.messaging.governance.MessagingGovernanceController` offers a scoped, expiring messaging export, not an OPS-07 tenant export | `tenantExportNeverIncludesAnotherTenantsRecords` (`@Disabled` with a GAP reason) | Not built |
+| API reads and writes | Yes | `com.aurevia.web.FacilityController`, `com.aurevia.tenancy.FacilityService` | `apiReadsAndWritesStayTenantScopedWithTheSameFacilityCode` | Proven |
+| Patient search | Yes | `com.aurevia.web.PatientController`, `com.aurevia.patient.PatientRepository` | `patientSearchNeverReturnsThePeerTenantsRecordWithTheSameMrn` | Proven |
+| Files and attachment retrieval | Partly | `com.aurevia.documents.DocumentController`, `com.aurevia.documents.DocumentService`; `com.aurevia.messaging.attachments.AttachmentController` for patient-unit files | `filesAndRendersWithTheSameNameAreConcealedAcrossTenants` | Partly proven |
+| Worker/outbox processing | Yes | `com.aurevia.events.DeliveryController`, `com.aurevia.events.DurableEventService`, `com.aurevia.events.JdbcDeliveryStore` | `workerAndOutboxProcessingStaysTenantScopedWithTheSameEventKey` | Proven |
+| Tenant export | No | None. `com.aurevia.tenant.importing.ImportController` is import-only; `com.aurevia.messaging.governance.MessagingGovernanceController` offers a scoped, expiring messaging export, not an OPS-07 tenant export | `tenantExportNeverIncludesAnotherTenantsRecords` (`@Disabled` with a GAP reason) | Not built |
 
 The fail-closed assertions are collected in `missingTenantContextFailsClosedOnEverySurface`.
 The disabled export test is written in full — it uses seeded tenant records, creates a document
@@ -82,13 +82,13 @@ isolation is proven by the tests named above.
 ## Reproduction
 
 ```
-SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test
+OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=IsolationAcrossSurfacesTest test
 python3 -I scripts/check-docs.py
 python3 -I -m unittest discover -s scripts/tests -q
 bash scripts/quick-check.sh
 ```
 
-The first command drops and recreates the disposable database `smartclinic_isolation_surfaces_it`,
+The first command drops and recreates the disposable database `orevia_isolation_surfaces_it`,
 applies all Flyway migrations, runs the seven tests and drops the database again. The existing
 surfaces are exercised through their real HTTP entry points; the worker surface additionally
 reads the JDBC store with a bound tenant context. Results are recorded in

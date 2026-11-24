@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.exchange.clauses.UseSiteApprovedBackupContactChannelsAlertTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/UseSiteApprovedBackupContactChannelsAlertTest.java`).
+Test class `com.aurevia.exchange.clauses.UseSiteApprovedBackupContactChannelsAlertTest`
+(`apps/api/src/test/java/com/aurevia/exchange/clauses/UseSiteApprovedBackupContactChannelsAlertTest.java`).
 It is a synthetic, database-free clause test in the same `clauses` style as
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest`: mocked
 `CriticalResultRepository` and `AuditAppender`, a transaction template that runs
@@ -54,7 +54,7 @@ at `POST /api/v1/critical-results/{id}/escalate`.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.exchange.critical.CriticalResultService.escalate` —
+- `com.aurevia.exchange.critical.CriticalResultService.escalate` —
   owns the rule: it re-derives authorization, checks the version and state,
   computes `overdueOrDown` from the fixed clock and the `systemDown` flag, refuses
   an inactive backup recipient with a durable `ROSTER_GAP` fact, requires the

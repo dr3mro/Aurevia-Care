@@ -5,7 +5,7 @@
 set -euo pipefail
 
 PGDATA=${PGDATA_DIR:-/pgdata}
-DB=smartclinic
+DB=orevia
 DUMPS=/dumps
 MIGRATIONS=/opt/aurevia/migrations
 psql_admin() { psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres "$@"; }
@@ -44,9 +44,9 @@ for ((i = 0; i < 60; i++)); do
 done
 
 psql_admin -d postgres -qAt <<'SQL' >/dev/null
-CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE;
-CREATE ROLE smartclinic_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE;
-CREATE DATABASE smartclinic OWNER smartclinic_migrate;
+CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+CREATE DATABASE orevia OWNER orevia_migrate;
 SQL
 
 applied=/tmp/aurevia-applied
@@ -62,14 +62,14 @@ while IFS= read -r file; do
     name=$(basename "$file")
     grep -qxF "$name" "$applied" && continue
     echo "aurevia: applying $name"
-    psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U smartclinic_migrate -d "$DB" -q -f "$file" >/dev/null
+    psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U orevia_migrate -d "$DB" -q -f "$file" >/dev/null
     psql_admin -d "$DB" -qc "INSERT INTO aurevia_migrations VALUES ('$name')" >/dev/null
 done < <(printf '%s\n' "$MIGRATIONS"/V*.sql | sort -V)
 
 # shellcheck disable=SC2086
-SMARTCLINIC_SERVER_PORT=8080 \
-SMARTCLINIC_DB_URL="jdbc:postgresql://127.0.0.1:5432/$DB" \
-SMARTCLINIC_DB_USER=smartclinic_app \
+OREVIA_SERVER_PORT=8080 \
+OREVIA_DB_URL="jdbc:postgresql://127.0.0.1:5432/$DB" \
+OREVIA_DB_USER=orevia_app \
 SPRING_PROFILES_ACTIVE="${AUREVIA_PROFILE:-synthetic-auth}" \
     java ${JAVA_OPTS:-} -jar /opt/aurevia/api.jar &
 api_pid=$!

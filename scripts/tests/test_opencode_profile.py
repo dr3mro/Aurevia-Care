@@ -24,8 +24,8 @@ class RuntimeProfileTests(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp)
         (self.tmp / ".github" / "swarm").mkdir(parents=True)
-        self.profile = json.loads((ROOT / ".github/opencode.ci.json").read_text())
-        self.slots = json.loads((ROOT / ".github/swarm/slots.json").read_text())
+        self.profile = json.loads((ROOT / ".opencode/opencode.ci.json").read_text())
+        self.registry = json.loads((ROOT / ".opencode/model-pricing.json").read_text())
         for path in gen.INSTRUCTIONS:
             target = self.tmp / path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -34,7 +34,7 @@ class RuntimeProfileTests(unittest.TestCase):
 
     def write_files(self):
         (self.tmp / gen.RUNTIME_PROFILE).write_text(json.dumps(self.profile))
-        (self.tmp / gen.SLOTS_FILE).write_text(json.dumps(self.slots))
+        (self.tmp / gen.MODEL_REGISTRY).write_text(json.dumps(self.registry))
 
     def violations(self):
         self.write_files()
@@ -56,10 +56,10 @@ class RuntimeProfileTests(unittest.TestCase):
         found = gen.check_runtime(self.tmp)
         self.assertTrue(any("not valid JSON" in v for v in found), found)
 
-    def test_missing_slots_is_reported(self):
-        (self.tmp / gen.SLOTS_FILE).unlink()
+    def test_missing_model_registry_is_reported(self):
+        (self.tmp / gen.MODEL_REGISTRY).unlink()
         found = gen.check_runtime(self.tmp)
-        self.assertTrue(any("swarm slots" in v for v in found), found)
+        self.assertTrue(any("model registry" in v for v in found), found)
 
     def test_missing_instruction_file_is_reported(self):
         missing = gen.INSTRUCTIONS[0]
@@ -68,47 +68,47 @@ class RuntimeProfileTests(unittest.TestCase):
         self.assertTrue(any(missing in v and "instruction" in v for v in found), found)
 
     def test_editing_agent_without_bash_list_is_reported(self):
-        self.profile["agents"]["smartclinic-editor"] = {
+        self.profile["agents"]["orevia-editor"] = {
             "permissions": [{"action": "read", "resource": "*", "effect": "allow"}]
         }
         found = self.violations()
-        self.assertTrue(any("smartclinic-editor" in v and "bash" in v for v in found), found)
+        self.assertTrue(any("orevia-editor" in v and "bash" in v for v in found), found)
 
     def test_reviewer_with_edit_permission_is_reported(self):
-        self.agent("smartclinic-qa-reviewer")["permissions"].append(
+        self.agent("qa-reviewer")["permissions"].append(
             {"action": "write", "resource": "src/*", "effect": "allow"})
         found = self.violations()
-        self.assertTrue(any("smartclinic-qa-reviewer" in v and "edit" in v for v in found), found)
+        self.assertTrue(any("qa-reviewer" in v and "edit" in v for v in found), found)
 
     def test_reviewer_with_denied_write_is_allowed(self):
-        self.agent("smartclinic-qa-reviewer")["permissions"].append(
+        self.agent("qa-reviewer")["permissions"].append(
             {"action": "write", "resource": ".github/*", "effect": "deny"})
         self.assertEqual(self.violations(), [])
 
     def test_agent_writing_protected_paths_is_reported(self):
         for resource, protected in (
             (".github/workflows/delivery.yml", ".github/"),
-            ("TODO.md", "TODO.md"),
+            (".opencode/config/MEMORY.md", ".opencode/config/MEMORY.md"),
             (".opencode/agents/example.md", ".opencode/"),
         ):
             with self.subTest(resource=resource):
-                self.profile["agents"]["smartclinic-editor"] = {
+                self.profile["agents"]["orevia-editor"] = {
                     "permissions": [
                         {"action": "shell", "resource": "*", "effect": "allow"},
                         {"action": "write", "resource": resource, "effect": "allow"},
                     ]
                 }
                 found = self.violations()
-                self.assertTrue(any("smartclinic-editor" in v and protected in v for v in found),
+                self.assertTrue(any("orevia-editor" in v and protected in v for v in found),
                                 found)
 
     def test_disallowed_agent_model_is_reported(self):
-        self.agent("smartclinic-qa-reviewer")["model"] = "other/expensive-model"
+        self.agent("qa-reviewer")["model"] = "other/expensive-model"
         found = self.violations()
-        self.assertTrue(any("smartclinic-qa-reviewer" in v and "model" in v for v in found), found)
+        self.assertTrue(any("qa-reviewer" in v and "model" in v for v in found), found)
 
     def test_allowed_agent_model_passes(self):
-        self.agent("smartclinic-qa-reviewer")["model"] = self.slots["slots"][0]["model"]
+        self.agent("qa-reviewer")["model"] = next(iter(self.registry["models"]))
         self.assertEqual(self.violations(), [])
 
     def test_disallowed_profile_model_is_reported(self):
@@ -117,15 +117,15 @@ class RuntimeProfileTests(unittest.TestCase):
         self.assertTrue(any("runtime profile" in v and "model" in v for v in found), found)
 
     def test_secret_variable_in_agent_is_reported(self):
-        self.agent("smartclinic-qa-reviewer")["apiKey"] = "OPENCODE_API_KEY"
+        self.agent("qa-reviewer")["apiKey"] = "OPENCODE_API_KEY"
         found = self.violations()
-        self.assertTrue(any("smartclinic-qa-reviewer" in v and "key" in v.lower() for v in found),
+        self.assertTrue(any("qa-reviewer" in v and "key" in v.lower() for v in found),
                         found)
 
     def test_token_value_in_agent_is_reported(self):
-        self.agent("smartclinic-qa-reviewer")["header"] = "Bearer ghp_" + "a" * 24
+        self.agent("qa-reviewer")["header"] = "Bearer ghp_" + "a" * 24
         found = self.violations()
-        self.assertTrue(any("smartclinic-qa-reviewer" in v for v in found), found)
+        self.assertTrue(any("qa-reviewer" in v for v in found), found)
 
     def test_secret_in_profile_metadata_is_reported(self):
         self.profile["credential"] = "NVD_API_KEY"
@@ -139,34 +139,34 @@ class RuntimeProfileTests(unittest.TestCase):
 
     def test_check_runtime_flag_reports_violations_and_fails(self):
         err = io.StringIO()
-        with patch.object(gen, "check_runtime", return_value=["agent smartclinic-editor: bad"]):
+        with patch.object(gen, "check_runtime", return_value=["agent orevia-editor: bad"]):
             with redirect_stderr(err):
                 status = gen.main(["--check-runtime"])
         self.assertEqual(status, 1)
-        self.assertIn("smartclinic-editor", err.getvalue())
+        self.assertIn("orevia-editor", err.getvalue())
 
     def test_generate_mode_writes_both_configs(self):
         """Cover the existing generation path in the file this change modifies."""
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
-        for name in ("opencode.json", ".github/opencode.ci.json"):
+        for name in (".opencode/opencode.json", ".opencode/opencode.ci.json"):
             (tmp / name).unlink()
         with patch.object(gen, "ROOT", tmp):
             self.assertEqual(gen.main([]), 0)
-        self.assertEqual((tmp / "opencode.json").read_text(), gen.render(tmp, False))
-        self.assertEqual((tmp / ".github/opencode.ci.json").read_text(),
+        self.assertEqual((tmp / ".opencode/opencode.json").read_text(), gen.render(tmp, False))
+        self.assertEqual((tmp / ".opencode/opencode.ci.json").read_text(),
                          gen.render(tmp, True))
 
     def test_check_mode_reports_stale_and_missing_config(self):
         """Cover both failure sides of the existing --check drift guard."""
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
-        (tmp / "opencode.json").write_text("stale\n")
+        (tmp / ".opencode/opencode.json").write_text("stale\n")
         err = io.StringIO()
         with patch.object(gen, "ROOT", tmp), redirect_stderr(err):
             self.assertEqual(gen.main(["--check"]), 1)
         self.assertIn("opencode.json is out of date", err.getvalue())
-        (tmp / "opencode.json").unlink()
+        (tmp / ".opencode/opencode.json").unlink()
         err = io.StringIO()
         with patch.object(gen, "ROOT", tmp), redirect_stderr(err):
             self.assertEqual(gen.main(["--check"]), 1)

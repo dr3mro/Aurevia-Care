@@ -1,5 +1,5 @@
-- [-] RESP-E2E-FEATURE-SCHEDULING · Staff web end-to-end: the scheduling screens work on phone, tablet and desktop
-  - agent: swarm-1
+- [x] RESP-E2E-FEATURE-SCHEDULING · Staff web end-to-end: the scheduling screens work on phone, tablet and desktop
+  - pr: #1565
   - attempts: 4
   - evidence: PR #1565 merged to main (auto-reconciled)
   - requirements: WEB-07, UX-01

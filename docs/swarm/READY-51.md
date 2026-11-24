@@ -76,11 +76,11 @@ Typecheck final lines (from `check.sh`, `npm run typecheck` / `tsc --noEmit -p
 tsconfig.json`, plus the `tsc` inside `npm run build`):
 
 ```
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 
 
-> smartclinic-staff-web@0.1.0 lint
+> orevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 ```
 

@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.messaging.clauses.AcknowledgmentConfirmsReceiptTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/AcknowledgmentConfirmsReceiptTest.java`).
+Test class `com.aurevia.messaging.clauses.AcknowledgmentConfirmsReceiptTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/AcknowledgmentConfirmsReceiptTest.java`).
 It follows the cross-module `clauses` style of
 `scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest` and the HTTP harness of
 `messaging/acknowledgment/InstructionFactControllerHttpTest`: the real
@@ -43,7 +43,7 @@ clock, an `ObjectMapper` and synthetic identifiers. Every case enters through
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactService.acknowledge` — owns
+- `com.aurevia.messaging.acknowledgment.InstructionFactService.acknowledge` — owns
   the rule: it re-derives tenant and subject from the request context, checks the patient-only
   action permission, requires the instruction to be published in the active tenant, checks the
   verified chart and active unit connection, requires that a receipt was requested, rejects a

@@ -1,6 +1,6 @@
 # staff-web
 
-React + TypeScript + Vite visual foundation for the SmartClinic staff portal.
+React + TypeScript + Vite visual foundation for the Orevia staff portal.
 Only synthetic fixtures are used. No application endpoint is contacted and no
 authentication logic is implemented.
 

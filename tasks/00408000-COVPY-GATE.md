@@ -23,5 +23,5 @@
 
 ## Spec clause coverage: one task per sentence of the specification (new files only, no dependencies)
 
-Every sentence of the requirement tables, the role matrix, the gate evidence, the cross-cutting scenarios and the architecture decisions in `SMARTCLINIC_V1_SPEC.md` has its own task. Each writes one test file (or only a note when the clause needs human, partner or cloud evidence) and one status note under `docs/spec/clauses`. A clause that is not built gets a skipped test marked `GAP:` and a gap note, so the next round of tasks is generated from these notes. The result is a measured, clause-by-clause view of how much of the specification is built.
+Every sentence of the requirement tables, the role matrix, the gate evidence, the cross-cutting scenarios and the architecture decisions in `PROJECT_V1_SPEC.md` has its own task. Each writes one test file (or only a note when the clause needs human, partner or cloud evidence) and one status note under `docs/spec/clauses`. A clause that is not built gets a skipped test marked `GAP:` and a gap note, so the next round of tasks is generated from these notes. The result is a measured, clause-by-clause view of how much of the specification is built.
 

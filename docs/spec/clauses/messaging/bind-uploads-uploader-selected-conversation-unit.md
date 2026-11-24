@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.BindUploadsUploaderSelectedConversationUnitTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/BindUploadsUploaderSelectedConversationUnitTest.java`).
+Test class: `com.aurevia.messaging.clauses.BindUploadsUploaderSelectedConversationUnitTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/BindUploadsUploaderSelectedConversationUnitTest.java`).
 All seven tests are active (none disabled) and pass against real PostgreSQL with
 synthetic fixtures only. The suite creates its own database, applies the
 production Flyway migrations from `db/migrations`, seeds two tenants that share
@@ -46,18 +46,18 @@ uploads through the real HTTP entry point `POST /api/v1/patient/files/upload`.
 
 Production classes and contracts exercised through the HTTP entry point:
 
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` — binds organization
+- `com.aurevia.web.TenantContextInterceptor` — binds organization
   and subject from validated request headers under the `synthetic-auth` profile.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentController` — reads
+- `com.aurevia.messaging.attachments.AttachmentController` — reads
   the grant for the active tenant and builds the uploader actor from the server
   grant, never from the request, then injects the domain service.
-- `com.aurevia.smartclinic.messaging.attachments.AttachmentService` — re-derives
+- `com.aurevia.messaging.attachments.AttachmentService` — re-derives
   roles on every command, checks grant state and binding, and writes the
   immutable attachment and its append-only fact.
-- `com.aurevia.smartclinic.messaging.attachments.JdbcAttachmentStore` —
+- `com.aurevia.messaging.attachments.JdbcAttachmentStore` —
   tenant-guarded read and write of `public.attachment` and
   `public.attachment_connection_grant`.
-- `com.aurevia.smartclinic.staff.StaffRepository` — fresh active roles for the
+- `com.aurevia.staff.StaffRepository` — fresh active roles for the
   caller inside the active tenant.
 - `db/migrations/V82__attachment_store.sql` — forced RLS on all three attachment
   tables, the tenant isolation policy and the immutable-binding trigger.
@@ -67,7 +67,7 @@ taken by this HTTP class: `AttachmentController.upload` passes
 `grant.patientId()` as the actor's patient id and `store.grant(...)` is already
 scoped to the active tenant, so that defensive branch is unreachable through
 the public entry point. It remains proven by the unchanged service-level
-`com.aurevia.smartclinic.messaging.attachments.AttachmentAcceptanceTest`
+`com.aurevia.messaging.attachments.AttachmentAcceptanceTest`
 (`deniesUnknownInactiveAndForeignGrants`, `deniesMismatchedPatientAndStaffUnitBindings`).
 This class proves the clause as observable and enforceable through HTTP and the
 database. The route is currently listed in `contracts/openapi.yaml`,

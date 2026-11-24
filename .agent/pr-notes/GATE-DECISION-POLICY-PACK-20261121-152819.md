@@ -76,7 +76,7 @@ from repository root, tool evidence):
 - `python3 -I scripts/check-docs.py` → exit 0 (no output). Final line: `EXIT: 0`.
   This is the required step-6 check for a Markdown edit. It validated that every
   relative link in `docs/launch/policy-pack.md` resolves to an existing file and every
-  requirement ID mentioned is defined in `SMARTCLINIC_V1_SPEC.md`.
+  requirement ID mentioned is defined in `PROJECT_V1_SPEC.md`.
 - `python3 -I scripts/check-secrets.py` → exit 0.
 - `python3 -I scripts/check-names.py` → exit 0.
 
@@ -134,8 +134,8 @@ supplied by this document.
   `SPEC-PRD-05-C01/02`, `SPEC-RX-02-C01/02`, `SPEC-XCH-03-C05`, `BUILD-10`, `BUILD-16`,
   `BUILD-40`, `BUILD-42`, `START-04`, `START-15`, `START-91`, `READY-54`) or NO TASK.
 - Evidence provenance: executed tool commands (checks, file reads, `git status`) for
-  repository facts; bounded read-only specialist reviews from `smartclinic-devsecops`
-  and `smartclinic-senior-cloud-iac` (simulated specialist review, not human evidence)
+  repository facts; bounded read-only specialist reviews from `orevia-devsecops`
+  and `orevia-senior-cloud-iac` (simulated specialist review, not human evidence)
   for coverage of the questions/options/evidence checklist; no simulated-user or human
   participant evidence. No clinical, legal or deployment approval is claimed.
 

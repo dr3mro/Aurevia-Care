@@ -4,7 +4,7 @@ Added the patient app's single window-size classification boundary as two new fi
 
 ## Affected requirements
 
-- PAT-01 (appointments), PAT-02 (reports, no persistent clinical cache), UX-01 (accessibility/RTL) — `SMARTCLINIC_V1_SPEC.md` lines 85–86, 90.
+- PAT-01 (appointments), PAT-02 (reports, no persistent clinical cache), UX-01 (accessibility/RTL) — `PROJECT_V1_SPEC.md` lines 85–86, 90.
 - Decision `docs/decisions/0005-patient-app-tablets.md` (600 dp / 840 dp breakpoints; layout from window width; text scaling to 200%).
 - Task `RESP-APP-LAYOUT-HOOK` (TODO.md:3672), requirements PAT-01, PAT-02, UX-01.
 

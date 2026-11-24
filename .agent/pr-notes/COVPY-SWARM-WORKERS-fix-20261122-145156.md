@@ -36,8 +36,8 @@ code, contract, migration, deployment or patient-facing change (docs/WORKFLOW.md
 
 ## Review owner
 
-Senior Python Tooling (`smartclinic-senior-python`) and Test Engineer
-(`smartclinic-test-engineer`). Evidence in this notes file comes from executed
+Senior Python Tooling (`orevia-senior-python`) and Test Engineer
+(`orevia-test-engineer`). Evidence in this notes file comes from executed
 tool commands (primary), from the read-only specialist reviewers listed under
 `## Review verdicts` (simulated review), and from no simulated user or human
 participant. No clinical or real-patient evidence is claimed.
@@ -148,9 +148,9 @@ information, tenant boundary or downtime behavior is touched.
 
 ## Review verdicts
 
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: GO
 
 ## Findings
 
@@ -166,7 +166,7 @@ information, tenant boundary or downtime behavior is touched.
   sorts names, so this `-fix-` file is selected as the newest for the story.
 - Pre-existing defect outside this task's scope: `origin/main` contains
   committed Git conflict markers in three files:
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`
   (lines 6, 10), `Hl7Parser.java` (14, 18) and `Hl7Segment.java` (10, 14) from
   `origin/swarm/BUILD-37-469`. The merge was clean (`Already up to date`), so
   these are committed content, not an unresolved merge in this worktree. Not

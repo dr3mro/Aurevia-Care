@@ -31,10 +31,10 @@ workflow is touched.
 
 ## Review owner
 
-`smartclinic-senior-python` is the area routing for Python tooling. A bounded design proposal was
+`orevia-senior-python` is the area routing for Python tooling. A bounded design proposal was
 taken from it before coding. Read-only reviewers were run (all simulated/static subagents):
-`smartclinic-plan-reviewer` (before coding and again after fixing its Required gaps), then
-`smartclinic-code-reviewer`, `smartclinic-coverage-auditor` and `smartclinic-devsecops` after the
+`orevia-plan-reviewer` (before coding and again after fixing its Required gaps), then
+`orevia-code-reviewer`, `orevia-coverage-auditor` and `orevia-devsecops` after the
 code and tests. Their final verdicts are copied under `## Review verdicts`.
 
 ## Data changes
@@ -139,10 +139,10 @@ sharing, patient association, prescribing or critical result is involved.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO
-- smartclinic-code-reviewer: GO
-- smartclinic-coverage-auditor: GO
-- smartclinic-devsecops: GO
+- orevia-plan-reviewer: GO
+- orevia-code-reviewer: GO
+- orevia-coverage-auditor: GO
+- orevia-devsecops: GO
 
 ## Findings
 

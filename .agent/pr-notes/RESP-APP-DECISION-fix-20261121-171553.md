@@ -45,7 +45,7 @@ schema, dependency, migration or test was added or changed in this pass.
 
 ## Affected requirements
 
-- Primary (task): PAT-01, PAT-02, UX-01 — defined in `SMARTCLINIC_V1_SPEC.md`
+- Primary (task): PAT-01, PAT-02, UX-01 — defined in `PROJECT_V1_SPEC.md`
   (lines 85, 86 and 90).
 - Referenced in the record and validated by `check-docs.py`: WEB-07 (line 155),
   MSG-02 (line 99), the section 7 "Web and mobile" row (line 110) and the
@@ -59,7 +59,7 @@ schema, dependency or delivery change.
 ## Review owner
 
 Product (record owner per the story). The first run recorded a simulated
-`smartclinic-senior-mobile` and `smartclinic-ux-reviewer` review with no missing
+`orevia-senior-mobile` and `orevia-ux-reviewer` review with no missing
 decision; this pass re-checked the record directly against the TODO.md acceptance
 criteria (tool/file-read evidence, not a new independent reviewer). No human,
 clinical or patient reviewer evidence.
@@ -117,7 +117,7 @@ Commands run from the repository root unless stated, with their final lines:
 Entry-point-to-test trace: not applicable to the changed file — the record adds
 no executable entry point. Its authoritative verification is read-back against
 `docs/decisions/template.md`, `apps/patient-mobile/app.json`, the section 7 Web
-and mobile row and the requirement IDs of `SMARTCLINIC_V1_SPEC.md`, plus the
+and mobile row and the requirement IDs of `PROJECT_V1_SPEC.md`, plus the
 passing `check-docs.py` link/ID gate. The patient-mobile gate was run as the
 task prompt's mandatory frontend definition of done; no patient-mobile file was
 changed by this story.

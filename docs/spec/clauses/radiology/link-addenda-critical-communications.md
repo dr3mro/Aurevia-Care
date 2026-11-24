@@ -11,8 +11,8 @@ Proven by tests
 ## Evidence
 
 Test class:
-`com.aurevia.smartclinic.radiology.clauses.LinkAddendaCriticalCommunicationsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/radiology/clauses/LinkAddendaCriticalCommunicationsTest.java`),
+`com.aurevia.radiology.clauses.LinkAddendaCriticalCommunicationsTest`
+(`apps/api/src/test/java/com/aurevia/radiology/clauses/LinkAddendaCriticalCommunicationsTest.java`),
 a deterministic service-layer test over the tenant-scoped domain kernel with a fixed clock and an
 effective dated interpreter privilege. It drives the synthetic lifecycle
 intake → schedule → accession → associateStudy → sign → addAddendum / recordCriticalCommunication
@@ -47,24 +47,24 @@ stable error codes.
 
 Production classes exercised by these entry points:
 
-- `com.aurevia.smartclinic.radiology.ImagingService` — `addAddendum`, `recordCriticalCommunication`,
+- `com.aurevia.radiology.ImagingService` — `addAddendum`, `recordCriticalCommunication`,
   `sign`, `interpretation`, `interpretations`, `read`, `events`, and the version, state, label and
   tenant guards.
-- `com.aurevia.smartclinic.radiology.Interpretation` — the immutable revision carrying kind,
+- `com.aurevia.radiology.Interpretation` — the immutable revision carrying kind,
   superseded version, reason and deterministic content checksum.
-- `com.aurevia.smartclinic.radiology.RadEvent` — the immutable facts and their dedup identities.
-- `com.aurevia.smartclinic.radiology.RadCommands` — the addendum and critical communication
+- `com.aurevia.radiology.RadEvent` — the immutable facts and their dedup identities.
+- `com.aurevia.radiology.RadCommands` — the addendum and critical communication
   command builders and immutable role sets.
-- `com.aurevia.smartclinic.radiology.RadRules`, `RadPolicyCatalog`, `RadTypes` — role gates,
+- `com.aurevia.radiology.RadRules`, `RadPolicyCatalog`, `RadTypes` — role gates,
   effective dated imaging privilege and the state/event/kind enums.
-- `com.aurevia.smartclinic.clinical.notes.NoteChecksum` — the shared SHA-256 digest used to assert
+- `com.aurevia.clinical.notes.NoteChecksum` — the shared SHA-256 digest used to assert
   the event payloads.
 
 Verified locally with the command and final Surefire line:
 
 ```
 env -u CHECK_SCRIPT -u BRANCH_PREFIX -u BASE_BRANCH mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=LinkAddendaCriticalCommunicationsTest test
-Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.143 s -- in com.aurevia.smartclinic.radiology.clauses.LinkAddendaCriticalCommunicationsTest
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.143 s -- in com.aurevia.radiology.clauses.LinkAddendaCriticalCommunicationsTest
 ```
 
 ## Gap

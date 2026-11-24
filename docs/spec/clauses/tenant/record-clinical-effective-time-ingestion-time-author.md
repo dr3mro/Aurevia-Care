@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.tenant.clauses.RecordClinicalEffectiveTimeIngestionTimeAuthorTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/tenant/clauses/RecordClinicalEffectiveTimeIngestionTimeAuthorTest.java`),
+Test class `com.aurevia.tenant.clauses.RecordClinicalEffectiveTimeIngestionTimeAuthorTest`
+(`apps/api/src/test/java/com/aurevia/tenant/clauses/RecordClinicalEffectiveTimeIngestionTimeAuthorTest.java`),
 an HTTP-level integration test on a fresh real-PostgreSQL database created from
 the production Flyway migrations, with synthetic subjects in two tenants and one
 synthetic patient. It enters through the running `POST /api/v1/clinical-notes`
@@ -41,14 +41,14 @@ the response and durable in the tenant-guarded table:
 
 Production classes and objects exercised through `POST /api/v1/clinical-notes`,
 `PUT /api/v1/clinical-notes/{id}` and `GET /api/v1/clinical-notes/{id}`:
-`com.aurevia.smartclinic.clinical.notes.ClinicalNoteController` (thin HTTP
-adapter and `CreateRequest`), `com.aurevia.smartclinic.clinical.notes.ClinicalNoteService`
+`com.aurevia.clinical.notes.ClinicalNoteController` (thin HTTP
+adapter and `CreateRequest`), `com.aurevia.clinical.notes.ClinicalNoteService`
 (`createDraft`, `updateDraft`, compare-and-set and authorization),
-`com.aurevia.smartclinic.clinical.notes.NoteInputs` (trust-boundary validation
+`com.aurevia.clinical.notes.NoteInputs` (trust-boundary validation
 of the effective instant and template version),
-`com.aurevia.smartclinic.clinical.notes.ClinicalNoteRevision` and `RevisionInput`
-(the six-field-bearing record), `com.aurevia.smartclinic.clinical.notes.NoteRepository`
-(SQL boundary and row mapping), `com.aurevia.smartclinic.api.IfMatch`, and the
+`com.aurevia.clinical.notes.ClinicalNoteRevision` and `RevisionInput`
+(the six-field-bearing record), `com.aurevia.clinical.notes.NoteRepository`
+(SQL boundary and row mapping), `com.aurevia.api.IfMatch`, and the
 tenant isolation plus server-owned version/actor/ingestion columns of
 `db/migrations/V15__clinical_note_signing.sql` (RLS and FORCE RLS, version and
 actor triggers, `created_at DEFAULT now()`).
@@ -87,7 +87,7 @@ one owner covers all six fields):
   behind `documents/DocumentRepository`. None of these is the clinical-note
   create route, so this class does not re-test them.
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml
 -Pno-security -Dgroups=integration -Dtest=RecordClinicalEffectiveTimeIngestionTimeAuthorTest test`
 — `tests="6" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 "Partly proven" is limited to the clause behaviour above; it does not claim that

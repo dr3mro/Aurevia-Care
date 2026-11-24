@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.SendingOrganizationAuthorizesSpecificPayloadRecipientPurposeTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/SendingOrganizationAuthorizesSpecificPayloadRecipientPurposeTest.java`).
+Test class: `com.aurevia.exchange.clauses.SendingOrganizationAuthorizesSpecificPayloadRecipientPurposeTest`
+(path: `apps/api/src/test/java/com/aurevia/exchange/clauses/SendingOrganizationAuthorizesSpecificPayloadRecipientPurposeTest.java`).
 All eleven tests are active (none disabled) and pass against a real PostgreSQL with
 the Flyway V19 row policies in force, using synthetic organizations A, B and C only.
 Every negative test asserts the HTTP status, the stable error code, and that neither
@@ -52,9 +52,9 @@ Entry point: `POST /api/v1/orders`.
 
 Production classes exercised through the HTTP entry point:
 
-- `com.aurevia.smartclinic.exchange.order.OrderController` — thin adapter exposing
+- `com.aurevia.exchange.order.OrderController` — thin adapter exposing
   `POST /api/v1/orders`; it receives the service by injection and holds no rules.
-- `com.aurevia.smartclinic.exchange.order.OrderService` — owns the invariant. Its
+- `com.aurevia.exchange.order.OrderService` — owns the invariant. Its
   `create` command re-derives the tenant context, calls `deny` for active membership
   and the `clinician` role, resolves the sender's grant through `repository.authorization`,
   and calls `checkGrant` (lines 403-423) to compare the order code, destination,
@@ -62,7 +62,7 @@ Production classes exercised through the HTTP entry point:
   requested disclosure. A mismatch writes no order, snapshot, disclosure or work item.
   One shared instant drives both the window check and the disclosure expiry stamp, so
   a live clock cannot widen the permission.
-- `com.aurevia.smartclinic.exchange.order.OrderRepository` — the RLS-bounded lookup
+- `com.aurevia.exchange.order.OrderRepository` — the RLS-bounded lookup
   that makes a foreign tenant's grant invisible, and the insert/append operations
   that never run on a refusal.
 - `db/migrations/V19__exchange_orders.sql` — supplies `exchange_authorization`,
@@ -72,7 +72,7 @@ Production classes exercised through the HTTP entry point:
   disclosure triggers.
 
 Neighbouring implementations observed in the source survey (not changed by this task):
-`com.aurevia.smartclinic.it.exchangeorder.OrderExchangeIntegrationTest` exercises the
+`com.aurevia.it.exchangeorder.OrderExchangeIntegrationTest` exercises the
 same HTTP entry point for the wider XCH-01 flow, and the unit suites
 `it.exchangeorder.OrderServiceTest` and `it.exchange.order.OrderAuthorizationWindowTest`
 prove the same `checkGrant` branches deterministically. The operator-facing rule is

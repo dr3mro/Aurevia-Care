@@ -19,9 +19,9 @@ I rehydrated the governing context fully (AGENTS.md, CODING_STYLE.md,
 docs/WORKFLOW.md, WORKSPACE.md, TODO.md, MEMORY.md, PROJECT.md, the task file
 `tasks/00319000-RESP-APP-RELEASED-REPORTS-SCREEN.md`, decision 0005, the spec
 clause, the two scope files and the layout hook) and loaded the matching skills:
-`smartclinic-delivery`, `smartclinic-senior-mobile`,
-`smartclinic-senior-typescript`, `smartclinic-debugger` and
-`smartclinic-qa-reviewer`. I then **re-ran every scoped gate myself with fresh
+`orevia-delivery`, `orevia-senior-mobile`,
+`orevia-senior-typescript`, `orevia-debugger` and
+`orevia-qa-reviewer`. I then **re-ran every scoped gate myself with fresh
 tool commands** rather than trusting the earlier "green" note claims. All
 scoped gates pass. This pass adds only this notes file; no production, test,
 config, threshold, exclusion, tracker, workflow, `scripts/` or `.opencode/`
@@ -57,8 +57,8 @@ association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo (`smartclinic-senior-mobile`) and Senior
-TypeScript (`smartclinic-senior-typescript`) guidance loaded and applied. Their
+Senior React Native and Expo (`orevia-senior-mobile`) and Senior
+TypeScript (`orevia-senior-typescript`) guidance loaded and applied. Their
 definition of done is met: `bash apps/patient-mobile/check.sh` green, typecheck
 final lines pasted below, every `error TS…` resolved, no `any` / `@ts-ignore`
 added. No named clinician or patient review was available and none is claimed.
@@ -196,7 +196,7 @@ device remains a separate launch gate and is not claimed here.
    (`check-docs.py`, `check-secrets.py`) were run instead and are green.
 4. **Pre-existing conflict markers, out of scope (flagged, not fixed).**
    `git grep -nE '^(<<<<<<<|>>>>>>>) '` finds markers in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
    (inside comments, so Java compile/tests are unaffected). They exist on
    `origin/main` too and are unrelated to the patient-mobile reports screen;
    this worker did not touch them.

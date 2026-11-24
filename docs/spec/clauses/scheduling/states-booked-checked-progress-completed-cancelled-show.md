@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.scheduling.clauses.StatesBookedCheckedProgressCompletedCancelledShowTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/scheduling/clauses/StatesBookedCheckedProgressCompletedCancelledShowTest.java`),
+Test class `com.aurevia.scheduling.clauses.StatesBookedCheckedProgressCompletedCancelledShowTest`
+(`apps/api/src/test/java/com/aurevia/scheduling/clauses/StatesBookedCheckedProgressCompletedCancelledShowTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants and
 synthetic clinician, reception and patient fixtures. It proves the clause through
 the real REST entry point, not just the domain enum:
@@ -38,25 +38,25 @@ the real REST entry point, not just the domain enum:
 - `aReadBackAppointmentKeepsTheFinalStateAfterTheChain` — the final `completed`
   state and full history survive a fresh read after the committing requests.
 
-Production classes exercised through `com.aurevia.smartclinic.web.AppointmentController`
+Production classes exercised through `com.aurevia.web.AppointmentController`
 (`POST /api/v1/appointments`, `/{id}/check-in`, `/{id}/start`, `/{id}/complete`,
 `/{id}/cancel`, `/{id}/no-show`, `GET /{id}`):
 
-- `com.aurevia.smartclinic.scheduling.AppointmentService` — `book`, `checkIn`,
+- `com.aurevia.scheduling.AppointmentService` — `book`, `checkIn`,
   `start`, `complete`, `cancel`, `noShow` and the guarded `transition` command
   (reason gate, legal-transition gate, optimistic version check, audit).
-- `com.aurevia.smartclinic.scheduling.AppointmentState` — the transition matrix
+- `com.aurevia.scheduling.AppointmentState` — the transition matrix
   and `requiresReason`, `eventAction`, `isTerminal` rules.
-- `com.aurevia.smartclinic.authz.ActionPolicy` — separates clerical transitions
+- `com.aurevia.authz.ActionPolicy` — separates clerical transitions
   from the clinical `start` and `complete` actions.
-- `com.aurevia.smartclinic.api.IfMatch` and `com.aurevia.smartclinic.api.ApiException`
+- `com.aurevia.api.IfMatch` and `com.aurevia.api.ApiException`
   — precondition parsing and structured 409/412/422/403 failures.
-- `com.aurevia.smartclinic.scheduling.AppointmentRepository` and the `appointment`
+- `com.aurevia.scheduling.AppointmentRepository` and the `appointment`
   / `appointment_event` tables plus the `appointment_update_guard` trigger from
   `db/migrations/V8__scheduling.sql` (RLS/FORCE RLS and append-only history).
 
 Discovery also found the same transition matrix asserted at unit level in
-`com.aurevia.smartclinic.scheduling.AppointmentStateTest` and command-level
+`com.aurevia.scheduling.AppointmentStateTest` and command-level
 service tests in `AppointmentServiceTest`; this story proves the clause through
 the HTTP boundary with committed state, which those suites do not cover.
 

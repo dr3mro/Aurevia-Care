@@ -9,7 +9,7 @@ Three application modules and the migration directory were stubs. G0 requires tw
 ## Decision
 
 - Tenant-owned tables carry `(organization_id, id)` composite keys; every foreign key includes `organization_id`.
-- `smartclinic_migrate` owns migrations; `smartclinic_app` is a non-owner role without `BYPASSRLS`. Every tenant table has `ENABLE` and `FORCE ROW LEVEL SECURITY` with `USING`/`WITH CHECK organization_id = app_org()`.
+- `orevia_migrate` owns migrations; `orevia_app` is a non-owner role without `BYPASSRLS`. Every tenant table has `ENABLE` and `FORCE ROW LEVEL SECURITY` with `USING`/`WITH CHECK organization_id = app_org()`.
 - Tenant context is derived from the synthetic authenticated subject and the explicit `X-Active-Organization` header. It is bound with `set_config(..., true)` in `TenantGuardTransactionManager.doBegin` after the transaction opens; missing context fails closed before any SQL.
 - Membership and role assignment are re-read inside each protected transaction, so deactivation denies the next request without token or session expiry.
 - Audit is append-only with a per-tenant hash chain built from core `sha256`, committed in the same transaction as the command.

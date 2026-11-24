@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import stat
@@ -10,9 +11,9 @@ from unittest.mock import patch
 from helpers import ROOT
 
 FAKE_OPENCODE = """#!/usr/bin/env bash
-cp opencode.json "$SEEN"
+cp .opencode/opencode.json "$SEEN"
 printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
-case "$*" in *smartclinic-task-advisor*)
+case "$*" in *orevia-task-advisor*)
   case "${BRIEF_MODE:-none}" in
     good) printf 'chatter\\n<<<BRIEF\\nGoal: advised goal\\nBRIEF>>>\\n' ;;
     rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
@@ -51,6 +52,7 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / ".github").mkdir()
         shutil.copy(ROOT / "scripts/agent-run.sh", self.repo / "scripts/agent-run.sh")
         shutil.copy(ROOT / "scripts/route-task.py", self.repo / "scripts/route-task.py")
+        shutil.copy(ROOT / "scripts/model-router.py", self.repo / "scripts/model-router.py")
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
         (self.repo / "scripts/coverage-check.sh").write_text(
             "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
@@ -61,8 +63,12 @@ class AgentRunTests(unittest.TestCase):
             "#!/usr/bin/env bash\necho q >> \"${QUALITY_LOG:-/dev/null}\"\n"
             "echo \"$*\" >> \"${QUALITY_ARGS:-/dev/null}\"\nexit ${QUALITY_EXIT:-0}\n")
         (self.repo / ".github/pull_request_template.md").write_text("## Summary\n")
-        (self.repo / ".github/opencode.ci.json").write_text('{"ci": true}')
-        (self.repo / "opencode.json").write_text('{"real": true}')
+        (self.repo / ".opencode").mkdir(parents=True, exist_ok=True)
+        (self.repo / ".opencode/test-pricing.json").write_text(json.dumps({"models": {
+            "opencode/test": {"input": 0, "output": 0, "cache_read": 0,
+                              "pricing_source": "fixture", "verified_at": "2026-01-01"}}}))
+        (self.repo / ".opencode/opencode.ci.json").write_text('{"ci": true}')
+        (self.repo / ".opencode/opencode.json").write_text('{"real": true}')
         (self.repo / ".gitignore").write_text("/.agent/\n")
         for name in ("agent-run.sh", "check.sh", "coverage-check.sh",
                      "frontend-typecheck-check.sh", "quality-gate.sh"):
@@ -86,6 +92,7 @@ class AgentRunTests(unittest.TestCase):
                     "HOME": str(tmp / "home"), "GITHUB_WORKSPACE": str(self.repo),
                     "GITHUB_OUTPUT": str(tmp / "output"), "GITHUB_RUN_NUMBER": "9",
                     "GH_LOG": str(self.gh_log), "SEEN": str(tmp / "seen.json"), "MODEL": "opencode/test",
+            "SWARM_REGISTRY": ".opencode/test-pricing.json",
                     "OPENCODE_API_KEY": "k-test", "STORY_ID": "issue-5",
                     "STORY_TITLE": "Add login", "STORY_BODY": "body", "ISSUE_NUMBER": "5",
                     "GH_TOKEN": "t-test", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
@@ -169,7 +176,7 @@ class AgentRunTests(unittest.TestCase):
 
     def test_conflict_prompt_loads_the_dedicated_merge_skill(self):
         script = (ROOT / "scripts/agent-run.sh").read_text()
-        skill = ROOT / ".opencode/skills/smartclinic-merge-conflict/SKILL.md"
+        skill = ROOT / ".opencode/skills/orevia-merge-conflict/SKILL.md"
         self.assertIn(str(skill.relative_to(ROOT)), script)
         self.push_to_main(str(skill.relative_to(ROOT)), skill.read_text())
         self.push_to_main("feature.txt", "main version\n")
@@ -255,10 +262,10 @@ class AgentRunTests(unittest.TestCase):
     def test_agent_runs_with_ci_profile_and_real_config_is_restored(self):
         self.run_cmd("implement", FAKE_MODE="edit")
         self.assertEqual((self.tmp / "seen.json").read_text(), '{"ci": true}')
-        self.assertEqual((self.repo / "opencode.json").read_text(), '{"real": true}')
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(), '{"real": true}')
         changed = subprocess.run(["git", "diff", "--name-only", "main..HEAD"], cwd=self.repo,
                                  capture_output=True, text=True).stdout
-        self.assertNotIn("opencode.json", changed)
+        self.assertNotIn(".opencode/opencode.json", changed)
 
     def test_push_token_overrides_gh_token_for_git_only(self):
         self.assertEqual(self.run_cmd("implement", FAKE_MODE="commit").returncode, 0)
@@ -312,7 +319,7 @@ class AgentRunTests(unittest.TestCase):
         self.assertIn("<<<BRIEF-FOR-WORKER", text)
         self.assertIn("Goal: advised goal", text)
         self.assertIn("## Routing", text)
-        self.assertIn("smartclinic-task-advisor", text)
+        self.assertIn("orevia-task-advisor", text)
         self.assertNotIn("load the full project context", text)
 
     def test_a_failed_advisor_falls_back_to_the_routing_block(self):
@@ -324,7 +331,7 @@ class AgentRunTests(unittest.TestCase):
 
     def test_brief_off_skips_the_advisor(self):
         text = self.brief_prompts(BRIEF="off")
-        self.assertNotIn("--agent smartclinic-task-advisor", text)
+        self.assertNotIn("--agent orevia-task-advisor", text)
         self.assertIn("## Routing", text)
 
     def test_a_non_swarm_run_keeps_the_full_context_prompt(self):
@@ -337,8 +344,8 @@ class AgentRunTests(unittest.TestCase):
         prompts = self.repo.parent / "prompts.log"
         self.run_cmd("implement", FAKE_MODE="commit", SWARM="1", PROMPT_LOG=str(prompts))
         text = prompts.read_text()
-        for name in ("smartclinic-plan-reviewer", "smartclinic-code-reviewer",
-                     "smartclinic-coverage-auditor", "smartclinic-devsecops"):
+        for name in ("orevia-plan-reviewer", "orevia-code-reviewer",
+                     "orevia-coverage-auditor", "orevia-devsecops"):
             self.assertIn(name, text)
         self.assertIn("Quality loop (mandatory)", text)
 
@@ -484,7 +491,7 @@ class AgentRunTests(unittest.TestCase):
         self.assertIn("Pull request #9", prompt)
         self.assertIn('merge state is "clean"', prompt)
         self.assertIn("Run all the tests", prompt)
-        self.assertEqual((self.repo / "opencode.json").read_text(), '{"real": true}')
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(), '{"real": true}')
 
     def test_the_debugger_survives_a_conflict_with_main_and_a_missing_report(self):
         self.push_to_main("feature.txt", "main version\n")
@@ -508,7 +515,7 @@ class AgentRunTests(unittest.TestCase):
         prompt = (self.tmp / "prompt.log").read_text()
         self.assertIn("six-hourly strategist", prompt)
         self.assertIn("strategy.json", prompt)
-        self.assertEqual((self.repo / "opencode.json").read_text(), '{"real": true}')
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(), '{"real": true}')
 
     def test_unknown_command_is_a_usage_error(self):
         self.assertEqual(self.run_cmd("bogus").returncode, 2)
@@ -538,3 +545,55 @@ class AgentRunTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DeterministicRoutingE2ETests(__import__("test_agent_run", fromlist=["AgentRunTests"]).AgentRunTests):
+    """Real agent-run.sh + real model-router.py + controlled provider fixture.
+
+    Asserts the actual sequence of --model values passed to opencode run,
+    not merely configuration values.
+    """
+
+    def test_forced_mode_uses_only_configured_model(self):
+        prompts = self.tmp / "forced-prompts.log"
+        result = self.run_cmd("implement", FAKE_MODE="commit",
+                              SWARM_FORCE_MODEL="1", SWARM_MODEL="opencode/test",
+                              PROMPT_LOG=str(prompts))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = [line for line in prompts.read_text().splitlines() if "--model" in line]
+        self.assertTrue(calls)
+        for line in calls:
+            self.assertIn("--model opencode/test", line)
+        self.assertNotIn("ok\n", result.stdout[-20:])
+
+    def test_intelligent_mode_rotates_on_rate_limit_to_next_candidate(self):
+        # Fixture registry has two verified free models; make the first return a
+        # 429 so the real wrapper must rotate to the next verified candidate.
+        pricing = self.repo / ".opencode/test-pricing.json"
+        pricing.write_text(json.dumps({"models": {
+            "opencode/test": {"input": 0, "output": 0, "pricing_source": "fixture",
+                              "verified_at": "2026-01-01", "score": 99},
+            "opencode/second": {"input": 0, "output": 0, "pricing_source": "fixture",
+                                "verified_at": "2026-01-01", "score": 50}}}))
+        fake = """#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
+case "$*" in
+  *--model\\ opencode/test*) echo "429 rate limit exceeded"; exit 1 ;;
+esac
+echo done
+"""
+        (self.bin_dir / "opencode").write_text(fake)
+        (self.bin_dir / "opencode").chmod(0o755)
+        prompts = self.tmp / "rotate-prompts.log"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_FORCE_MODEL="0",
+                              PROMPT_LOG=str(prompts))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        calls = [line for line in prompts.read_text().splitlines() if "--model" in line]
+        self.assertIn("--model opencode/test", calls[0])
+        self.assertIn("--model opencode/second", calls[1])
+
+    def test_invalid_force_value_fails_safely(self):
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_FORCE_MODEL="true")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("configuration_error", self.outputs()["result"])

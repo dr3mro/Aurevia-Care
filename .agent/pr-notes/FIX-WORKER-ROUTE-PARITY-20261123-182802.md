@@ -35,10 +35,10 @@ OPS-06, WEB-05, ARC-04. No spec text was changed; the task's requirement IDs are
 Cross-boundary (Python tooling, Java test-only code, contract baseline file). Files changed:
 `scripts/worker_gate.py`, `scripts/worker-check.sh`, `scripts/tests/test_worker_gate.py`,
 `scripts/tests/test_worker_gate_coverage.py`, the three
-`apps/api/src/test/java/com/aurevia/smartclinic/it/contract/*.java` files and the new
+`apps/api/src/test/java/com/aurevia/it/contract/*.java` files and the new
 `contracts/openapi/missing-routes.txt`. No `src/main` class, route, migration, RLS policy,
 workflow, protected tracker or `opencode.json` was edited. The scope's
-`apps/api/src/main/java/com/aurevia/smartclinic/it/contract` prefix does not exist; the
+`apps/api/src/main/java/com/aurevia/it/contract` prefix does not exist; the
 shared parser was kept in the test package, which the brief explicitly allows.
 
 ## Test evidence
@@ -58,7 +58,7 @@ Exact commands and final lines (tool evidence). The red run was captured before 
   `git show HEAD:opencode.json` shows the committed local profile. No regeneration, no further
   diagnosis and no protected-file edit.
 - Java integration (non-vacuous groups, never `-Pfast`):
-  `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=OpenApiRouteParityTest test`
+  `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=OpenApiRouteParityTest test`
   → exit 0; Surefire `Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`.
 - Java unit: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=OpenApiRouteCoverageTest test`
   → exit 0; Surefire `Tests run: 16, Failures: 0, Errors: 0, Skipped: 0`.
@@ -164,13 +164,13 @@ The integrator's full `verify` remains the bundle-level gate.
 
 ## Review verdicts
 
-- smartclinic-plan-reviewer: GO (re-review after all Required plan gaps were addressed)
-- smartclinic-code-reviewer: GO (re-review after the hardening deltas)
-- smartclinic-coverage-auditor: GO (re-audit after the hardening deltas)
-- smartclinic-devsecops: GO (re-review after the hardening deltas)
+- orevia-plan-reviewer: GO (re-review after all Required plan gaps were addressed)
+- orevia-code-reviewer: GO (re-review after the hardening deltas)
+- orevia-coverage-auditor: GO (re-audit after the hardening deltas)
+- orevia-devsecops: GO (re-review after the hardening deltas)
 
-`smartclinic-context-optimizer` supplied the authoritative base-ref and route-evidence map.
-`smartclinic-test-engineer` reviewed the planned test matrix before coding and raised nine
+`orevia-context-optimizer` supplied the authoritative base-ref and route-evidence map.
+`orevia-test-engineer` reviewed the planned test matrix before coding and raised nine
 Required gaps; all were addressed in the RED suite or recorded in Findings. Where it asked
 for an injectable Java baseline path, the change uses a shared package-visible
 `OpenApiRouteCoverage.evaluate` seam instead, exercised by six synthetic tests.
@@ -187,7 +187,7 @@ is the committed, correct local profile.
   {
     "title": "Enforce missing-route baseline growth in the merge gate",
     "details": "Make a merge-time gate compare contracts/openapi/missing-routes.txt with the pinned base so a grown baseline cannot pass solely because the Java parity suite excludes frozen entries.",
-    "scope": ["apps/api/src/test/java/com/aurevia/smartclinic/it/contract"],
+    "scope": ["apps/api/src/test/java/com/aurevia/it/contract"],
     "depends": ["FIX-WORKER-ROUTE-PARITY"]
   },
   {

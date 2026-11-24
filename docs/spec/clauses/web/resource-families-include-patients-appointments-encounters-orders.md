@@ -12,8 +12,8 @@ Partly proven
 
 Evidence source: **tool** (executed JUnit suite against the committed contract and catalog) plus **static** discovery by grep of the controllers under `apps/api/src/main`. No simulated or human review evidence is claimed.
 
-Test class: `com.aurevia.smartclinic.web.clauses.ResourceFamiliesIncludePatientsAppointmentsEncountersOrdersTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/web/clauses/ResourceFamiliesIncludePatientsAppointmentsEncountersOrdersTest.java`),
+Test class: `com.aurevia.web.clauses.ResourceFamiliesIncludePatientsAppointmentsEncountersOrdersTest`
+(`apps/api/src/test/java/com/aurevia/web/clauses/ResourceFamiliesIncludePatientsAppointmentsEncountersOrdersTest.java`),
 a no-Spring, no-database suite that parses `contracts/openapi.yaml` with the same SnakeYAML
 helper pattern as `contract/OpenApiContractRulesTest` and reads `CommandCatalog.synthetic()`.
 All four tests are active and assert outcomes; none is skipped.
@@ -54,9 +54,9 @@ All four tests are active and assert outcomes; none is skipped.
 
 Production classes and files exercised by the test:
 
-- `com.aurevia.smartclinic.api.authorization.CommandCatalog` — `synthetic()` and `find(String)`
+- `com.aurevia.api.authorization.CommandCatalog` — `synthetic()` and `find(String)`
   are the command-registry boundary used for the negative and gap assertions.
-- `com.aurevia.smartclinic.api.authorization.CommandDefinition` — its `path()` accessor names
+- `com.aurevia.api.authorization.CommandDefinition` — its `path()` accessor names
   the referral command route.
 - `contracts/openapi.yaml` — its published path keys are the inventory authority.
 
@@ -76,7 +76,7 @@ sub-route; referrals only through the `CommandCatalog` entry above.
 Verified locally:
 
 ```
-SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=ResourceFamiliesIncludePatientsAppointmentsEncountersOrdersTest test
 Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 ```

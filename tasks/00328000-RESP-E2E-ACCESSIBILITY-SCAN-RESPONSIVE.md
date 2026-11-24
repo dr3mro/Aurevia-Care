@@ -1,7 +1,5 @@
-- [x] RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE · Staff web end-to-end: accessibilityScanResponsive across phone, tablet and desktop
+- [ ] RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE · Staff web end-to-end: accessibilityScanResponsive across phone, tablet and desktop
   - evidence: PR #1549 merged to main (auto-reconciled)
-  - pr: #1549
-  - agent: swarm-3
   - attempts: 2
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/accessibilityScanResponsive.spec.ts

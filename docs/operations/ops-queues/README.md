@@ -20,7 +20,7 @@ what this repository cannot prove.
 | OPS-02 | Audit of reads, disclosures, mutations and administration with actor, purpose, scope, time, action, resource, correlation and outcome; append-only | [Queue catalog](queue-catalog.md) (audit facts on every action and export) |
 | IAM-01, IAM-02 | Active membership and required permission on every write; revocation effective on the next protected request | [Queue catalog](queue-catalog.md) (operator roster and revocation) |
 
-The approved clause itself is in the [product specification](../../../SMARTCLINIC_V1_SPEC.md).
+The approved clause itself is in the [product specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 No new threshold or requirement ID is introduced by this handoff.
 
 Supporting queue-to-requirement links (unreconciled reports → XCH-04,

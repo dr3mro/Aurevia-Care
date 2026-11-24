@@ -26,7 +26,7 @@ file), with a simulated UX review because RTL/WCAG is in scope (`docs/WORKFLOW.m
 
 ## Review owner
 
-`smartclinic-senior-react` and `smartclinic-ux-reviewer` — earlier advisory subagent
+`orevia-senior-react` and `orevia-ux-reviewer` — earlier advisory subagent
 reviews, simulated/synthetic evidence only; no human or clinical participant. Senior
 React verdict: no blocking defects. UX verdict: no blocking defect after the mixed-script
 measurement fix. This pass re-verified by executed command; no new reviewer was needed
@@ -62,7 +62,7 @@ Python 3.11.2. `npm ci` was required first (`node_modules` were absent).
    `Tests 37 passed (37)`, exit 0.
 4. Typecheck (explicit re-run, frontend definition of done):
    `cd apps/staff-web && npm run typecheck` →
-   `> smartclinic-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`,
+   `> orevia-staff-web@0.1.0 typecheck` / `> tsc --noEmit -p tsconfig.json`,
    exit 0, **no `error TS…`**.
 5. Mandatory gate: `bash apps/staff-web/check.sh` → exit 0; all of `gen:api:check`,
    `npm run typecheck`, `npm run lint`, `npm run build`,
@@ -155,7 +155,7 @@ subagent only — synthetic review, not clinical or human acceptance.
    `python3 -I -m unittest discover -s scripts/tests` → `Ran 1118 tests` / `OK`. The dir
    is untracked and is not a code change. Left `scripts/` untouched as required.
 4. **Pre-existing and out of scope (tool evidence):** committed conflict markers remain
-   at HEAD in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+   at HEAD in `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
    `Hl7Parser.java` and `Hl7Segment.java`; none in `apps/staff-web/` (checked). Left
    untouched.
 5. **Deliberate decision (earlier UX reviewer, simulated):** the root keeps its

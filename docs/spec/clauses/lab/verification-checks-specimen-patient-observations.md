@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.lab.clauses.VerificationChecksSpecimenPatientObservationsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/lab/clauses/VerificationChecksSpecimenPatientObservationsTest.java`),
+Test class: `com.aurevia.lab.clauses.VerificationChecksSpecimenPatientObservationsTest`
+(`apps/api/src/test/java/com/aurevia/lab/clauses/VerificationChecksSpecimenPatientObservationsTest.java`),
 a MockMvc HTTP test under the `synthetic-auth` profile that drives the real
 `POST /api/v1/lab/results/{id}` capture endpoint and `POST /api/v1/lab/results/{id}/verify`
 endpoint with synthetic identifiers. The accession store, critical-result workflow, audit
@@ -45,22 +45,22 @@ approved reference ranges.
 
 Production classes and methods exercised by these HTTP requests:
 
-- `com.aurevia.smartclinic.labflow.results.LabResultEntryController` — the thin HTTP adapter
+- `com.aurevia.labflow.results.LabResultEntryController` — the thin HTTP adapter
   for the capture, verify and read routes under `/api/v1/lab/results`.
-- `com.aurevia.smartclinic.labflow.results.ResultEntryService` — `verify`/`decide`/`matches`:
+- `com.aurevia.labflow.results.ResultEntryService` — `verify`/`decide`/`matches`:
   membership and role authorization, specimen lookup, patient/accession/issuer label match,
   version and state preconditions, segregation of duties, deferred-failure audit outcomes and
   the critical-result hand-off.
-- `com.aurevia.smartclinic.lab.result.LabResultService` — `verify`, `requireMatch` and
+- `com.aurevia.lab.result.LabResultService` — `verify`, `requireMatch` and
   `evaluate`: the tenant-scoped append-only revision ledger, identifier match and the
   re-evaluation of every observation against approved effective configuration.
-- `com.aurevia.smartclinic.lab.result.LabPolicyCatalog.ReferenceRange` — the approved,
+- `com.aurevia.lab.result.LabPolicyCatalog.ReferenceRange` — the approved,
   effective-dated range that changes the observation flag from `none` to `low` at verification.
-- `com.aurevia.smartclinic.lab.result.LabRules` — the collector/verifier role boundary.
-- `com.aurevia.smartclinic.labflow.results.ReportView` — the non-sensitive HTTP projection
+- `com.aurevia.lab.result.LabRules` — the collector/verifier role boundary.
+- `com.aurevia.labflow.results.ReportView` — the non-sensitive HTTP projection
   whose state, version, verifier, identifiers and observation flags are asserted.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` and
-  `com.aurevia.smartclinic.api.ApiErrorHandler` — authenticate the synthetic subject, bind the
+- `com.aurevia.web.TenantContextInterceptor` and
+  `com.aurevia.api.ApiErrorHandler` — authenticate the synthetic subject, bind the
   active organization and render each refusal as the asserted status and `$.code`.
 
 ## Gap

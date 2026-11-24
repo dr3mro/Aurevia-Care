@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.audit.clauses.PlatformSupportAccessClinicalDataDisabledDefaultTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/audit/clauses/PlatformSupportAccessClinicalDataDisabledDefaultTest.java`).
+Test class: `com.aurevia.audit.clauses.PlatformSupportAccessClinicalDataDisabledDefaultTest`
+(path: `apps/api/src/test/java/com/aurevia/audit/clauses/PlatformSupportAccessClinicalDataDisabledDefaultTest.java`).
 All six tests are active (no `@Disabled`) and pass with synthetic subjects, incident
 references and fixed-clock instants only; no patient data, credentials or real
 organization identifiers are used. Every request goes through the real HTTP entry
@@ -64,32 +64,32 @@ audited incident procedure rather than enforcement at clinical-data read call si
 
 Production classes exercised through the normal HTTP entry point:
 
-- `com.aurevia.smartclinic.authz.access.AccessController` — thin adapter mapping
+- `com.aurevia.authz.access.AccessController` — thin adapter mapping
   `POST /support/incidents`, `POST /support/incidents/{reference}/approve` and
   `POST /support/check`; injects both domain services and maps failures through
-  `com.aurevia.smartclinic.api.ApiErrorHandler`.
-- `com.aurevia.smartclinic.authz.access.SupportAccessService` — default-deny decision
+  `com.aurevia.api.ApiErrorHandler`.
+- `com.aurevia.authz.access.SupportAccessService` — default-deny decision
   with explicit reasons (`NO_ACTIVE_MEMBERSHIP`, `NO_APPROVED_INCIDENT`, `SELF_APPROVAL`,
   `APPROVED_INCIDENT`), role-separated incident creation and approval, and the
   `SUPPORT_ACCESS` audit trail.
-- `com.aurevia.smartclinic.authz.access.AccessRules` — bounded reference, reason and
+- `com.aurevia.authz.access.AccessRules` — bounded reference, reason and
   window validation that fails closed before any store access.
-- `com.aurevia.smartclinic.authz.access.AccessContracts` — immutable commands and
+- `com.aurevia.authz.access.AccessContracts` — immutable commands and
   projections; organization, actor and time are never accepted from the body.
-- `com.aurevia.smartclinic.authz.access.AccessRepository` — RLS-bounded incident and
+- `com.aurevia.authz.access.AccessRepository` — RLS-bounded incident and
   audit operations (`insertIncident`, `approveIncident`, `findIncident`,
   `activeIncident`, `appendAudit`), mocked at the boundary in this proof.
-- `com.aurevia.smartclinic.tenant.TenantContext`,
-  `com.aurevia.smartclinic.web.TenantContextInterceptor` — per-request tenant binding
+- `com.aurevia.tenant.TenantContext`,
+  `com.aurevia.web.TenantContextInterceptor` — per-request tenant binding
   from the authenticated subject and an explicit organization selection.
 
 Source survey (found, not changed by this task): the implementation lives in
-`apps/api/src/main/java/com/aurevia/smartclinic/authz/access/`
+`apps/api/src/main/java/com/aurevia/authz/access/`
 (`SupportAccessService`, `AccessController`, `AccessRepository`, `AccessRules`,
 `AccessContracts`). The `support_access_incident` table, its row level security with
 `FORCE ROW LEVEL SECURITY`, the self-approval guard and the grants are created by
 `db/migrations/V11__emergency_and_support_access.sql`. Existing proof for the same
-behaviour includes `apps/api/src/test/java/com/aurevia/smartclinic/it/authz/AccessIntegrationTest.java`
+behaviour includes `apps/api/src/test/java/com/aurevia/it/authz/AccessIntegrationTest.java`
 (`supportAccessIsDeniedByDefaultAndNeedsSeparateApproval`,
 `supportIncidentCannotBeSelfApprovedAtDatabaseLevelAndGrantsAreTenantIsolated`,
 `sensitiveActionsAreAuditedWithPurposeRoleFacilityAndActor`),

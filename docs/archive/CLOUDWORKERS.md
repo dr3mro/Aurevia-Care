@@ -1,6 +1,6 @@
 # Cloud workers task list
 
-The swarm orchestrator reads this file. Each wave it picks `todo` tasks whose dependencies are `done` and whose scopes do not overlap with each other or with open swarm pull requests, and gives one to each free worker slot (at most 10). Workers follow AGENTS.md, CODING_STYLE.md, SMARTCLINIC_V1_SPEC.md and the `.opencode` specialists, commit to their own `swarm/<ID>-<run>` branch and never edit shared trackers. The integrator merges a branch only after the full check passes on the merge result, then marks the task `done` here and adds a PROGRESS.md row. See [docs/SWARM.md](../SWARM.md).
+The swarm orchestrator reads this file. Each wave it picks `todo` tasks whose dependencies are `done` and whose scopes do not overlap with each other or with open swarm pull requests, and gives one to each free worker slot (at most 10). Workers follow AGENTS.md, CODING_STYLE.md, PROJECT_V1_SPEC.md and the `.opencode` specialists, commit to their own `swarm/<ID>-<run>` branch and never edit shared trackers. The integrator merges a branch only after the full check passes on the merge result, then marks the task `done` here and adds a PROGRESS.md row. See [docs/SWARM.md](../SWARM.md).
 
 Columns: `Scope` lists comma-separated path prefixes the worker may change. `Reserved` is the one database migration version the task may add, so parallel tasks never collide. `Status` is `todo`, `done` or `blocked`. The integrator fills `PR`.
 
@@ -8,9 +8,9 @@ Columns: `Scope` lists comma-separated path prefixes the worker may change. `Res
 
 | ID | Task | Requirements | Depends | Scope | Reserved | Status | PR |
 |---|---|---|---|---|---|---|---|
-| CW-001 | Staff lifecycle and immutable membership history | IAM-02, IAM-01 | - | apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, db/migrations | V4 | done | #7 |
-| CW-002 | Tenant configuration, catalog and broader audit | ARC-02, OPS-02 | - | apps/api/src/main/java/com/aurevia/smartclinic/config, apps/api/src/test/java/com/aurevia/smartclinic/config | V5 | done | e8911e9 |
-| CW-003 | Concurrent-connection tenant isolation tests | ARC-02 | - | apps/api/src/test/java/com/aurevia/smartclinic/it | - | done | #18 |
+| CW-001 | Staff lifecycle and immutable membership history | IAM-02, IAM-01 | - | apps/api/src/main/java/com/aurevia/staff, apps/api/src/test/java/com/aurevia/staff, db/migrations | V4 | done | #7 |
+| CW-002 | Tenant configuration, catalog and broader audit | ARC-02, OPS-02 | - | apps/api/src/main/java/com/aurevia/config, apps/api/src/test/java/com/aurevia/config | V5 | done | e8911e9 |
+| CW-003 | Concurrent-connection tenant isolation tests | ARC-02 | - | apps/api/src/test/java/com/aurevia/it | - | done | #18 |
 | CW-004 | Staff web foundation: Vite/React/TS scaffold, design system and generated client | PRD-06, UX-01, ARC-03 | - | apps/staff-web | - | done | #19 |
 | CW-005 | Patient mobile foundation: Expo/React Native/TS scaffold and accessible shell | PAT-01, PAT-02, PAT-03, UX-01 | - | apps/patient-mobile | - | done | #17 |
 | CW-006 | Bilingual clinical design language and token contract documentation | UX-01, PRD-05 | - | docs/design | - | todo | |

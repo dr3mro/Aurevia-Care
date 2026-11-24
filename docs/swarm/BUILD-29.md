@@ -22,7 +22,7 @@ Replaced the process-local patient-access state with a PostgreSQL adapter. `V83_
 |---|---|
 | PAT-03 | Durable account state, lockout counter, recovery requests and single-use invitations; a reused or expired invitation fails and a lockout survives a new service instance. |
 | IAM-05 | Only digests of opaque invitation codes and tokens are persisted; site-verified fact digests are unchanged; no demographic field links an account. |
-| ARC-02 | Six tables with `(organization_id, …)` keys, `ENABLE`/`FORCE ROW LEVEL SECURITY`, `USING`/`WITH CHECK (organization_id = public.app_org())`, non-owner `smartclinic_app` grants and transaction-local tenant binding. Two tenants with the same chart UUID and the same subject are isolated in the integration test. |
+| ARC-02 | Six tables with `(organization_id, …)` keys, `ENABLE`/`FORCE ROW LEVEL SECURITY`, `USING`/`WITH CHECK (organization_id = public.app_org())`, non-owner `orevia_app` grants and transaction-local tenant binding. Two tenants with the same chart UUID and the same subject are isolated in the integration test. |
 
 ## Risk class
 
@@ -51,19 +51,19 @@ Every adapter method runs inside the shared tenant-guarded `TransactionTemplate`
 
 ## Migration and rollout considerations
 
-V83 sorts last under both `sort -V` (`db/check.sh`) and Flyway numeric order, after `organization`, `app_org()` and `reject_immutable_mutation()` exist. Tables are seed-free: forced RLS `WITH CHECK` rejects a seed without `app.current_org`. The production bean change is immediate on deploy; no dual-write is needed because no prior production caller existed. The tagged integration test creates and drops its own `smartclinic_patient_access_it` database; `db/check.sh` passed with V83 applied.
+V83 sorts last under both `sort -V` (`db/check.sh`) and Flyway numeric order, after `organization`, `app_org()` and `reject_immutable_mutation()` exist. Tables are seed-free: forced RLS `WITH CHECK` rejects a seed without `app.current_org`. The production bean change is immediate on deploy; no dual-write is needed because no prior production caller existed. The tagged integration test creates and drops its own `orevia_patient_access_it` database; `db/check.sh` passed with V83 applied.
 
 ## Test evidence
 
-All commands run from the repo root on `swarm/BUILD-29-418`, Java 21.0.13.1, Maven 3.10.0, PostgreSQL 17.12 at 127.0.0.1:5432, `SMARTCLINIC_PG_ADMIN=postgres`.
+All commands run from the repo root on `swarm/BUILD-29-418`, Java 21.0.13.1, Maven 3.10.0, PostgreSQL 17.12 at 127.0.0.1:5432, `OREVIA_PG_ADMIN=postgres`.
 
 | Command | Exit | Final line / result |
 |---|---|---|
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcPatientAccessStoreBranchTest,PatientAccessServiceConsumeTest,InMemoryPatientAccessStoreBranchTest,PatientAccessTest test` | 0 | 48 tests, 0 failures/errors (Surefire XML: branch 15, consume 1, in-memory 2, `PatientAccessTest` 30) |
-| `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcPatientAccessStoreIntegrationTest test` | 0 | `tests="7" errors="0" failures="0"`; Flyway `Successfully applied 33 migrations … now at version v83` |
+| `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=JdbcPatientAccessStoreIntegrationTest test` | 0 | `tests="7" errors="0" failures="0"`; Flyway `Successfully applied 33 migrations … now at version v83` |
 | Combined targeted run + `mvn -q -B -f apps/api/pom.xml -Pno-security jacoco:report` | 0 | 55 tests green; report generated (coverage below) |
 | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check` | 0 | no findings |
-| `SMARTCLINIC_PG_ADMIN=postgres bash db/check.sh` | 0 | `db: migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified` |
+| `OREVIA_PG_ADMIN=postgres bash db/check.sh` | 0 | `db: migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified` |
 | `python3 -I scripts/check-docs.py`, `check-secrets.py`, `check-names.py`, `check-wiring.py`, `check-migrations.py --require-baseline` | 0 each | `check-wiring` prints only stale-baseline notes (`PatientAccessStore` durable finding is now fixed); no new finding |
 | `python3 -I -m unittest discover -s scripts/tests -q` | 1 | `Ran 436 tests … FAILED (failures=3)`; all three are `test_check_pack.*` — the documented CI-profile-under-skip-worktree false positive. `git ls-files -v opencode.json` → flag `S`; I did not edit `opencode.json`. The Java-conventions subset is green: `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` → `Ran 2 tests … OK`. |
 | `python3 -I scripts/check-pack.py` | 1 | `check-pack: opencode.json is stale: run scripts/gen-opencode.py` — same known false positive (MEMORY OPS-CW-003-01, prior READY-37 note). Committed file was not modified. |

@@ -29,4 +29,4 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION public.document_association_verified_content(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.document_association_verified_content(uuid) TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.document_association_verified_content(uuid) TO orevia_app;

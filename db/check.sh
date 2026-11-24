@@ -4,13 +4,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-host=${SMARTCLINIC_PG_HOST:-127.0.0.1}
-port=${SMARTCLINIC_PG_PORT:-5432}
-admin=${SMARTCLINIC_PG_ADMIN:-$(whoami)}
-db="smartclinic_check_$$"
+host=${OREVIA_PG_HOST:-127.0.0.1}
+port=${OREVIA_PG_PORT:-5432}
+admin=${OREVIA_PG_ADMIN:-$(whoami)}
+db="orevia_check_$$"
 base=(psql -X -v ON_ERROR_STOP=1 -h "$host" -p "$port" -U "$admin" -d postgres -Atq)
-mig=(psql -X -v ON_ERROR_STOP=1 -h "$host" -p "$port" -U smartclinic_migrate -d "$db" -Atq)
-app=(psql -X -v ON_ERROR_STOP=1 -h "$host" -p "$port" -U smartclinic_app -d "$db" -Atq)
+mig=(psql -X -v ON_ERROR_STOP=1 -h "$host" -p "$port" -U orevia_migrate -d "$db" -Atq)
+app=(psql -X -v ON_ERROR_STOP=1 -h "$host" -p "$port" -U orevia_app -d "$db" -Atq)
 org_a=11111111-1111-1111-1111-111111111111
 org_b=22222222-2222-2222-2222-222222222222
 
@@ -18,15 +18,15 @@ cleanup() { "${base[@]}" -c "DROP DATABASE IF EXISTS $db" >/dev/null 2>&1 || tru
 trap cleanup EXIT
 
 "${base[@]}" -c "DO \$\$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_migrate') THEN
-    EXECUTE 'CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE';
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_migrate') THEN
+    EXECUTE 'CREATE ROLE orevia_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_app') THEN
-    EXECUTE 'CREATE ROLE smartclinic_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE';
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orevia_app') THEN
+    EXECUTE 'CREATE ROLE orevia_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE';
   END IF;
 END \$\$;" >/dev/null
 "${base[@]}" -c "DROP DATABASE IF EXISTS $db" >/dev/null
-"${base[@]}" -c "CREATE DATABASE $db OWNER smartclinic_migrate" >/dev/null
+"${base[@]}" -c "CREATE DATABASE $db OWNER orevia_migrate" >/dev/null
 
 # Apply in Flyway version order, not bash's lexical glob order: with two-digit
 # versions, V10 must run after V9 rather than before V1. sort -V gives numeric
@@ -90,16 +90,16 @@ SQL
 "${mig[@]}" <<'SQL' >/dev/null
 DO $$
 BEGIN
-  IF (SELECT rolbypassrls FROM pg_roles WHERE rolname = 'smartclinic_app') THEN
-    RAISE EXCEPTION 'smartclinic_app has BYPASSRLS';
+  IF (SELECT rolbypassrls FROM pg_roles WHERE rolname = 'orevia_app') THEN
+    RAISE EXCEPTION 'orevia_app has BYPASSRLS';
   END IF;
   IF EXISTS (
     SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid = c.relowner
-     WHERE r.rolname = 'smartclinic_app'
+     WHERE r.rolname = 'orevia_app'
        AND c.relname IN ('organization','user_identity','facility',
                          'membership','role_assignment','audit_event',
                          'config_entry','config_approval')) THEN
-    RAISE EXCEPTION 'smartclinic_app owns a tenant table';
+    RAISE EXCEPTION 'orevia_app owns a tenant table';
   END IF;
   IF public.app_org() IS NOT NULL THEN
     RAISE EXCEPTION 'unset context must yield NULL';
@@ -221,12 +221,12 @@ BEGIN
   FOREACH t IN ARRAY ARRAY['user_identity','membership','role_assignment',
                            'config_entry','config_approval']
   LOOP
-    IF has_table_privilege('smartclinic_app','public.'||t,'UPDATE')
-       OR has_table_privilege('smartclinic_app','public.'||t,'DELETE')
-       OR has_table_privilege('smartclinic_app','public.'||t,'TRUNCATE') THEN
+    IF has_table_privilege('orevia_app','public.'||t,'UPDATE')
+       OR has_table_privilege('orevia_app','public.'||t,'DELETE')
+       OR has_table_privilege('orevia_app','public.'||t,'TRUNCATE') THEN
       RAISE EXCEPTION 'runtime role retains write privilege on %', t;
     END IF;
-    IF NOT has_table_privilege('smartclinic_app','public.'||t,'INSERT') THEN
+    IF NOT has_table_privilege('orevia_app','public.'||t,'INSERT') THEN
       RAISE EXCEPTION 'runtime role cannot append history on %', t;
     END IF;
   END LOOP;

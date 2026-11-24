@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.RouteFinalCorrectedCriticalResultNamedOwnerTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/RouteFinalCorrectedCriticalResultNamedOwnerTest.java`).
+Test class: `com.aurevia.exchange.clauses.RouteFinalCorrectedCriticalResultNamedOwnerTest`
+(path: `apps/api/src/test/java/com/aurevia/exchange/clauses/RouteFinalCorrectedCriticalResultNamedOwnerTest.java`).
 All three tests are active (none disabled) and pass against a real PostgreSQL database with synthetic fixtures only.
 
 - `everyFinalCorrectedAndCriticalResultIsRoutedToTheRegisteredOwnerAndCoverageQueue` — positive proof.
@@ -36,17 +36,17 @@ All three tests are active (none disabled) and pass against a real PostgreSQL da
 
 Production classes exercised through the normal HTTP entry points:
 
-- `com.aurevia.smartclinic.exchange.result.ResultController` — `POST /api/v1/xch04/orders`,
+- `com.aurevia.exchange.result.ResultController` — `POST /api/v1/xch04/orders`,
   `POST /api/v1/xch04/results` (201 report / 202 reconciliation) and `GET /api/v1/xch04/results/{id}`;
   a thin adapter that injects the domain service and makes no routing decision.
-- `com.aurevia.smartclinic.exchange.result.ResultRoutingService` — `registerOrder`, `importResult` and
+- `com.aurevia.exchange.result.ResultRoutingService` — `registerOrder`, `importResult` and
   `importAuthorization`: re-derives membership and roles inside the tenant-guarded transaction, matches
   the five identifiers, routes the matched order, persists `routing.owner()` and `routing.coverageQueue()`
   on the new `ResultReport`, and writes the critical-route audit. Unmatched results go to reconciliation
   instead of creating a revision.
-- `com.aurevia.smartclinic.exchange.result.ResultRules` — `match` (all five identifiers must agree) and
+- `com.aurevia.exchange.result.ResultRules` — `match` (all five identifiers must agree) and
   `route` (switch over FINAL, CORRECTED and CRITICAL yielding the named owner and coverage queue).
-- `com.aurevia.smartclinic.exchange.result.ResultActionPolicy`, `ResultRepository` — the
+- `com.aurevia.exchange.result.ResultActionPolicy`, `ResultRepository` — the
   `XCH04_RESULT_IMPORT` role set and the RLS-bounded SQL boundary.
 - `db/migrations/V22__result_routing.sql` — `xch04_expected_order` and `xch04_report_revision` carry
   `owner_subject` and `coverage_queue`; both tables enable and force row level security.

@@ -9,9 +9,9 @@
 
 The patient app is the self-access surface for verified patients: it lists
 appointments (PAT-01) and released reports (PAT-02) and, per [section 7, Web and
-mobile row](../../SMARTCLINIC_V1_SPEC.md), is built with React Native and Expo for
+mobile row](../../.opencode/config/PROJECT_V1_SPEC.md), is built with React Native and Expo for
 iOS and Android, with the server authorizing and validating every command.
-[WEB-07](../../SMARTCLINIC_V1_SPEC.md) commits it to the latest two major iOS and
+[WEB-07](../../.opencode/config/PROJECT_V1_SPEC.md) commits it to the latest two major iOS and
 Android versions, but the shipped [Expo configuration](../../apps/patient-mobile/app.json)
 is phone- and portrait-only: `orientation` is `portrait` and
 `ios.supportsTablet` is `false`. Patients therefore cannot use iPad or Android
@@ -96,7 +96,7 @@ dependency, migration or test was added here. It is the prerequisite for the
 follow-on configuration, window-size hook and screen-layout stories. Evidence
 source: direct file reads of `docs/decisions/template.md`, the existing decision
 records, `apps/patient-mobile/app.json`, the section 7 Web and mobile row and
-UX-01 of `SMARTCLINIC_V1_SPEC.md`, and
+UX-01 of `PROJECT_V1_SPEC.md`, and
 `docs/design/accessibility-patterns.md` — tool evidence, with no human, clinical
 or patient feedback. A simulated UX and senior-mobile review of this record found
 no missing decision; real patient and clinical acceptance stay

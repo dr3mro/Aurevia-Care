@@ -14,7 +14,7 @@ Routine — contained staff-web presentation change with a new component test; n
 
 ## Review owner
 
-`smartclinic-senior-react` and `smartclinic-senior-typescript` skills applied to the scoped files. Evidence is executed tool output only; no human, clinical or patient-participant evidence. The prior run's simulated `smartclinic-senior-react` review returned no actionable findings; I relied on the executable gates below rather than repeating that review.
+`orevia-senior-react` and `orevia-senior-typescript` skills applied to the scoped files. Evidence is executed tool output only; no human, clinical or patient-participant evidence. The prior run's simulated `orevia-senior-react` review returned no actionable findings; I relied on the executable gates below rather than repeating that review.
 
 ## Data changes
 
@@ -62,7 +62,7 @@ Typecheck final lines (mandatory — no `error TS…` diagnostics):
 
 ```
 cd apps/staff-web && npm run typecheck
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 === typecheck exit: 0 ===
 ```

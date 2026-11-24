@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.EnabledUnitPublishServiceHoursResponseTargetsTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/EnabledUnitPublishServiceHoursResponseTargetsTest.java`).
+Test class: `com.aurevia.messaging.clauses.EnabledUnitPublishServiceHoursResponseTargetsTest`
+(`apps/api/src/test/java/com/aurevia/messaging/clauses/EnabledUnitPublishServiceHoursResponseTargetsTest.java`).
 It is a synthetic unit acceptance test following the `messaging.service` fixture style:
 `InMemoryServiceProfileStore`, `ServiceProfileService` with a fixed clock
 (`Clock.fixed(2026-11-19T12:00:00Z, UTC)`), `ServiceProfileActions`, `TenantContext` set
@@ -43,22 +43,22 @@ Test methods (one positive rule proof and four refusals):
 
 Production classes the new tests exercise:
 
-- Domain service: `com.aurevia.smartclinic.messaging.service.ServiceProfileService`
+- Domain service: `com.aurevia.messaging.service.ServiceProfileService`
   (`publish`, `approve`, `viewProfile`, `authorize`, `requireUnitAccess`).
-- Value contract: `com.aurevia.smartclinic.messaging.service.ServiceProfileContract`
+- Value contract: `com.aurevia.messaging.service.ServiceProfileContract`
   (`ServiceProfile.enablesUnitAt`, `effectiveAt`, `dueAt`; `ServiceHours`,
   `ServiceWindow`, `LocalizedText`, `PublishProfileRequest`).
 - Action matrix and validation: `ServiceProfileActions` (`PROFILE_PUBLISH` is
   `tenant_admin`-only), `ServiceProfileInputs` and
-  `com.aurevia.smartclinic.messaging.units.MessagingInputs`.
-- HTTP adapter: `com.aurevia.smartclinic.messaging.service.ServiceProfileController`
+  `com.aurevia.messaging.units.MessagingInputs`.
+- HTTP adapter: `com.aurevia.messaging.service.ServiceProfileController`
   (`POST /api/v1/care-units/{unitId}/service-profiles` and
   `GET /api/v1/care-units/{unitId}/service-profile`). These tests call the service
   the controller delegates to; the HTTP entry point itself is corroborated by the
-  existing `com.aurevia.smartclinic.it.messaging.ServiceProfileHttpIntegrationTest`
+  existing `com.aurevia.it.messaging.ServiceProfileHttpIntegrationTest`
   methods `publishesApprovesAndServesDurableProfileThroughHttp` and
   `deniedSubjectsCannotCrossTenantOrActWithoutAuthority`.
-- Durability: `com.aurevia.smartclinic.messaging.service.JdbcServiceProfileStore`
+- Durability: `com.aurevia.messaging.service.JdbcServiceProfileStore`
   with forced row-level security and the `public.service_profile` table from
   `db/migrations/V92__service_profiles.sql` (`time_zone`, `windows`,
   `response_target_minutes`, `topics`, `urgent_instructions`, `urgent_channel`,

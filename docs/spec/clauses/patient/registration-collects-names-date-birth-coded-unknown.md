@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.RegistrationCollectsNamesDateBirthCodedUnknownTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/RegistrationCollectsNamesDateBirthCodedUnknownTest.java`),
+Test class: `com.aurevia.patient.clauses.RegistrationCollectsNamesDateBirthCodedUnknownTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/RegistrationCollectsNamesDateBirthCodedUnknownTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the
 HTTP entry point `POST /api/v1/patients` and reads the record back with
 `GET /api/v1/patients/{id}` against two synthetic organizations with forced row-level
@@ -40,15 +40,15 @@ security. All inputs are synthetic and use the reserved `.test` domain.
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.web.PatientController` — thin HTTP adapter binding
+- `com.aurevia.web.PatientController` — thin HTTP adapter binding
   `RegisterRequest` and mapping the service result to HTTP 201.
-- `com.aurevia.smartclinic.patient.PatientService` — enforces the mutually-exclusive
+- `com.aurevia.patient.PatientService` — enforces the mutually-exclusive
   date-of-birth / coded-reason rule, normalizes names for search only, and applies
   the action policy before any write.
-- `com.aurevia.smartclinic.patient.PatientRepository` — the single SQL boundary,
+- `com.aurevia.patient.PatientRepository` — the single SQL boundary,
   writing `contacts`, `identifiers` and `consents` as JSON text inside the
   tenant-guarded transaction and reading them back through the effective-version fold.
-- `com.aurevia.smartclinic.patient.Patient` and `com.aurevia.smartclinic.patient.PatientView`
+- `com.aurevia.patient.Patient` and `com.aurevia.patient.PatientView`
   — effective projection carrying every collected field.
 - `db/migrations/V7__patient_registration.sql` — `patient_record` with the
   `contacts`, `identifiers` and `consents` jsonb columns, the DOB/reason exclusivity

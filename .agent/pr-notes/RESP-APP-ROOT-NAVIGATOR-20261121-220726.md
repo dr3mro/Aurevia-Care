@@ -32,7 +32,7 @@ Routine — contained patient-app presentation change. Cross-boundary only in th
 
 ## Review owner
 
-`smartclinic-senior-mobile` (simulated reviewer, loaded skill and bounded review) and `smartclinic-senior-typescript` (skill; strict TypeScript/typecheck gate). No human, patient or clinician review is claimed; real accessibility acceptance remains a G5 gate.
+`orevia-senior-mobile` (simulated reviewer, loaded skill and bounded review) and `orevia-senior-typescript` (skill; strict TypeScript/typecheck gate). No human, patient or clinician review is claimed; real accessibility acceptance remains a G5 gate.
 
 ## Data changes
 
@@ -91,7 +91,7 @@ Every new or changed branch in `RootNavigator.tsx` and the test that takes it:
 
 ## Clinical and architecture review
 
-Simulated `smartclinic-senior-mobile` review is recorded in Findings. `smartclinic-senior-typescript` skill applied: `tsc --noEmit` green, no `any`, no `@ts-ignore`, no disabled/skipped test. No clinical-safety review is required: no clinical value, prescribing, patient association or critical result is rendered or changed by this presentation-only diff. Real VoiceOver/TalkBack and Arabic-clinician acceptance remain G5 gates and are not claimed here.
+Simulated `orevia-senior-mobile` review is recorded in Findings. `orevia-senior-typescript` skill applied: `tsc --noEmit` green, no `any`, no `@ts-ignore`, no disabled/skipped test. No clinical-safety review is required: no clinical value, prescribing, patient association or critical result is rendered or changed by this presentation-only diff. Real VoiceOver/TalkBack and Arabic-clinician acceptance remain G5 gates and are not claimed here.
 
 ## Findings
 
@@ -102,7 +102,7 @@ Simulated `smartclinic-senior-mobile` review is recorded in Findings. `smartclin
 
 ### Simulated senior-mobile review (reviewer, not tool/human evidence)
 
-A bounded `smartclinic-senior-mobile` review found no blocking issue and confirmed the physical→logical inset swap, the empty detail slot's neutral accessibility impact, the `borderStartWidth` divider behaviour and full branch coverage. It could not run commands in its environment and relied on the tool evidence above. Three of its observations were addressed in this same pass:
+A bounded `orevia-senior-mobile` review found no blocking issue and confirmed the physical→logical inset swap, the empty detail slot's neutral accessibility impact, the `borderStartWidth` divider behaviour and full branch coverage. It could not run commands in its environment and relied on the tool evidence above. Three of its observations were addressed in this same pass:
 
 1. **Bottom inset applied twice (medium, now fixed)** — the tab bar previously added `paddingBottom: max(insets.bottom, 8)` while the containing region already applied `insets.bottom`, which could double the inset on a notched device. `tabBarStyle` is now only `{ minHeight: TOUCH_TARGET }`; the bottom inset lives once on `responsive-content`. The RTL/LTR inset assertions in the test still prove the region applies it.
 2. **Double horizontal mirroring (medium, device check deferred)** — `applyDirection()` and the explicit `direction` style both follow the same active locale, so one logical flip is intended, not two. The redundant `direction: 'ltr'` in `styles.twoPane` (always overridden by the inline locale value) was removed to avoid confusion. A cold-start VoiceOver/TalkBack pass on a real Arabic device remains a G5/launch-gate item and is not claimed as done here.
@@ -134,7 +134,7 @@ All acceptance criteria for PAT-01, PAT-02 and UX-01 are met within the two-file
 
 ### Finding carried forward (out of scope, not modified)
 
-`git grep -nE '^(<<<<<<<|>>>>>>>) '` reports conflict markers in three committed API files under `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). `git show HEAD:<path>` confirms they are already committed on `main`; they were not produced by this branch's merge (which was "Already up to date") and are outside this story's scope, so I did not modify them. Flagging for the integrator/Delivery: these markers would break the Java compile gate. No `task-requests` block is filed because this is a pre-existing `main` defect, not a dependency of this story.
+`git grep -nE '^(<<<<<<<|>>>>>>>) '` reports conflict markers in three committed API files under `apps/api/src/main/java/com/aurevia/exchange/hl7/` (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). `git show HEAD:<path>` confirms they are already committed on `main`; they were not produced by this branch's merge (which was "Already up to date") and are outside this story's scope, so I did not modify them. Flagging for the integrator/Delivery: these markers would break the Java compile gate. No `task-requests` block is filed because this is a pre-existing `main` defect, not a dependency of this story.
 
 ## Coverage repair — attempt 1 (2026-11-21, orchestrator repair worker)
 

@@ -46,7 +46,7 @@ result is touched.
 ## Review owner
 
 Senior React and Vite specialist (advisory review requested and received from
-`smartclinic-senior-react`); senior TypeScript standards applied. UX review
+`orevia-senior-react`); senior TypeScript standards applied. UX review
 limited to the responsive/RTL structure assertions in the new test file.
 
 ## Data changes
@@ -80,7 +80,7 @@ Commands run (all from `apps/staff-web` unless noted), with final lines:
 - `bash check.sh` → `Test Files 159 passed (159); Tests 1897 passed (1897)`; `No files with missing coverage. 207 files fully covered.`; `Statements 100% (3733/3733), Branches 100% (1896/1896), Functions 100% (1263/1263), Lines 100% (3567/3567)`. (The console "useTheme must be used inside ThemeProvider" lines are the expected error path asserted by `tests/theme/ThemeProvider.test.tsx`, not failures.)
 - Typecheck final lines (required by the frontend rule):
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
   ```
   Exit 0, no `error TS…` lines.
@@ -129,7 +129,7 @@ was lowered and no `# pragma`, ignore comment or disabled test was added.
   confirmed by the senior React specialist (file reads only).
 - Pre-existing, outside this task's scope: `git grep` finds literal conflict
   markers committed in HEAD in three unrelated Java files —
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`,
   `Hl7Parser.java`, `Hl7Segment.java` (lines around 6/14/10). They were not
   introduced by this change and were not edited. The integrator should route
   them to a Java repair story.

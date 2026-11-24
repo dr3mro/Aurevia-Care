@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.exchange.clauses.ReceiverSeesExchangeSpecificWorkItemLocallyTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/exchange/clauses/ReceiverSeesExchangeSpecificWorkItemLocallyTest.java`).
+Test class: `com.aurevia.exchange.clauses.ReceiverSeesExchangeSpecificWorkItemLocallyTest`
+(path: `apps/api/src/test/java/com/aurevia/exchange/clauses/ReceiverSeesExchangeSpecificWorkItemLocallyTest.java`).
 All nine tests are active (none disabled) and pass with synthetic identifiers, MRNs, issuers and in
 a fixed clock. Fixtures mirror the neighbouring exchange service tests: a mocked `OrderRepository`
 and `AuditAppender`, an inline `TransactionTemplate`, a fixed `Clock` and a tenant context set per
@@ -54,17 +54,17 @@ controller-to-service path rather than echoing stubs.
 
 Production classes exercised through their normal entry points:
 
-- `com.aurevia.smartclinic.exchange.order.OrderService` — `workItems()` re-derives membership and the
+- `com.aurevia.exchange.order.OrderService` — `workItems()` re-derives membership and the
   exchange role inside the tenant-guarded transaction and audits the projection; `verifyPatient()`
   validates the command at the boundary, conceals an invisible item with 404, requires an exact
   MRN/issuer match plus a real receiver-side identifier match before binding, maps a zero-row update
   to 409, and audits success; `deny()` writes a `DENIED` audit row on every refusal.
-- `com.aurevia.smartclinic.exchange.order.OrderController` — the thin HTTP adapter injects the
+- `com.aurevia.exchange.order.OrderController` — the thin HTTP adapter injects the
   service and delegates both exchange work-item routes; it contains no business rules.
-- `com.aurevia.smartclinic.exchange.order.OrderRepository` — `workItems()`, `workItem()` and
+- `com.aurevia.exchange.order.OrderRepository` — `workItems()`, `workItem()` and
   `verifyPatient()` scope every read and write by `destination_org = public.app_org()`, so neither a
   list nor a bind can cross a tenant boundary.
-- `com.aurevia.smartclinic.exchange.order.WorkItemView` and `VerifyPatientRequest` — the bounded
+- `com.aurevia.exchange.order.WorkItemView` and `VerifyPatientRequest` — the bounded
   exchange projection and the receiver identity command. The sender patient reference is not a
   receiver chart key; no general chart access is conveyed with the item.
 - `db/migrations/V19__exchange_orders.sql` — `exchange_work_item` (lines 100-129) with RLS and FORCE
@@ -78,8 +78,8 @@ The service-layer tests above prove delegation, audit and refusal at the domain 
 tenant isolation and the absence of general chart access are enforced by the V19 RLS/FORCE RLS and
 two-party policies listed above, not by the mocked repository. The real-PostgreSQL entry-point proof
 is
-`com.aurevia.smartclinic.it.exchangeorder.OrderExchangeIntegrationTest.verifiesTheLocalPatientAndNeverGrantsGeneralChartAccess`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeorder/OrderExchangeIntegrationTest.java`),
+`com.aurevia.it.exchangeorder.OrderExchangeIntegrationTest.verifiesTheLocalPatientAndNeverGrantsGeneralChartAccess`
+(path: `apps/api/src/test/java/com/aurevia/it/exchangeorder/OrderExchangeIntegrationTest.java`),
 which shows over HTTP that the receiving tenant sees its own item, cannot read the sender's order or
 chart with the projected identifiers, cannot verify another tenant's patient, and binds only its own
 locally verified patient. This task is the unit-level rule proof and did not run or change that

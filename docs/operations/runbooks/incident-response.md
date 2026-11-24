@@ -72,12 +72,12 @@ telemetry; a passing evaluation is not proof an alert fired.
 4. **Check liveness and readiness.** Call `GET /health/live` and
    `GET /health/ready`. Liveness is process-local; readiness does one database
    round trip and answers HTTP 503 on failure with a status-only body. See
-   [HealthController](../../../apps/api/src/main/java/com/aurevia/smartclinic/web/HealthController.java).
+   [HealthController](../../../apps/api/src/main/java/com/aurevia/web/HealthController.java).
    Do not paste connection strings or exception text anywhere.
 5. **Scope from the structured logs.** Take the request lines for the affected
    route and time window. Each line has exactly `correlationId`, `method`,
    `route`, `status` and `latencyMs`
-   ([RequestLogFormatter](../../../apps/api/src/main/java/com/aurevia/smartclinic/observability/RequestLogFormatter.java))
+   ([RequestLogFormatter](../../../apps/api/src/main/java/com/aurevia/observability/RequestLogFormatter.java))
    and the route is the matched handler pattern, never a raw patient-bearing
    path. Compare p95 with the OPS-03 targets.
    `NOT YET IN PLACE:` the log pipeline and dashboards that would make this a

@@ -12,8 +12,8 @@ Proven by tests
 
 Fast, database-free unit proof (synthetic fixtures only):
 
-- Test class: `com.aurevia.smartclinic.messaging.clauses.ExamplesIncludeCollectionImagingPreparationTherapyHomeTest`
-  (path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ExamplesIncludeCollectionImagingPreparationTherapyHomeTest.java`).
+- Test class: `com.aurevia.messaging.clauses.ExamplesIncludeCollectionImagingPreparationTherapyHomeTest`
+  (path: `apps/api/src/test/java/com/aurevia/messaging/clauses/ExamplesIncludeCollectionImagingPreparationTherapyHomeTest.java`).
 - `sendsEveryNamedExampleInstructionKind` — positive proof. A clinician sends one free-text instruction for
   each of the five named kinds (`COLLECTION`, `IMAGING_PREPARATION`, `THERAPY_HOME`, `VISIT_FOLLOW_UP`,
   `PHARMACY_PICKUP`) through `InstructionService.send`. Each returned `Revision` keeps its `kind()` and is
@@ -24,15 +24,15 @@ Fast, database-free unit proof (synthetic fixtures only):
 
 Production classes exercised:
 
-- `com.aurevia.smartclinic.messaging.instructions.InstructionContract.Kind` — the typed example vocabulary
+- `com.aurevia.messaging.instructions.InstructionContract.Kind` — the typed example vocabulary
   with stable wire keys and `wire()` / `from(String)`.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionService` — `send` carries the kind into a
+- `com.aurevia.messaging.instructions.InstructionService` — `send` carries the kind into a
   published `Revision`; `listForPatient` surfaces the revisions over an active patient-unit connection.
   The test calls `listForPatient` as a unit-assigned clinician, so it exercises the staff branch of that
   read (active connection plus unit assignment), not patient-chart binding; patient-authenticated access
   belongs to an adjacent clause.
-- `com.aurevia.smartclinic.messaging.instructions.InstructionStore.InMemory` and
-  `com.aurevia.smartclinic.messaging.instructions.InstructionActions` — synthetic store and bounded role
+- `com.aurevia.messaging.instructions.InstructionStore.InMemory` and
+  `com.aurevia.messaging.instructions.InstructionActions` — synthetic store and bounded role
   matrix used by the fast test.
 
 Adjacent production found in the survey but not part of this clause's proof: the MSG-04 instruction routes

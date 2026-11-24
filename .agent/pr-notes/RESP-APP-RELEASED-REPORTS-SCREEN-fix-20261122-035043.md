@@ -44,8 +44,8 @@ association, data, contract, migration or release change (`docs/WORKFLOW.md`).
 
 ## Review owner
 
-Senior React Native and Expo specialist (`smartclinic-senior-mobile`). An
-advisory, read-only `smartclinic-senior-mobile` review from the prior fix pass
+Senior React Native and Expo specialist (`orevia-senior-mobile`). An
+advisory, read-only `orevia-senior-mobile` review from the prior fix pass
 returned no blocking findings: rest-omission is the smallest correct fix;
 `Omit<ReleasedReport, 'result'>` is assignable to the `reports` prop;
 `_discardedResult` is exempt from `noUnusedLocals` (rest-sibling rule) and from
@@ -75,7 +75,7 @@ flow. No reserved migration version was used.
 
 Evidence sources: **tool** (I, the primary agent, executed every command
 below and observed the results) and **reviewer** (the prior bounded
-`smartclinic-senior-mobile` advisory report cited above). No simulated user or
+`orevia-senior-mobile` advisory report cited above). No simulated user or
 human participant was involved.
 
 Entry-point-to-test trace: `ReleasedReportsScreen` → `ScreenFrame` →

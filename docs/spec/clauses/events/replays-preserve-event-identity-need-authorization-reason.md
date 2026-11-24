@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.events.clauses.ReplaysPreserveEventIdentityNeedAuthorizationReasonTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/events/clauses/ReplaysPreserveEventIdentityNeedAuthorizationReasonTest.java`),
+Test class `com.aurevia.events.clauses.ReplaysPreserveEventIdentityNeedAuthorizationReasonTest`
+(`apps/api/src/test/java/com/aurevia/events/clauses/ReplaysPreserveEventIdentityNeedAuthorizationReasonTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants and
 synthetic worker and administrator fixtures. It proves the clause through the
 real `POST /api/v1/delivery/replays` entry point, not just the domain service:
@@ -44,25 +44,25 @@ real `POST /api/v1/delivery/replays` entry point, not just the domain service:
   refused with 401 `UNAUTHENTICATED` and no replay fact is stored.
 
 Production classes and objects exercised through
-`com.aurevia.smartclinic.events.DeliveryController` (`POST /api/v1/delivery/events`,
+`com.aurevia.events.DeliveryController` (`POST /api/v1/delivery/events`,
 `POST /api/v1/delivery/replays`):
 
-- `com.aurevia.smartclinic.events.DurableEventService` — `publish` and `replay`,
+- `com.aurevia.events.DurableEventService` — `publish` and `replay`,
   including context derivation, input validation, fresh role and membership
   checks, the tenant-scoped existence probe, replay fact creation and audit.
-- `com.aurevia.smartclinic.events.DeliveryActions` — `REPLAY` is limited to
+- `com.aurevia.events.DeliveryActions` — `REPLAY` is limited to
   administrative roles.
-- `com.aurevia.smartclinic.events.DeliveryInputs` — UUID and bounded-text
+- `com.aurevia.events.DeliveryInputs` — UUID and bounded-text
   validation at the trust boundary.
-- `com.aurevia.smartclinic.events.DurableEventContract` — `PublishRequest`,
+- `com.aurevia.events.DurableEventContract` — `PublishRequest`,
   `ReplayRequest` and `ReplayRecord` with its immutable `originalEventId`.
-- `com.aurevia.smartclinic.events.JdbcDeliveryStore` — `putReplay` writing the
+- `com.aurevia.events.JdbcDeliveryStore` — `putReplay` writing the
   authenticated authorizer and original event id.
 - `db/migrations/V55__durable_event_outbox.sql` — `public.delivery_replay` with
   its immutable foreign key to `delivery_outbox(organization_id, id)`, RLS and
   FORCE RLS with the tenant policy, and the immutability triggers.
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=ReplaysPreserveEventIdentityNeedAuthorizationReasonTest test`
 — Surefire reported `Tests run: 9, Failures: 0, Errors: 0, Skipped: 0` (final rerun, 7.458 s); see
 `.agent/pr-notes/SPEC-ARC-05-C06-20261123-023804.md` for exact final lines.

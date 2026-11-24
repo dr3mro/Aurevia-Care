@@ -11,8 +11,8 @@ Proven by tests
 ## Evidence
 
 Test class
-`com.aurevia.smartclinic.chart.clauses.CareTeamActionTasksTrackOwnerDueTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/CareTeamActionTasksTrackOwnerDueTest.java`),
+`com.aurevia.chart.clauses.CareTeamActionTasksTrackOwnerDueTest`
+(`apps/api/src/test/java/com/aurevia/chart/clauses/CareTeamActionTasksTrackOwnerDueTest.java`),
 an HTTP-level integration test on real PostgreSQL with two synthetic tenants that
 share facility, visit-type and patient-local identifiers. The test creates a
 disposable database from the production Flyway migrations and uses synthetic
@@ -47,43 +47,43 @@ subjects only. Every request goes through the normal follow-up entry points
 
 Production classes exercised through those entry points:
 
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpController` — thin HTTP
+- `com.aurevia.scheduling.followup.FollowUpController` — thin HTTP
   adapter binding the task request and mapping command outcomes to responses.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpCommandService` — the
+- `com.aurevia.scheduling.followup.FollowUpCommandService` — the
   transactional command boundary; `FollowUpService` owns validation, the
   owner/due-date/outcome invariants, role authorization (create needs
   `APPOINTMENT_BOOK`, complete needs `APPOINTMENT_COMPLETE`, list needs
   `APPOINTMENT_READ`) and the `ALREADY_COMPLETED` conflict rule.
-- `com.aurevia.smartclinic.scheduling.followup.CareTeamTask` — the task contract
+- `com.aurevia.scheduling.followup.CareTeamTask` — the task contract
   and its `complete` transition, which preserves the original owner and due date.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpStore` and
-  `com.aurevia.smartclinic.scheduling.followup.JdbcFollowUpStore` — tenant-scoped
+- `com.aurevia.scheduling.followup.FollowUpStore` and
+  `com.aurevia.scheduling.followup.JdbcFollowUpStore` — tenant-scoped
   insert, find and list of tasks; completion checks the OPEN state before an
   upsert of the task row.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpAuthorizationGuard` and
-  `com.aurevia.smartclinic.authz.ActionPolicy` — re-derived membership and the
+- `com.aurevia.scheduling.followup.FollowUpAuthorizationGuard` and
+  `com.aurevia.authz.ActionPolicy` — re-derived membership and the
   role/action matrix that refuses reception completion.
-- `com.aurevia.smartclinic.scheduling.followup.FollowUpConfiguration` — the
+- `com.aurevia.scheduling.followup.FollowUpConfiguration` — the
   approved interval that makes the fixture suggestion deterministic.
 - Persistence and isolation are supplied by
   `db/migrations/V74__build_05.sql`, which creates `public.care_team_task` with
   the owner, due-date, status and outcome columns, per-tenant `ENABLE` and
   `FORCE ROW LEVEL SECURITY`, the tenant isolation policy and the runtime grants.
 
-Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
+Verified locally: `OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dgroups=integration -Dtest=CareTeamActionTasksTrackOwnerDueTest test`
 — `tests="5" errors="0" skipped="0" failures="0"` in the Surefire XML report.
 
 Survey note: the chart clause tests live under
-`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses`, but this clause is
-implemented in the neighbouring `com.aurevia.smartclinic.scheduling.followup`
+`apps/api/src/test/java/com/aurevia/chart/clauses`, but this clause is
+implemented in the neighbouring `com.aurevia.scheduling.followup`
 package rather than in `chart.record`. The controllers under
-`apps/api/src/main/java/com/aurevia/smartclinic/web` contain no care-team-task
+`apps/api/src/main/java/com/aurevia/web` contain no care-team-task
 route; the routes are declared on `FollowUpController`. Corroborating evidence
 already on `main`:
-`com.aurevia.smartclinic.scheduling.followup.it.FollowUpHttpIntegrationTest`
+`com.aurevia.scheduling.followup.it.FollowUpHttpIntegrationTest`
 (`careTeamTasksCarryOwnerDueDateAndOutcomeOverHttp`) and the
-`com.aurevia.smartclinic.scheduling.followup.FollowUpCommandServiceTest` /
+`com.aurevia.scheduling.followup.FollowUpCommandServiceTest` /
 `JdbcFollowUpStoreTest` suites.
 
 ## Gap

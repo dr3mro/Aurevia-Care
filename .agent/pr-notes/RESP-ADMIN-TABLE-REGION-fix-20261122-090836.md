@@ -53,7 +53,7 @@ No API, data, authorization or deployment boundary changed (`docs/WORKFLOW.md`).
 
 ## Review owner
 
-`smartclinic-senior-react` and `smartclinic-ux-reviewer` — bounded simulated subagent
+`orevia-senior-react` and `orevia-ux-reviewer` — bounded simulated subagent
 reviews were recorded by the earlier worker and found no blocking defect. I did not
 re-run them in this pass and edited no reviewer code. No human, clinician or
 participant review was available or claimed.
@@ -90,19 +90,19 @@ in the earlier notes. No simulated-user, clinician or human-participant evidence
   `grep -c 'error TS'` returned 0):
 
 ```
-> smartclinic-staff-web@0.1.0 gen:api:check
+> orevia-staff-web@0.1.0 gen:api:check
 > bash scripts/gen-api-types.sh --check
 
 ✨ openapi-typescript 7.4.2
 gen:api: generated client matches the contract
 
-> smartclinic-staff-web@0.1.0 typecheck
+> orevia-staff-web@0.1.0 typecheck
 > tsc --noEmit -p tsconfig.json
 
-> smartclinic-staff-web@0.1.0 lint
+> orevia-staff-web@0.1.0 lint
 > eslint . --max-warnings 0
 
-> smartclinic-staff-web@0.1.0 build
+> orevia-staff-web@0.1.0 build
 > tsc --noEmit -p tsconfig.json && vite build
 ✓ built in 158ms
 ```
@@ -180,7 +180,7 @@ blocking correctness defect.
 ## Findings
 
 - **Pre-existing, out of scope:** committed conflict markers in
-  `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
+  `apps/api/src/main/java/com/aurevia/exchange/hl7/{Hl7ParseException,Hl7Parser,Hl7Segment}.java`
   are present in `HEAD` (verified with `git show HEAD:<path>`) and predate this work.
   The `git merge --no-edit origin/main` was "Already up to date", so these are not
   merge conflicts from this pass. They are Java API files outside the task scope and

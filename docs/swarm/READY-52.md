@@ -10,7 +10,7 @@ Swarm worker 3. Local checks: passed. Agent result: ok.
 
 ## Summary
 
-Adds a servlet filter in the new `com.aurevia.smartclinic.observability` package that
+Adds a servlet filter in the new `com.aurevia.observability` package that
 gives every HTTP request an opaque correlation id, publishes it to SLF4J MDC and the
 response header, and emits one fixed-field JSON log line after the request. No file in
 `web/` was changed and no dependency was added. All fixtures are synthetic; no patient
@@ -34,8 +34,8 @@ contract change. Full-chain correlation interaction is recorded under **Findings
 
 ## Review owner and evidence sources
 
-`smartclinic-senior-backend` (bounded, review-only) plus `smartclinic-senior-java-build`
-and `smartclinic-test-engineer` skills. Evidence sources: executed tool commands (tool
+`orevia-senior-backend` (bounded, review-only) plus `orevia-senior-java-build`
+and `orevia-test-engineer` skills. Evidence sources: executed tool commands (tool
 evidence) and a simulated specialist review. No reviewer ran commands; no simulated user,
 clinician or human participant evidence in this story.
 
@@ -69,7 +69,7 @@ Green after implementation (targeted):
 
 ```text
 $ mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest='CorrelationIdFilterTest,RequestLogFormatterTest' test
-... INFO com.aurevia.smartclinic.observability.CorrelationIdFilter -- {"correlationId":"...","method":"GET","route":"UNMATCHED","status":200,"latencyMs":0}
+... INFO com.aurevia.observability.CorrelationIdFilter -- {"correlationId":"...","method":"GET","route":"UNMATCHED","status":200,"latencyMs":0}
 EXIT=0
 ```
 
@@ -149,7 +149,7 @@ critical-result logic. No human clinical acceptance is claimed.
 ## Findings
 
 1. **Full-chain correlation divergence (review finding, not changed).** A bounded
-   `smartclinic-senior-backend` review observed that the pre-existing
+   `orevia-senior-backend` review observed that the pre-existing
    `web/TenantContextInterceptor` (registered on `/api/v1/**`, `preHandle`) reads and
    overwrites `X-Correlation-Id` with its own value using a *looser* allowlist
    (`[A-Za-z0-9._-]{1,128}`, no UUID requirement) and binds that value into

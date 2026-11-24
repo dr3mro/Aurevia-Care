@@ -10,8 +10,8 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.PreserveOriginalIdentifiersSignedArtifactsSignaturesSourceTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/PreserveOriginalIdentifiersSignedArtifactsSignaturesSourceTest.java`),
+Test class: `com.aurevia.patient.clauses.PreserveOriginalIdentifiersSignedArtifactsSignaturesSourceTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/PreserveOriginalIdentifiersSignedArtifactsSignaturesSourceTest.java`),
 a real-PostgreSQL integration test under the `synthetic-auth` profile that drives the
 HTTP entry points `POST /api/v1/patients`, `POST /api/v1/duplicate-reviews` and
 `POST /api/v1/duplicate-reviews/{reviewId}/consolidate` with synthetic records and then
@@ -34,14 +34,14 @@ reads the append-only tables under forced row-level security.
 
 Production classes and files exercised by the request path:
 
-- `com.aurevia.smartclinic.web.PatientController` — registration entry point whose
+- `com.aurevia.web.PatientController` — registration entry point whose
   `RegisterRequest` accepts the opaque `identifiers` and `consents` evidence text.
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationController` — thin HTTP
+- `com.aurevia.patient.consolidation.ConsolidationController` — thin HTTP
   adapter for the duplicate-review worklist, open and consolidate commands.
-- `com.aurevia.smartclinic.patient.consolidation.ConsolidationService` — domain
+- `com.aurevia.patient.consolidation.ConsolidationService` — domain
   invariants and the snapshot call `insertAssociation(...)` that passes the duplicate's
   MRN, issuer, identifiers and consents to the store.
-- `com.aurevia.smartclinic.patient.consolidation.DuplicateRepository` — the RLS-bounded
+- `com.aurevia.patient.consolidation.DuplicateRepository` — the RLS-bounded
   SQL boundary writing the preserved columns on `chart_association`.
 - `db/migrations/V9__duplicate_review_consolidation.sql` — the append-only
   `chart_association` table with `preserved_mrn`, `preserved_issuer`,
@@ -55,7 +55,7 @@ Production classes and files exercised by the request path:
 Verified locally with the command and final line from the surefire report:
 
 ```
-SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
+OREVIA_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=PreserveOriginalIdentifiersSignedArtifactsSignaturesSourceTest test
 Tests run: 4, Failures: 0, Errors: 0, Skipped: 1
 ```

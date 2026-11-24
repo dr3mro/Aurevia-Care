@@ -10,11 +10,11 @@ Partly proven
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.tenancy.clauses.JobsExportsSearchAttachmentsIntegrationsApplySameTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/JobsExportsSearchAttachmentsIntegrationsApplySameTest.java`).
+Test class: `com.aurevia.tenancy.clauses.JobsExportsSearchAttachmentsIntegrationsApplySameTest`
+(path: `apps/api/src/test/java/com/aurevia/tenancy/clauses/JobsExportsSearchAttachmentsIntegrationsApplySameTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, using the `synthetic-auth`
 profile, the same fixtures and database setup as the neighbouring `tenancy.clauses`
-tests, and a dedicated disposable database `smartclinic_arc02_c05_it` so parallel
+tests, and a dedicated disposable database `orevia_arc02_c05_it` so parallel
 workers do not collide. All five tests are enabled and pass with synthetic data only.
 
 Test methods (one positive rule proof and four negative refusals):
@@ -44,25 +44,25 @@ Test methods (one positive rule proof and four negative refusals):
 
 Production classes exercised through their real entry points:
 
-- JOBS: `com.aurevia.smartclinic.events.DeliveryController`,
-  `com.aurevia.smartclinic.events.DurableEventService`,
-  `com.aurevia.smartclinic.events.JdbcDeliveryStore` and
-  `com.aurevia.smartclinic.tenant.TenantGuardTransactionManager`.
-  `com.aurevia.smartclinic.tenant.retention.RetentionJob` is a pure domain kernel
+- JOBS: `com.aurevia.events.DeliveryController`,
+  `com.aurevia.events.DurableEventService`,
+  `com.aurevia.events.JdbcDeliveryStore` and
+  `com.aurevia.tenant.TenantGuardTransactionManager`.
+  `com.aurevia.tenant.retention.RetentionJob` is a pure domain kernel
   with no HTTP entry point or caller in `src/main`, so it cannot be exercised over
   HTTP; the durable outbox is the observable jobs surface.
-- EXPORTS: `com.aurevia.smartclinic.tenant.export.JdbcExportStore`,
-  `com.aurevia.smartclinic.tenant.export.ExportPermissionGuard`,
-  `com.aurevia.smartclinic.tenant.export.TenantExportService` and the V89
+- EXPORTS: `com.aurevia.tenant.export.JdbcExportStore`,
+  `com.aurevia.tenant.export.ExportPermissionGuard`,
+  `com.aurevia.tenant.export.TenantExportService` and the V89
   `export_job` table with forced RLS. Isolation is proved at the store and object
   boundaries and role/expiry refusal through the guarded service transaction.
-- SEARCH: `com.aurevia.smartclinic.web.PatientController` (`GET /api/v1/patients?name=`).
-- ATTACHMENTS: `com.aurevia.smartclinic.documents.DocumentController` and
-  `com.aurevia.smartclinic.messaging.attachments.AttachmentController` (the latter
+- SEARCH: `com.aurevia.web.PatientController` (`GET /api/v1/patients?name=`).
+- ATTACHMENTS: `com.aurevia.documents.DocumentController` and
+  `com.aurevia.messaging.attachments.AttachmentController` (the latter
   only for missing-context refusal).
-- INTEGRATIONS: `com.aurevia.smartclinic.exchange.order.OrderController`.
-- Shared boundary: `com.aurevia.smartclinic.web.TenantContextInterceptor` and
-  `com.aurevia.smartclinic.tenant.TenantContext`.
+- INTEGRATIONS: `com.aurevia.exchange.order.OrderController`.
+- Shared boundary: `com.aurevia.web.TenantContextInterceptor` and
+  `com.aurevia.tenant.TenantContext`.
 
 Source survey at HEAD: every one of the five surfaces has a production
 implementation. In particular `docs/gates/g0-isolation-surfaces.md:43` is stale;
@@ -77,7 +77,7 @@ route is `/api/v1/tenant/exports`.
 The policy itself is enforced on all five surfaces, but three delivery defects
 prevent an unqualified "Proven by tests" status:
 
-1. The export HTTP adapter `apps/api/src/main/java/com/aurevia/smartclinic/tenant/export/TenantExportService.java`
+1. The export HTTP adapter `apps/api/src/main/java/com/aurevia/tenant/export/TenantExportService.java`
    does not open a `TenantGuardTransactionManager` transaction. Its DB reads
    therefore run without `app.current_org`/`app.actor`, so `ExportPermissionGuard`
    sees no membership and the `EXPORT_DENIED` audit append violates the forced-RLS

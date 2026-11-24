@@ -95,7 +95,7 @@ outside that scope was changed. No dependency, migration or generated file was a
 
 Routine (presentational navigation shell). No clinical decision, patient data, signed
 record, tenant policy or critical-result logic is introduced. A bounded advisory plan
-was requested from the `smartclinic-senior-mobile` specialist before implementation.
+was requested from the `orevia-senior-mobile` specialist before implementation.
 
 ## Review owner
 

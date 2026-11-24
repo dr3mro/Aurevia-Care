@@ -39,7 +39,7 @@ the owner to complete.
 - **PRD-05** scopes the platform to one market per production deployment with a
   market-specific policy pack; the jurisdiction and data handling decisions are
   therefore a per-deployment gate, not a global default.
-- Section 9 (G5 row) of the [specification](../../SMARTCLINIC_V1_SPEC.md) requires each
+- Section 9 (G5 row) of the [specification](../../.opencode/config/PROJECT_V1_SPEC.md) requires each
   site to approve its workflow, release policy, market constraints, integrations,
   identity procedures, staffing and downtime drills before launch.
 - Section 10 assigns the decision "Launch jurisdiction, hosting region and scope of
@@ -67,7 +67,7 @@ means the decision or its signed evidence is not yet complete; `blocked` means t
 row cannot proceed until a named prerequisite (a market or region decision, a
 cloud account, a signed contract or a sibling decision pack) is met. Owner roles
 are the accountable roles of section 10 of the
-[specification](../../SMARTCLINIC_V1_SPEC.md); where section 10 has no exact row
+[specification](../../.opencode/config/PROJECT_V1_SPEC.md); where section 10 has no exact row
 for a sub-topic, the nearest accountable role is shown for the owner to confirm.
 "Evidence location" is where the signed artifact belongs; a repository path is
 given only when the repository can hold the evidence today.
@@ -153,7 +153,7 @@ synthetic OPS-06 declaration at
 [infra/delivery-safety/delivery-safety-policy.json](../../infra/delivery-safety/delivery-safety-policy.json),
 which is not a market pack.
 
-- [SmartClinic V1 specification](../../SMARTCLINIC_V1_SPEC.md) — section 8 (OPS-01),
+- [Orevia V1 specification](../../.opencode/config/PROJECT_V1_SPEC.md) — section 8 (OPS-01),
   section 9 (G5 row) and section 10 (decision owners and evidence). Proves what must be
   decided; decides nothing.
 - [Production readiness evidence register](../../docs/operations/production-readiness/README.md)
@@ -198,11 +198,11 @@ which is not a market pack.
   and [0003 — persistence of in-memory stores](../../docs/decisions/0003-persistence-of-in-memory-stores.md)
   — enforced tenant isolation, the migration change-safety gate, and the inventory of
   in-memory adapters. Engineering decisions; none fixes a market or region.
-- [Prescription service](../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/PrescriptionService.java)
-  and [prescribing channel service](../../apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxService.java)
+- [Prescription service](../../apps/api/src/main/java/com/aurevia/prescription/PrescriptionService.java)
+  and [prescribing channel service](../../apps/api/src/main/java/com/aurevia/prescription/rx/RxService.java)
   — draft, catalog, allergy and channel support. Market entitlement and the choice of
   approved channel or printable prescription are configuration plus human decisions.
-- [Patient release service](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/release/ReleaseService.java)
+- [Patient release service](../../apps/api/src/main/java/com/aurevia/exchange/release/ReleaseService.java)
   — release authorization tied to an immutable revision and policy version (XCH-06).
   The market's release rules are not encoded here.
 
@@ -303,7 +303,7 @@ repository as a signed or live artifact.
 ## Approval record
 
 Accountable roles from section 10 of the
-[specification](../../SMARTCLINIC_V1_SPEC.md). This table is completed by the people
+[specification](../../.opencode/config/PROJECT_V1_SPEC.md). This table is completed by the people
 who decide; no field is filled here.
 
 | Section 10 decision area | Accountable role | Name | Date | Decision |

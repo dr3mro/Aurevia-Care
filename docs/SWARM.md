@@ -17,7 +17,7 @@ Up to 20 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 **Continuous loop.** Start it once (run **Agent swarm**, or push a change to `tasks/`). It then repeats wave, publish, integrate, next wave until every task is `[x]`. A task a worker has taken 5 times without finishing keeps `attempts: 5`; the daily issue monitor gives it one more round, at most twice, before it waits for a person. The monthly minute cap in `budget-gate` still applies to private repositories.
 
-**Merge conflicts.** Fix workers and the integrator resolver use the [merge conflict skill](../.opencode/skills/smartclinic-merge-conflict/SKILL.md). The runner reads it from the fetched base so older branches can resolve incoming changes without already containing the skill.
+**Merge conflicts.** Fix workers and the integrator resolver use the [merge conflict skill](../.opencode/skills/orevia-merge-conflict/SKILL.md). The runner reads it from the fetched base so older branches can resolve incoming changes without already containing the skill.
 
 **Repair gate.** While main is red the full gate fails every pull request on classes other repair tasks still have to fix, so repairs (`FIX-` and `DLV-` PRs) merge through `scripts/repair-gate.sh` instead: the quick gate, the PostgreSQL integration tier judged by `scripts/worker_gate.py` on the classes the task names (PostgreSQL is mandatory there), `db/check.sh` and the developer reference. OWASP, SpotBugs and JaCoCo run in Delivery right after the merge; a red result becomes the next repair task. Ordinary PRs keep the full gate.
 
@@ -142,7 +142,34 @@ Two native GitHub checks guard a protected merge, and they answer different ques
 
 The worker image installs Debian's `python3-yaml` and checks the import with `python3 -I` during the build. The hosted Delivery tooling, fix-PR validation and integrator jobs use `.github/actions/setup-tooling-python` before running the same script tests. For local runs, `python3 -I -c 'import yaml'` verifies that PyYAML is available to the interpreter used by the gates.
 
-The optional repository variable `SWARM_MODEL` overrides the agent model at runtime for every workflow that runs OpenCode, including the swarm worker. When it is unset, the worker uses the model configured for its slot in `.github/swarm/slots.json` and the daily workflows use their compiled default. Set it to a model identifier supported by the OpenCode CLI and the configured slot API keys; it changes the `--model` argument only and does not rewrite the baked slot configuration, which the agent pack check validates.
+### Centralized, zero-cost model routing
+
+Every production `opencode run` obtains its model from `scripts/model-router.py`, invoked by the single wrapper in `scripts/agent-run.sh`. No workflow, image or slot config selects a model: the `model` field is gone from `.github/swarm/slots.json` and the inert `MODEL` hint has been removed from the workflows. Two repository variables, passed straight through to the router, are the only model inputs:
+
+- **`SWARM_FORCE_MODEL`** — a strict Boolean. `0` (the default when unset or empty) selects intelligent routing; `1` forces the exact configured model everywhere. Any other value is a configuration error that fails safely rather than being interpreted as true.
+- **`SWARM_MODEL`** — a provider-qualified model identifier. In intelligent mode it is reserved strictly for the **final fallback**, after all eligible primary models are exhausted; it never overrides an eligible primary. In forced mode it is the *only* model used for every role and phase, with no alternative selection. A forced configuration missing `SWARM_MODEL`, or one that names a paid, unauthorized or unverified model, is rejected.
+
+The router classifies each task deterministically (L1–L4; security/auth/tenant/clinical paths are always critical), ranks verified zero-cost primary models by agent role and execution phase, and returns a bounded candidate list. A rate-limited model rotates to the next verified candidate; a timeout or implementation failure is terminal. `agent-run.sh` preserves task state across a rotation and never retries an exhausted model within one run.
+
+Zero-cost eligibility is a **hard constraint** enforced from the checked-in registry `.github/swarm/model-pricing.json`. A model is eligible only with $0.00/M input, output, cache, reasoning, tool and request prices, no subscription or automatic overage, and a verified pricing source. A `free` substring in a model id, or presence in OpenCode's inventory, never implies eligibility. If no verified zero-cost model is available, the task defers — a paid model is never selected. The registry is not a worker-editable file; changes require authorized maintenance review.
+
+Configure:
+
+```bash
+# Intelligent routing (default): SWARM_MODEL is the final fallback
+gh variable set SWARM_FORCE_MODEL --body "0" -R dr3mro/Aurevia-Care
+gh variable set SWARM_MODEL --body "opencode-go/hy4-flash-free" -R dr3mro/Aurevia-Care
+
+# Forced single-model routing
+gh variable set SWARM_FORCE_MODEL --body "1" -R dr3mro/Aurevia-Care
+
+# Intelligent routing with no designated fallback
+gh variable set SWARM_FORCE_MODEL --body "0" -R dr3mro/Aurevia-Care
+gh variable delete SWARM_MODEL -R dr3mro/Aurevia-Care
+gh variable list -R dr3mro/Aurevia-Care
+```
+
+The model id in these examples must still pass availability, capability and zero-cost validation. Do not change repository variables without authorization.
 
 ### Two independent gates
 
@@ -155,9 +182,9 @@ Two separate native checks report on every revision; neither substitutes for the
 
 `pr-rebase.yml` refreshes a new pull request onto `main` on open so its gate runs against the current base. `dependabot-auto-merge.yml` merges low-risk dependency updates. `release-app-image.yml` publishes the tagged application image only when the tag points to a green default-branch commit; tags are restricted by the `PROTECT-TAGS` ruleset.
 
-`agent-image.yml` builds a base image once (OpenCode V2 CLI, Git, gh, JDK 21, Maven, the project's Maven dependencies). `swarm-images.yml` adds one small layer per slot, `ghcr.io/<owner>/<repo>-agent-<n>`, that bakes that slot's OpenCode model and config from `.github/swarm/slots.json`. Each slot uses its own free account through the secret `OPENCODE_API_KEY_<n>`. Credentials are never baked into an image. Edit `slots.json` to give a slot a different model or extra OpenCode settings, and the image rebuilds.
+`agent-image.yml` builds a base image once (OpenCode V2 CLI, Git, gh, JDK 21, Maven, the project's Maven dependencies). `swarm-images.yml` adds one small layer per slot, `ghcr.io/<owner>/<repo>-agent-<n>`, that bakes only the shared OpenCode settings (and any extra slot config) from `.github/swarm/slots.json`; no model is baked into any slot image. Each slot uses its own free account through the secret `OPENCODE_API_KEY_<n>`. Credentials are never baked into an image. Edit `slots.json` to add or remove a slot or to change OpenCode settings and the slot images rebuild; model choice is a runtime router decision from `SWARM_FORCE_MODEL`/`SWARM_MODEL`.
 
-**Reusable build, never per-task.** Images are built only when their own inputs change (the agent Dockerfile, `slots.json` or the image workflows), on the monthly refresh, or by manual dispatch. `swarm.yml` contains no build step: a worker only pulls its slot's `:latest` image, so running N tasks does not rebuild anything. Because a slot image layers on the base `:latest` tag, `swarm.yml` checks image health before planning a wave: while `agent-image` or `swarm-images` is running, or the last slot build is not green, it starts no workers (avoiding a stale-image race such as a V1 CLI after the base moved to V2). A successful `Swarm slot images` run re-triggers `swarm.yml`, so a wave skipped during a rebuild still picks up its task. To verify a CLI change reached workers, rebuild the base image, wait for slot images, then start a wave.
+**Reusable build, never per-task.** Images are built only when their own inputs change (the agent Dockerfile, `slots.json` or the image workflows), on the monthly refresh, or by manual dispatch. A change to `slots.json` — now slot entries and settings only, never a model — still rebuilds the slot images and is the signal that workers must pick up the new baked config. `swarm.yml` contains no build step: a worker only pulls its slot's `:latest` image, so running N tasks does not rebuild anything. Because a slot image layers on the base `:latest` tag, `swarm.yml` checks image health before planning a wave: while `agent-image` or `swarm-images` is running, or the last slot build is not green, it starts no workers (avoiding a stale-image race such as a V1 CLI after the base moved to V2). A successful `Swarm slot images` run re-triggers `swarm.yml`, so a wave skipped during a rebuild still picks up its task. To verify a CLI change reached workers, rebuild the base image, wait for slot images, then start a wave.
 
 ## Setup
 

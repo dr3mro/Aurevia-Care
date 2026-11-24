@@ -34,7 +34,7 @@ for the rows that still need an owner and real evidence.
    patient identifier, real domain or PHI into a log, a link, a tracker or these
    notes. The API's log line is fixed to `correlationId`, `method`, `route`,
    `status` and `latencyMs`
-   ([RequestLogFormatter](../../../apps/api/src/main/java/com/aurevia/smartclinic/observability/RequestLogFormatter.java)).
+   ([RequestLogFormatter](../../../apps/api/src/main/java/com/aurevia/observability/RequestLogFormatter.java)).
 4. **Synthetic data only in rehearsal.** A rehearsal with synthetic fixtures
    tests the procedure and the evidence envelope; it is never presented as a
    conducted incident, drill, rotation or restore.
@@ -49,12 +49,12 @@ for the rows that still need an owner and real evidence.
 
 - **Health probes:** unauthenticated `GET /health/live` (process up) and
   `GET /health/ready` (one database round trip, HTTP 503 on failure, status-only
-  body). See [HealthController](../../../apps/api/src/main/java/com/aurevia/smartclinic/web/HealthController.java)
+  body). See [HealthController](../../../apps/api/src/main/java/com/aurevia/web/HealthController.java)
   and the [API README](../../../apps/api/README.md).
 - **Structured logs ECS on stdout:** `logging.structured.format.console: ecs` and
   one line per request with a valid-or-generated correlation id
   ([application.yml](../../../apps/api/src/main/resources/application.yml),
-  [CorrelationIdFilter](../../../apps/api/src/main/java/com/aurevia/smartclinic/observability/CorrelationIdFilter.java)).
+  [CorrelationIdFilter](../../../apps/api/src/main/java/com/aurevia/observability/CorrelationIdFilter.java)).
 - **Fail-closed checks:** `scripts/check.sh`, the module `check.sh` entry points,
   OWASP dependency analysis and SpotBugs inside `mvn verify`, and the append-only
   audit hash chain verified by `db/check.sh`
@@ -72,7 +72,7 @@ the runbooks below say `NOT YET IN PLACE:` at the exact step that needs them.
 
 ## Related material
 
-- Product specification: [SMARTCLINIC_V1_SPEC.md](../../../SMARTCLINIC_V1_SPEC.md).
+- Product specification: [PROJECT_V1_SPEC.md](../../../.opencode/config/PROJECT_V1_SPEC.md).
 - [Recovery drill runbook](../recovery/runbook.md) and
   [drill evidence template](../recovery/drill-evidence.md).
 - [Deployment design handoff](../../../infra/DEPLOYMENT.md) and

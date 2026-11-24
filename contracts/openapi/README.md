@@ -1,14 +1,14 @@
 # X-04 — Generated command clients and server-side authorization (PRD-06)
 
 Synthetic-only cross-cutting slice. The authoritative command catalog is
-[CommandCatalog.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandCatalog.java).
+[CommandCatalog.java](../../apps/api/src/main/java/com/aurevia/api/authorization/CommandCatalog.java).
 The committed [OpenAPI contract](generated/openapi.yaml),
 [typed TypeScript client](generated/client.ts) and
 [checksum manifest](generated/manifest.json) are generated from that one model by
-[CommandClientGenerator.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandClientGenerator.java).
+[CommandClientGenerator.java](../../apps/api/src/main/java/com/aurevia/api/authorization/CommandClientGenerator.java).
 The server gate is
-[CommandAuthorization.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandAuthorization.java).
-Requirement text is in [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md);
+[CommandAuthorization.java](../../apps/api/src/main/java/com/aurevia/api/authorization/CommandAuthorization.java).
+Requirement text is in [PROJECT_V1_SPEC.md](../../.opencode/config/PROJECT_V1_SPEC.md);
 the shared wire conventions are in the [X-01 contract](../contract/README.md).
 
 This slice adds no route, controller, database table or migration; reserved
@@ -46,8 +46,8 @@ From the repository root, after `mvn -q -B -f apps/api/pom.xml -Pno-security,fas
 
 ```sh
 CP="apps/api/target/classes:$(mvn -q -f apps/api/pom.xml dependency:build-classpath -Dmdep.outputFile=/dev/stdout)"
-java -cp "$CP" com.aurevia.smartclinic.api.authorization.CommandClientGenerator contracts/openapi/generated
-java -cp "$CP" com.aurevia.smartclinic.api.authorization.CommandClientGenerator --check contracts/openapi/generated
+java -cp "$CP" com.aurevia.api.authorization.CommandClientGenerator contracts/openapi/generated
+java -cp "$CP" com.aurevia.api.authorization.CommandClientGenerator --check contracts/openapi/generated
 python3 -I contracts/openapi/check.py
 python3 -I -m unittest discover -s contracts/openapi -p 'test_*.py' -q
 node_modules/.bin/prettier --check contracts/openapi/generated/client.ts
@@ -93,7 +93,7 @@ enablement. The in-memory decision sink is a synthetic reference; durable
 OPS-02 audit belongs to the owning service's transactional audit appender.
 
 This slice is delivered at the canonical, business-domain paths named by the
-tracker entry: `contracts/openapi` and `com.aurevia.smartclinic.api.authorization`.
+tracker entry: `contracts/openapi` and `com.aurevia.api.authorization`.
 The earlier story-ID paths are not retained, so no duplicate command catalog or
 authorization gate exists. Reserved migration V57
 is unused; the remaining story-ID contract paths were renamed to business-domain

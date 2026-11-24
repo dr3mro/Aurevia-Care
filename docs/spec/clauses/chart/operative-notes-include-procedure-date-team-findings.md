@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.chart.clauses.OperativeNotesIncludeProcedureDateTeamFindingsTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/OperativeNotesIncludeProcedureDateTeamFindingsTest.java`).
+Test class: `com.aurevia.chart.clauses.OperativeNotesIncludeProcedureDateTeamFindingsTest`
+(path: `apps/api/src/test/java/com/aurevia/chart/clauses/OperativeNotesIncludeProcedureDateTeamFindingsTest.java`).
 All five tests are active (none are disabled) and pass with synthetic data only.
 They exercise the versioned-template domain service through its normal public API with an
 `InMemoryTemplateStore` fixture, so no external infrastructure or patient data is used.
@@ -36,22 +36,22 @@ They exercise the versioned-template domain service through its normal public AP
 
 Production classes exercised (none changed by this task):
 
-- `com.aurevia.smartclinic.clinical.templates.BaselineTemplates` — synthetic baseline field sets;
+- `com.aurevia.clinical.templates.BaselineTemplates` — synthetic baseline field sets;
   its OPERATIVE family is the authoritative in-process definition of clause 2's six fields.
-- `com.aurevia.smartclinic.clinical.templates.TemplateService` — public API entry point;
+- `com.aurevia.clinical.templates.TemplateService` — public API entry point;
   `defineVersion`, `approveVersion`, `validate`, `saveNote` and `savedNote` enforce requiredness
   and role authorization and freeze field meanings into the saved revision.
-- `com.aurevia.smartclinic.clinical.templates.FieldDefinition`, `FieldType`, `FieldValue`,
+- `com.aurevia.clinical.templates.FieldDefinition`, `FieldType`, `FieldValue`,
   `TemplateNoteRevision`, `ValidationReport` and `SavedNoteRevision` — the value types that
   carry field meaning, authored values and validation outcomes through that API.
-- `com.aurevia.smartclinic.clinical.templates.InMemoryTemplateStore` and `TemplateActor` —
+- `com.aurevia.clinical.templates.InMemoryTemplateStore` and `TemplateActor` —
   synthetic store and caller-identity fixtures.
 
 Neighbouring implementation observed in the source survey (not changed by this task): the
 authoritative governance baseline is also frozen in migration `db/migrations/V87__baseline_templates.sql`
 (`clinical_template_baseline` and `current_clinical_template_baseline`), with tenant-owned template
 version, field-dictionary and note-revision tables in `db/migrations/V80__template_store.sql` and the
-JDBC adapter `com.aurevia.smartclinic.clinical.templates.JdbcTemplateStore`. The migration baseline
+JDBC adapter `com.aurevia.clinical.templates.JdbcTemplateStore`. The migration baseline
 and the Java baseline are already kept in lockstep by `BaselineTemplatesTest`. No HTTP controller
 maps a dedicated CLN-04 template endpoint; the domain-service API is the exercised entry point,
 matching the neighbouring clause-proof tests.

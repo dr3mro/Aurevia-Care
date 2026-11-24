@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.patient.clauses.NormalizeSearchWhilePreservingOriginalSpellingTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/patient/clauses/NormalizeSearchWhilePreservingOriginalSpellingTest.java`).
+Test class: `com.aurevia.patient.clauses.NormalizeSearchWhilePreservingOriginalSpellingTest`
+(`apps/api/src/test/java/com/aurevia/patient/clauses/NormalizeSearchWhilePreservingOriginalSpellingTest.java`).
 It is a real-PostgreSQL acceptance test tagged `integration`, using the `synthetic-auth`
 profile and two synthetic tenants, following the fixtures and database setup of the
 neighbouring `authz.clauses` acceptance tests. Synthetic names and MRNs only.
@@ -36,30 +36,30 @@ Test methods (one positive rule proof, three negative refusals):
 
 Production classes the test exercises:
 
-- HTTP entry point: `com.aurevia.smartclinic.web.PatientController` (`GET /api/v1/patients`,
+- HTTP entry point: `com.aurevia.web.PatientController` (`GET /api/v1/patients`,
   `POST /api/v1/patients`).
-- Domain service: `com.aurevia.smartclinic.patient.PatientService` (`normalize`, `search`,
+- Domain service: `com.aurevia.patient.PatientService` (`normalize`, `search`,
   `register`, `authorize`).
-- SQL boundary: `com.aurevia.smartclinic.patient.PatientRepository` (`search`, `insert`,
+- SQL boundary: `com.aurevia.patient.PatientRepository` (`search`, `insert`,
   `current_patients` fold).
-- Value types: `com.aurevia.smartclinic.patient.Patient`,
-  `com.aurevia.smartclinic.patient.PatientView`.
-- Authorization and tenant scope: `com.aurevia.smartclinic.authz.ActionPolicy`,
-  `com.aurevia.smartclinic.tenant.TenantContext`,
-  `com.aurevia.smartclinic.web.TenantContextInterceptor`.
+- Value types: `com.aurevia.patient.Patient`,
+  `com.aurevia.patient.PatientView`.
+- Authorization and tenant scope: `com.aurevia.authz.ActionPolicy`,
+  `com.aurevia.tenant.TenantContext`,
+  `com.aurevia.web.TenantContextInterceptor`.
 
 Where the clause is implemented today (survey result):
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/patient/PatientService.normalize(String)`
+- `apps/api/src/main/java/com/aurevia/patient/PatientService.normalize(String)`
   decomposes with NFD, strips marks, lower-cases with `Locale.ROOT` and collapses
   non-letter/digit runs to spaces — folding only the search form.
   `PatientService.search(String)` normalizes the query and delegates to the
   repository, auditing the search. `PatientService.register(...)` stores the
   original `displayName` and the folded `normalizedName` side by side.
-- `apps/api/src/main/java/com/aurevia/smartclinic/patient/Patient.java` carries both
+- `apps/api/src/main/java/com/aurevia/patient/Patient.java` carries both
   `displayName` (original spelling, preserved for display) and `normalizedName`
   (used only for search).
-- `apps/api/src/main/java/com/aurevia/smartclinic/patient/PatientRepository.search(String)`
+- `apps/api/src/main/java/com/aurevia/patient/PatientRepository.search(String)`
   matches `normalized_name LIKE :name || '%'` in `public.current_patients()` and maps
   back the original `display_name`.
 - Schema: `db/migrations/V7__patient_registration.sql` defines `display_name` and

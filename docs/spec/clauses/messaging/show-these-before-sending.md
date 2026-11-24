@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.messaging.clauses.ShowTheseBeforeSendingTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/ShowTheseBeforeSendingTest.java`).
+Test class: `com.aurevia.messaging.clauses.ShowTheseBeforeSendingTest`
+(path: `apps/api/src/test/java/com/aurevia/messaging/clauses/ShowTheseBeforeSendingTest.java`).
 All six tests are active (none are disabled) and use synthetic data only with a fixed
 `Clock` at `2026-11-19T12:00:00Z`.
 
@@ -47,27 +47,27 @@ Production classes on the read path under proof. This clause test calls
 `ServiceProfileService.viewProfile` directly; the unchanged HTTP test below exercises the whole
 chain from `ServiceProfileController.view`:
 
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileController` — thin HTTP adapter whose
+- `com.aurevia.messaging.service.ServiceProfileController` — thin HTTP adapter whose
   `GET /api/v1/care-units/{unitId}/service-profile` route is documented as showing the effective
   published service information before a patient sends; it injects the service and decides no policy.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileService` — owns input validation,
+- `com.aurevia.messaging.service.ServiceProfileService` — owns input validation,
   request context, membership and role authorization, exact-unit access, effective-version
   selection, the 404/403/401 refusals and the audit facts.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileActions` — grants `PROFILE_VIEW` to the
+- `com.aurevia.messaging.service.ServiceProfileActions` — grants `PROFILE_VIEW` to the
   patient, tenant administrator, privacy auditor and assigned supervisor roles and withholds it
   from other active roles.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileContract` — the immutable profile,
+- `com.aurevia.messaging.service.ServiceProfileContract` — the immutable profile,
   hours, localized instructions and audit value types; `ServiceProfile.enablesUnitAt` enforces the
   named-owner and backup invariant before a profile is shown.
-- `com.aurevia.smartclinic.messaging.service.ServiceProfileStore` and its test-scope fixture
+- `com.aurevia.messaging.service.ServiceProfileStore` and its test-scope fixture
   `InMemoryServiceProfileStore` — the tenant-scoped read boundary used by these unit tests.
 
 The end-to-end HTTP proof that the route reaches the durable store is the existing
-`com.aurevia.smartclinic.it.messaging.ServiceProfileHttpIntegrationTest`, which serves a published
+`com.aurevia.it.messaging.ServiceProfileHttpIntegrationTest`, which serves a published
 and approved profile over `GET /api/v1/care-units/{unitId}/service-profile` and asserts the
 denials for a subject without active membership, a revoked patient connection and another
 tenant. The thin controller delegation is covered separately by
-`com.aurevia.smartclinic.messaging.service.ServiceProfileControllerTest`.
+`com.aurevia.messaging.service.ServiceProfileControllerTest`.
 Neither file was changed by this task.
 
 ## Gap

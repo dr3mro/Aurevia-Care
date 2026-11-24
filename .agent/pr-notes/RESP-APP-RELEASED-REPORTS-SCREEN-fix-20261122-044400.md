@@ -55,8 +55,8 @@ authorization, patient association, data, contract, migration or release change.
 
 ## Review owner
 
-Senior React Native and Expo specialist (`smartclinic-senior-mobile`, loaded for
-this pass) and Senior TypeScript (`smartclinic-senior-typescript`, loaded). An
+Senior React Native and Expo specialist (`orevia-senior-mobile`, loaded for
+this pass) and Senior TypeScript (`orevia-senior-typescript`, loaded). An
 earlier bounded, read-only advisory review found no blocking issue: rest-omission
 is the smallest correct fix, the rest object is assignable to the `reports` prop,
 `_discardedResult` is exempt from `noUnusedLocals` (rest-sibling rule) and
@@ -212,7 +212,7 @@ claimed here.
    Unrelated to the scoped file.
 6. **Conflict markers in HL7 Java files are pre-existing and inert.** Earlier
    notes found `<<<<<<<`/`>>>>>>>` markers in
-   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/*.java`, present
+   `apps/api/src/main/java/com/aurevia/exchange/hl7/*.java`, present
    on `origin/main` too; Java compile still passes. Out of scope; flagged, not
    fixed.
 7. **No new defect was introduced by this fix.**

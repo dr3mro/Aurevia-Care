@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class `com.aurevia.smartclinic.scheduling.clauses.TransferHandoffRequiresActiveAssigneeTest`
-(`apps/api/src/test/java/com/aurevia/smartclinic/scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest.java`).
+Test class `com.aurevia.scheduling.clauses.TransferHandoffRequiresActiveAssigneeTest`
+(`apps/api/src/test/java/com/aurevia/scheduling/clauses/TransferHandoffRequiresActiveAssigneeTest.java`).
 It is a synthetic, database-free clause test in the same `clauses` style as
 `authz/clauses/FacilityScopeEnforcementTest`: mocked `WorklistRepository` and
 `SchedulingRepository`, a transaction template that runs the real guarded
@@ -35,18 +35,18 @@ through `CheckInService.handoff`, the command called by the clinic controller.
 
 Production classes and files surveyed and exercised by the entry point:
 
-- `com.aurevia.smartclinic.scheduling.checkin.CheckInService.handoff` — owns the
+- `com.aurevia.scheduling.checkin.CheckInService.handoff` — owns the
   rule: it validates the command, re-derives the actor's authorization and
   facility scope, locks the item, rejects a missing or deactivated source
   assignee, requires an active target, rejects a self-handoff, then commits the
   item update, the handoff event and the audit row in one transaction.
-- `com.aurevia.smartclinic.scheduling.checkin.CheckInCommands.Handoff`,
+- `com.aurevia.scheduling.checkin.CheckInCommands.Handoff`,
   `WorklistItem`, `HandoffEvent`, `WorklistRepository` (`findItemForUpdate`,
   `updateItem`, `insertHandoff`), `WorkflowInputs` and `WorklistPolicy.HANDOFF`
   — the command, projection, ledger append, input guards and role/action matrix.
-- `com.aurevia.smartclinic.scheduling.SchedulingRepository.hasActiveMembership`
+- `com.aurevia.scheduling.SchedulingRepository.hasActiveMembership`
   — the live membership source for both the source and target checks.
-- `com.aurevia.smartclinic.scheduling.checkin.ClinicController` —
+- `com.aurevia.scheduling.checkin.ClinicController` —
   `POST /api/v1/clinic/worklist/{id}/handoff` is the HTTP entry point; it
   injects `CheckInService` and parses the `If-Match` version.
 - `db/migrations/V12__checkin_worklist.sql` — creates `public.worklist_entry`

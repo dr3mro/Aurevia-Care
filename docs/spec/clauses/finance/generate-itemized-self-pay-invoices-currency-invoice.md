@@ -10,8 +10,8 @@ Proven by tests
 
 ## Evidence
 
-Test class: `com.aurevia.smartclinic.finance.clauses.GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest`
-(path: `apps/api/src/test/java/com/aurevia/smartclinic/finance/clauses/GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest.java`).
+Test class: `com.aurevia.finance.clauses.GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest`
+(path: `apps/api/src/test/java/com/aurevia/finance/clauses/GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest.java`).
 All tests are active (none are disabled) and use synthetic fixtures only. They drive the normal
 HTTP entry point `POST /api/v1/finance/invoices` against real PostgreSQL and read the durable
 rows back under forced row-level security.
@@ -40,20 +40,20 @@ rows back under forced row-level security.
 
 Production classes exercised through the normal command entry point:
 
-- `com.aurevia.smartclinic.finance.FinanceController` — thin HTTP adapter; `create` returns 201
+- `com.aurevia.finance.FinanceController` — thin HTTP adapter; `create` returns 201
   and the `Location` header for `POST /api/v1/finance/invoices`.
-- `com.aurevia.smartclinic.finance.FinanceService` — `create` validates and normalizes input,
+- `com.aurevia.finance.FinanceService` — `create` validates and normalizes input,
   computes each line and the total in integer minor units, checks role authorization and
   patient visibility inside one tenant-guarded transaction.
-- `com.aurevia.smartclinic.finance.FinanceInputs` — `currency`, `positiveQuantity`,
+- `com.aurevia.finance.FinanceInputs` — `currency`, `positiveQuantity`,
   `nonNegativeAmount`, `multiply` and `add` reject non-fixed-precision input and overflow before
   any SQL runs.
-- `com.aurevia.smartclinic.finance.FinanceRepository` and `FinanceActions` — the SQL boundary
+- `com.aurevia.finance.FinanceRepository` and `FinanceActions` — the SQL boundary
   and the bounded action matrix that grants `FINANCE_INVOICE_CREATE` only to `finance`.
 - `db/migrations/V45__finance.sql` — `CHECK (currency ~ '^[A-Z]{3}$')`,
   `amount_minor = quantity * unit_amount_minor`, the balance identity, forced RLS and the
   one-currency-per-entry trigger.
-- `com.aurevia.smartclinic.web.TenantContextInterceptor` — binds `X-Synthetic-Subject` and
+- `com.aurevia.web.TenantContextInterceptor` — binds `X-Synthetic-Subject` and
   `X-Active-Organization` only under the `synthetic-auth` profile used by this test.
 
 Existing proof not duplicated here: `FinanceLedgerTest.fixedPrecisionMinorUnitsNeverRoundLineAmountsOrTotals`
@@ -75,7 +75,7 @@ change production code, an existing test, the contract or a migration.
 
 ## How to verify
 
-- Clause test (synthetic fixtures, real PostgreSQL): `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest test` — expected `EXIT:0`, with the Surefire report showing all four tests run and none skipped.
+- Clause test (synthetic fixtures, real PostgreSQL): `OREVIA_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dtest=GenerateItemizedSelfPayInvoicesCurrencyInvoiceTest test` — expected `EXIT:0`, with the Surefire report showing all four tests run and none skipped.
 - Documentation check: `python3 -I scripts/check-docs.py` — expected exit 0.
 - Tooling unit tests: `python3 -I -m unittest discover -s scripts/tests` — expected 0 failures.
 - Worker gate: `bash scripts/worker-check.sh` — expected 0.

@@ -17,7 +17,7 @@ files were touched; no dependency, migration, API call or cache was added.
   download, no authorization or API change. Decision 0005 "Boundaries unchanged".
 - **UX-01** — 200% text scaling without clipping, 44 pt targets, safe-area
   insets, unchanged focus order and screen-reader labels, RTL mirroring.
-- Spec: `SMARTCLINIC_V1_SPEC.md` lines 85–86 and 90; decision
+- Spec: `PROJECT_V1_SPEC.md` lines 85–86 and 90; decision
   `docs/decisions/0005-patient-app-tablets.md`; design
   `docs/design/accessibility-patterns.md` §9.
 

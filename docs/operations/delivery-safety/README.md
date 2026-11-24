@@ -21,7 +21,7 @@ does not duplicate it, it requires it by name.
 |---|---|---|
 | OPS-06 | Separate development/test/staging/production accounts and resources; synthetic fixtures; CI policy checks; dependency and secret scanning; signed builds; migration checks; monitored progressive rollout; reversible deployments and expand/contract schema changes; audited production access | [Environment and fixture separation](environment-and-fixtures.md), [Build and migration gates](build-and-migration-gates.md), [Rollout and production access](rollout-and-production-access.md), [Evidence contract](evidence-contract.md) |
 
-The approved clause is in the [product specification](../../../SMARTCLINIC_V1_SPEC.md).
+The approved clause is in the [product specification](../../../.opencode/config/PROJECT_V1_SPEC.md).
 No new threshold or requirement ID is introduced by this handoff.
 
 ## Three evidence tiers

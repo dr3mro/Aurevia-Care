@@ -27,7 +27,7 @@ Routine (docs/WORKFLOW.md): one contained staff-web presentation change with an 
 
 ## Review owner
 
-`smartclinic-senior-react` (staff React/Vite), supported by `smartclinic-senior-typescript` (strict TS) and `smartclinic-ux-reviewer` (RTL/keyboard). A bounded `smartclinic-senior-react` review and a bounded UX review were routed in earlier passes (source: **reviewer, simulated**); both found no blocking findings. No new implementation work exists in this notes-only pass, so no further specialist routing was required.
+`orevia-senior-react` (staff React/Vite), supported by `orevia-senior-typescript` (strict TS) and `orevia-ux-reviewer` (RTL/keyboard). A bounded `orevia-senior-react` review and a bounded UX review were routed in earlier passes (source: **reviewer, simulated**); both found no blocking findings. No new implementation work exists in this notes-only pass, so no further specialist routing was required.
 
 ## Data changes
 
@@ -71,7 +71,7 @@ Evidence source: **executed tool commands** (git, npm, Vitest, tsc, Python unitt
   The `useTheme must be used inside ThemeProvider` stack traces printed during the run come from the existing intentional fail-closed tests in `tests/theme/ThemeProvider.test.tsx` (and the analogous `I18nProvider` tests); the suite and coverage gate passed.
 - TYPECHECK (mandatory, standalone) — `cd apps/staff-web && npm run typecheck`, final lines (no `error TS…`):
   ```
-  > smartclinic-staff-web@0.1.0 typecheck
+  > orevia-staff-web@0.1.0 typecheck
   > tsc --noEmit -p tsconfig.json
 
   TYPECHECK_EXIT:0
@@ -107,7 +107,7 @@ Not required: display-only change to a synthetic access-state notice. No signed 
 - **No source change required.** The implementation and test are complete, in scope and green. The recurring blocker is external to this story.
 - **Out-of-scope pre-existing tooling defect (observed, reproduced, untouched).** In a fresh checkout, `apps/api/target/surefire-reports` does not exist. Two unit tests in `scripts/tests/test_worker_gate.py` and `scripts/tests/test_worker_gate_coverage.py` patch `Path.is_dir` to `True`; `scripts/worker_gate.py:63` then calls `Path('apps/api/target/surefire-reports').glob('TEST-*.xml')` on the absent directory and raises `FileNotFoundError`. That fails `scripts/python-coverage.sh`, and therefore `scripts/check.sh` and the Delivery `script-tests`/`policy` jobs, before any staff-web code is tested. The defect was introduced by commit `8f363e02` (FIX-WORKER-REPORTS), is present on `origin/main`, and is not caused by this branch. The real worker-gate invocation (`scripts/worker-check.sh:46`) passes an existing `mktemp -d` directory and is unaffected — only the unit tests hit the absent default path. Creating the directory makes all 143 `worker_gate` tests pass with no code change, confirming it is a test-fixture condition. Fixing it requires editing protected `scripts/` files (maintainer-owned); that is outside this task's two-file scope and, per AGENTS.md, would stop this pull request from auto-merging. It is requested below.
 - **Earlier hand-offs preserved:** `.agent/pr-notes/RESP-ACCESS-STATE-NOTICE-20261122-084247.md`, `...-fix-20261122-090205.md`, `...-fix-20261122-091248.md` and `...-fix-20261122-092217.md`. None was edited or deleted; this file is the hand-off for the current pass only.
-- **Committed conflict markers in HL7 Javadoc (pre-existing, untouched):** `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java`, present in both `HEAD` and `origin/main`. They are inside comments, so bounded `mvn test-compile` passes; a full Java/docs run may warn. Out of scope — route a separate repair.
+- **Committed conflict markers in HL7 Javadoc (pre-existing, untouched):** `apps/api/src/main/java/com/aurevia/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java`, present in both `HEAD` and `origin/main`. They are inside comments, so bounded `mvn test-compile` passes; a full Java/docs run may warn. Out of scope — route a separate repair.
 - **Pre-existing behaviour retained, not a defect introduced here:** the reviewed `label` run is rendered by `MixedScriptText` with `lang="en"` hard-coded, independent of the active locale, while the translated message run carries `lang={locale}`. Left unchanged because the story forbids changing behaviour/text; a localization follow-up could type the label's language.
 - **Non-applicable acceptance items:** the notice has no input and no interactive control, so the 16 px input-text rule and the 44×44 coarse-pointer target rule do not apply (owned by the responsive Form/FormField/Button stories); it adds no tab stop.
 - **Pixel checks deferred:** per the story, jsdom asserts classes, attributes and structure only; pixel-level no-scroll/no-overlap/zoom checks remain with the Playwright responsive tasks.

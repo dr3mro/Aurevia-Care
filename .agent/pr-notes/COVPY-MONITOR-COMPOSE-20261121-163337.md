@@ -16,7 +16,7 @@ Scope stayed at `scripts/tests/test_monitor_compose_coverage.py` only.
 
 - OPS-06 — separate test tooling, synthetic fixtures and CI policy checks. This story adds the
   compose-part regression tests for the ops monitoring script (requirement line 139 of
-  `SMARTCLINIC_V1_SPEC.md`).
+  `PROJECT_V1_SPEC.md`).
 
 Acceptance mapping: public `compose()` is reached with empty, short/wide, rich, loading, alarm,
 failed-run, live-run and merged-PR screens; assertions check stat cards, history strip, pipeline
@@ -28,7 +28,7 @@ Routine (test-only change; no runtime behaviour, contract, migration or dependen
 
 ## Review owner
 
-`smartclinic-senior-python` and `smartclinic-test-engineer` skills were loaded and applied. No live
+`orevia-senior-python` and `orevia-test-engineer` skills were loaded and applied. No live
 reviewer, simulated user or human participant evidence — all evidence below is executed tool output.
 
 ## Data changes
