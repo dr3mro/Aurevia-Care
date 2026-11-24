@@ -5,10 +5,12 @@ on:
   # PR never starts this workflow, so branch protection waits forever for a
   # check that cannot be created.
   pull_request:
+  # No path filters on either trigger. A filtered push leaves the exact-SHA
+  # "Delivery gate" check unreported and blocks the protected branch forever;
+  # correctness takes precedence over skipping documentation-only runs.
   push:
     branches: [main]
     tags: ['v*']
-    paths-ignore: ['docs/**', '**/*.md']
   merge_group:
 permissions:
   contents: read

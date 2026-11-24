@@ -67,6 +67,13 @@ class WorkflowConcurrencyTest(unittest.TestCase):
             self.assertNotIn("paths", trigger)
             self.assertNotIn("paths-ignore", trigger)
 
+    def test_delivery_reports_a_check_for_every_branch_and_tag_push(self):
+        """A path-filtered push also leaves the exact-SHA gate unreported."""
+        trigger = load(WORKFLOWS / "delivery.yml")[True]["push"]
+        self.assertIsInstance(trigger, dict)
+        self.assertNotIn("paths", trigger)
+        self.assertNotIn("paths-ignore", trigger)
+
     def test_delivery_does_not_cancel_verified_branch_pushes(self):
         """Main and tag pushes keep every verdict; only stale PR runs are cancelled."""
         cancel = load(WORKFLOWS / "delivery.yml")["concurrency"]["cancel-in-progress"]
