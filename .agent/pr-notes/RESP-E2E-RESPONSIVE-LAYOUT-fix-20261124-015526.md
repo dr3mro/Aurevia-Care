@@ -106,6 +106,28 @@ and the enumeration command was used instead.
 - `git diff --name-only origin/main...HEAD` after the revert -> only the spec
   and notes files; the out-of-scope tripwire pin no longer appears.
 
+Repair attempt 1 (2026-11-24, executed tool evidence in this checkout, HEAD
+`e0c1a640`): the integrator re-ran the coverage gate and reported the same GAP
+tripwire failure. Re-verified from the working tree:
+
+- `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`
+  (in `apps/staff-web`) -> exit 1, `Test Files  1 failed (1)`,
+  `Tests  1 failed | 2 passed (3)`, `expected [ …(15) ] to deeply equal [ …(9) ]`
+  at line 166. The six extra paths are the five pre-existing specs plus this
+  task's `responsiveLayout.spec.ts`.
+- `git ls-tree -r --name-only origin/main apps/staff-web/e2e | grep '\.spec\.ts$'`
+  -> 14 spec files on `origin/main` while its pin lists 9, so the tripwire is
+  already red on the base commit before this task's spec exists.
+- `python3 -I` + `worker_gate.validate_candidate([pin, notes], scope, ...)`
+  -> `[{'file': 'apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts', 'rule': 'scope'}]`;
+  `parse_scope` -> `['apps/staff-web/e2e/responsiveLayout.spec.ts']`;
+  `under_scope(pin, scope)` -> `False`. The only edit that would green the gate
+  is outside this task's scope and was already rejected and reverted once.
+- No in-scope change can make `e2eSpecs()` (15 paths, or 14 with the deliverable
+  removed) equal the 9-name pin. Therefore no test was added or removed, no code
+  deleted, and no threshold, exclusion, skip or suppression changed in this
+  repair pass.
+
 Entry-point-to-test trace: `playwright.config.ts` starts the Vite dev server ->
 `page.goto('/route')` -> `src/main.tsx` browser-support guard ->
 `src/app/routes.tsx` and feature `routes.ts` glob -> `AppShell.tsx` renders
@@ -137,6 +159,9 @@ pin cannot change production coverage. The final-tree coverage run is red only
 on the pre-existing out-of-scope tripwire described under Findings, and no
 coverage table is emitted for that failing run.
 
+**Branch-to-test list for repair attempt 1 (unchanged from the original pass;
+reaffirmed here as requested).** No production line or branch was added or
+changed by this task, so there is no new uncovered line or branch to test-cover.
 The deliverable's branches are enumerated by the Playwright list command
 (`Total: 320 tests in 1 file`) and each is exercised by a named assertion:
 
@@ -281,6 +306,14 @@ set and keeps the tripwire active; then a runner with Playwright browsers
 installed executes `npx playwright test --config e2e/playwright.config.ts e2e/responsiveLayout.spec.ts`,
 and any genuine defect is handled with a single `test.fixme` plus a follow-up
 task, never a weakened assertion.
+
+Repair attempt 1 conclusion: the integrator's coverage re-check is still red on
+the same pre-existing out-of-scope tripwire. Fresh tool runs (Test evidence)
+confirm 15-vs-9 on this tree, 14-vs-9 on `origin/main` without this task's spec,
+and a `scope` violation for the only gate-greening edit. No in-scope test,
+deletion, threshold, exclusion, skip or suppression can close this gap. The next
+step is unchanged: the owning task refreshes the pin in its own scope (the
+`task-requests` entry below); this task stays `[-]` and is not releasable here.
 
 ```task-requests
 [
