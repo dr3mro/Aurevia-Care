@@ -4100,8 +4100,15 @@ def report_validation(result, report_evidence=True):
         elif kind == "already":
             close_integrated_pr(pr, item.get("task_id", ""))
         else:
-            fail(pr, item.get("reason", "validation rejected this branch"), item.get("log", ""),
-                 simple=item.get("simple", False))
+            reason = item.get("reason", "validation rejected this branch")
+            simple = item.get("simple", False)
+            # Only pass a log when one exists: an empty log would add a positional
+            # argument that changes the reported call without adding any diagnosis.
+            log = item.get("log", "")
+            if log:
+                fail(pr, reason, log, simple=simple)
+            else:
+                fail(pr, reason, simple=simple)
     for detail in result.get("conflict_details", []):
         pr, reason, tries = detail["pr"], detail["reason"], detail["tries"]
         if tries < MAX_RESOLVE:
