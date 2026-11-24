@@ -34,8 +34,8 @@
 - [ ] Security review completed (formal reviewer deferred)
 - [x] Documentation updated (docs/SWARM.md)
 - [ ] Final diff reviewed (self-reviewed; reviewer deferred)
-- [ ] Implementation committed
-- [ ] Implementation PR created
+- [x] Implementation committed (3f3e0e2c)
+- [x] Implementation PR created (PR #1512, https://github.com/dr3mro/Aurevia-Care/pull/1512)
 - [x] Rollout instructions documented (docs/SWARM.md)
 
 ## Why this is not finished
