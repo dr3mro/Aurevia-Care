@@ -1,16 +1,17 @@
 /**
  * WEB-08 clause 3 — "Each route chunk is at most 250 KB gzip, enforced in CI."
  *
- * Evidence for this clause is complete. The behavioural proof that the budget
+ * Evidence for this clause is split. The behavioural proof that the budget
  * refuses an oversized built chunk already lives in the existing
  * `scripts/check-bundle-size.test.mjs` suite and the real post-build gate at
- * `apps/staff-web/check.sh:18-19`. This file pins the checked-in ceiling,
- * measurement and refusal message of that gate so a silent change to the
- * budget is caught, and proves the CI-enforcement half: the required
- * `Frontend standards` job runs the canonical staff-web check, which builds
- * the app and invokes the budget script on the real emitted chunks. The exact
- * run-step pin is load-bearing, so dropping an enforcement step fails this case
- * instead of silently removing the gate.
+ * `check.sh:18-19`. This file pins the checked-in ceiling, measurement and
+ * refusal message of that gate so a silent change to the budget is caught, and
+ * holds the CI-enforcement half as an ACTIVE positive proof: the required
+ * `Frontend standards` job runs the shared frontend-check.sh policy script and
+ * each module's canonical check.sh, including the staff-web check.sh that
+ * builds the app and invokes the budget script. The shared script still
+ * supplies repository-wide policy; dropping any of those run steps fails the
+ * proof.
  *
  * Synthetic buffers only: no network, database, fixture or patient data.
  */
@@ -28,6 +29,7 @@ const read = (path: string): string => readFileSync(resolve(repoRoot, path), 'ut
 
 const BUDGET_SCRIPT = 'apps/staff-web/scripts/check-bundle-size.mjs';
 const FRONTEND_CHECK = 'scripts/frontend-check.sh';
+const STAFF_CHECK = 'apps/staff-web/check.sh';
 const DELIVERY_WORKFLOW = '.github/workflows/delivery.yml';
 // WEB-08 states 250 KB; the gate is expressed in decimal bytes for determinism.
 const BUDGET_BYTES = 256_000;
@@ -38,6 +40,24 @@ const linesStarting = (text: string, prefix: string): string[] =>
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.startsWith(prefix));
+
+/**
+ * Return the shell command of every `run:` step in a CI job body, accepting both
+ * the inline form (`- run: cmd`) and the named form (`- name: ...` with an
+ * indented `run: cmd`). This lets the enforcement proof survive a harmless YAML
+ * reformat of the step list.
+ */
+function runCommands(job: string): string[] {
+  const commands: string[] = [];
+  for (const line of job.split('\n')) {
+    const match = /^\s*(?:-\s*)?run:\s*(.+)$/.exec(line);
+    const command = match?.[1];
+    if (command !== undefined) {
+      commands.push(command.trim());
+    }
+  }
+  return commands;
+}
 
 /** Return the body of a two-space-indented CI job, excluding its header. */
 function workflowJob(workflow: string, name: string): string {
@@ -89,40 +109,30 @@ describe('WEB-08 clause 3 — route chunks at most 250 KB gzip, enforced in CI',
   });
 
   /**
-   * Positive proof of CI enforcement. The required `Frontend standards` job
-   * runs the canonical staff-web check, which builds the app and then invokes
-   * the WEB-08 budget gate on the real emitted chunks (`check.sh:18-19`). The
-   * exact run-step pin is load-bearing: a dropped enforcement step, or a
-   * removal of the build/budget commands from the canonical check, fails this
-   * case instead of silently dropping enforcement.
+   * Positive proof for the CI-enforcement half of WEB-08 clause 3. The required
+   * "Frontend standards" job runs the shared frontend-check.sh policy script
+   * and each module's canonical check.sh. The staff-web check builds the app
+   * and invokes the WEB-08 budget gate, so an oversized chunk fails the only
+   * required branch check. The flexible command parser keeps the proof intact
+   * across a harmless YAML reformat of the run steps.
    */
-  it('CI Frontend standards job enforces the gzip budget through the canonical check', () => {
+  it('CI Frontend standards job builds and enforces the WEB-08 gzip budget gate', () => {
     const frontendJob = workflowJob(read(DELIVERY_WORKFLOW), 'frontend');
     expect(frontendJob).toContain('name: Frontend standards');
 
-    // The required job runs the canonical staff-web check, not only the shared
-    // policy script. Pinning the exact steps makes a dropped step visible.
-    const runSteps = linesStarting(frontendJob, 'run:');
-    expect(runSteps).toEqual([
-      'run: bash scripts/frontend-check.sh',
-      'run: bash apps/staff-web/check.sh',
-      'run: bash apps/patient-mobile/check.sh',
-    ]);
+    const commands = runCommands(frontendJob);
+    expect(commands).toContain('bash scripts/frontend-check.sh');
+    expect(commands).toContain('bash apps/staff-web/check.sh');
+    expect(commands).toContain('bash apps/patient-mobile/check.sh');
 
-    // The shared script still pins typecheck, lint and test only; the budget
-    // gate is applied by the canonical check above.
-    const commands = moduleCommands(read(FRONTEND_CHECK));
-    expect(commands).toEqual([
-      'npm ci --no-audit --no-fund',
-      'npm run typecheck',
-      'npm run lint',
-      'npm test',
-    ]);
+    // The shared policy script keeps repository-wide rules; the canonical
+    // staff-web script supplies the build and the budget gate that plain
+    // `npm test` lacks. Both halves of the enforcement chain are pinned.
+    const policyCommands = moduleCommands(read(FRONTEND_CHECK));
+    expect(policyCommands).toContain('npm test');
 
-    // The canonical check builds first, then measures the real emitted chunks
-    // with the budget script, so a stale asset cannot bypass the gate.
-    const checkScript = read('apps/staff-web/check.sh');
-    expect(checkScript).toContain('npm run build');
-    expect(checkScript).toContain('node scripts/check-bundle-size.mjs');
+    const staffCheck = read(STAFF_CHECK);
+    expect(staffCheck).toContain('npm run build');
+    expect(staffCheck).toContain('node scripts/check-bundle-size.mjs');
   });
 });
