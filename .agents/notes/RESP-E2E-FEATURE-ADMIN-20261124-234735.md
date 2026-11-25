@@ -52,6 +52,15 @@ All commands were run from `apps/staff-web` unless stated; evidence source is ex
 6. Markdown check (from repository root): `python3 -I scripts/check-docs.py` → no output, `DOCS_EXIT=0`.
 7. Environment preparation (no repository change): `npx playwright install chromium`, `npx playwright install-deps chromium`.
 
+### Segment 2 — post-merge verification (tool evidence)
+
+The branch was merged with `origin/main` before this segment. Per the durable directive in `.opencode/config/MEMORY.md` (line 64) no Git command or Git-backed operation was run; `git log` / `git diff origin/main...HEAD` were replaced by direct reads of the current tracked files and by the checks below. All three blockers were confirmed unchanged in the merged tree: `index.html:16-27` still boots `.skip-link` with physical `left`, `ConfigPage.tsx:577` still renders `defined ?? approved ?? ''`, and `currentSpecs` in `automate-critical-journey-supported-role-real-browser.test.ts:107-153` still omits `responsive-admin.spec.ts`. No conflict markers exist in the scoped spec.
+
+8. `npm run typecheck` (from `apps/staff-web`) → no output, `TYPECHECK_EXIT=0`.
+9. `bash apps/staff-web/check.sh` (from repository root) → `CHECK_EXIT=1`; final lines `Test Files  1 failed | 282 passed (283)` / `Tests  1 failed | 3224 passed (3225)`. The single failure is the same out-of-scope exact-spec pin at line 239; the diff shows the only extra received entry as `+ "responsive-admin.spec.ts"`. Every other stage (generated client, typecheck, lint, build, gzip budget, 100% coverage) passed.
+10. `npm run e2e -- e2e/responsive-admin.spec.ts --project=phone-portrait-390x844 --retries=0` (from `apps/staff-web`) → `E2E_EXIT=0`, final lines `3 skipped` / `7 passed (42.0s)`. This confirms the merged production code still satisfies the scoped spec at a phone viewport; the dev server was started by the Playwright config.
+11. Source reads (tool evidence): `apps/staff-web/index.html`, `apps/staff-web/src/features/admin/ConfigPage.tsx` and `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` were read in full at their current merged state; no defect was silently fixed and no assertion was weakened.
+
 ## Review verdicts
 
 - aurevia-plan-reviewer: GO
@@ -93,6 +102,12 @@ No threshold, exclusion, suppression or skip was added. The three `test.fixme` c
 5. **Environment:** Playwright browser binaries and OS dependencies were installed in the worker (`npx playwright install chromium`, `npx playwright install-deps chromium`). No dependency was added to the repository.
 6. Review history (tool evidence from read-only reviewers): the plan reviewer's first pass was NO-GO with nine Required gaps, all closed before the GO; the code reviewer's first pass was NO-GO on missing notes sections and a stale evidence tally, both closed; devsecops first pass was NO-GO on an absent-header false green, closed with presence assertions. Each reviewer then answered GO.
 7. Evidence sources: executed tool commands and read-only specialist reviews; no simulated user walkthrough and no authorized human feedback.
+8. Merge outcome (tool evidence): the merge with `origin/main` did not change any of the three blockers, so the scoped spec and its three strict `test.fixme` cases remain the correct final form. No new review was required for segment 2 because no production or test file changed; the four GO verdicts below still apply to the unchanged spec.
+9. React console warnings (tool evidence): the targeted e2e run logged `Encountered two children with the same key` for `synthetic.reception` and for `11111111-...:1` in the served app. These are non-failing console messages from the synthetic fixtures; they do not affect any assertion and are outside this single-file scope. Recorded for the owning staff-web story rather than masked here.
+
+## In-scope status: complete
+
+The scoped deliverable `apps/staff-web/e2e/responsive-admin.spec.ts` is complete and stable after the merge. It covers all four admin screens at every configured phone, tablet and desktop project, drives each main task by keyboard, pointer and real tap, asserts no horizontal scroll, English and Arabic `lang`/`dir` and exact bilingual words, an axe serious/critical gate, desktop-to-phone value reachability and command boundary metadata. No further in-scope change is needed or possible. The story cannot be accepted or marked `[x]` yet because the canonical check is still red on the out-of-scope inventory pin and three product defects remain out of scope (below); each has a task request and keeps its strict assertion.
 
 ## Lessons for workers
 
@@ -104,6 +119,7 @@ No threshold, exclusion, suppression or skip was added. The three `test.fixme` c
 
 ## Why this is not finished
 
+- Segment 2 stop: the in-scope spec is complete and re-verified after the merge (see "In-scope status: complete"). No file outside `apps/staff-web/e2e/responsive-admin.spec.ts` may be edited by this worker, so there is no remaining in-scope action; this worker stops here rather than weakening an assertion or masking a defect.
 - The canonical `bash apps/staff-web/check.sh` remains red on the out-of-scope exact-spec pin (finding 3). The exact next step is for the integrator to add `'responsive-admin.spec.ts'` to `currentSpecs` in `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`, then rerun the canonical check.
 - Three strict `test.fixme` cases remain: Arabic document overflow, Arabic pointer activation at compact/short viewports (fix `apps/staff-web/index.html` to use a logical skip-link offset and re-enable), and the config approve-after-propose announcement (fix `ConfigPage.tsx` status precedence and re-enable). All three keep their assertions unchanged.
 
