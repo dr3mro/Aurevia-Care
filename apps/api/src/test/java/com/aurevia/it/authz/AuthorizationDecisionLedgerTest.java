@@ -372,19 +372,42 @@ class AuthorizationDecisionLedgerTest {
                 insert.formatted(ORG_A, subject, action, resourceType, correlationOverflow)));
         assertEquals(0L, count("aurevia_migrate", ORG_A, correlationOverflow));
 
-        List<Decision> invalidDecisions = List.of(
+        // The production sink bounds untrusted fields before insertion; the
+        // database checks above remain the backstop for direct SQL callers.
+        List<Decision> oversizedDecisions = List.of(
                 new Decision("createFacility", action, ORG_A, "s".repeat(257),
                         "corr-sink-subject-overflow", true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()),
                 new Decision("createFacility", "a".repeat(129), ORG_A, subject,
                         "corr-sink-action-overflow", true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()),
                 new Decision("createFacility", action, ORG_A, subject,
                         correlationOverflow, true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()));
-        for (Decision invalid : invalidDecisions) {
-            ApiException failure = assertThrows(ApiException.class, () -> sink.record(invalid));
-            assertEquals(403, failure.status());
-            assertEquals("AUDIT_UNAVAILABLE", failure.code());
-            assertEquals("authorization decision could not be recorded", failure.getMessage());
-            assertEquals(0L, count("aurevia_migrate", ORG_A, invalid.correlationId()));
+        for (Decision oversized : oversizedDecisions) {
+            String storedCorrelation = oversized.correlationId().substring(
+                    0, Math.min(128, oversized.correlationId().length()));
+            long before = count("aurevia_migrate", ORG_A, storedCorrelation);
+
+            sink.record(oversized);
+
+            assertEquals(before + 1, count("aurevia_migrate", ORG_A, storedCorrelation));
+            try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+                connection.setAutoCommit(false);
+                bind(connection, ORG_A, "admin-a");
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "SELECT subject, action, correlation_id FROM public.authorization_decision "
+                                + "WHERE correlation_id = ? AND decided_at = CAST(? AS timestamptz)")) {
+                    statement.setString(1, storedCorrelation);
+                    statement.setObject(2, OffsetDateTime.ofInstant(CLOCK.instant(), ZoneOffset.UTC));
+                    try (ResultSet result = statement.executeQuery()) {
+                        assertTrue(result.next());
+                        assertEquals(oversized.subject().substring(0, 255), result.getString("subject"));
+                        assertEquals(oversized.action().substring(0, 128), result.getString("action"));
+                        assertEquals(storedCorrelation, result.getString("correlation_id"));
+                        assertFalse(result.next());
+                    }
+                } finally {
+                    connection.rollback();
+                }
+            }
         }
     }
 }

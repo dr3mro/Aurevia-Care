@@ -202,7 +202,21 @@ Two separate native checks report on every revision; neither substitutes for the
 - Every agent step runs without a write token. Anything an agent produces (a branch bundle, findings, a triage plan, a reconciled note) is checked and published by a separate trusted job that runs the scripts from `main`.
 - Use synthetic data only. Free models are not suitable for real patient data. Check each provider's terms before running several free accounts.
 
+## Single-task lifecycle
+
+When `SWARM_SINGLE_TASK=true`, the swarm runs one task at a time:
+
+1. `select` job: OpenCode with `aurevia-product-owner` picks one eligible task (LLM); falls back to deterministic planning if it produces nothing.
+2. `plan` job: claims the task `[-]`, emits a one-worker matrix. LLM selection runs only when `SWARM_LLM_SELECTION=true`.
+3. Worker: decomposes the task into ordered steps, runs `aurevia-plan-reviewer` before coding, implements step by step, then runs code-reviewer, coverage-auditor, devsecops and qa-reviewer, recording each `VERDICT: GO` under `## Review verdicts`.
+4. Integrator merges; loop job waits for Delivery green on the merged SHA before planning the next task.
+5. If the task is not done (taken or open PR), no next task is planned; the task stays active through debug/fix loops until green or `needs-human`.
+
 ## Kill switch
+
+`SWARM_ENABLED` is a repository **variable** (not a secret) that pauses the swarm: when set to `0`, `false`, `no` or `off` (case-insensitive), the plan job exits with an empty matrix, `continue_swarm`, `top_up`, `pr_flow` and the issue monitor do nothing, and no new wave starts. Workers that are already running finish and publish. Delete the variable or set it to `1`/`true`/`yes`/`on` to resume. It never weakens a gate.
+
+`SWARM_SINGLE_TASK` is a repository **variable** (default off) that enables the single-task-per-wave mode: at most one task worker per wave, no slot refill, and no next task is planned while a task is taken or has an open pull request. Turn it on to validate the serialized lifecycle; turn it off to restore the parallel wave.
 
 `SWARM_ALLOW_PROTECTED` is a repository **variable** (not a secret) that lifts only the "never merge protected files automatically" rule in `scripts/swarm.py guard()`. Set it to `1` (also accepted: `true`, `yes`, `on`, case-insensitive) to turn it on; turn it off by deleting the variable or setting it to `0` (`false`, `no` or empty also work). An on/off change needs no code change or redeploy.
 

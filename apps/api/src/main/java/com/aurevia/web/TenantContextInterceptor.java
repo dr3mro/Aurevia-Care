@@ -194,6 +194,6 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(this).addPathPatterns("/api/v1/**");
+        registry.addInterceptor(this).addPathPatterns("/api/v1/**").order(10);
     }
 }
