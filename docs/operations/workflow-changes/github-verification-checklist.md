@@ -122,7 +122,7 @@ Rules for the person performing it:
   git apply --check /tmp/slot-image-generations.patch
   git apply /tmp/slot-image-generations.patch
   git diff --check
-  python3 -m venv "$TMPDIR/actionlint" && "$TMPDIR/actionlint/bin/pip" install -q actionlint-py==1.7.12.25 && "$TMPDIR/actionlint/bin/actionlint"
+  python3 -m venv "$TMPDIR/actionlint" && "$TMPDIR/actionlint/bin/pip" install -q actionlint-py==1.7.12.25 && "$TMPDIR/actionlint/bin/actionlint" -ignore 'unexpected key "queue" for "concurrency" section'
   python3 -I scripts/check-docs.py
   python3 -I -m unittest discover -s scripts/tests -q
   git add .github/workflows/swarm-images.yml .github/workflows/swarm.yml
@@ -161,7 +161,7 @@ Rules for the person performing it:
   git apply --check /tmp/first-release-architecture-tag.patch
   git apply /tmp/first-release-architecture-tag.patch
   git diff --check
-  python3 -m venv "$TMPDIR/actionlint" && "$TMPDIR/actionlint/bin/pip" install -q actionlint-py==1.7.12.25 && "$TMPDIR/actionlint/bin/actionlint"
+  python3 -m venv "$TMPDIR/actionlint" && "$TMPDIR/actionlint/bin/pip" install -q actionlint-py==1.7.12.25 && "$TMPDIR/actionlint/bin/actionlint" -ignore 'unexpected key "queue" for "concurrency" section'
   bash -n <(sed -n '/set -euo pipefail/,/gh release create/p' .github/workflows/delivery.yml)
   python3 -I scripts/check-docs.py
   python3 -I -m unittest discover -s scripts/tests -q
@@ -203,7 +203,7 @@ Rules for the person performing it:
   git apply --check /tmp/candidate-validation-isolation.diff
   git apply /tmp/candidate-validation-isolation.diff
   git diff --check
-  python3 -m venv "$TMPDIR/actionlint" && "$TMPDIR/actionlint/bin/pip" install -q actionlint-py==1.7.12.25 && "$TMPDIR/actionlint/bin/actionlint"
+  python3 -m venv "$TMPDIR/actionlint" && "$TMPDIR/actionlint/bin/pip" install -q actionlint-py==1.7.12.25 && "$TMPDIR/actionlint/bin/actionlint" -ignore 'unexpected key "queue" for "concurrency" section'
   python3 -I -m unittest discover -s scripts/tests -q
   python3 -I scripts/check-docs.py
   python3 -I scripts/check-secrets.py
@@ -263,7 +263,7 @@ All cells are intentionally unfilled; a person fills them after running each wor
 
 1. The WFAUDIT-01 integrator patch is blocked on two trusted `scripts/swarm.py` subcommands that do not exist in the tree; no task among WFAUDIT-01 through WFAUDIT-08 implements them. This is the only hard prerequisite gap in the audit set.
 2. The WFAUDIT-03 patch depends on WFAUDIT-02's `--generations` input; applying the workflow patch without the script change leaves the ledger ignored and the safety rule dormant.
-3. Removing `NVD_API_KEY` from the WFAUDIT-01 validation jobs leaves OWASP Dependency-Check using the restored cache, which is the documented fallback. A credentialed cache-refresh job that runs no candidate code is the recommended follow-up; do not put the key back into a validation job.
+3. Removing `NVD_API_KEY` from candidate validation leaves OWASP Dependency-Check using the restored cache, which is the documented fallback. Delivery now supplies the key only for trusted `push` events; pull-request, merge-group and manual-dispatch validation stay cache-only. A separate credentialed cache-refresh job that runs no candidate code remains the recommended follow-up; do not put the key back into a candidate-validation job.
 4. WFAUDIT-04 leaves the parent-manifest `imagetools inspect` guard conflating "absent" with a transport error, and WFAUDIT-03 cannot restore `:latest` on a first publish if phase 2 fails midway. Both are recorded as residual risks in their source documents and are not fixed by this checklist.
 5. `docs/swarm/BUILD-53.md` has an immutable unclosed code fence, which is why WFAUDIT-07's structural rules skip `docs/swarm/`. A maintainer should repair that record in a separate change before the skip is removed.
 

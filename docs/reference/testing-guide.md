@@ -73,7 +73,7 @@ The single `Delivery gate` job requires every verification job to pass or be ski
 on purpose, and branch protection checks it on the exact commit. Every pull request and
 every push to `main` or a `v*` tag runs this workflow, including documentation-only
 changes: a path-filtered run leaves the required check unreported. Runs on one branch
-queue with `cancel-in-progress: false` and `queue: max`, so a new head is never dropped
+queue per PR head or ref with `cancel-in-progress: false` and `queue: max`, so a new head is never dropped
 and every exact SHA receives its own verdict (`.github/workflows/delivery.yml`).
 
 **Integrator (before merge and on tags).** The integrator runs

@@ -24,13 +24,6 @@ gen = load("gen-opencode")
 
 READ_ALL = {"action": "read", "resource": "*", "effect": "allow"}
 SHELL_ALL = {"action": "shell", "resource": "*", "effect": "allow"}
-ALLOWED_MODEL = "opencode-go/hy4-flash-free"
-ZERO_COST = {
-    "input": 0, "output": 0, "cache_read": 0, "reasoning": 0, "tool": 0, "request": 0,
-    "subscription": False, "overage": False, "authorized": True,
-    "pricing_source": "models.dev/api.json", "verified_at": "2026-11-23",
-    "roles": ["*"], "phases": ["*"],
-}
 
 
 def catch_all_deny():
@@ -146,22 +139,19 @@ class RuntimeCoverageTests(unittest.TestCase):
         (self.tmp / ".github" / "swarm").mkdir(parents=True)
         self.profile = {
             "instructions": list(gen.INSTRUCTIONS),
-            "model": None,
             "agents": {
                 "editor": {"permissions": [dict(SHELL_ALL)]},
                 "reviewer": {"permissions": [catch_all_deny(), dict(READ_ALL)]},
             },
         }
-        self.registry = {"models": {ALLOWED_MODEL: dict(ZERO_COST)}}
         for name in gen.INSTRUCTIONS:
             target = self.tmp / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("synthetic instruction\n")
 
     def write(self):
-        """Persist the synthetic profile and model registry into the temporary root."""
+        """Persist the synthetic runtime profile into the temporary root."""
         (self.tmp / gen.RUNTIME_PROFILE).write_text(json.dumps(self.profile))
-        (self.tmp / gen.MODEL_REGISTRY).write_text(json.dumps(self.registry))
 
     def violations(self):
         """Write the synthetic files and return check_runtime's findings."""
@@ -174,21 +164,18 @@ class RuntimeCoverageTests(unittest.TestCase):
     def reviewer(self):
         return self.profile["agents"]["reviewer"]
 
-    def test_missing_profile_and_registry_accumulate_both_violations(self):
-        found = gen.check_runtime(self.tmp)
-        self.assertEqual(len(found), 2)
-        self.assertTrue(any("runtime profile" in v for v in found), found)
-        self.assertTrue(any("model registry" in v for v in found), found)
-
-    def test_missing_registry_alone_returns_early(self):
-        self.write()
-        (self.tmp / gen.MODEL_REGISTRY).unlink()
+    def test_missing_profile_is_reported(self):
         found = gen.check_runtime(self.tmp)
         self.assertEqual(len(found), 1)
-        self.assertIn("model registry", found[0])
+        self.assertIn("runtime profile", found[0])
 
     def test_clean_synthetic_profile_has_no_violations(self):
         self.assertEqual(self.violations(), [])
+
+    def test_model_registry_is_not_read(self):
+        self.write()
+        (self.tmp / ".opencode/model-pricing.json").write_text("not json")
+        self.assertEqual(gen.check_runtime(self.tmp), [])
 
     def test_missing_and_empty_instruction_lists(self):
         missing = gen.INSTRUCTIONS[0]
@@ -203,27 +190,9 @@ class RuntimeCoverageTests(unittest.TestCase):
         self.profile.pop("agents")
         self.assertEqual(self.violations(), [])
 
-    def test_a_registry_without_a_models_mapping_fails_closed(self):
-        self.registry.pop("models")
-        found = self.violations()
-        self.assertTrue(any("model registry" in v for v in found), found)
-
-    def test_a_non_mapping_models_entry_fails_closed(self):
-        self.registry["models"] = ["opencode-go/hy4-flash-free"]
-        found = self.violations()
-        self.assertTrue(any("model registry" in v for v in found), found)
-
-    def test_model_declaration_branches(self):
+    def test_model_declarations_are_not_runtime_policy_inputs(self):
         self.reviewer()["model"] = "other/expensive-model"
-        found = self.violations()
-        self.assertTrue(any("reviewer" in v and "model" in v for v in found), found)
-        self.reviewer()["model"] = ALLOWED_MODEL
-        self.assertEqual(self.violations(), [])
-        self.reviewer().pop("model")
-        self.profile["model"] = "other/expensive-model"
-        found = self.violations()
-        self.assertTrue(any("runtime profile" in v and "model" in v for v in found), found)
-        self.profile["model"] = None
+        self.profile["model"] = "another/expensive-model"
         self.assertEqual(self.violations(), [])
 
     def test_reviewer_permission_branches(self):

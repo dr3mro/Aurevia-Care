@@ -20,6 +20,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
+
 ROOT = Path(__file__).resolve().parents[1]
 
 # Files that name the patterns without using them: this guard and its tests, prose,
@@ -79,7 +83,10 @@ HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 def git(root, *args):
     """Run git in ``root`` and return its stdout; an empty string on failure."""
-    done = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=False)
+    done = subprocess.run(
+        ["git", *args], cwd=root, capture_output=True, text=True, check=False,
+        env=child_environment(read_only=True),
+    )
     return done.stdout if done.returncode == 0 else ""
 
 

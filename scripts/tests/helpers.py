@@ -2,10 +2,14 @@
 import importlib.util
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS = ROOT / "scripts"
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 
 # The suite runs inside swarm workers and CI jobs whose environment already carries
 # the task being worked (BRANCH, STORY_*, SWARM, MODE...) and GitHub context and
@@ -13,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # a worker inheriting BRANCH or BRANCH_PREFIX failed about half of test_agent_run.
 _AMBIENT_EXACT = {
     "BASE_BRANCH", "BRANCH", "BRANCH_PREFIX", "CHECK_SCRIPT", "CONFLICTED", "EVENT_NAME",
-    "FIX_COMMENT", "ISSUE_NUMBER", "MERGE_ATTEMPTS", "MODE", "MODEL", "PR_NUMBER",
+    "FIX_COMMENT", "ISSUE_NUMBER", "MERGE_ATTEMPTS", "MODE", "PR_NUMBER",
     "REQUIRE_POSTGRES", "REVIEWERS", "SCHEDULE", "SEGMENT", "SEGMENTS", "SYNC_ONLY",
     "AGENT_TIMEOUT", "AUDIT_FOCUS", "AUREVIA_PG_ADMIN", "NVD_API_KEY",
 }

@@ -193,7 +193,7 @@ class ConcurrentWaveTests(unittest.TestCase):
                     mock.patch.object(swarm, "gh_json", return_value=prs), \
                     mock.patch.object(swarm, "todo_read", return_value=""), \
                     mock.patch.object(swarm, "plan_workers", return_value=workers), \
-                    mock.patch.object(swarm, "delivery_listing", return_value=[]), \
+                    mock.patch.object(swarm, "delivery_listing", return_value=swarm.DeliveryListing([], 123, False)), \
                     mock.patch.object(swarm, "pending_note_days", return_value=False), \
                     mock.patch.object(swarm, "delivery_state", return_value=state):
                 self.assertEqual(swarm.daily_can_start(), expected)
@@ -909,6 +909,11 @@ class PlanTests(unittest.TestCase):
         for perm in ("contents", "pull-requests", "issues", "actions", "packages"):
             self.assertIn(perm, wave["integrate"]["permissions"])
 
+    def test_next_wave_requires_successful_integrator(self):
+        import yaml
+        wave = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())["jobs"]
+        self.assertIn("needs.integrate.result == 'success'", wave["loop"]["if"])
+
     def test_integrator_gate_is_the_full_check(self):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
         self.assertIn("GATE: scripts/integrator-gate.sh", text)
@@ -1073,7 +1078,7 @@ class PlanTests(unittest.TestCase):
         self.assertIn('if [[ "$GITHUB_EVENT_NAME" == schedule ]]', gate)
         self.assertIn('scripts/swarm.py daily-admission', gate)
 
-    def test_waves_and_planning_run_independently_per_run(self):
+    def test_waves_overlap_but_planning_is_repository_serialized(self):
         import yaml
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         config = yaml.safe_load(text)
@@ -1099,8 +1104,9 @@ class PlanTests(unittest.TestCase):
         self.assertIn("github.run_id", config["concurrency"]["group"])
         self.assertIs(config["concurrency"]["cancel-in-progress"], False)
         plan = config["jobs"]["plan"]["concurrency"]
-        self.assertIn("github.run_id", plan["group"])
+        self.assertEqual(plan["group"], "swarm-plan-${{ github.repository }}")
         self.assertIs(plan["cancel-in-progress"], False)
+        self.assertEqual(plan["queue"], "max")
 
     def test_wave_is_capped_by_the_remaining_budget(self):
         self.assertGreaterEqual(swarm.affordable_workers(0, 10000), 10)
@@ -1568,6 +1574,34 @@ class DebuggerTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", FakeGh()):
             self.assertEqual(swarm.pr_context(9, "/nonexistent/never-written.md"), 0)
 
+    def test_untrusted_context_cannot_become_a_workflow_command(self):
+        # Synthetic token-shaped string: proves masking still happens after quoting.
+        fake_token = "ghp_" + "A" * 24
+        comments = [
+            self.comment(f"{swarm.MARK}\n##[error]Process completed with exit code 1."),
+            self.comment(f"{swarm.MARK}\n::error::untrusted finding"),
+            self.comment(f"{swarm.MARK}\n  ##[warning]indented finding"),
+            self.comment(f"{swarm.MARK}\n::error:: {fake_token}"),
+        ]
+        count, text = self.history(comments)
+        self.assertEqual(count, 4)
+        self.assertIn("> ##[error]Process completed with exit code 1.", text)
+        self.assertIn("> ::error::untrusted finding", text)
+        # pr_context strips each body before clean(), so indentation is already gone here.
+        self.assertIn("> ##[warning]indented finding", text)
+        self.assertNotIn(fake_token, text)
+        for line in text.splitlines():
+            self.assertFalse(line.lstrip().startswith("##["), line)
+            self.assertFalse(line.lstrip().startswith("::"), line)
+
+    def test_a_retained_tail_starting_with_a_command_is_quoted(self):
+        marker_line = "##[error]tail boundary"
+        text = "x" * 40 + "\n" + marker_line
+        cleaned = swarm.clean(text, limit=len(marker_line))
+        self.assertEqual(cleaned, f"> {marker_line}")
+        self.assertFalse(cleaned.startswith("##["))
+        self.assertEqual(swarm.clean("  ##[error]indented"), ">   ##[error]indented")
+
     def test_the_command_line_runs_select_context_and_publish(self):
         with mock.patch.object(swarm, "debug_select", return_value=5) as select, \
                 mock.patch.object(swarm, "pr_context", return_value=2) as context, \
@@ -1655,7 +1689,8 @@ class IntegrationTests(unittest.TestCase):
     def test_queue_skips_draft_pull_requests(self):
         prs = [{"number": 5, "labels": labels("swarm"), "isCrossRepository": False, "isDraft": True},
                {"number": 6, "labels": labels("swarm"), "isCrossRepository": False, "isDraft": False}]
-        with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
+        with mock.patch.object(swarm, "gh", FakeGh(prs=prs)), \
+                mock.patch.object(swarm, "draft_recovery", return_value=swarm.DRAFT_LEAVE):
             self.assertEqual(swarm.plan_integration(), [6])
 
     def test_guard_stops_protected_paths_for_a_human(self):
@@ -1775,6 +1810,143 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(swarm.guard(9), ["check.sh"])
         self.assertTrue(fake.said("labels[]=needs-human"))
 
+    def tracker_fixture(self, directory):
+        root = Path(directory)
+        (root / "tasks").mkdir()
+        (root / "docs/swarm").mkdir(parents=True)
+        (root / "tasks/tracked.md").write_text("local\n")
+        (root / "tasks/untracked.md").write_text("untracked\n")
+        (root / "tasks/.ignored").write_text("ignored\n")
+        (root / "docs/swarm/note.md").write_text("local note\n")
+        (root / "docs/swarm/untracked.md").write_text("untracked note\n")
+        previous = Path.cwd()
+        os.chdir(root)
+        self.addCleanup(os.chdir, previous)
+        return root
+
+    def test_restore_trackers_preserves_untracked_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tracker_fixture(directory)
+            desired = {"tasks": "tasks/tracked.md\n", "docs/swarm": "docs/swarm/note.md\n"}
+            tracked = dict(desired)
+
+            def git(*args, **kwargs):
+                if args[0] == "ls-tree":
+                    return desired[args[-1]]
+                if args[0] == "ls-files":
+                    return tracked[args[-1]]
+                if args[0] == "checkout":
+                    if args[-1] == "tasks":
+                        (root / "tasks/tracked.md").write_text("main\n")
+                    else:
+                        (root / "docs/swarm/note.md").write_text("main note\n")
+                if args[0] == "rm":
+                    Path(args[-1]).unlink()
+                return ""
+
+            with mock.patch.object(swarm, "store", return_value=mock.Mock(ROOT="tasks")), \
+                    mock.patch.object(swarm, "git", side_effect=git) as called:
+                swarm.restore_trackers()
+            self.assertEqual((root / "tasks/tracked.md").read_text(), "main\n")
+            self.assertEqual((root / "docs/swarm/note.md").read_text(), "main note\n")
+            self.assertEqual((root / "tasks/untracked.md").read_text(), "untracked\n")
+            self.assertEqual((root / "tasks/.ignored").read_text(), "ignored\n")
+            self.assertEqual((root / "docs/swarm/untracked.md").read_text(), "untracked note\n")
+            self.assertFalse(any(c.args[0] == "rm" for c in called.call_args_list))
+
+    def test_restore_trackers_restores_absent_untracked_path_from_main(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tracker_fixture(directory)
+            desired = {"tasks": "tasks/missing.md\n", "docs/swarm": ""}
+            tracked = {"tasks": "", "docs/swarm": ""}
+
+            def git(*args, **kwargs):
+                if args[0] == "ls-tree":
+                    return desired[args[-1]]
+                if args[0] == "ls-files":
+                    return tracked[args[-1]]
+                if args[0] == "checkout" and args[-1] == "tasks":
+                    (root / "tasks/missing.md").write_text("from main\n")
+                return ""
+
+            with mock.patch.object(swarm, "store", return_value=mock.Mock(ROOT="tasks")), \
+                    mock.patch.object(swarm, "git", side_effect=git):
+                swarm.restore_trackers()
+            self.assertEqual((root / "tasks/missing.md").read_text(), "from main\n")
+            self.assertEqual((root / "tasks/untracked.md").read_text(), "untracked\n")
+
+    def test_restore_trackers_refuses_untracked_collision_before_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tracker_fixture(directory)
+            collision = root / "tasks/collision.md"
+            collision.write_text("untracked collision\n")
+            desired = {"tasks": "tasks/collision.md\n", "docs/swarm": ""}
+            tracked = {"tasks": "", "docs/swarm": ""}
+
+            def git(*args, **kwargs):
+                if args[0] == "ls-tree":
+                    return desired[args[-1]]
+                if args[0] == "ls-files":
+                    return tracked[args[-1]]
+                return ""
+
+            with mock.patch.object(swarm, "store", return_value=mock.Mock(ROOT="tasks")), \
+                    mock.patch.object(swarm, "git", side_effect=git) as called:
+                with self.assertRaisesRegex(RuntimeError, "untracked tracker path"):
+                    swarm.restore_trackers()
+            self.assertEqual(collision.read_text(), "untracked collision\n")
+            self.assertFalse(any(c.args[0] in {"checkout", "rm"} for c in called.call_args_list))
+
+    def test_restore_trackers_refuses_broken_symlink_collision(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tracker_fixture(directory)
+            collision = root / "tasks/collision.md"
+            collision.symlink_to("missing-target")
+            desired = {"tasks": "tasks/collision.md\n", "docs/swarm": ""}
+            tracked = {"tasks": "", "docs/swarm": ""}
+
+            def git(*args, **kwargs):
+                if args[0] == "ls-tree":
+                    return desired[args[-1]]
+                if args[0] == "ls-files":
+                    return tracked[args[-1]]
+                return ""
+
+            with mock.patch.object(swarm, "store", return_value=mock.Mock(ROOT="tasks")), \
+                    mock.patch.object(swarm, "git", side_effect=git) as called:
+                with self.assertRaisesRegex(RuntimeError, "untracked tracker path"):
+                    swarm.restore_trackers()
+            self.assertTrue(collision.is_symlink())
+            self.assertEqual(os.readlink(collision), "missing-target")
+            self.assertFalse(any(c.args[0] in {"checkout", "rm"} for c in called.call_args_list))
+
+    def test_restore_trackers_removes_only_tracked_paths_missing_from_main(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tracker_fixture(directory)
+            desired = {"tasks": "", "docs/swarm": "docs/swarm/note.md\n"}
+            tracked = {"tasks": "tasks/tracked.md\n", "docs/swarm": "docs/swarm/note.md\n"}
+
+            def git(*args, **kwargs):
+                if args[0] == "ls-tree":
+                    return desired[args[-1]]
+                if args[0] == "ls-files":
+                    return tracked[args[-1]]
+                if args[0] == "checkout" and args[-1] == "docs/swarm":
+                    (root / "docs/swarm/note.md").write_text("main note\n")
+                if args[0] == "rm":
+                    Path(args[-1]).unlink()
+                return ""
+
+            with mock.patch.object(swarm, "store", return_value=mock.Mock(ROOT="tasks")), \
+                    mock.patch.object(swarm, "git", side_effect=git) as called:
+                swarm.restore_trackers()
+            self.assertFalse((root / "tasks/tracked.md").exists())
+            self.assertEqual((root / "tasks/untracked.md").read_text(), "untracked\n")
+            self.assertEqual((root / "tasks/.ignored").read_text(), "ignored\n")
+            self.assertEqual((root / "docs/swarm/untracked.md").read_text(), "untracked note\n")
+            self.assertTrue(any(c.args[0] == "rm" and c.args[-1] == "tasks/tracked.md"
+                                for c in called.call_args_list))
+
 
 class WorkflowTests(unittest.TestCase):
     def test_worker_preflight_installs_dev_tools_and_stops_on_failure(self):
@@ -1855,9 +2027,11 @@ esac
         self.assertIn("secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)]", text)
         self.assertIn("secrets.OPENCODE_API_KEY", text)
 
-    def test_worker_script_marks_checkout_safe(self):
+    def test_worker_script_binds_git_without_mutating_global_config(self):
         text = (ROOT / "scripts/agent-run.sh").read_text()
-        self.assertIn("git config --global --add safe.directory", text)
+        self.assertIn('command git -C "$repo_root"', text)
+        self.assertIn("GIT_CONFIG_KEY_0=safe.directory", text)
+        self.assertNotIn("git config --global --add safe.directory", text)
 
 
 class AuditTests(unittest.TestCase):
@@ -2092,12 +2266,21 @@ class PrFlowTests(unittest.TestCase):
                 "labels": [{"name": n} for n in ("swarm", *labels)], "headRefOid": f"sha{number}" * 4,
                 "updatedAt": stamp}
 
+    def make_run(self, number, conclusion="success", status="completed", database_id=None, head=None):
+        sha = head or self.pr(number)["headRefOid"]
+        return {"databaseId": database_id or number, "headSha": sha, "status": status,
+                "conclusion": conclusion, "event": "pull_request", "workflowDatabaseId": 123,
+                "pullRequests": [{"number": number, "base": {"ref": "main"}, "head": {"sha": sha}}]}
+
+    def listing(self, runs):
+        return swarm.DeliveryListing(runs, 123, len(runs) >= swarm.DELIVERY_LISTING_LIMIT)
+
     def run_flow(self, prs, state="passed", red=False, active=0, waiting=0, requested=False, dispatch_wave=True):
         fake = FakeGh()
         with mock.patch.object(swarm, "gh", fake), \
-             mock.patch.object(swarm, "gh_json", lambda *a: prs if a[:2] == ("pr", "list") else {"headRefName": "swarm/CW-001-1"}), \
+             mock.patch.object(swarm, "gh_json", lambda *a: prs if a[:2] == ("pr", "list") else {"headRefName": "swarm/CW-001-1", "isDraft": False, "headRefOid": prs[0]["headRefOid"] if prs else "", "state": "OPEN"}), \
              mock.patch.object(swarm, "main_is_red", return_value=red), \
-             mock.patch.object(swarm, "delivery_listing", return_value=[]), \
+             mock.patch.object(swarm, "delivery_listing", return_value=swarm.DeliveryListing([], 123, False)), \
              mock.patch.object(swarm, "delivery_runs", return_value=[]), \
              mock.patch.object(swarm, "delivery_state", return_value=state), \
              mock.patch.object(swarm, "delivery_requested", return_value=requested), \
@@ -2111,11 +2294,11 @@ class PrFlowTests(unittest.TestCase):
     def test_actionable_delivery_failures_launch_one_shared_fix_wave(self):
         fake = FakeGh()
         prs = [self.pr(7), self.pr(8)]
-        runs = [{"headSha": pr["headRefOid"], "databaseId": pr["number"],
-                 "conclusion": "failure", "status": "completed"} for pr in prs]
+        runs = [self.make_run(pr["number"], conclusion="failure") for pr in prs]
         with mock.patch.object(swarm, "gh", fake), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
-                mock.patch.object(swarm, "delivery_listing", return_value=runs), \
+                mock.patch.object(swarm, "delivery_listing", return_value=self.listing(runs)), \
+                mock.patch.object(swarm, "validated_delivery_runs", side_effect=lambda raw, head, pr, wf: [r for r in raw if r["headSha"] == head and r["pullRequests"][0]["number"] == pr]), \
                 mock.patch.object(swarm, "gh_json", side_effect=lambda *a: prs if a[:2] == ("pr", "list") else {}), \
                 mock.patch.object(swarm, "delivery_failure_log", return_value="FAIL: synthetic_test") as log, \
                 mock.patch.object(swarm, "wave_has_room", return_value=True):
@@ -2132,11 +2315,11 @@ class PrFlowTests(unittest.TestCase):
     def test_first_debug_queue_entry_can_join_the_fix_wave(self):
         fake = FakeGh()
         candidates = [self.pr(7, ("needs-debug",)), self.pr(8, ("needs-debug", "fix-1"))]
-        run = {"headSha": candidates[0]["headRefOid"], "databaseId": 70,
-               "conclusion": "failure", "status": "completed"}
+        run = self.make_run(7, conclusion="failure", database_id=70)
         with mock.patch.object(swarm, "gh", fake), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
-                mock.patch.object(swarm, "delivery_listing", return_value=[run]), \
+                mock.patch.object(swarm, "delivery_listing", return_value=self.listing([run])), \
+                mock.patch.object(swarm, "validated_delivery_runs", return_value=[run]), \
                 mock.patch.object(swarm, "gh_json", side_effect=lambda *a: (
                     candidates if a[:2] == ("pr", "list") else {"labels": labels("needs-debug")})), \
                 mock.patch.object(swarm, "delivery_failure_log", return_value="FAIL: synthetic_test"), \
@@ -2151,8 +2334,8 @@ class PrFlowTests(unittest.TestCase):
                             for call in fake.calls for arg in call))
 
     def test_delivery_evidence_uses_exact_head_and_omits_untrusted_log_text(self):
-        runs = [{"databaseId": 1, "headSha": "old", "conclusion": "failure"},
-                {"databaseId": 2, "headSha": "current", "conclusion": "cancelled"}]
+        runs = [{"databaseId": 1, "headSha": "old", "conclusion": "failure", "event": "pull_request"},
+                {"databaseId": 2, "headSha": "current", "conclusion": "cancelled", "event": "pull_request"}]
         with mock.patch.object(swarm, "gh", return_value="FAIL: synthetic_test\nException: PRIVATE TEXT") as gh, \
                 mock.patch.object(swarm, "fail") as send:
             swarm.queue_delivery_failure(7, "current", runs)
@@ -2162,7 +2345,7 @@ class PrFlowTests(unittest.TestCase):
         self.assertNotIn("PRIVATE TEXT", send.call_args.kwargs["evidence"])
 
     def test_ambiguous_delivery_build_failure_keeps_the_debugger(self):
-        runs = [{"databaseId": 1, "headSha": "current", "conclusion": "failure"}]
+        runs = [{"databaseId": 1, "headSha": "current", "conclusion": "failure", "event": "pull_request"}]
         with mock.patch.object(swarm, "delivery_failure_log", return_value="BUILD FAILURE"), \
                 mock.patch.object(swarm, "fail") as send:
             swarm.queue_delivery_failure(7, "current", runs)
@@ -2176,11 +2359,11 @@ class PrFlowTests(unittest.TestCase):
     def test_ambiguous_failures_launch_one_shared_debugger_run(self):
         fake = FakeGh()
         prs = [self.pr(7), self.pr(8)]
-        runs = [{"headSha": pr["headRefOid"], "databaseId": pr["number"],
-                 "conclusion": "failure", "status": "completed"} for pr in prs]
+        runs = [self.make_run(pr["number"], conclusion="failure") for pr in prs]
         with mock.patch.object(swarm, "gh", fake), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
-                mock.patch.object(swarm, "delivery_listing", return_value=runs), \
+                mock.patch.object(swarm, "delivery_listing", return_value=self.listing(runs)), \
+                mock.patch.object(swarm, "validated_delivery_runs", side_effect=lambda raw, head, pr, wf: [r for r in raw if r["headSha"] == head and r["pullRequests"][0]["number"] == pr]), \
                 mock.patch.object(swarm, "gh_json", side_effect=lambda *a: prs if a[:2] == ("pr", "list") else {}), \
                 mock.patch.object(swarm, "active_runs", return_value=0), \
                 mock.patch.object(swarm, "delivery_failure_log", return_value="BUILD FAILURE"):
@@ -2235,11 +2418,58 @@ class PrFlowTests(unittest.TestCase):
         acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], state="passed")
         self.assertIn((7, "needs-fix cleared: delivery already passed"), acted)
         self.assertFalse(fake.said("swarm.yml"))
+        self.assertTrue(fake.said("workflow", "run", "swarm-integrator.yml"))
+        self.assertNotIn((7, "stuck alert"), acted)
+
+    def test_needs_fix_is_not_cleared_until_ready_confirmed(self):
+        for draft in (True, False):
+            with self.subTest(draft=draft):
+                item = self.pr(7, ("needs-fix",))
+                item["isDraft"] = draft
+                fake = FakeGh()
+                def answer(*args, **kwargs):
+                    if args[:2] == ("pr", "list"):
+                        return [item]
+                    if args[:2] == ("pr", "view"):
+                        return {"isDraft": draft, "headRefOid": item["headRefOid"], "state": "OPEN"}
+                    return {}
+                with mock.patch.object(swarm, "gh", fake), \
+                     mock.patch.object(swarm, "gh_json", side_effect=answer), \
+                     mock.patch.object(swarm, "main_is_red", return_value=False), \
+                     mock.patch.object(swarm, "delivery_listing", return_value=swarm.DeliveryListing([], 123, False)), \
+                     mock.patch.object(swarm, "delivery_state", return_value="passed"):
+                    acted = swarm.pr_flow(self.NOW)
+                removed = any(call[:2] == ("api", "--method") and "DELETE" in call
+                              for call in fake.calls)
+                self.assertEqual(removed, not draft)
+                if draft:
+                    self.assertNotIn((7, "needs-fix cleared: delivery already passed"), acted)
+
+    def test_moved_head_does_not_clear_needs_fix(self):
+        item = self.pr(7, ("needs-fix",))
+        fake = FakeGh()
+
+        def answer(*args, **kwargs):
+            if args[:2] == ("pr", "list"):
+                return [item]
+            if args[:2] == ("pr", "view"):
+                return {"isDraft": False, "headRefOid": "new-head", "state": "OPEN"}
+            return {}
+
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "gh_json", side_effect=answer), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "delivery_listing", return_value=swarm.DeliveryListing([], 123, False)), \
+                mock.patch.object(swarm, "delivery_state", return_value="passed"):
+            acted = swarm.pr_flow(self.NOW)
+        self.assertNotIn((7, "needs-fix cleared: delivery already passed"), acted)
+        self.assertFalse(any(call[:2] == ("api", "--method") and "DELETE" in call
+                             for call in fake.calls))
 
     def test_needs_fix_survives_a_delivery_lookup_failure(self):
         err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
         with mock.patch.object(swarm, "delivery_runs", side_effect=err), \
-             mock.patch.object(swarm, "delivery_listing", return_value=[{"headSha": "x"}] * 100):
+             mock.patch.object(swarm, "delivery_listing", return_value=self.listing([{"headSha": "x"}] * 100)):
             fake = FakeGh()
             with mock.patch.object(swarm, "gh", fake), \
                  mock.patch.object(swarm, "gh_json", lambda *a: [self.pr(7, ("needs-fix",))]), \
@@ -2250,42 +2480,97 @@ class PrFlowTests(unittest.TestCase):
         self.assertFalse(fake.said("swarm.yml"))
 
     def test_a_pass_lists_delivery_runs_once_for_all_pull_requests(self):
-        listing = [{"databaseId": 1, "headSha": "a", "status": "completed", "conclusion": "success"},
-                   {"databaseId": 2, "headSha": "b", "status": "completed", "conclusion": "failure"}]
+        records = [self.make_run(1, head="a", database_id=1),
+                   self.make_run(2, head="b", database_id=2, conclusion="failure")]
+        listing = self.listing(records)
         calls = []
-        with mock.patch.object(swarm, "gh_json", lambda *a: calls.append(a)):
-            with mock.patch.object(swarm, "gh_json", lambda *a: calls.append(a) or []):
-                self.assertEqual(swarm.delivery_runs_from(listing, "a"), [listing[0]])
-                self.assertEqual(swarm.delivery_runs_from(listing, "b"), [listing[1]])
-        self.assertEqual(calls, [])
+
+        def answer(*args):
+            calls.append(args)
+            if args[0] == "api" and "actions/runs/" in args[-1]:
+                run_id = int(args[-1].rsplit("/", 1)[1])
+                run = next(item for item in records if item["databaseId"] == run_id)
+                return {"workflow_id": 123, "event": "pull_request", "head_sha": run["headSha"],
+                        "pull_requests": run["pullRequests"]}
+            if args[:2] == ("run", "view"):
+                return {"jobs": []}
+            raise AssertionError(args)
+
+        with mock.patch.object(swarm, "gh_json", side_effect=answer):
+            self.assertEqual([r["databaseId"] for r in swarm.delivery_runs_from(listing, "a", 1)], [1])
+            self.assertEqual([r["databaseId"] for r in swarm.delivery_runs_from(listing, "b", 2)], [2])
+        self.assertFalse(any(call[:2] == ("run", "list") for call in calls))
 
     def test_unfinished_run_reads_jobs_and_old_heads_fall_back_when_listing_is_full(self):
-        running = [{"databaseId": 9, "headSha": "a", "status": "in_progress", "conclusion": None}]
-        with mock.patch.object(swarm, "gh_json", return_value={"jobs": [{"status": "waiting"}]}):
-            self.assertEqual(swarm.delivery_runs_from(running, "a")[0]["jobs"], [{"status": "waiting"}])
+        running = self.make_run(1, status="in_progress", conclusion=None, database_id=9, head="a")
+
+        def answer(*args):
+            if args[0] == "api" and "actions/runs/" in args[-1]:
+                return {"workflow_id": 123, "event": "pull_request", "head_sha": "a",
+                        "pull_requests": running["pullRequests"]}
+            if args[:2] == ("run", "view"):
+                return {"jobs": [{"status": "waiting"}]}
+            raise AssertionError(args)
+
+        with mock.patch.object(swarm, "gh_json", side_effect=answer):
+            self.assertEqual(swarm.delivery_runs_from(
+                self.listing([running]), "a", 1)[0]["jobs"], [{"status": "waiting"}])
         with mock.patch.object(swarm, "delivery_runs", return_value=["old"]) as single:
-            self.assertEqual(swarm.delivery_runs_from([{"headSha": "z"}] * 100, "a"), ["old"])
-            single.assert_called_once_with("a")
+            self.assertEqual(swarm.delivery_runs_from(
+                self.listing([{"headSha": "z"}] * 100), "a", 1), ["old"])
+            single.assert_called_once_with("a", 1)
 
     def test_main_is_red_survives_a_gh_failure(self):
         err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
         with mock.patch.object(swarm, "gh_json", side_effect=err):
             self.assertFalse(swarm.main_is_red())
 
-    def test_missing_delivery_requests_one_run_per_head(self):
+    def test_missing_delivery_never_dispatches_branch(self):
         acted, fake, _, _ = self.run_flow([self.pr(7)], state="missing")
-        self.assertTrue(fake.said("workflow", "run", "delivery.yml"))
-        self.assertEqual(acted, [(7, "delivery missing, run requested")])
+        self.assertFalse(fake.said("workflow", "run", "delivery.yml"))
+        self.assertEqual(acted, [])
         _, fake, _, _ = self.run_flow([self.pr(7)], state="approval-required", requested=True)
         self.assertFalse(fake.said("delivery.yml"))
 
-    def test_a_docs_only_pull_request_needs_no_delivery_run(self):
+    def test_docs_only_missing_delivery_waits(self):
         fake_diff = "docs/guide.md\nREADME.md\n"
         with mock.patch.object(FakeGh, "__call__", autospec=True,
                                side_effect=lambda self, *a, check=True: (self.calls.append(a), fake_diff if a[:2] == ("pr", "diff") else "")[1]):
             acted, fake, _, _ = self.run_flow([self.pr(7)], state="missing")
         self.assertFalse(fake.said("delivery.yml"))
-        self.assertEqual(acted, [("-", "integrator started for 1 ready pull request(s)")])
+        self.assertFalse(fake.said("swarm-integrator.yml"))
+        self.assertEqual(acted, [])
+
+    def test_pr_flow_rerun_uses_exact_pr_run(self):
+        fake = FakeGh()
+        run = self.make_run(7, conclusion="skipped")
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "gh_json", side_effect=lambda *a: [self.pr(7)] if a[:2] == ("pr", "list") else {}), \
+             mock.patch.object(swarm, "main_is_red", return_value=False), \
+             mock.patch.object(swarm, "delivery_listing", return_value=self.listing([run])), \
+             mock.patch.object(swarm, "validated_delivery_runs", return_value=[run]), \
+             mock.patch.object(swarm, "delivery_state", return_value="missing"):
+            acted = swarm.pr_flow(self.NOW)
+        self.assertTrue(fake.said("run", "rerun", "7"))
+        self.assertFalse(fake.said("workflow", "run", "delivery.yml"))
+        self.assertEqual(acted, [])
+
+    def test_pr_flow_rerun_failure_never_reports_ready(self):
+        error = subprocess.CalledProcessError(1, ("run", "rerun"))
+        def fake_gh(*args, check=True):
+            if args[:2] == ("run", "rerun"):
+                raise error
+            return ""
+        run = self.make_run(7, conclusion="skipped")
+        with mock.patch.object(swarm, "gh", fake_gh), \
+             mock.patch.object(swarm, "gh_json", side_effect=lambda *a: [self.pr(7)] if a[:2] == ("pr", "list") else {}), \
+             mock.patch.object(swarm, "main_is_red", return_value=False), \
+             mock.patch.object(swarm, "delivery_listing", return_value=self.listing([run])), \
+             mock.patch.object(swarm, "validated_delivery_runs", return_value=[run]), \
+             mock.patch.object(swarm, "delivery_state", return_value="missing"):
+            acted = swarm.pr_flow(self.NOW)
+        self.assertFalse(any(action == "integrator started" for _, action in acted))
+        self.assertEqual(acted, [])
 
     def test_a_green_pull_request_wakes_the_integrator_unless_it_runs(self):
         acted, fake, _, _ = self.run_flow([self.pr(7), self.pr(8)])
@@ -2325,11 +2610,86 @@ class PrFlowTests(unittest.TestCase):
         self.assertEqual(len(calls), len(swarm.ACTIVE_STATES))
 
     def test_delivery_requested_only_matches_this_head(self):
-        comments = [{"body": "x\nDelivery is missing for sha777777777", "user": {"login": "github-actions[bot]"}}]
+        comments = [
+            {"body": "x\nDelivery is missing for sha777777777", "user": {"login": "github-actions[bot]"}},
+            {"body": swarm.marker("delivery-rerun", "marker-head"), "user": {"login": "github-actions[bot]"}},
+        ]
         with mock.patch.object(swarm, "gh_json", return_value=comments), \
              mock.patch.object(swarm, "repo_slug", return_value="o/r"):
             self.assertTrue(swarm.delivery_requested(7, "sha777777777"))
+            self.assertTrue(swarm.delivery_requested(7, "marker-head"))
             self.assertFalse(swarm.delivery_requested(7, "other0000000"))
+
+    def test_untrusted_or_missing_rerun_markers_are_ignored(self):
+        head = self.pr(7)["headRefOid"]
+        comments = (
+            [],
+            [{"body": swarm.marker("delivery-rerun", head),
+              "user": {"login": "stranger"}, "author_association": "NONE"}],
+        )
+        for answer in comments:
+            with self.subTest(answer=answer), \
+                    mock.patch.object(swarm, "gh_json", return_value=answer), \
+                    mock.patch.object(swarm, "repo_slug", return_value="o/r"):
+                self.assertFalse(swarm.delivery_requested(7, head))
+
+    def test_delivery_listing_failure_stops_the_pass(self):
+        fake = FakeGh()
+        error = subprocess.CalledProcessError(1, ("run", "list"))
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "gh_json", lambda *a: [self.pr(7)] if a[:2] == ("pr", "list") else {}), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "delivery_listing", side_effect=error), \
+                mock.patch("sys.stderr", new_callable=io.StringIO) as err:
+            acted = swarm.pr_flow(self.NOW)
+        self.assertEqual(acted, [])
+        self.assertIn("delivery listing failed", err.getvalue())
+        self.assertFalse(fake.said("workflow", "run"))
+
+    def test_empty_head_does_not_clear_needs_fix(self):
+        item = self.pr(7, ("needs-fix",))
+        item["headRefOid"] = ""
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "gh_json", lambda *a: [item] if a[:2] == ("pr", "list") else {}), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "delivery_listing", return_value=swarm.DeliveryListing([], 123, False)), \
+                mock.patch.object(swarm, "delivery_state", return_value="passed"):
+            acted = swarm.pr_flow(self.NOW)
+        self.assertNotIn((7, "needs-fix cleared: delivery already passed"), acted)
+        self.assertFalse(any(c[:2] == ("api", "--method") and "DELETE" in c
+                             for c in fake.calls))
+        self.assertFalse(fake.said("workflow", "run", "swarm-integrator.yml"))
+
+    def test_needs_fix_draft_ready_failures_keep_label(self):
+        item = self.pr(7, ("needs-fix",))
+        item["isDraft"] = True
+        for ready_fails in (True, False):
+            with self.subTest(ready_fails=ready_fails):
+                calls = []
+
+                def fake(*args, check=True):
+                    calls.append(args)
+                    if args[:2] == ("pr", "list"):
+                        return [item]
+                    if args[:2] == ("pr", "ready") and ready_fails:
+                        raise subprocess.CalledProcessError(1, args)
+                    if args[:2] == ("pr", "view"):
+                        return {"isDraft": True, "headRefOid": item["headRefOid"],
+                                "state": "OPEN"}
+                    return ""
+
+                with mock.patch.object(swarm, "gh", mock.Mock(side_effect=fake)), \
+                        mock.patch.object(swarm, "gh_json", lambda *a: [item] if a[:2] == ("pr", "list") else {}), \
+                        mock.patch.object(swarm, "main_is_red", return_value=False), \
+                        mock.patch.object(swarm, "delivery_listing", return_value=swarm.DeliveryListing([], 123, False)), \
+                        mock.patch.object(swarm, "delivery_state", return_value="passed"):
+                    acted = swarm.pr_flow(self.NOW)
+                self.assertNotIn((7, "needs-fix cleared: delivery already passed"), acted)
+                self.assertFalse(any(c[:2] == ("api", "--method") and "DELETE" in c
+                                     for c in calls))
+                self.assertFalse(any(c[:3] == ("workflow", "run", "swarm-integrator.yml")
+                                     for c in calls))
 
     def test_the_cli_and_workflow(self):
         with mock.patch.object(swarm, "pr_flow", return_value=[(7, "x")]) as flow:
@@ -2352,6 +2712,8 @@ class ResolveConflictTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "git", return_value="base-sha\n"), \
+             mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
              mock.patch.object(swarm, "fail") as failed, \
              mock.patch.object(swarm, "emit") as emitted:
@@ -2366,6 +2728,8 @@ class ResolveConflictTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "git", return_value="base-sha\n"), \
+             mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
              mock.patch.object(swarm, "fail") as failed, \
              mock.patch.object(swarm, "emit") as emitted:
@@ -2378,6 +2742,7 @@ class ResolveConflictTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=("old-sha", "CW-001", [])), \
              mock.patch.object(swarm, "git", return_value="base-sha\n") as local, \
              mock.patch.object(swarm, "fail") as failed, \
@@ -2992,7 +3357,8 @@ class GitTests(unittest.TestCase):
         self.assertEqual(self.run_git("status", "--porcelain"), "")
 
     def test_finalize_records_the_merge_and_publishes_main(self):
-        fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: CW-001\n\nEvidence"})
+        fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: CW-001\n\nEvidence",
+                               "title": "CW-001: task", "baseRefName": "main", "state": "OPEN"})
         with mock.patch.object(swarm, "gh", fake):
             swarm.finalize(9, "CW-001", "abc")
         tasks = {t["id"]: t for t in swarm.parse_tasks(swarm.todo_read())}
@@ -3049,16 +3415,20 @@ class GitTests(unittest.TestCase):
         self.assertEqual((got["status"], got["agent"]), ("todo", ""))
 
     def test_finalize_refuses_a_branch_that_changed_after_testing(self):
-        fake = FakeGh(pr_view={"headRefOid": "new", "body": ""})
+        fake = FakeGh(pr_view={"headRefOid": "new", "body": "", "title": "CW-001: task",
+                               "baseRefName": "main", "state": "OPEN"})
         with mock.patch.object(swarm, "gh", fake), self.assertRaises(SystemExit):
             swarm.finalize(9, "CW-001", "old")
 
-    def test_finalize_handles_repair_tasks_that_are_not_in_the_file(self):
-        fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: FIX-5"})
+    def test_finalize_refuses_a_repair_task_that_is_not_in_the_file(self):
+        fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: FIX-5",
+                               "title": "FIX-5: Repair main", "baseRefName": "main",
+                               "state": "OPEN"})
         with mock.patch.object(swarm, "gh", fake):
-            swarm.finalize(11, "FIX-5", "abc")
-        self.assertIn("FIX-5", (self.repo / "docs/swarm/FIX-5.md").read_text())
-        self.assertEqual(swarm.store().read().count("[x]"), 1)
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.finalize(11, "FIX-5", "abc")
+        self.assertFalse((self.repo / "docs/swarm/FIX-5.md").exists())
+        self.assertNotIn("[x] FIX-5", swarm.store().read())
 
 
 class BudgetTests(unittest.TestCase):
@@ -3236,7 +3606,10 @@ class TwoTierTests(unittest.TestCase):
     def test_integrate_batch_pushes_once(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
-        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
+        tasks = self.repo / "tasks"
+        tasks.mkdir()
+        (tasks / "01260000-CW-001.md").write_text("- [-] CW-001 · first\n")
+        (tasks / "01260001-CW-002.md").write_text("- [-] CW-002 · second\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3246,9 +3619,12 @@ class TwoTierTests(unittest.TestCase):
             def __init__(self):
                 super().__init__(pr_view={"headRefOid": "abc", "body": "Task: CW-001"})
             def __call__(self, *args, check=True):
-                if args[:2] == ("pr", "view") and "--json" in args and "headRefOid" in args:
+                if args[:2] == ("pr", "view") and "--json" in args and any("headRefOid" in str(arg) for arg in args):
                     self.calls.append(args)
-                    return json.dumps({"headRefOid": "abc"})
+                    task = f"CW-{int(args[2]):03d}"
+                    return json.dumps({"headRefOid": "abc", "body": "done",
+                                       "title": f"{task}: task", "baseRefName": "main",
+                                       "state": "OPEN"})
                 if args[:2] == ("pr", "diff"):
                     self.calls.append(args)
                     return "apps/api/A.java\n"
@@ -3261,7 +3637,8 @@ class TwoTierTests(unittest.TestCase):
                 return super().__call__(*args, check=check)
         with mock.patch.object(swarm, "gh", Gh()) as fake, \
              mock.patch.object(swarm, "guard", return_value=[]), \
-             mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "merge_local",
+                               side_effect=lambda pr, *a, **k: ("abc", f"CW-{pr:03d}", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "git") as gitmock, mock.patch.object(swarm, "authed_git"):
@@ -3278,7 +3655,10 @@ class TwoTierTests(unittest.TestCase):
     def test_integrate_batch_leaves_a_moved_branch_open(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
-        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
+        tasks = self.repo / "tasks"
+        tasks.mkdir()
+        (tasks / "01260000-CW-001.md").write_text("- [-] CW-001 · first\n")
+        (tasks / "01260001-CW-002.md").write_text("- [-] CW-002 · second\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3306,7 +3686,10 @@ class TwoTierTests(unittest.TestCase):
     def test_integrate_batch_retries_when_main_advanced(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
-        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
+        tasks = self.repo / "tasks"
+        tasks.mkdir()
+        (tasks / "01260000-CW-001.md").write_text("- [-] CW-001 · first\n")
+        (tasks / "01260001-CW-002.md").write_text("- [-] CW-002 · second\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3316,7 +3699,9 @@ class TwoTierTests(unittest.TestCase):
             def __call__(self, *args, check=True):
                 if args[:2] == ("pr", "view") and "--jq" not in args:
                     self.calls.append(args)
-                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001"})
+                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001",
+                                       "title": "CW-001: task", "baseRefName": "main",
+                                       "state": "OPEN"})
                 if args[:2] == ("pr", "diff"):
                     self.calls.append(args); return "apps/api/A.java\n"
                 if args[:2] == ("pr", "list"):
@@ -3350,7 +3735,10 @@ class TwoTierTests(unittest.TestCase):
         """Run integrate_batch whose first push loses a race; `changed` is what main gained meanwhile."""
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
-        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
+        tasks = self.repo / "tasks"
+        tasks.mkdir()
+        (tasks / "01260000-CW-001.md").write_text("- [-] CW-001 · first\n")
+        (tasks / "01260001-CW-002.md").write_text("- [-] CW-002 · second\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3360,7 +3748,9 @@ class TwoTierTests(unittest.TestCase):
             def __call__(self, *args, check=True):
                 if args[:2] == ("pr", "view") and "--jq" not in args:
                     self.calls.append(args)
-                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001"})
+                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001",
+                                       "title": "CW-001: task", "baseRefName": "main",
+                                       "state": "OPEN"})
                 if args[:2] == ("pr", "diff"):
                     self.calls.append(args); return "apps/api/A.java\n"
                 if args[:2] == ("pr", "list"):
@@ -3405,7 +3795,10 @@ class TwoTierTests(unittest.TestCase):
     def test_integrate_batch_sends_prs_back_when_the_regate_fails(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
-        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
+        tasks = self.repo / "tasks"
+        tasks.mkdir()
+        (tasks / "01260000-CW-001.md").write_text("- [-] CW-001 · first\n")
+        (tasks / "01260001-CW-002.md").write_text("- [-] CW-002 · second\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3415,7 +3808,9 @@ class TwoTierTests(unittest.TestCase):
             def __call__(self, *args, check=True):
                 if args[:2] == ("pr", "view") and "--jq" not in args:
                     self.calls.append(args)
-                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001"})
+                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001",
+                                       "title": "CW-001: task", "baseRefName": "main",
+                                       "state": "OPEN"})
                 if args[:2] == ("pr", "diff"):
                     self.calls.append(args); return "apps/api/A.java\n"
                 if args[:2] == ("pr", "list"):
@@ -3437,7 +3832,7 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "fail") as failed, \
              mock.patch.object(swarm, "authed_git", side_effect=authed):
             count = swarm.integrate_batch([1], "scripts/quick-check.sh")
-        self.assertEqual(count, 0)
+        self.assertEqual(count, swarm.INTEGRATION_FAILED)
         failed.assert_called_once()
         self.assertEqual(failed.call_args.args[0], 1)
         self.assertIn("AppShell", failed.call_args.args[2])
@@ -3445,7 +3840,10 @@ class TwoTierTests(unittest.TestCase):
     def test_integrate_batch_restores_trackers_on_retry(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
-        (self.repo / ".opencode/config/MEMORY.md").write_text("# TODO\n")
+        tasks = self.repo / "tasks"
+        tasks.mkdir()
+        (tasks / "01260000-CW-001.md").write_text("- [-] CW-001 · first\n")
+        (tasks / "01260001-CW-002.md").write_text("- [-] CW-002 · second\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)
@@ -3455,7 +3853,9 @@ class TwoTierTests(unittest.TestCase):
             def __call__(self, *args, check=True):
                 if args[:2] == ("pr", "view") and "--jq" not in args:
                     self.calls.append(args)
-                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001"})
+                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001",
+                                       "title": "CW-001: task", "baseRefName": "main",
+                                       "state": "OPEN"})
                 if args[:2] == ("pr", "diff"):
                     self.calls.append(args); return "apps/api/A.java\n"
                 if args[:2] == ("pr", "list"):
@@ -3468,6 +3868,12 @@ class TwoTierTests(unittest.TestCase):
             return ""
 
         def gitmock(*args, check=True):
+            if args[:1] == ("ls-tree",):
+                return "tasks/01260000-CW-001.md\n"
+            if args[:1] == ("ls-files",):
+                return "tasks/01260000-CW-001.md\n"
+            if args[:1] == ("merge-base",):
+                return "base\n"
             return ""
 
         with mock.patch.object(swarm, "gh", Gh()), \
@@ -3707,38 +4113,99 @@ class TrustedCopyTests(unittest.TestCase):
             self.assertIn("-c safe.directory='*'", step["run"], step["name"])
 
 
-class ModelOverrideTests(unittest.TestCase):
-    def test_workflows_pass_precedence_to_the_central_router(self):
-        # The old `vars.SWARM_MODEL || ...` expressions made SWARM_MODEL the
-        # primary override. Selection now lives in scripts/model-router.py, so
-        # workflows pass only the two control variables, never a model.
-        routed = 0
-        for path in (ROOT / ".github/workflows").glob("*.yml"):
-            text = path.read_text()
-            if "SWARM_MODEL:" not in text:
-                continue
-            routed += 1
-            self.assertNotIn("vars.SWARM_MODEL ||", text, path.name)
-            self.assertIn("SWARM_MODEL: ${{ vars.SWARM_MODEL }}", text, path.name)
-            self.assertIn("SWARM_FORCE_MODEL: ${{ vars.SWARM_FORCE_MODEL }}", text, path.name)
-        self.assertGreaterEqual(routed, 9)
+class ModelEnvironmentTests(unittest.TestCase):
+    WORKFLOWS = (
+        "swarm-worker.yml", "swarm-debugger.yml", "swarm-integrator.yml",
+        "swarm-strategist.yml", "swarm-issue-monitor.yml", "daily-audit.yml",
+        "daily-qa.yml", "daily-devsecops.yml", "daily-notes.yml",
+    )
 
-    def test_no_workflow_or_slot_selects_a_model(self):
+    def test_agent_workflows_pass_only_swarm_model_with_default(self):
+        expected = "SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}"
+        for name in self.WORKFLOWS:
+            with self.subTest(workflow=name):
+                text = (ROOT / ".github/workflows" / name).read_text()
+                self.assertIn(expected, text)
+                self.assertNotIn("SWARM_FORCE_MODEL", text)
+
+    def test_no_workflow_exports_a_second_model_variable(self):
         for path in (ROOT / ".github/workflows").glob("*.yml"):
             for line in path.read_text().splitlines():
-                # Match the exact env key: SWARM_MODEL is the router control,
-                # while a bare MODEL key would be a second model selector.
                 self.assertFalse(line.strip().startswith("MODEL:"),
                                  f"{path.name}: {line.strip()}")
-        slots = swarm.load_slots(ROOT / ".opencode/config/slots.json")
-        self.assertTrue(all("model" not in slot for slot in slots))
+                self.assertFalse(line.strip().startswith("SWARM_FORCE_MODEL:"),
+                                 f"{path.name}: {line.strip()}")
 
-    def test_the_router_enforces_strict_boolean_config(self):
-        router = load("model-router")
-        self.assertEqual(router.parse_force_model(""), 0)
-        self.assertEqual(router.parse_force_model("1"), 1)
-        with self.assertRaises(router.ConfigurationError):
-            router.parse_force_model("yes")
+    def test_candidate_validation_example_uses_repository_model_default(self):
+        text = (ROOT / "docs/operations/workflow-changes/candidate-validation-isolation.md").read_text()
+        expected = "SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}"
+        self.assertIn(expected, text)
+        self.assertNotIn("SWARM_MODEL: opencode-go/hy4-flash-free", text)
+
+    def test_router_and_registry_artifacts_are_absent(self):
+        self.assertFalse((ROOT / "scripts/model-router.py").exists())
+        self.assertFalse((ROOT / "scripts/tests/test_model_router.py").exists())
+        self.assertFalse((ROOT / ".opencode/model-pricing.json").exists())
+
+    def test_active_surfaces_have_no_router_references(self):
+        paths = [
+            ROOT / "scripts/agent-run.sh", ROOT / "scripts/swarm.py",
+            ROOT / "scripts/gen-opencode.py", ROOT / ".opencode/agents/orca.md",
+            ROOT / ".opencode/config/slots.json", ROOT / "docs/SWARM.md",
+            ROOT / ".github/agent-image/Dockerfile.slot",
+            ROOT / "docs/operations/workflow-changes/quality-verification-checklist.md",
+            ROOT / "docs/operations/workflow-changes/candidate-validation-isolation.md",
+            *(ROOT / ".github/workflows").glob("*.yml"),
+        ]
+        for path in paths:
+            text = path.read_text()
+            self.assertNotIn("model-router", text, str(path))
+            self.assertNotIn("model-pricing", text, str(path))
+            self.assertNotIn("SWARM_FORCE_MODEL", text, str(path))
+
+    def test_load_slots_rejects_direct_and_nested_model_configuration(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        cases = (
+            {"slot": 1, "model": "opencode/test"},
+            {"slot": 1, "config": {"model": "opencode/test"}},
+            {"slot": 1, "config": {"nested": [{"model": "opencode/test"}]}},
+        )
+        for value in cases:
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "slots.json"
+                path.write_text(json.dumps({"slots": [value]}))
+                with self.assertRaisesRegex(ValueError, "must not select a model"):
+                    swarm.load_slots(path)
+
+    def test_load_slots_allows_non_model_nested_configuration(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        value = {"slot": 1, "config": {"nested": [{"share": "disabled"}]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "slots.json"
+            path.write_text(json.dumps({"slots": [value]}))
+            self.assertEqual(swarm.load_slots(path), [value])
+
+    def test_every_rendered_slot_config_is_model_free(self):
+        slots = swarm.load_slots(ROOT / ".opencode/config/slots.json")
+
+        def assert_no_model(value):
+            if isinstance(value, dict):
+                self.assertNotIn("model", value)
+                for nested in value.values():
+                    assert_no_model(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    assert_no_model(nested)
+
+        for slot in slots:
+            assert_no_model(slot)
+            assert_no_model(swarm.slot_config(slots, slot["slot"]))
 
 
 class FailureReportTests(unittest.TestCase):
@@ -3774,7 +4241,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-1.md")
             path.write_text("- [-] X-1 · a story\n  - agent: swarm-1\n")
-            merged = '[{"number": 42, "title": "X-1: a story"}]'
+            merged = '[{"number": 42, "title": "X-1: a story", "baseRefName": "main", "state": "MERGED"}]'
             with mock.patch.object(swarm.subprocess, "check_output", return_value=merged), \
                  mock.patch.object(swarm, "git") as git, \
                  mock.patch.object(swarm, "authed_git") as push, \
@@ -3792,7 +4259,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-9.md")
             path.write_text("- [ ] X-9 · story\n  - evidence: PR #12 merged\n  - pr: #12\n")
-            merged = '[{"number": 12, "title": "X-9: story"}]'
+            merged = '[{"number": 12, "title": "X-9: story", "baseRefName": "main", "state": "MERGED"}]'
             with mock.patch.object(swarm.subprocess, "check_output", return_value=merged), \
                  mock.patch.object(swarm, "git") as git:
                 count = swarm.reconcile_tasks(directory=tmp)
@@ -3807,18 +4274,52 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-2.md")
             path.write_text("- [ ] X-2 · open\n")
-            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 9, "title": "X-1: done"}]'), \
+            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 9, "title": "X-1: done", "baseRefName": "main", "state": "MERGED"}]'), \
                  mock.patch.object(swarm, "git") as git:
                 count = swarm.reconcile_tasks(directory=tmp, persist=True)
             self.assertEqual(count, 0)
             self.assertIn("- [ ] X-2", path.read_text())
             git.assert_not_called()
 
+    def test_wrong_base_merge_does_not_complete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "X-1.md")
+            path.write_text("- [ ] X-1 · story\n")
+            merged = '[{"number": 7, "title": "X-1: story", "baseRefName": "develop", "state": "MERGED"}]'
+            with mock.patch.object(swarm.subprocess, "check_output", return_value=merged):
+                with self.assertRaises(swarm.ReconciliationError):
+                    swarm.reconcile_tasks(directory=tmp)
+            self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
+
+    def test_malformed_or_duplicate_evidence_fails_before_write(self):
+        answers = ("not-json", '[{"number": 7, "title": "X-1: a", "baseRefName": "main", "state": "MERGED"},'
+                   '{"number": 8, "title": "X-1: b", "baseRefName": "main", "state": "MERGED"}]')
+        for answer in answers:
+            with self.subTest(answer=answer), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp, "X-1.md")
+                path.write_text("- [ ] X-1 · story\n")
+                with mock.patch.object(swarm.subprocess, "check_output", return_value=answer), \
+                     mock.patch.object(swarm, "git") as git:
+                    with self.assertRaises(swarm.ReconciliationError):
+                        swarm.reconcile_tasks(directory=tmp)
+                git.assert_not_called()
+                self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
+
+    def test_api_failure_returns_nonzero_without_edits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "X-1.md")
+            path.write_text("- [ ] X-1 · story\n")
+            with mock.patch.object(swarm.subprocess, "check_output",
+                                   side_effect=subprocess.CalledProcessError(1, ("gh",))):
+                with self.assertRaises(swarm.ReconciliationError):
+                    swarm.reconcile_tasks(directory=tmp)
+            self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
+
     def test_missing_token_commits_but_does_not_push(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-3.md")
             path.write_text("- [-] X-3 · story\n")
-            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 7, "title": "X-3: done"}]'), \
+            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 7, "title": "X-3: done", "baseRefName": "main", "state": "MERGED"}]'), \
                  mock.patch.object(swarm, "git"), \
                  mock.patch.object(swarm, "authed_git") as push, \
                  mock.patch.dict(os.environ, {"GH_TOKEN": ""}):
@@ -3840,7 +4341,7 @@ class IntegratorTwoTierDispatchTest(unittest.TestCase):
         validate.assert_called_once_with([7], "gate.sh", "validated")
 
     def test_integrate_publish_dispatches_to_the_publisher(self):
-        with mock.patch.object(swarm, "integrate_publish") as publish:
+        with mock.patch.object(swarm, "integrate_publish", return_value=0) as publish:
             swarm.main(["integrate-publish", "--manifest", "m.json", "--bundle", "b.bundle",
                         "--gate", "gate.sh"])
         publish.assert_called_once_with("m.json", "b.bundle", "gate.sh")

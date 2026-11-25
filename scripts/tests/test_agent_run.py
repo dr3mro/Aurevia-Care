@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import stat
@@ -13,6 +12,7 @@ from helpers import ROOT
 FAKE_OPENCODE = """#!/usr/bin/env bash
 cp .opencode/opencode.json "$SEEN"
 printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
+if [[ -n "${ARGV_LOG:-}" ]]; then printf '%s\\0' "$@" >> "$ARGV_LOG"; fi
 case "$*" in *aurevia-task-advisor*)
   case "${BRIEF_MODE:-none}" in
     good) printf 'chatter\\n<<<BRIEF\\nGoal: advised goal\\nBRIEF>>>\\n' ;;
@@ -23,6 +23,8 @@ esac
 case "$FAKE_MODE" in
   commit) echo work > feature.txt; git add feature.txt; git commit -qm feature; echo done ;;
   rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
+  fail) echo "provider failed"; exit 1 ;;
+  rate-slow) echo "Error: 429 rate limit exceeded"; sleep 5 ;;
   dirty) echo work > feature.txt; echo done ;;
   edit) echo more >> feature.txt; echo findings ;;
   none) echo nothing ;;
@@ -52,7 +54,6 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / ".github").mkdir()
         shutil.copy(ROOT / "scripts/agent-run.sh", self.repo / "scripts/agent-run.sh")
         shutil.copy(ROOT / "scripts/route-task.py", self.repo / "scripts/route-task.py")
-        shutil.copy(ROOT / "scripts/model-router.py", self.repo / "scripts/model-router.py")
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
         (self.repo / "scripts/coverage-check.sh").write_text(
             "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
@@ -64,9 +65,6 @@ class AgentRunTests(unittest.TestCase):
             "echo \"$*\" >> \"${QUALITY_ARGS:-/dev/null}\"\nexit ${QUALITY_EXIT:-0}\n")
         (self.repo / ".github/pull_request_template.md").write_text("## Summary\n")
         (self.repo / ".opencode").mkdir(parents=True, exist_ok=True)
-        (self.repo / ".opencode/test-pricing.json").write_text(json.dumps({"models": {
-            "opencode/test": {"input": 0, "output": 0, "cache_read": 0,
-                              "pricing_source": "fixture", "verified_at": "2026-01-01"}}}))
         (self.repo / ".opencode/opencode.ci.json").write_text('{"ci": true}')
         (self.repo / ".opencode/opencode.json").write_text('{"real": true}')
         (self.repo / ".gitignore").write_text("/.agent/\n")
@@ -81,6 +79,9 @@ class AgentRunTests(unittest.TestCase):
             (bin_dir / name).write_text(body)
             (bin_dir / name).chmod(0o755 | stat.S_IXUSR)
         self.gh_log = tmp / "gh.log"
+        # Publish rejections return before the fake CLI runs, so the log must already
+        # exist for the assertion that no `pr create` was attempted.
+        self.gh_log.touch()
         self.bin_dir = bin_dir
 
     def fixture_environment(self):
@@ -91,8 +92,8 @@ class AgentRunTests(unittest.TestCase):
                     "MODE": "story", "BRANCH_PREFIX": "opencode", "CHECK_SCRIPT": "scripts/check.sh",
                     "HOME": str(tmp / "home"), "GITHUB_WORKSPACE": str(self.repo),
                     "GITHUB_OUTPUT": str(tmp / "output"), "GITHUB_RUN_NUMBER": "9",
-                    "GH_LOG": str(self.gh_log), "SEEN": str(tmp / "seen.json"), "MODEL": "opencode/test",
-            "SWARM_REGISTRY": ".opencode/test-pricing.json",
+                    "GH_LOG": str(self.gh_log), "SEEN": str(tmp / "seen.json"),
+                    "SWARM_MODEL": "opencode/test",
                     "OPENCODE_API_KEY": "k-test", "STORY_ID": "issue-5",
                     "STORY_TITLE": "Add login", "STORY_BODY": "body", "ISSUE_NUMBER": "5",
                     "GH_TOKEN": "t-test", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
@@ -102,8 +103,12 @@ class AgentRunTests(unittest.TestCase):
         subprocess.run(["git", *args], cwd=self.repo, check=True, capture_output=True)
 
     def run_cmd(self, command, **env):
+        merged = {**self.fixture_environment(), **env}
+        for name in ("MODEL", "SWARM_FORCE_MODEL", "SWARM_MODEL"):
+            if name in env and env[name] is None:
+                merged.pop(name, None)
         return subprocess.run(["bash", "scripts/agent-run.sh", command], cwd=self.repo,
-                              env={**self.fixture_environment(), **env}, capture_output=True, text=True)
+                              env=merged, capture_output=True, text=True)
 
     def outputs(self):
         lines = (self.tmp / "output").read_text().splitlines()
@@ -247,6 +252,65 @@ class AgentRunTests(unittest.TestCase):
             (self.repo / ".agent/branch").write_text(name)
             self.assertNotEqual(self.run_cmd("adopt").returncode, 0, name)
 
+    def test_untrusted_story_markers_cannot_become_workflow_commands(self):
+        body = "::error::bad body\nplain line\n\n"
+        for label, extra in (("plain", {"GITHUB_RUN_NUMBER": "9"}),
+                             ("briefed", {"SWARM": "1", "BRIEF_MODE": "good",
+                                          "GITHUB_RUN_NUMBER": "10"})):
+            with self.subTest(prompt_builder=label):
+                prompts = self.tmp / f"story-prompt-untrusted-{label}.log"
+                result = self.run_cmd(
+                    "implement", FAKE_MODE="commit", PROMPT_LOG=str(prompts),
+                    STORY_TITLE="##[error]bad title", STORY_BODY=body,
+                    FIX_COMMENT="  ##[warning]indented", **extra)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                text = prompts.read_text()
+                if label == "briefed":
+                    self.assertIn("--agent aurevia-task-advisor", text)
+                self.assertIn("> ##[error]bad title", text)
+                self.assertIn("> ::error::bad body", text)
+                self.assertIn("  > ##[warning]indented", text)
+                self.assertIn("plain line\n\n", text)
+                for line in text.splitlines():
+                    self.assertFalse(line.lstrip().startswith("##["), line)
+                    self.assertFalse(line.lstrip().startswith("::"), line)
+
+    def test_a_default_story_prompt_has_no_requested_change_line(self):
+        prompts = self.tmp / "story-prompt-default.log"
+        result = self.run_cmd("implement", FAKE_MODE="commit", PROMPT_LOG=str(prompts))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("Requested change:", prompts.read_text())
+
+    def test_publish_rejects_wrong_task_or_run_branch(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        (self.repo / ".agent/branch").write_text("opencode/OTHER-99")
+        result = self.run_cmd("publish")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unexpected branch", result.stderr.lower())
+        self.assertNotIn("pr create", self.gh_log.read_text())
+
+    def test_publish_rejects_when_head_is_not_the_recorded_branch(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.git("switch", "-q", "main")
+        result = self.run_cmd("publish")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("head is on main", result.stderr.lower())
+        self.assertNotIn("pr create", self.gh_log.read_text())
+        heads = subprocess.run(["git", "ls-remote", "--heads", "origin",
+                                "refs/heads/opencode/issue-5-9"], cwd=self.repo,
+                               capture_output=True, text=True)
+        self.assertEqual(heads.stdout, "")
+
+    def test_conflicted_input_rejects_malformed_lists_before_fetch(self):
+        invalid = ("not-json", "[]", "[0]", "[-1]", "[1.5]", '["5"]', "[true]", "[5,5]")
+        for value in invalid:
+            with self.subTest(value=value):
+                result = self.run_cmd("fetch-prs", CONFLICTED=value)
+                self.assertNotEqual(result.returncode, 0)
+                ref = subprocess.run(["git", "show-ref", "--verify", "refs/heads/pr-5"],
+                                     cwd=self.repo, capture_output=True, text=True)
+                self.assertNotEqual(ref.returncode, 0)
+
     def test_publish_without_any_run_files_reports_no_changes(self):
         shutil.rmtree(self.repo / ".agent", ignore_errors=True)
         (self.repo / ".agent").mkdir()
@@ -378,13 +442,14 @@ class AgentRunTests(unittest.TestCase):
         self.assertIn("issue comment 5", log)
         self.assertNotIn("pr create", log)
 
-    def test_reviews_discard_edits_and_stop_on_rate_limit(self):
+    def test_reviews_refuse_edits_and_stop_on_rate_limit(self):
         self.run_cmd("implement", FAKE_MODE="commit")
-        self.assertEqual(self.run_cmd("review", FAKE_MODE="edit", REVIEWERS="a b").returncode, 0)
-        status = subprocess.run(["git", "status", "--porcelain"], cwd=self.repo,
-                                capture_output=True, text=True).stdout
-        self.assertEqual(status, "")
-        self.assertEqual((self.repo / "feature.txt").read_text(), "work\n")
+        changed = self.run_cmd("review", FAKE_MODE="edit", REVIEWERS="a b")
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn("reviewer changed the workspace", changed.stderr.lower())
+        self.assertEqual((self.repo / "feature.txt").read_text(), "work\nmore\n")
+        self.assertFalse((self.repo / ".agent/review-b.md").exists())
+        self.git("checkout", "-q", "--", "feature.txt")
         for review in (self.repo / ".agent").glob("review-*.md"):
             review.unlink()
         self.run_cmd("review", FAKE_MODE="rate", REVIEWERS="a b")
@@ -392,6 +457,16 @@ class AgentRunTests(unittest.TestCase):
         self.assertFalse((self.repo / ".agent/review-b.md").exists())
         self.run_cmd("post-reviews", PR_NUMBER="7")
         self.assertIn("pr comment 7", self.gh_log.read_text())
+
+    def test_agent_runner_restores_existing_auth_and_config_after_failure(self):
+        auth = self.tmp / "home/.local/share/opencode/auth.json"
+        auth.parent.mkdir(parents=True)
+        auth.write_text("original auth\n")
+        auth.chmod(0o644)
+        self.run_cmd("review", FAKE_MODE="fail", REVIEWERS="a")
+        self.assertEqual(auth.read_text(), "original auth\n")
+        self.assertEqual(auth.stat().st_mode & 0o777, 0o644)
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(), '{"real": true}')
 
     def test_a_timed_out_segment_continues_on_the_same_branch(self):
         self.run_cmd("implement", FAKE_MODE="slow", AGENT_TIMEOUT="1", SEGMENT="1", SEGMENTS="2")
@@ -543,57 +618,225 @@ class AgentRunTests(unittest.TestCase):
 
 
 
-if __name__ == "__main__":
-    unittest.main()
+class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentRunTests"]).AgentRunTests):
+    """The real wrapper passes one SWARM_MODEL value and never rotates models."""
 
+    def argv(self):
+        return (self.tmp / "argv.log").read_bytes().decode().split("\0")[:-1]
 
-class DeterministicRoutingE2ETests(__import__("test_agent_run", fromlist=["AgentRunTests"]).AgentRunTests):
-    """Real agent-run.sh + real model-router.py + controlled provider fixture.
+    def assert_configuration_error(self, command, **env):
+        prompts = self.tmp / f"{command}-prompts.log"
+        argv = self.tmp / f"{command}-argv.log"
+        result = self.run_cmd(command, SWARM_MODEL=None, PROMPT_LOG=str(prompts),
+                              ARGV_LOG=str(argv), **env)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "configuration_error")
+        self.assertFalse(prompts.exists())
+        self.assertFalse(argv.exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+        return result
 
-    Asserts the actual sequence of --model values passed to opencode run,
-    not merely configuration values.
-    """
-
-    def test_forced_mode_uses_only_configured_model(self):
-        prompts = self.tmp / "forced-prompts.log"
-        result = self.run_cmd("implement", FAKE_MODE="commit",
-                              SWARM_FORCE_MODEL="1", SWARM_MODEL="opencode/test",
-                              PROMPT_LOG=str(prompts))
-        self.assertEqual(result.returncode, 0, result.stderr)
-        calls = [line for line in prompts.read_text().splitlines() if "--model" in line]
-        self.assertTrue(calls)
-        for line in calls:
-            self.assertIn("--model opencode/test", line)
-        self.assertNotIn("ok\n", result.stdout[-20:])
-
-    def test_intelligent_mode_rotates_on_rate_limit_to_next_candidate(self):
-        # Fixture registry has two verified free models; make the first return a
-        # 429 so the real wrapper must rotate to the next verified candidate.
-        pricing = self.repo / ".opencode/test-pricing.json"
-        pricing.write_text(json.dumps({"models": {
-            "opencode/test": {"input": 0, "output": 0, "pricing_source": "fixture",
-                              "verified_at": "2026-01-01", "score": 99},
-            "opencode/second": {"input": 0, "output": 0, "pricing_source": "fixture",
-                                "verified_at": "2026-01-01", "score": 50}}}))
-        fake = """#!/usr/bin/env bash
-printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
-case "$*" in
-  *--model\\ opencode/test*) echo "429 rate limit exceeded"; exit 1 ;;
-esac
-echo done
-"""
-        (self.bin_dir / "opencode").write_text(fake)
-        (self.bin_dir / "opencode").chmod(0o755)
-        prompts = self.tmp / "rotate-prompts.log"
-        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_FORCE_MODEL="0",
-                              PROMPT_LOG=str(prompts))
+    def test_swarm_model_is_passed_exactly_and_legacy_values_are_ignored(self):
+        model = "opencode/custom model\nnext"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_MODEL=model,
+                              MODEL="opencode/ignored", SWARM_FORCE_MODEL="1",
+                              PROMPT_LOG=str(self.tmp / "prompts.log"),
+                              ARGV_LOG=str(self.tmp / "argv.log"))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.outputs()["result"], "ok")
-        calls = [line for line in prompts.read_text().splitlines() if "--model" in line]
-        self.assertIn("--model opencode/test", calls[0])
-        self.assertIn("--model opencode/second", calls[1])
+        argv = self.argv()
+        self.assertEqual(argv.count("--model"), 1)
+        self.assertEqual(argv[argv.index("--model") + 1], model)
+        self.assertNotIn("opencode/ignored", argv)
+        self.assertEqual(argv.count("run"), 1)
 
-    def test_invalid_force_value_fails_safely(self):
-        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_FORCE_MODEL="true")
-        self.assertEqual(result.returncode, 0)
-        self.assertIn("configuration_error", self.outputs()["result"])
+    def test_unset_swarm_model_fails_before_invocation(self):
+        prompts = self.tmp / "missing-unset.log"
+        argv = self.tmp / "missing-unset.argv"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_MODEL=None,
+                              SWARM="1", STORY_BODY="  - scope: apps/api\n",
+                              BRIEF_MODE="good", PROMPT_LOG=str(prompts), ARGV_LOG=str(argv))
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "configuration_error")
+        self.assertEqual(self.outputs()["checks"], "skipped")
+        self.assertEqual(self.outputs()["commits"], "0")
+        self.assertEqual(self.outputs()["more"], "false")
+        self.assertFalse(prompts.exists())
+        self.assertFalse(argv.exists())
+        for name in ("coverage.log", "frontend-typecheck.log", "quality.log"):
+            self.assertFalse((self.repo / ".agent" / name).exists(), name)
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_empty_swarm_model_fails_before_invocation(self):
+        prompts = self.tmp / "missing-empty.log"
+        argv = self.tmp / "missing-empty.argv"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM_MODEL="",
+                              PROMPT_LOG=str(prompts), ARGV_LOG=str(argv))
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "configuration_error")
+        self.assertEqual(self.outputs()["checks"], "skipped")
+        self.assertEqual(self.outputs()["commits"], "0")
+        self.assertEqual(self.outputs()["more"], "false")
+        self.assertFalse(prompts.exists())
+        self.assertFalse(argv.exists())
+        for name in ("coverage.log", "frontend-typecheck.log", "quality.log"):
+            self.assertFalse((self.repo / ".agent" / name).exists(), name)
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_debugger_configuration_error_is_terminal(self):
+        self.assert_configuration_error("debug", PR_NUMBER="9", DEBUG_ROUND="2")
+        self.assertEqual(self.outputs()["merge"], "clean")
+        self.assertEqual(self.outputs()["report"], "no")
+
+    def test_triage_configuration_error_is_terminal(self):
+        self.assert_configuration_error("triage")
+
+    def test_triage_success_emits_ok(self):
+        result = self.run_cmd("triage", FAKE_MODE="none",
+                              PROMPT_LOG=str(self.tmp / "triage-success.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        self.assertTrue((self.tmp / "triage-success.log").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_reconcile_configuration_error_is_terminal(self):
+        self.assert_configuration_error("reconcile")
+        self.assertFalse((self.repo / ".agent/reconcile/rules.patch").exists())
+
+    def test_reconcile_success_emits_ok_and_creates_patch(self):
+        result = self.run_cmd("reconcile", FAKE_MODE="none",
+                              PROMPT_LOG=str(self.tmp / "reconcile-success.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        self.assertTrue((self.repo / ".agent/reconcile/rules.patch").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_audit_configuration_error_is_terminal(self):
+        self.assert_configuration_error("audit")
+
+    def test_audit_success_emits_ok(self):
+        result = self.run_cmd("audit", FAKE_MODE="none",
+                              PROMPT_LOG=str(self.tmp / "audit-success.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        self.assertTrue((self.tmp / "audit-success.log").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_daily_review_configuration_error_is_terminal(self):
+        for role in ("qa", "devsecops"):
+            with self.subTest(role=role):
+                self.assert_configuration_error(f"daily-{role}")
+
+    def test_daily_review_success_emits_ok(self):
+        for role in ("qa", "devsecops"):
+            with self.subTest(role=role):
+                # cmd_daily writes context-files.txt, daily-<role>.log and result under
+                # .agents/. In CI each role runs in its own job, so this fixture must
+                # clear the previous role's outputs before the clean-worktree guard.
+                shutil.rmtree(self.repo / ".agents", ignore_errors=True)
+                result = self.run_cmd(f"daily-{role}", FAKE_MODE="none",
+                                      PROMPT_LOG=str(self.tmp / f"daily-{role}-success.log"))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.outputs()["result"], "ok")
+                self.assertTrue((self.tmp / f"daily-{role}-success.log").exists())
+                self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                                 '{"real": true}')
+
+    def test_strategy_configuration_error_is_terminal(self):
+        self.assert_configuration_error("strategy")
+
+    def test_read_only_review_refuses_dirty_workspace_without_cleaning(self):
+        (self.repo / "keep.txt").write_text("keep\n")
+        (self.repo / ".agent").mkdir(exist_ok=True)
+        (self.repo / ".agent/base-sha").write_text("synthetic-base\n")
+        result = self.run_cmd("review", REVIEWERS="a")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("dirty workspace", result.stderr.lower())
+        self.assertEqual((self.repo / "keep.txt").read_text(), "keep\n")
+        self.assertFalse((self.repo / ".agent/review-a.md").exists())
+
+    def test_read_only_review_configuration_error_is_terminal(self):
+        (self.repo / ".agent").mkdir(exist_ok=True)
+        (self.repo / ".agent/base-sha").write_text("synthetic-base\n")
+        self.assert_configuration_error("review", REVIEWERS="a")
+
+    def test_conflict_resolution_configuration_error_is_terminal(self):
+        self.push_to_main("feature.txt", "main version\n")
+        result = self.merge_main("resolve", SWARM_MODEL=None,
+                                 PROMPT_LOG=str(self.tmp / "merge-prompts.log"),
+                                 ARGV_LOG=str(self.tmp / "merge-argv.log"))
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "configuration_error")
+        self.assertEqual(self.outputs()["merge"], "conflict")
+        self.assertFalse((self.tmp / "merge-prompts.log").exists())
+        self.assertFalse((self.tmp / "merge-argv.log").exists())
+        self.assertFalse((self.repo / ".agent/merge-2.log").exists())
+        self.assertFalse((self.repo / ".git/MERGE_HEAD").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_resolve_command_configuration_error_is_terminal(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.git("branch", "pr-5")
+        self.git("switch", "-q", "main")
+        self.push_to_main("feature.txt", "main version\n")
+        self.assertEqual(self.run_cmd("fetch-main").returncode, 0)
+        result = self.run_cmd("resolve", CONFLICTED="[5]", MERGE_ATTEMPTS="2",
+                              SWARM_MODEL=None,
+                              PROMPT_LOG=str(self.tmp / "resolve-prompts.log"),
+                              ARGV_LOG=str(self.tmp / "resolve-argv.log"))
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.repo / ".agent/resolve/5").read_text(), "failed")
+        self.assertEqual((self.repo / ".agent/resolve/5.checks").read_text(),
+                         "configuration_error")
+        self.assertFalse((self.tmp / "resolve-prompts.log").exists())
+        self.assertFalse((self.tmp / "resolve-argv.log").exists())
+        self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
+                         '{"real": true}')
+
+    def test_rate_limit_is_terminal_after_one_invocation(self):
+        result = self.run_cmd("implement", FAKE_MODE="rate", SWARM_MODEL="opencode/test",
+                              PROMPT_LOG=str(self.tmp / "prompts.log"),
+                              ARGV_LOG=str(self.tmp / "argv.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "rate_limited")
+        self.assertEqual(self.argv().count("run"), 1)
+        self.assertEqual(self.argv().count("--model"), 1)
+
+    def test_generic_failure_is_terminal_after_one_invocation(self):
+        result = self.run_cmd("implement", FAKE_MODE="fail", SWARM_MODEL="opencode/test",
+                              PROMPT_LOG=str(self.tmp / "prompts.log"),
+                              ARGV_LOG=str(self.tmp / "argv.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "failed")
+        self.assertEqual(self.argv().count("run"), 1)
+        self.assertEqual(self.argv().count("--model"), 1)
+
+    def test_timeout_wins_over_rate_limit_output(self):
+        result = self.run_cmd("implement", FAKE_MODE="rate-slow", AGENT_TIMEOUT="1",
+                              SWARM_MODEL="opencode/test",
+                              PROMPT_LOG=str(self.tmp / "prompts.log"),
+                              ARGV_LOG=str(self.tmp / "argv.log"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "timeout")
+        self.assertEqual(self.argv().count("run"), 1)
+        self.assertEqual(self.argv().count("--model"), 1)
+
+    def test_production_has_one_direct_model_invocation(self):
+        text = (__import__("helpers").ROOT / "scripts/agent-run.sh").read_text()
+        lines = [line for line in text.splitlines()
+                 if "opencode run" in line and not line.strip().startswith("#")]
+        self.assertEqual(len(lines), 1)
+        self.assertIn('--model "$SWARM_MODEL"', lines[0])
+        self.assertNotIn("route_models", text)
+        self.assertNotIn("SWARM_FORCE_MODEL", text)
+
+
+if __name__ == "__main__":
+    unittest.main()

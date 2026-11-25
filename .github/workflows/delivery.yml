@@ -14,13 +14,12 @@ on:
   merge_group:
 permissions:
   contents: read
-# Branch protection checks the exact SHA, so a cancelled or dropped run leaves
-# the required "Delivery gate" check unreported. Runs on one branch queue
-# instead: cancellation stays off and queue:max keeps up to 100 pending runs,
-# so a re-pushed PR head still receives its own verdict after stale heads finish.
-# Group by repository and branch so forks and other branches stay independent.
+# Every pull-request head reports its own exact-SHA verdict immediately; a new
+# head never waits behind an older head on the same branch. Pushes, tags,
+# dispatches and merge groups queue per ref so no exact-SHA verdict is dropped.
+# GitHub rejects queue:max together with cancellation.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
+  group: ${{ github.event.pull_request.head.sha || github.ref }}
   cancel-in-progress: false
   queue: max
 
@@ -45,8 +44,8 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/actionlint"
           "$RUNNER_TEMP/actionlint/bin/pip" install -q actionlint-py==1.7.12.25
           # actionlint 1.7.12 predates GitHub's concurrency `queue` key. Ignore
-          # only that unknown-key message; scripts/tests/test_workflow_concurrency.py
-          # asserts that Delivery queues and that other workflows declare no queue.
+          # only that unknown-key message; test_workflow_concurrency.py asserts
+          # exact queueing contracts for Delivery, planning and integration.
           "$RUNNER_TEMP/actionlint/bin/actionlint" \
             -ignore 'unexpected key "queue" for "concurrency" section'
       - name: Agent pack, docs and secret checks
@@ -129,7 +128,9 @@ jobs:
       - uses: ./.github/actions/java-verify
         with:
           pg-admin: postgres
-          nvd-api-key: ${{ secrets.NVD_API_KEY }}
+          # Candidate PR/merge-group code must never receive repository secrets.
+          # Trusted main/tag pushes may refresh NVD; other events use the cache.
+          nvd-api-key: ${{ github.event_name == 'push' && secrets.NVD_API_KEY || '' }}
 
   docs:
     name: Developer reference

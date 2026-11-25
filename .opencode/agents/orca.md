@@ -33,7 +33,7 @@ only one available.
 
 ## Runtime model selection
 
-The model is chosen at run time by `scripts/model-router.py`; no image, slot or workflow field pins one. `.opencode/config/slots.json` carries only slot identity and OpenCode config. Intelligent mode ranks verified $0.00/M models from `.opencode/model-pricing.json` by agent role and phase, rotating on rate limits only to another verified free model. `SWARM_FORCE_MODEL=1` forces the exact `SWARM_MODEL`; otherwise `SWARM_MODEL` is only the final fallback. Never put a model id, API key or credential in a task payload, fixture, log or tracker.
+Every production `opencode run` receives the exact model name from the required `SWARM_MODEL` environment variable through `scripts/agent-run.sh`. Workflows supply `SWARM_MODEL` from the repository variable, with `opencode-go/hy4-flash-free` as the default. There is no `MODEL` variable, force flag, model registry, role/phase ranking or failover: a missing value is a configuration error, and a rate limit, timeout or implementation failure is terminal. `.opencode/config/slots.json` carries only slot identity and OpenCode config, and model keys are rejected at any depth. Never put an API key or credential in a task payload, fixture, log or tracker.
 
 ## Durable state and evidence
 

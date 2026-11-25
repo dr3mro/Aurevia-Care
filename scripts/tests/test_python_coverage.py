@@ -9,8 +9,11 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+SCRIPTS = Path(__file__).resolve().parents[1]
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 SPEC = importlib.util.spec_from_file_location(
-    "python_coverage", Path(__file__).resolve().parents[1] / "python_coverage.py")
+    "python_coverage", SCRIPTS / "python_coverage.py")
 pc = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pc)
 

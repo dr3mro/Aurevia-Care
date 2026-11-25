@@ -17,6 +17,8 @@ from pathlib import Path
 from unittest import mock
 
 SCRIPTS = Path(__file__).parents[1]
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 SPEC = importlib.util.spec_from_file_location("worker_gate_under_test", SCRIPTS / "worker_gate.py")
 worker_gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(worker_gate)

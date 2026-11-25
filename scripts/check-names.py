@@ -14,6 +14,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
+
 ID_NAME = re.compile(
     r"^(s[-_]?g\d+[-_]?\d+[a-z]?|x[-_]?\d{2}|dlv[-_]?\d+|cw[-_]?\d+|aud[-_]?\d+|"
     r"fix[-_]?\d+|imp[-_]?\d+|refactor[-_]?\w+[-_]\d+|story[-_]?\d+|task[-_]?\d+)$",
@@ -25,7 +29,8 @@ SKIP_PREFIXES = ("docs/pr/", "docs/swarm/")
 
 def tracked_files(root):
     try:
-        out = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True, check=True)
+        out = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True,
+                             check=True, env=child_environment(read_only=True))
         return [f for f in out.stdout.splitlines() if f]
     except (OSError, subprocess.CalledProcessError):
         found = []

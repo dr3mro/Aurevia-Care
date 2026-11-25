@@ -378,7 +378,7 @@ copies. `git apply --check` against the current repository passes.
 -      CONFLICTED: ${{ needs.integrate.outputs.conflicted }}
 +      CONFLICTED: ${{ needs.validate.outputs.conflicted }}
        BASE_BRANCH: ${{ github.event.repository.default_branch }}
-       MODEL: opencode-go/hy4-flash-free
+       SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
        SWARM: '1'
 --- a/.github/workflows/fix-pr-gate.yml
 +++ b/.github/workflows/fix-pr-gate.yml

@@ -25,7 +25,6 @@ class RuntimeProfileTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp)
         (self.tmp / ".github" / "swarm").mkdir(parents=True)
         self.profile = json.loads((ROOT / ".opencode/opencode.ci.json").read_text())
-        self.registry = json.loads((ROOT / ".opencode/model-pricing.json").read_text())
         for path in gen.INSTRUCTIONS:
             target = self.tmp / path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -34,7 +33,6 @@ class RuntimeProfileTests(unittest.TestCase):
 
     def write_files(self):
         (self.tmp / gen.RUNTIME_PROFILE).write_text(json.dumps(self.profile))
-        (self.tmp / gen.MODEL_REGISTRY).write_text(json.dumps(self.registry))
 
     def violations(self):
         self.write_files()
@@ -56,10 +54,9 @@ class RuntimeProfileTests(unittest.TestCase):
         found = gen.check_runtime(self.tmp)
         self.assertTrue(any("not valid JSON" in v for v in found), found)
 
-    def test_missing_model_registry_is_reported(self):
-        (self.tmp / gen.MODEL_REGISTRY).unlink()
-        found = gen.check_runtime(self.tmp)
-        self.assertTrue(any("model registry" in v for v in found), found)
+    def test_malformed_model_registry_is_ignored(self):
+        (self.tmp / ".opencode/model-pricing.json").write_text("not json")
+        self.assertEqual(gen.check_runtime(self.tmp), [])
 
     def test_missing_instruction_file_is_reported(self):
         missing = gen.INSTRUCTIONS[0]
@@ -102,19 +99,10 @@ class RuntimeProfileTests(unittest.TestCase):
                 self.assertTrue(any("aurevia-editor" in v and protected in v for v in found),
                                 found)
 
-    def test_disallowed_agent_model_is_reported(self):
+    def test_model_declarations_are_not_registry_checked(self):
         self.agent("qa-reviewer")["model"] = "other/expensive-model"
-        found = self.violations()
-        self.assertTrue(any("qa-reviewer" in v and "model" in v for v in found), found)
-
-    def test_allowed_agent_model_passes(self):
-        self.agent("qa-reviewer")["model"] = next(iter(self.registry["models"]))
+        self.profile["model"] = "another/expensive-model"
         self.assertEqual(self.violations(), [])
-
-    def test_disallowed_profile_model_is_reported(self):
-        self.profile["model"] = "other/expensive-model"
-        found = self.violations()
-        self.assertTrue(any("runtime profile" in v and "model" in v for v in found), found)
 
     def test_secret_variable_in_agent_is_reported(self):
         self.agent("qa-reviewer")["apiKey"] = "OPENCODE_API_KEY"

@@ -24,6 +24,10 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+# ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
+
 # Legacy default for direct/manual invocations. worker-check.sh always passes the
 # private directory for the current run as the second argument instead.
 REPORTS = "apps/api/target/surefire-reports"
@@ -78,7 +82,7 @@ def parse_route_lines(text):
 def base_ref_exists(base_ref):
     """True when the pinned base ref resolves to a Git object."""
     out = subprocess.run(["git", "rev-parse", "--verify", "-q", base_ref],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True, env=child_environment(read_only=True))
     return out.returncode == 0
 
 
@@ -97,11 +101,13 @@ def pinned_base_routes(base_ref, baseline_path):
         if not base_ref_exists(base_ref):
             return None
         probe = subprocess.run(["git", "cat-file", "-e", f"{base_ref}:{baseline_path}"],
-                               capture_output=True, text=True)
+                               capture_output=True, text=True,
+                               env=child_environment(read_only=True))
         if probe.returncode != 0:
             return set()
         out = subprocess.run(["git", "show", f"{base_ref}:{baseline_path}"],
-                             capture_output=True, text=True)
+                             capture_output=True, text=True,
+                             env=child_environment(read_only=True))
     except OSError:
         return None
     if out.returncode != 0:
@@ -264,9 +270,10 @@ def related(failing, changed_paths):
 
 def changed_paths(base="origin/main"):
     out = subprocess.run(["git", "diff", "--name-only", f"{base}...HEAD"],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True, env=child_environment(read_only=True))
     paths = out.stdout.split()
-    dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+    dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True,
+                           env=child_environment(read_only=True))
     paths += [line[3:] for line in dirty.stdout.splitlines() if len(line) > 3]
     return paths
 
@@ -393,7 +400,8 @@ def validate_candidate(changed, scope, notes, notes_path, finished,
 
 def head_commit():
     """Current HEAD as a SHA, or an empty string when Git is unavailable."""
-    out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
+    out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+                         env=child_environment(read_only=True))
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
