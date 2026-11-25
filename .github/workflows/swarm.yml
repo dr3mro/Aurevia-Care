@@ -60,7 +60,7 @@ env:
 jobs:
   select:
     name: Select task (PO + scrum master)
-    if: vars.SWARM_SINGLE_TASK == 'true' && vars.SWARM_ENABLED != 'false'
+    if: vars.SWARM_SINGLE_TASK == 'true' && vars.SWARM_ENABLED != 'false' && vars.SWARM_LLM_SELECTION == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
