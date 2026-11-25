@@ -330,7 +330,7 @@ Fail preflight when mandatory instructions cannot be loaded.
 
 # PHASE 2 — INTELLIGENT SKILL INFRASTRUCTURE
 
-## [ ] ORCA-008 — Canonical skill registry
+## [-] ORCA-008 — Canonical skill registry
 
 Create a validated skill registry containing:
 
@@ -1193,7 +1193,7 @@ Record:
 - Working-directory assumptions.
 - Proposed destination.
 
-## [ ] ORCA-052 — Script ownership migration
+## [-] ORCA-052 — Script ownership migration
 
 Move GitHub-specific scripts into .github/script/.
 
@@ -1380,7 +1380,7 @@ Delivery, workers, pull requests, watchdog, diagnostics, and workflow tests.
 
 Document arguments, environment variables, outputs, and exit codes.
 
-## [ ] ORCA-060 — Script ownership validator
+## [-] ORCA-060 — Script ownership validator
 
 Detect:
 
@@ -1651,7 +1651,7 @@ Mandatory security, authorization, dependency, skill, and essential requirement 
 
 # PHASE 14 — COMPLETE SKILL AND MARKDOWN REFACTORING
 
-## [ ] ORCA-081 — Standard skill format
+## [-] ORCA-081 — Standard skill format
 
 Use supported native skill frontmatter.
 

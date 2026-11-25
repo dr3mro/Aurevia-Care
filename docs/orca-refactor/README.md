@@ -31,9 +31,9 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 4 | Script ownership inventory | Available | `01-inventory.md`; tool + reviewer |
 | 5 | Current architecture diagram | Available | `01-inventory.md`; tool |
 | 6 | Target architecture diagram | Draft, blocked on owner decisions | `01-inventory.md`; human decisions pending |
-| 7 | Canonical instruction hierarchy | Pending Stage E | no evidence |
+| 7 | Canonical instruction hierarchy | Design available | `05-instruction-skill-design.md`; reviewer |
 | 8 | Markdown loading policy | Partial: four global instructions verified | tool (generated configs) |
-| 9 | Validated skill registry | Pending Stage E | no evidence |
+| 9 | Validated skill registry | Design available | `05-instruction-skill-design.md`; reviewer |
 | 10 | Skill dependency graph | Pending Stage E | no evidence |
 | 11 | Task-to-skill routing matrix | Partial: `scripts/route-task.py` exists | tool (file read) |
 | 12 | Standardised skill definitions | Pending Stage E | no evidence |
@@ -54,15 +54,15 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 27 | Durable checkpointing | Available: task files plus daily notes | tool (`tasks/`, `.agents/`) |
 | 28 | Task recovery mechanism | Partial: leases and stale-worker logic in `scripts/swarm.py` | reviewer (WF-14) |
 | 29 | Independent review protocol | Partial: AG-19 bypass removed; AG-22 blocked on a trusted runner | reviewer (AG-19/AG-22), tasks 01301100/01301200 |
-| 30 | Feature completion matrix | Partial: `docs/gates/`, `docs/security/` | tool |
-| 31 | Healthcare safety verification policy | Available: `docs/launch/`, `docs/gates/` | tool |
+| 30 | Feature completion matrix | Available as evidence-backed draft | `04-completion-and-safety.md`; reviewer + tool |
+| 31 | Healthcare safety verification policy | Available | `04-completion-and-safety.md`; reviewer + tool |
 | 32 | Architecture enforcement mechanism | Partial: `scripts/check-wiring.py` | tool + reviewer |
 | 33 | Contract synchronization checks | Partial: OpenAPI generation checks | tool |
-| 34 | Script ownership migration table | Pending Stage D | no evidence |
+| 34 | Script ownership migration table | Design available | `07-script-ownership-design.md`; reviewer |
 | 35 | Updated repository directory structure | Pending Stage D | no evidence |
 | 36 | Subsystem dependency diagram | Pending Stage D | no evidence |
 | 37 | Canonical script entry point documentation | Pending Stage D | no evidence |
-| 38 | Script ownership and path validator | Pending Stage D | no evidence |
+| 38 | Script ownership and path validator | Design available, not implemented | `07-script-ownership-design.md`; reviewer |
 | 39 | Updated test discovery configuration | Pending Stage D | no evidence |
 | 40 | Complete regression test suite | Partial: ~75 Python modules, targeted run green | tool |
 | 41 | Baseline benchmark results | Available as byte/line and test-count proxies; token metrics unavailable | tool, task 01300000 evidence log |
