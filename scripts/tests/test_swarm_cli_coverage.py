@@ -205,6 +205,7 @@ class MainDispatchCoverageTests(CliTestCase):
         include = [{"id": "CW-001", "kind": "story", "slot": 1, "title": "",
                     "body": "", "fix": ""}]
         with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
                 mock.patch.object(swarm, "live_workers", return_value=[]), \
                 mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
@@ -247,6 +248,7 @@ class MainDispatchCoverageTests(CliTestCase):
             "- [ ] CW-001 · Ready\n  - scope: apps/api/a\n  - details:\n    Do it\n\n"
         )
         with mock.patch.object(swarm, "gh_json", return_value=[]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
                 mock.patch.object(swarm, "main_is_red", return_value=True), \
                 mock.patch.object(swarm, "live_workers", return_value=["FIX-42"]), \
                 mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
@@ -334,6 +336,7 @@ class MainDispatchCoverageTests(CliTestCase):
                    {"id": "FIX-9", "kind": "fix", "slot": 2, "title": "secret",
                     "body": "secret", "fix": "secret"}]
         with mock.patch.object(swarm, "gh_json", side_effect=[prs, []]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
                 mock.patch.object(swarm, "live_workers", return_value=[]), \
                 mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
@@ -395,6 +398,7 @@ class MainDispatchCoverageTests(CliTestCase):
             return True
 
         with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
                 mock.patch.object(swarm, "todo_read", side_effect=lambda path="TODO.md": state["text"]), \
                 mock.patch.object(swarm, "update_todo", side_effect=persist) as update, \

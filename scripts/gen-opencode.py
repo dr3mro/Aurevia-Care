@@ -16,14 +16,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PRIMARY = "orca"
 
-# Project instructions loaded into every agent session: only the short rules every
-# task needs (about 5,000 words). The specification, trackers, architecture decisions,
-# swarm guide and READMEs are large and task-specific; AGENTS.md tells agents which
-# of them to read for their task, so they are read on demand instead of paying for
-# them in every session, including the read-only reviewers.
+# Project instructions loaded into every agent session. Every Markdown document in
+# .opencode/setup is mandatory: AGENTS.md, CODING_STYLE.md and CONSTRAINTS.md are the
+# working rules and the written quality bar. README-SETUP.md and docs/WORKFLOW.md add
+# setup and review routing. The specification, trackers, architecture decisions,
+# swarm guide and module READMEs remain task-specific and are read on demand.
 INSTRUCTIONS = [
     ".opencode/setup/AGENTS.md",
     ".opencode/setup/CODING_STYLE.md",
+    ".opencode/setup/CONSTRAINTS.md",
     ".opencode/config/README-SETUP.md",
     "docs/WORKFLOW.md",
 ]

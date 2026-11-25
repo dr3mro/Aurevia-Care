@@ -1,7 +1,8 @@
 name: Agent swarm
-# The one scheduler. It reads tasks/, splits the open tasks across up to 20
-# worker jobs per wave (also capped at 20 across overlapping waves), and starts one
-# prepared container per slot. Each worker runs the agent with no GitHub token
+# The one scheduler. It reads tasks/, splits the open tasks across up to seven
+# story worker jobs per wave, and allows one wave at a time per branch. A global
+# ledger still caps workers running across branches at 20. Each worker runs the
+# agent with no GitHub token
 # on its own branch, uploads its commits, and exits (the container is
 # discarded, nothing idles). A separate trusted job pushes the branch and opens
 # the pull request. The integrator then runs in the same run (full gate before
@@ -11,8 +12,8 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: 'Story workers per wave; the wave uses fewer when fewer tasks are ready (1 to 20, default 20). Fix, debug and repair workers are not limited by it.'
-        default: '20'
+        description: 'Story workers per wave; requests above seven are clamped to seven, and fewer are used when fewer tasks are ready (1 to 7, default 7). Fix, debug and repair workers are not limited by it.'
+        default: '7'
       repair_run:
         description: Failed run id on main to repair (optional; the plan job finds failing runs itself)
         default: ''
@@ -20,11 +21,11 @@ on:
         description: 'Task id to launch first (optional; ignores the attempt limit, still needs open status, met dependencies and a free scope)'
         default: ''
       now:
-        description: 'Start immediately instead of queueing behind the running or queued waves'
+        description: 'Reserved and currently inert: a dispatch still queues behind the running wave for this branch. The one-wave-per-branch group cannot be bypassed.'
         type: boolean
         default: false
       ignore_red_main:
-        description: 'Safety override: bypass all scheduling limits (claim, dependency, attempt, scope, in-flight PR, image, budget and worker-cap gates) and just run the wave. Verification and merge gates are unchanged.'
+        description: 'Safety override: bypass claim, dependency, attempt, scope, in-flight PR, image, budget and worker-cap gates; the one-wave-per-branch group and all verification and merge gates still apply.'
         type: boolean
         default: false
   push:
@@ -42,12 +43,14 @@ on:
     branches: [main]
 permissions:
   contents: read
-# Waves may overlap: each run has a group of its own. Only the short plan job
-# below is serialized, so two waves can never claim the same task, and the plan
-# job caps the workers running across all waves at 20 (scripts/swarm.py).
+# One wave per branch: the group is ref-scoped, so a second dispatch waits
+# instead of overlapping. The short plan job is additionally serialized per
+# repository so two waves can never claim the same task. The global ledger caps
+# workers across branches at 20, while each wave offers at most seven stories.
 concurrency:
-  group: swarm-${{ github.run_id }}
+  group: swarm-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -123,7 +126,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
-          WORKERS: ${{ inputs.workers || '20' }}
+          WORKERS: ${{ inputs.workers || '7' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           LAUNCH_TASK: ${{ inputs.task }}
@@ -161,8 +164,8 @@ jobs:
     # on the matrix would then fail the whole run and trigger a false repair.
     if: needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     strategy:
-      # The ten configured accounts can each serve two independent workers.
-      max-parallel: 20
+      # Seven story workers per wave; the global cap across branches stays 20.
+      max-parallel: 7
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix || '{"include":[]}') }}
     # A called workflow gets at most the permissions its caller grants.

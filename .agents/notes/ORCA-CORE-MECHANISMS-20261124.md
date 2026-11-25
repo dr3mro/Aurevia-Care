@@ -20,8 +20,8 @@ Offline analysis library `scripts/orca_core.py`; 24 tests green; full suite gree
 
 ## Review verdicts
 - aurevia-plan-reviewer: GO (after NO-GO and revision).
-- aurevia-code-reviewer: pending recheck after Required coverage-map addition.
-- aurevia-coverage-auditor: pending recheck after exact gate-line correction and notes file.
+- aurevia-code-reviewer: GO (coverage map added and rechecked).
+- aurevia-coverage-auditor: GO (exact gate line and notes corrected).
 - aurevia-devsecops: GO.
 
 ## Findings
