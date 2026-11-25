@@ -2,6 +2,8 @@
 
 ## Summary
 
+**Status: complete.** Segment 2 finished all remaining work for RESP-E2E-FEATURE-ADMIN; every mandatory gate passes and all four reviewers returned GO. The two parked out-of-scope product defects below are the only open items and are handed off through `task-requests`.
+
 Segment 2 completes the synthetic browser acceptance spec `apps/staff-web/e2e/responsive-admin.spec.ts` for the four screens of the staff-web `admin` feature (facilities, staff, configuration, audit). For every screen and every locale (English, Arabic RTL) the spec drives the real screen's main task by keyboard and by touch, asserts no horizontal scroll, proves every desktop value is reachable on a compact phone, and checks the labelled scroll affordance. Only the versioned `/api/v1` boundary and the dev-only role module are stubbed; no production source, dependency, threshold, exclusion or suppression changed. The async race that made one config parity test flaky was removed by asserting durable UI outcomes before reading the recorded calls.
 
 ## Affected requirements and acceptance mapping
