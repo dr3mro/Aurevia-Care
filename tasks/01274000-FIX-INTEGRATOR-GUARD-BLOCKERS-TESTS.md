@@ -1,5 +1,4 @@
-- [-] FIX-INTEGRATOR-GUARD-BLOCKERS-TESTS · Update integrator tests to the guard_blockers seam
-  - agent: swarm-2
+- [ ] FIX-INTEGRATOR-GUARD-BLOCKERS-TESTS · Update integrator tests to the guard_blockers seam
   - attempts: 43
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm.py, scripts/tests/test_swarm_integrator_coverage.py, scripts/tests/test_swarm_delivery_state.py, scripts/tests/test_delivery_workflow_gates.py, tasks/01274000-FIX-INTEGRATOR-GUARD-BLOCKERS-TESTS.md
