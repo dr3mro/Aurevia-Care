@@ -51,6 +51,7 @@
     "scripts/monitor.py": "project",
     "scripts/monitor.sh": "project",
     "scripts/mutation-check.sh": "project",
+    "scripts/orca_benchmark.py": "project",
     "scripts/orca_core.py": "project",
     "scripts/process_env.py": "project",
     "scripts/project-name.py": "project",
