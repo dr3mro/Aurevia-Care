@@ -252,6 +252,35 @@ class AgentRunTests(unittest.TestCase):
             (self.repo / ".agent/branch").write_text(name)
             self.assertNotEqual(self.run_cmd("adopt").returncode, 0, name)
 
+    def test_untrusted_story_markers_cannot_become_workflow_commands(self):
+        body = "::error::bad body\nplain line\n\n"
+        for label, extra in (("plain", {"GITHUB_RUN_NUMBER": "9"}),
+                             ("briefed", {"SWARM": "1", "BRIEF_MODE": "good",
+                                          "GITHUB_RUN_NUMBER": "10"})):
+            with self.subTest(prompt_builder=label):
+                prompts = self.tmp / f"story-prompt-untrusted-{label}.log"
+                result = self.run_cmd(
+                    "implement", FAKE_MODE="commit", PROMPT_LOG=str(prompts),
+                    STORY_TITLE="##[error]bad title", STORY_BODY=body,
+                    FIX_COMMENT="  ##[warning]indented", **extra)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                text = prompts.read_text()
+                if label == "briefed":
+                    self.assertIn("--agent aurevia-task-advisor", text)
+                self.assertIn("> ##[error]bad title", text)
+                self.assertIn("> ::error::bad body", text)
+                self.assertIn("  > ##[warning]indented", text)
+                self.assertIn("plain line\n\n", text)
+                for line in text.splitlines():
+                    self.assertFalse(line.lstrip().startswith("##["), line)
+                    self.assertFalse(line.lstrip().startswith("::"), line)
+
+    def test_a_default_story_prompt_has_no_requested_change_line(self):
+        prompts = self.tmp / "story-prompt-default.log"
+        result = self.run_cmd("implement", FAKE_MODE="commit", PROMPT_LOG=str(prompts))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("Requested change:", prompts.read_text())
+
     def test_publish_rejects_wrong_task_or_run_branch(self):
         self.run_cmd("implement", FAKE_MODE="commit")
         (self.repo / ".agent/branch").write_text("opencode/OTHER-99")

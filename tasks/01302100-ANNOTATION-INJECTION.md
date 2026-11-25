@@ -1,5 +1,6 @@
-- [-] ANNOTATION-INJECTION · Stop untrusted findings from creating failure annotations
-  - agent: orca
+- [x] ANNOTATION-INJECTION · Stop untrusted findings from creating failure annotations
+  - evidence: Red `Ran 362 tests in 10.485s`, `FAILED (failures=2)` → green `Ran 362 tests in 11.466s`, `OK`; full suite `Ran 1741 tests in 101.691s`, `OK`; `bash scripts/python-coverage.sh` → `Ran 1741 tests in 103.397s`, `OK`, `{"violations": []}`, `python coverage: every changed script line is covered`; `check-constraints.py` and `check-docs.py` exit 0. Verdicts: plan GO (after two Required fixes), code GO, coverage GO, devsecops GO. Evidence source: tool commands, read-only reviewers and the owner's supplied run ids; no simulated user or human participant walkthrough.
+  - pr: none — no Git or `gh` operation is permitted in this session; scoped patch handed to the trusted integrator.
   - parent: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm.py (or test_swarm_delivery_state.py), tasks/01302100-ANNOTATION-INJECTION.md
@@ -11,7 +12,7 @@
 3. Gates (exact): `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm.py' -q` (red then green), `python3 -I -m unittest discover -s scripts/tests -q`, `bash scripts/python-coverage.sh`, `python3 -I scripts/check-constraints.py`, `python3 -I scripts/check-docs.py`. No threshold, exclusion, pragma or skip.
 4. One shared helper is enough: `clean()` feeds `issue_context()` and `pr_context()`, and both context files are written to `.agent/` (`swarm.py:6540,6548`). No second helper or new file.
 
-## Branch-to-test map (planned)
+## Coverage (branch-to-test map)
 - Line with `##[` prefix → new regression test.
 - Line with `::` prefix → same regression test.
 - Indented command prefix → same regression test.
@@ -27,8 +28,8 @@
 - (tool) Gates: `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1741 tests in 101.691s`, `OK`; `bash scripts/python-coverage.sh` → `Ran 1741 tests in 103.397s`, `OK`, `{"violations": []}`, `python coverage: every changed script line is covered`; `check-constraints.py` and `check-docs.py` exit 0. No shell script changed.
 
 ## Review verdicts
-- (pending) aurevia-plan-reviewer: GO (first NO-GO with three Required gaps, all fixed and re-reviewed GO).
-- (pending) aurevia-code-reviewer: —
-- (pending) aurevia-coverage-auditor: —
-- (pending) aurevia-devsecops: —
+- aurevia-plan-reviewer: GO (first NO-GO with three Required gaps, all fixed and re-reviewed GO).
+- aurevia-code-reviewer: GO (all 17 `clean()` callers checked; non-command text unchanged).
+- aurevia-coverage-auditor: GO (every new branch named and covered; no pragma/skip/exclusion).
+- aurevia-devsecops: GO (leading whitespace, truncation boundary and masking cannot reintroduce a command prefix).
 

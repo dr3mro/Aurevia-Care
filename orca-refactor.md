@@ -1,5 +1,9 @@
 # AUREVIA-CARE — MASTER ORCA INFRASTRUCTURE REFACTORING, OPTIMIZATION AND ENGINEERING QUALITY DIRECTIVE
 
+## Live status of the ORCA items
+
+Marks added on 2026-11-24 from verified task evidence: `[x]` completed with green tests and reviewer verdicts, `[-]` partially evidenced or in progress, `[!]` blocked by runtime or authority, `[N/A]` not applicable under the owner's 2026-11-24 rulings. Empty `[ ]` items are not started. The authoritative disposition, exact commands and evidence source types are in `tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md`, with child stories `01301000` through `01302200`. Model-routing items are `[N/A]` because the owner chose direct `SWARM_MODEL` with no router or force/fallback; live Git/GitHub items stay `[!]` because this session denies Git-backed operations.
+
 ## 1. Mission
 
 Act as a coordinated team of senior AI systems engineers, software architects, system designers, software engineers, OpenCode specialists, context optimization engineers, DevSecOps engineers, GitHub Actions engineers, product managers, product owners, scrum masters, clinical specialists, database engineers, UI/UX designers, debugging specialists, documentation engineers, and independent QA engineers.
@@ -191,7 +195,7 @@ Do not introduce competing schedulers, model routers, state managers, context co
 
 # PHASE 0 — DISCOVERY, BASELINE AND AUDIT
 
-## [ ] ORCA-001 — Complete infrastructure inventory
+## [x] ORCA-001 — Complete infrastructure inventory
 
 Inventory:
 
@@ -216,7 +220,7 @@ Inventory:
 
 Record actual paths, responsibilities, dependencies, callers, ownership, duplication, and observed defects.
 
-## [ ] ORCA-002 — Establish performance and correctness baseline
+## [x] ORCA-002 — Establish performance and correctness baseline
 
 Measure representative tasks before refactoring.
 
@@ -242,7 +246,7 @@ Capture:
 
 Use reproducible, isolated benchmark environments.
 
-## [ ] ORCA-003 — Audit all agent infrastructure findings
+## [-] ORCA-003 — Audit all agent infrastructure findings
 
 Investigate AG-01 through AG-35.
 
@@ -256,7 +260,7 @@ Record evidence, root cause, affected files, severity, remediation, regression t
 
 # PHASE 1 — INSTRUCTION ARCHITECTURE
 
-## [ ] ORCA-004 — Canonical instruction hierarchy
+## [-] ORCA-004 — Canonical instruction hierarchy
 
 Establish explicit precedence:
 
@@ -288,7 +292,7 @@ Target approximately 2,000 tokens where practical.
 
 Never remove essential requirements merely to satisfy a token target.
 
-## [ ] ORCA-006 — Resolve contradictory instructions
+## [x] ORCA-006 — Resolve contradictory instructions
 
 Audit and resolve conflicts concerning:
 
@@ -307,7 +311,7 @@ Audit and resolve conflicts concerning:
 
 Maintain one authoritative policy for each requirement.
 
-## [ ] ORCA-007 — Instruction discovery validation
+## [x] ORCA-007 — Instruction discovery validation
 
 Validate:
 
@@ -363,7 +367,7 @@ Every skill must explain:
 
 Remove duplicated generic instructions.
 
-## [ ] ORCA-010 — Deterministic skill routing
+## [-] ORCA-010 — Deterministic skill routing
 
 Select skills using:
 
@@ -506,7 +510,7 @@ Record:
 
 Redact secrets and sensitive data.
 
-## [ ] ORCA-019 — Existing implementation discovery
+## [x] ORCA-019 — Existing implementation discovery
 
 Before implementing, discover:
 
@@ -596,7 +600,7 @@ Produce plans describing:
 
 Avoid lengthy planning for trivial changes.
 
-## [ ] ORCA-024 — Controlled concurrent delegation
+## [-] ORCA-024 — Controlled concurrent delegation
 
 Delegate independent work concurrently.
 
@@ -705,7 +709,7 @@ OpenCode infrastructure:
 
 Agent orchestration, skill discovery, context optimization, model routing, Python, Bash, security, and testing.
 
-## [ ] ORCA-028 — Canonical agent configuration
+## [x] ORCA-028 — Canonical agent configuration
 
 Consolidate duplicated configuration.
 
@@ -772,7 +776,7 @@ Prevent repeated mistakes.
 
 # PHASE 7 — FREE MODEL INTELLIGENCE
 
-## [ ] ORCA-032 — Centralized model selection
+## [N/A] ORCA-032 — Centralized model selection
 
 Select eligible free models according to:
 
@@ -789,7 +793,7 @@ Use faster eligible models for routine operations and stronger eligible models f
 
 Do not select models based solely on popularity or names.
 
-## [ ] ORCA-033 — Force and fallback enforcement
+## [N/A] ORCA-033 — Force and fallback enforcement
 
 When SWARM_FORCE_MODEL=1:
 
@@ -826,7 +830,7 @@ Checkpoint before destructive context compaction.
 
 # PHASE 8 — EXECUTION ISOLATION AND PERMISSIONS
 
-## [ ] ORCA-035 — Eliminate unsafe runtime configuration mutation
+## [!] ORCA-035 — Eliminate unsafe runtime configuration mutation
 
 Investigate runtime replacement of tracked OpenCode configuration and Git index manipulation.
 
@@ -848,7 +852,7 @@ Separate:
 
 Apply least privilege.
 
-## [ ] ORCA-037 — Real Git and filesystem isolation
+## [!] ORCA-037 — Real Git and filesystem isolation
 
 Verify isolation through actual tests.
 
@@ -898,7 +902,7 @@ Run targeted checks during development.
 
 Run all required broader checks before final delivery.
 
-## [ ] ORCA-040 — Independent review
+## [!] ORCA-040 — Independent review
 
 Independent review must verify:
 
@@ -999,7 +1003,7 @@ Treat performance percentages as engineering targets, not guaranteed results.
 
 Report actual measured results and limitations.
 
-## [ ] ORCA-045 — Infrastructure regression suite
+## [-] ORCA-045 — Infrastructure regression suite
 
 Create regression coverage for:
 
@@ -1044,7 +1048,7 @@ Compare existing and refactored execution on equivalent isolated tasks.
 
 Do not create duplicate production workers or duplicate production pull requests.
 
-## [ ] ORCA-048 — Existing workflow integration
+## [-] ORCA-048 — Existing workflow integration
 
 Integrate with:
 
@@ -1172,7 +1176,7 @@ The internal subdirectories are proposed, not mandatory if the existing structur
 
 Preserve native OpenCode discovery requirements.
 
-## [ ] ORCA-051 — Script inventory
+## [x] ORCA-051 — Script inventory
 
 Inventory all scripts, including inline workflow scripts and extensionless executables.
 
@@ -1482,7 +1486,7 @@ Measure skill effectiveness using:
 
 Improve skills based on verified benchmark evidence.
 
-## [ ] ORCA-068 — Model capability profiling
+## [N/A] ORCA-068 — Model capability profiling
 
 Benchmark eligible free models for:
 
@@ -1500,7 +1504,7 @@ Benchmark eligible free models for:
 
 Route models using measured suitability.
 
-## [ ] ORCA-069 — Provider circuit breaker
+## [N/A] ORCA-069 — Provider circuit breaker
 
 Temporarily exclude repeatedly failing providers.
 
@@ -1508,7 +1512,7 @@ Use bounded retries, cooldowns, and recovery probes.
 
 Distinguish temporary failures from permanent authentication or eligibility failures.
 
-## [ ] ORCA-070 — Durable task checkpoints
+## [-] ORCA-070 — Durable task checkpoints
 
 Persist:
 
@@ -1566,7 +1570,7 @@ Identify incompatible instructions and overlapping responsibilities.
 
 Resolve conflicts through canonical policy rather than arbitrary instruction order.
 
-## [ ] ORCA-077 — Failure-driven infrastructure improvement
+## [-] ORCA-077 — Failure-driven infrastructure improvement
 
 Convert recurring verified failures into:
 
@@ -1579,7 +1583,7 @@ Convert recurring verified failures into:
 
 Do not autonomously weaken security or quality policies.
 
-## [ ] ORCA-078 — Agent infrastructure security
+## [-] ORCA-078 — Agent infrastructure security
 
 Protect:
 
@@ -1879,7 +1883,7 @@ Every specialist agent must define:
 - Validation obligations.
 - Escalation boundaries.
 
-## [ ] ORCA-087 — Canonical Markdown hierarchy
+## [-] ORCA-087 — Canonical Markdown hierarchy
 
 Separate mandatory operational instructions from optional reference material.
 
@@ -1927,11 +1931,11 @@ Validate agent and skill metadata against supported schemas.
 
 Reject missing required metadata, duplicate identifiers, and unsupported fields.
 
-## [ ] ORCA-092 — Markdown reference validation
+## [x] ORCA-092 — Markdown reference validation
 
 Detect broken links, missing documents, invalid paths, incorrect casing, and stale references.
 
-## [ ] ORCA-093 — Instruction conflict detection
+## [-] ORCA-093 — Instruction conflict detection
 
 Detect contradictory requirements across global, component, agent, profile, skill, and task instructions.
 
@@ -2049,7 +2053,7 @@ Preserve completed work.
 
 Prevent duplicate implementations and repeated task execution.
 
-## [ ] ORCA-106 — Configuration consistency
+## [-] ORCA-106 — Configuration consistency
 
 Detect configuration drift between:
 
@@ -2060,7 +2064,7 @@ Detect configuration drift between:
 - OpenCode execution.
 - GitHub workers.
 
-## [ ] ORCA-107 — Technical debt management
+## [-] ORCA-107 — Technical debt management
 
 Record verified technical debt with severity, impact, evidence, and recommended remediation.
 
@@ -2105,7 +2109,7 @@ Validate infrastructure changes using representative isolated tasks before wides
 
 Detect behavioral and performance regressions.
 
-## [ ] ORCA-112 — Documentation synchronization
+## [-] ORCA-112 — Documentation synchronization
 
 Detect stale documentation following code, architecture, API, workflow, or configuration changes.
 
@@ -2163,7 +2167,7 @@ If native mechanisms are insufficient, implement the smallest compatible asynchr
 
 Do not assume that issuing multiple tool calls guarantees concurrent execution.
 
-## [ ] ORCA-116 — Actual concurrent subagent execution
+## [-] ORCA-116 — Actual concurrent subagent execution
 
 Launch independent subagents asynchronously.
 
@@ -2179,7 +2183,7 @@ Validate dependencies and detect cycles.
 
 Execute independent ready subtasks concurrently.
 
-## [ ] ORCA-118 — Parallel investigation
+## [x] ORCA-118 — Parallel investigation
 
 When relevant, concurrently execute:
 
@@ -2200,7 +2204,7 @@ Establish shared contracts and file ownership before concurrent writing.
 
 Use isolated worktrees or equivalent verified isolation.
 
-## [ ] ORCA-120 — Parallel validation
+## [-] ORCA-120 — Parallel validation
 
 Run independent validation operations concurrently when safe.
 
@@ -2503,7 +2507,7 @@ Support debugging and performance analysis without storing unnecessary sensitive
 
 # PHASE 18 — FINAL RELIABILITY AND PERFORMANCE OPTIMIZATION
 
-## [ ] ORCA-141 — Intelligent model escalation
+## [N/A] ORCA-141 — Intelligent model escalation
 
 Escalate difficult tasks using verified evidence.
 
@@ -2539,7 +2543,7 @@ Do not reuse stale or unrelated sessions.
 
 Do not maintain unlimited permanent conversations.
 
-## [ ] ORCA-143 — Incremental validation
+## [-] ORCA-143 — Incremental validation
 
 Rerun affected tests and checks after changes.
 

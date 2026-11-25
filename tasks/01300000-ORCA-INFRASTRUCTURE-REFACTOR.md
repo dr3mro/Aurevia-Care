@@ -24,12 +24,21 @@
 - Skill naming — OPEN: ORCA-081 requires removing the `aurevia-` prefix from every skill ID and directory. The advertised routing contract in this session uses the current `aurevia-*` IDs, and agent/config regeneration plus atomic reference updates would be required. Status: staged, not started; must be done atomically with a regenerated config and a discovery check.
 
 ## Stage status (section 19 execution order)
+
+Both checklists are updated after each stage: this `## Stage status` list and the ORCA item headings in `orca-refactor.md` (legend at its top). Marks: `[x]` verified, `[-]` in progress, `[!]` blocked, `[N/A]` ruled out by owner decision, `[ ]` not started.
 - [x] Skills loaded and matched clauses recorded.
 - [x] Trackers read: WORKSPACE.md, MEMORY.md, `tasks/_head.md`, newest task files.
 - [x] Stage A read-only discovery and inventory (ORCA-001..003, AG/WF baseline) — four parallel read-only specialist passes returned; inventories and deliverable index written under `docs/orca-refactor/`.
-- [ ] Stage B critical safety corrections — instruction paths, instruction consistency and AG-19 review-gate bypass are green; reviewer-provenance (AG-22) remains blocked on a trusted runner (tasks 01301000 and 01301200).
-- [ ] Stage C baseline benchmarking.
-- [ ] Stage D script ownership foundation.
+- [ ] Stage B critical safety corrections — one blocked item remains (AG-22); every completed sub-item is checked below.
+  - [x] AG-01/02/03 instruction paths and broken references (task 01300000; `test_instruction_paths.py` 2/2 green).
+  - [x] AG-14/18/21 authority and ownership contradictions (task 01300000; `test_instruction_consistency.py` 2/2 green).
+  - [x] AG-19 mandatory review gate; `SWARM_REVIEW_GATE=off` removed (task 01301100; `test_quality_gate.py` 3/3 green, behavioural bypass test included).
+  - [x] Delivery tooling failures from run 45510650619: stale `gh.log`/daily fixtures and best-effort `needs-human` labelling (task 01302000; 119/119, 48/48, full suite 1741/1741).
+  - [x] AG-34 untrusted context lines creating false annotations (task 01302100; `clean()` quotes `##[`/`::`, 362/362).
+  - [x] AG-34 untrusted story title/body/comment in agent prompts (task 01302200; 123/123, full suite 1745/1745).
+  - [!] AG-22 reviewer provenance — BLOCKED: needs a trusted runner to produce review evidence outside the worker's write authority (tasks 01301000 released, 01301200 blocked); no code change was made.
+- [x] Stage C baseline benchmarking — reproducible commands and final lines recorded under `## Evidence log` and `docs/orca-refactor/01-inventory.md`; character/line proxies only, with token metrics explicitly unavailable (no tokeniser in this session).
+- [ ] Stage D script ownership foundation — inventory complete (`docs/orca-refactor/01-inventory.md`), ownership migration, dependency boundaries and validator not started.
 - [ ] Stage E instructions and skills.
 - [ ] Stage F task intelligence.
 - [ ] Stage G supervisor refactor.

@@ -246,6 +246,15 @@ emit() { # name value: expose a step output when running in Actions
   printf '%s=%s\n' "$1" "$2" >> "${GITHUB_OUTPUT:-/dev/null}"
 }
 
+# Untrusted story text is echoed into agent prompts and then into Actions logs.
+# A line beginning with a workflow-command marker would be parsed by Actions as
+# a command, so quote those lines before any prompt is built. The caller's outer
+# command substitution keeps its sentinel while assigning, preserving trailing
+# blank lines; do not add an inner unguarded substitution to this helper.
+quote_command_lines() {
+  printf '%s' "$1" | sed -E 's/^([[:space:]]*)(##\[|::)/\1> \2/'
+}
+
 strip_ansi() { sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
 
 github_git() { # git with token auth, for fetch and push only
@@ -485,6 +494,12 @@ EARLIER
 
 cmd_implement() {
   require_clean_worktree
+  # Quote untrusted story text once, before make_brief and story_prompt read it.
+  # The sentinel survives command substitution; empty input stays empty so the
+  # optional "Requested change:" line is still omitted for ordinary stories.
+  STORY_TITLE=$(quote_command_lines "${STORY_TITLE:-}"; printf X); STORY_TITLE=${STORY_TITLE%X}
+  STORY_BODY=$(quote_command_lines "${STORY_BODY:-}"; printf X); STORY_BODY=${STORY_BODY%X}
+  FIX_COMMENT=$(quote_command_lines "${FIX_COMMENT:-}"; printf X); FIX_COMMENT=${FIX_COMMENT%X}
   configure_auth
   git config user.name "${SWARM_GIT_NAME:-github-actions[bot]}"
   git config user.email "${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"

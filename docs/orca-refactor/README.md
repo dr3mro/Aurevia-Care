@@ -9,6 +9,17 @@ This directory holds the evidence-backed artifacts of the staged refactor define
 - **simulated user** — a synthetic walkthrough; none has been run for the infrastructure refactor.
 - **human** — owner or clinical feedback; only the directives recorded in `.opencode/config/MEMORY.md` exist so far.
 
+## Checkpoint checkmarks
+
+The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md` under `## Stage status`. Completed since the first inventory:
+
+- [x] Stage A discovery and the 50-item deliverable index.
+- [x] AG-01/02/03 instruction paths, AG-14/18/21 policy contradictions, AG-19 review-gate bypass.
+- [x] Delivery tooling repair for run 45510650619 (01302000).
+- [x] AG-34 false annotations from untrusted context (01302100) and from untrusted story prompts (01302200).
+- [x] Stage C baseline measurements (proxy metrics; token counts unavailable).
+- [!] AG-22 reviewer provenance — blocked on a trusted runner; not code-fixed.
+
 ## Deliverable map
 
 | # | Deliverable | Status | Evidence |
@@ -41,7 +52,7 @@ This directory holds the evidence-backed artifacts of the staged refactor define
 | 26 | Scoped memory retrieval | Pending Stage H | no evidence |
 | 27 | Durable checkpointing | Available: task files plus daily notes | tool (`tasks/`, `.agents/`) |
 | 28 | Task recovery mechanism | Partial: leases and stale-worker logic in `scripts/swarm.py` | reviewer (WF-14) |
-| 29 | Independent review protocol | Partial; defect AG-22 open | reviewer (AG-22) |
+| 29 | Independent review protocol | Partial: AG-19 bypass removed; AG-22 blocked on a trusted runner | reviewer (AG-19/AG-22), tasks 01301100/01301200 |
 | 30 | Feature completion matrix | Partial: `docs/gates/`, `docs/security/` | tool |
 | 31 | Healthcare safety verification policy | Available: `docs/launch/`, `docs/gates/` | tool |
 | 32 | Architecture enforcement mechanism | Partial: `scripts/check-wiring.py` | tool + reviewer |
@@ -53,7 +64,7 @@ This directory holds the evidence-backed artifacts of the staged refactor define
 | 38 | Script ownership and path validator | Pending Stage D | no evidence |
 | 39 | Updated test discovery configuration | Pending Stage D | no evidence |
 | 40 | Complete regression test suite | Partial: ~75 Python modules, targeted run green | tool |
-| 41 | Baseline benchmark results | Partial: byte/line proxy only; token metrics unavailable | tool |
+| 41 | Baseline benchmark results | Available as byte/line and test-count proxies; token metrics unavailable | tool, task 01300000 evidence log |
 | 42 | Post-refactoring benchmark results | Pending Stage N | no evidence |
 | 43 | Skill effectiveness results | Pending Stage N | no evidence |
 | 44 | Instruction adherence results | Pending Stage N | no evidence |
