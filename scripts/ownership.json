@@ -53,6 +53,7 @@
     "scripts/mutation-check.sh": "project",
     "scripts/orca_benchmark.py": "project",
     "scripts/orca_core.py": "project",
+    "scripts/orca_memory.py": "project",
     "scripts/process_env.py": "project",
     "scripts/project-name.py": "project",
     "scripts/python-coverage.sh": "project",

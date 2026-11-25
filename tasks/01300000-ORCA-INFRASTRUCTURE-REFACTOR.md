@@ -1,5 +1,7 @@
-- [-] ORCA-INFRASTRUCTURE-REFACTOR · Coordinated ORCA infrastructure audit, refactoring and verification
+- [!] ORCA-INFRASTRUCTURE-REFACTOR · Coordinated ORCA infrastructure audit, refactoring and verification
   - agent: orca
+  - blocked: all 16 eligible child stories are `[x]`; remaining units need trusted Git/GitHub execution, an owner prefix-rename ruling, staff-web/Java/CI authority, or a non-competing ORCA-080 replacement. See `## Queue blocker`.
+  - evidence: full suite `Ran 1920 tests in 126.800s`, `OK`; `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; all six policy checks exit 0; four verdicts GO per child story. Evidence source: tool commands and read-only reviewers. No commit, push or PR in this session.
   - requirements: ORCA-001..ORCA-150, AG-01..AG-35, WF-01..WF-35 (source: `orca-refactor.md`)
   - scope: .opencode, .github, scripts, tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md, docs, .opencode/config
   - depends: none
@@ -41,6 +43,8 @@ Both checklists are updated after each stage: this `## Stage status` list and th
 - [x] Offline ORCA core analysis module (01303000) — `scripts/orca_core.py` green with 24 tests and 100% module coverage; four reviewer verdicts GO; changed-line gate now green.
 - [x] Stage D validator slice (01304000) — `scripts/check-ownership.py` with declared manifest, 34 tests and 100% module coverage; four reviewer verdicts GO; changed-line gate now green. No scripts were moved.
 - [-] Stage E instructions and skills — canonical hierarchy, skill registry and atomic rename designs are available (`docs/orca-refactor/05-instruction-skill-design.md`); no registry or rename was implemented.
+- [x] Stage F source index and impact analysis (01309000, 01311000) — passive `index_sources`/`stale_entries`/`impact` helpers in `scripts/orca_core.py`, 100% module coverage, four verdicts each.
+- [x] Stage F/K passive analysis completion (01309000, 01310000, 01311000, 01312000, 01313000, 01314000) — source index, one-wave-per-branch limits, impact analysis, completion-matrix rule, memory provenance/selection and documented manifest schema. Full suite `Ran 1920 tests in 126.800s`, `OK`; changed-line coverage gate green; four verdicts GO per story. No `apps/` file changed in this push.
 - [-] Stages G/I/J design — native-only supervisor, task-state and fault-injection designs are available (`docs/orca-refactor/06-supervisor-design.md`); runtime capabilities stay blocked without trusted runner evidence.
 - [x] WF-01..35 final source disposition — 35-item table with exact citations and missing live evidence in `docs/orca-refactor/08-workflow-disposition.md`; source-level defect SWARM-DELIVERY-COMMENT recorded in BUGS.md.
 - [ ] Stage E instructions and skills.
@@ -53,6 +57,10 @@ Both checklists are updated after each stage: this `## Stage status` list and th
 - [ ] Stage L workflow integration (live parts blocked).
 - [ ] Stage M migration and simplification.
 - [ ] Stage N final verification and 50 deliverables.
+
+## Queue blocker (2026-11-25)
+
+Read-only scrum-master decision: all designed, locally verifiable passive slices are exhausted. No further story can reach `[x]` in this session. Unblock conditions: (1) trusted Git/GitHub runner for Stage H promotion, Stage K `check-doc-sync.py` base, exact-SHA verification and AG-22 provenance; (2) an owner ruling removing the `aurevia-` prefix before the atomic Stage E skill rename; (3) authority and toolchain for staff-web checks, Java parity tests and CI mutation wiring; (4) if ORCA-080 is still wanted, a non-competing extension of `readiness()`/`preflight()` rather than a second readiness entry point. Owner rulings on direct `SWARM_MODEL`, `main`-only work and no worktrees are unchanged.
 
 ## Requirement disposition table
 Template: `ID | Severity | Status | Evidence (source type) | Correction | Regression test | Confidence | Risk`.

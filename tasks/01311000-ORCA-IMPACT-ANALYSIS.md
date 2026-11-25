@@ -1,5 +1,6 @@
-- [-] ORCA-IMPACT-ANALYSIS · Add passive impact analysis to the offline core
-  - agent: orca
+- [x] ORCA-IMPACT-ANALYSIS · Add passive impact analysis to the offline core
+  - evidence: Red `Ran 67 tests in 0.010s`, `FAILED (errors=13)` → green `Ran 69 tests in 0.008s`, `OK`; module coverage 250 statements/142 branches 100%; full suite `Ran 1874 tests in 106.139s`, `OK`; `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; four verdicts GO. Evidence source: tool commands and read-only reviewers.
+  - pr: none — no Git or `gh` operation is permitted in this session; scoped patch handed to the trusted integrator.
   - parent: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
   - requirements: ORCA-066
   - scope: scripts/orca_core.py, scripts/tests/test_orca_core.py, tasks/01311000-ORCA-IMPACT-ANALYSIS.md
@@ -19,7 +20,7 @@
 ## Evidence log
 - (tool) Red: `python3 -I -m unittest discover -s scripts/tests -p 'test_orca_core*.py' -q` → `Ran 67 tests in 0.010s`, `FAILED (errors=13)` (impact absent). Green after implementation: `Ran 69 tests in 0.008s`, `OK`.
 - (tool) Module coverage: 250 statements, 0 missed; 142 branches, 0 partial; 100%.
-- (tool) Full suite: `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1872 tests in 110.324s`, `OK`.
+- (tool) Full suite: `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1874 tests in 106.139s`, `OK`.
 - (tool) `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; `python3 -I scripts/check-constraints.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-names.py`, `python3 -I scripts/check-pack.py`, `python3 -I scripts/gen-opencode.py --check`, `python3 -I scripts/check-ownership.py scripts/ownership.json` → each exit 0.
 - (reviewer) Plan GO after seven Required gaps defined reverse ids, path-relative entities/contracts, unmapped complement, per-path decisions, validation branches, docstring contract and the classify difference.
 
@@ -29,6 +30,6 @@ Named tests also cover the bare-string routed value, contract-kind path, `securi
 
 ## Review verdicts
 - aurevia-plan-reviewer: GO (first NO-GO with seven Required gaps; revised plan re-reviewed GO).
-- (pending) aurevia-code-reviewer: —
-- (pending) aurevia-coverage-auditor: —
-- (pending) aurevia-devsecops: —
+- aurevia-code-reviewer: GO after generator and short-circuit fixes.
+- aurevia-coverage-auditor: GO after all four short-circuit alternatives were named.
+- aurevia-devsecops: GO (no I/O, dispatch, network or path traversal).

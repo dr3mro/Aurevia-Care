@@ -1,5 +1,6 @@
-- [-] ORCA-SOURCE-INDEX · Add a passive repository source index to the offline core
-  - agent: orca
+- [x] ORCA-SOURCE-INDEX · Add a passive repository source index to the offline core
+  - evidence: Red `Ran 57 tests in 0.007s`, `FAILED (errors=7)` → green `Ran 59 tests in 0.006s`, `OK`; module 194 statements/104 branches 100%; full suite `Ran 1920 tests in 126.800s`, `OK`; `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; four verdicts GO. Evidence source: tool commands and read-only reviewers.
+  - pr: none — no Git or `gh` operation is permitted in this session; scoped patch handed to the trusted integrator.
   - parent: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
   - requirements: ORCA-065
   - scope: scripts/orca_core.py, scripts/tests/test_orca_core.py, tasks/01309000-ORCA-SOURCE-INDEX.md
@@ -18,18 +19,18 @@
 ## Evidence log
 - (tool) Red: `python3 -I -m unittest discover -s scripts/tests -p 'test_orca_core*.py' -q` → `Ran 57 tests in 0.007s`, `FAILED (errors=7)` (new functions absent). Green: `Ran 59 tests in 0.006s`, `OK`.
 - (tool) Module coverage: 194 statements, 0 missed; 104 branches, 0 partial; 100%.
-- (tool) Full suite: `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1860 tests in 108.514s`, `OK`.
+- (tool) Full suite: `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1920 tests in 126.800s`, `OK` (latest full suite; the original run was `Ran 1860 tests in 108.514s`, `OK`).
 - (tool) `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; all policy checks exit 0.
 - (reviewer) Plan GO after eight Required gaps defined the index shape, digest, extractor contract, errors, stale_entries semantics, added/removed handling and red-test list.
 
 ## Coverage (branch-to-test map)
-- `index_sources`: shape and fixed digest, sorted ids and first matching extractor, no-match default, non-dict files/extractors, non-string path/text, non-callable and raising extractor, mixed key types, bad extractor ids, generator-returning extractor, reordered-input determinism → `IndexTests.test_index_sources_*`.
+- `index_sources`: shape and fixed digest, sorted ids and first matching extractor, no-match default, non-dict files/extractors, non-string path/text, non-callable and raising extractor, mixed key types, bad extractor ids, generator-returning extractor, reordered-input determinism → the named `IndexTests.test_index_sorts_ids_and_uses_first_matching_extractor`, `test_index_no_match_uses_unknown_and_empty_ids`, `test_index_rejects_bad_inputs`, `test_index_rejects_mixed_keys_and_bad_extractor_ids`, `test_index_accepts_a_generator_extractor_once` and `test_index_is_deterministic_for_reordered_input`.
 - `stale_entries`: patched `evidence_fresh` reuse, equal/different revisions, added, removed, empty input → `IndexTests.test_stale_entries_*`.
 - Module-wide boundary AST scan still enforces no launch/Git/process API for the new functions.
 No pragma, omit, skip, exclusion or threshold change.
 
 ## Review verdicts
 - aurevia-plan-reviewer: GO (first NO-GO with eight Required gaps; revised plan re-reviewed GO).
-- aurevia-code-reviewer: pending recheck after validation-order fix.
-- (pending) aurevia-coverage-auditor: —
-- (pending) aurevia-devsecops: —
+- aurevia-code-reviewer: GO after validation-order fix.
+- aurevia-coverage-auditor: GO (all index and stale-entry branches mapped to named tests).
+- aurevia-devsecops: GO (injected values only; no filesystem, Git, network or PHI).
