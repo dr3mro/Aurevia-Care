@@ -72,8 +72,11 @@ PostgreSQL 17 and the full JaCoCo/OWASP/SpotBugs tier), and `docs` (`scripts/doc
 The single `Delivery gate` job requires every verification job to pass or be skipped
 on purpose, and branch protection checks it on the exact commit. Every pull request
 runs this workflow, including documentation-only changes: a path-filtered PR would
-never report the required check. `paths-ignore` on `push` still skips docs-only
-commits that are already on `main`.
+never report the required check. Neither trigger has a path filter: every pull
+request and every push to `main` or a `v*` tag that starts a run (plus dispatch and
+merge-group runs) reports the required `Delivery gate` check on its exact SHA. A
+skipped run is never verification evidence; the integrator reruns the exact
+pull-request run instead of merging.
 
 **Integrator (before merge and on tags).** The integrator runs
 `bash scripts/integrator-gate.sh` — full `check.sh` plus `docs.sh` — on each merge
