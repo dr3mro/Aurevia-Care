@@ -207,7 +207,7 @@ Two separate native checks report on every revision; neither substitutes for the
 When `SWARM_SINGLE_TASK=true`, the swarm runs one task at a time:
 
 1. `select` job: OpenCode with `aurevia-product-owner` picks one eligible task (LLM); falls back to deterministic planning if it produces nothing.
-2. `plan` job: claims the task `[-]`, emits a one-worker matrix.
+2. `plan` job: claims the task `[-]`, emits a one-worker matrix. LLM selection runs only when `SWARM_LLM_SELECTION=true`.
 3. Worker: decomposes the task into ordered steps, runs `aurevia-plan-reviewer` before coding, implements step by step, then runs code-reviewer, coverage-auditor, devsecops and qa-reviewer, recording each `VERDICT: GO` under `## Review verdicts`.
 4. Integrator merges; loop job waits for Delivery green on the merged SHA before planning the next task.
 5. If the task is not done (taken or open PR), no next task is planned; the task stays active through debug/fix loops until green or `needs-human`.
