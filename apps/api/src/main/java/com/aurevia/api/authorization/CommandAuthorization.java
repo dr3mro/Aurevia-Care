@@ -32,8 +32,9 @@ import com.aurevia.scheduling.checkin.WorklistPolicy;
  *
  * <p>This gate is deliberately coarse: it does not replace the owning service's
  * object authorization, revision preconditions or human clinical attestation
- * (PRD-06). The durable OPS-02 sink is supplied by the caller in the owning
- * service's transaction; the in-memory sink in this package is synthetic only.</p>
+ * (PRD-06). The production OPS-02 sink records in its own tenant-guarded
+ * transaction so a denial survives the rejected command's rollback; the
+ * in-memory sink in this package is synthetic only.</p>
  */
 public final class CommandAuthorization {
 
@@ -145,8 +146,7 @@ public final class CommandAuthorization {
      * @param correlationId correlation identifier, or empty when absent
      * @param allowed       whether the command may proceed
      * @param reasonCode    ALLOWED, UNAUTHENTICATED, INVALID_COMMAND, UNKNOWN_COMMAND,
-     *                      MEMBERSHIP_INACTIVE, MEMBERSHIP_UNAVAILABLE, POLICY_UNAVAILABLE,
-     *                      COMMAND_FORBIDDEN or AUDIT_UNAVAILABLE
+     *                      MEMBERSHIP_INACTIVE, MEMBERSHIP_UNAVAILABLE, POLICY_UNAVAILABLE or COMMAND_FORBIDDEN
      * @param rolesUsed     freshly resolved roles considered for the decision
      * @param occurredAt    decision instant from the injected clock
      */
@@ -193,9 +193,9 @@ public final class CommandAuthorization {
      * @param identity server-derived active identity
      * @return the allowed decision
      * @throws ApiException {@code 401} when unauthenticated, {@code 403} when membership is
-     *         inactive, the owner is unknown or no active role is permitted,
-     *         {@code 422} for a malformed or unknown command, and {@code 500 AUDIT_UNAVAILABLE}
-     *         when the decision cannot be recorded; the command is never allowed in that case
+     *         inactive, the owner is unknown, no active role is permitted or the durable
+     *         ledger is unavailable ({@code AUDIT_UNAVAILABLE}), {@code 422} for a malformed
+     *         or unknown command, or {@code 500} when the decision cannot be recorded
      */
     public Decision authorize(CommandRequest request, ServerIdentity identity) {
         if (identity == null || !token(identity.organizationId()) || !token(identity.subject())) {
@@ -209,7 +209,9 @@ public final class CommandAuthorization {
         }
         CommandDefinition definition = catalog.find(commandId).orElse(null);
         if (definition == null) {
-            // The identifier is untrusted here: bound it before it reaches the OPS-02 ledger.
+            // Bound untrusted evidence before it reaches any DecisionSink. The V65 sink
+            // persists only the action and fixed discriminator, but injected sinks must
+            // not receive an oversized or control-character-bearing command identifier.
             record(auditableCommandId(commandId), "", identity, false, "UNKNOWN_COMMAND", List.of());
             throw new ApiException(422, "UNKNOWN_COMMAND", "command is not in the catalog");
         }
@@ -259,8 +261,9 @@ public final class CommandAuthorization {
      * @param reasonCode stable reason code
      * @param roles      roles considered
      * @return the recorded decision
-     * @throws ApiException {@code 500 AUDIT_UNAVAILABLE} when the sink cannot persist the decision,
-     *         which denies the command instead of leaving an unaudited allow in the ledger
+     * @throws ApiException {@code 403 AUDIT_UNAVAILABLE} when the durable sink rejects the
+     *         write, {@code 500 AUDIT_UNAVAILABLE} for an unstructured sink failure, or
+     *         {@code 500 DECISION_NOT_RECORDED} for any other sink-supplied API failure
      */
     private Decision record(String commandId, String action, ServerIdentity identity, boolean allowed,
                             String reasonCode, List<String> roles) {
@@ -269,6 +272,13 @@ public final class CommandAuthorization {
                 allowed, reasonCode, roles, clock.instant());
         try {
             sink.record(decision);
+        } catch (ApiException failure) {
+            // Only the durable sink's own deny signal may reach the caller unchanged,
+            // and even that signal uses a fixed message so bind details cannot leak.
+            if (failure.status() == 403 && "AUDIT_UNAVAILABLE".equals(failure.code())) {
+                throw new ApiException(403, "AUDIT_UNAVAILABLE", "authorization decision could not be recorded");
+            }
+            throw new ApiException(500, "DECISION_NOT_RECORDED", "authorization decision could not be recorded");
         } catch (RuntimeException failure) {
             // A failed audit write must fail the command closed with a defined,
             // machine-readable reason: AUDIT_UNAVAILABLE is itself a deny outcome,
@@ -304,14 +314,15 @@ public final class CommandAuthorization {
     }
 
     /**
-     * Bound an untrusted command identifier before writing it to the append-only ledger.
+     * Bound an untrusted command identifier before passing it to a decision sink.
      *
      * <p>The value is only evidence for an {@code UNKNOWN_COMMAND} denial; it never selects
-     * a policy or a role. Truncation and control-character removal prevent log forging and
-     * unbounded growth of an audit field while keeping the 422 outcome unchanged.</p>
+     * a policy or a role. The V65 ledger stores only the action and fixed discriminator,
+     * but injected sinks must not receive unbounded or control-character-bearing text.
+     * Truncation and control-character removal keep the 422 outcome unchanged.</p>
      *
      * @param commandId client-supplied identifier, already checked non-blank
-     * @return a bounded, control-character-free audit value
+     * @return a bounded, control-character-free decision value
      */
     private static String auditableCommandId(String commandId) {
         String bounded = commandId.trim();

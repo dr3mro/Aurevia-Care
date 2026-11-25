@@ -671,5 +671,121 @@ class BoundaryTests(unittest.TestCase):
                 self.assertNotIn(token, text)
 
 
+class OfflineAnalysisSliceTests(unittest.TestCase):
+    """Passive helpers for scope, cycles, consolidation and validation selection."""
+
+    def test_enforce_scope_rejects_non_mapping(self):
+        with self.assertRaisesRegex(ValueError, "enforce_scope"):
+            orca_core.enforce_scope([], ("a",))
+
+    def test_enforce_scope_rejects_string_allowed(self):
+        with self.assertRaisesRegex(ValueError, "enforce_scope"):
+            orca_core.enforce_scope({"a": ()}, "a")
+
+    def test_enforce_scope_returns_violations(self):
+        self.assertEqual(orca_core.enforce_scope({"b": (), "a": ()}, ("b",)), ("a",))
+
+    def test_enforce_scope_all_allowed_is_empty(self):
+        self.assertEqual(orca_core.enforce_scope({"a": ()}, ("a", "b")), ())
+
+    def test_cycle_rejects_non_mapping(self):
+        with self.assertRaisesRegex(ValueError, "dependency_cycle"):
+            orca_core.dependency_cycle([])
+
+    def test_cycle_self(self):
+        self.assertEqual(orca_core.dependency_cycle({"A": ("A",)}), ("A", "A"))
+
+    def test_cycle_two_nodes(self):
+        self.assertEqual(orca_core.dependency_cycle({"A": ("B",), "B": ("A",)}),
+                         ("A", "B", "A"))
+
+    def test_cycle_dag_is_none(self):
+        self.assertIsNone(orca_core.dependency_cycle({"A": ("B",), "B": ()}))
+
+    def test_cycle_is_deterministic(self):
+        self.assertEqual(orca_core.dependency_cycle({"B": ("A",), "A": ("B",)}),
+                         ("A", "B", "A"))
+
+    def test_consolidate_rejects_invalid(self):
+        with self.assertRaisesRegex(ValueError, "consolidate"):
+            orca_core.consolidate([{"revision": "r"}], "r")
+
+    def test_consolidate_drops_stale(self):
+        rows = [{"task_id": "T", "revision": "old", "confidence": 1.0, "fact": True}]
+        self.assertEqual(orca_core.consolidate(rows, "r"), {})
+
+    def test_consolidate_groups_and_sorts(self):
+        rows = [{"task_id": "T", "revision": "r", "confidence": c, "fact": f}
+                for c, f in ((0.5, True), (0.9, False))]
+        out = orca_core.consolidate(rows, "r")["T"]
+        self.assertEqual((out[0]["confidence"], out[1]["confidence"]), (0.9, 0.5))
+        self.assertEqual((out[0]["fact"], out[1]["fact"]), (False, True))
+
+    def test_consolidate_empty(self):
+        self.assertEqual(orca_core.consolidate([], "r"), {})
+
+    def test_validation_bad_inputs(self):
+        with self.assertRaisesRegex(ValueError, "select_validation"):
+            orca_core.select_validation([], {})
+
+    def test_validation_unknown_signal(self):
+        with self.assertRaisesRegex(ValueError, "unknown signal"):
+            orca_core.select_validation({}, {"v": "nope"})
+
+    def test_validation_selects_truthy(self):
+        result = orca_core.select_validation(
+            {"clinical": True, "security": False, "validation": ("audit",)},
+            {"z": "validation", "c": "clinical", "s": "security"})
+        self.assertEqual(result, ("c", "z"))
+
+    def test_validation_skips_falsy(self):
+        catalog = {"r": "risk", "c": "complexity", "v": "validation"}
+        self.assertEqual(orca_core.select_validation(
+            {"risk": "routine", "complexity": 1, "validation": ()}, catalog), ())
+
+    def test_enforce_scope_accepts_iterable_allowed(self):
+        self.assertEqual(orca_core.enforce_scope({"b": ()}, iter(("b",))), ())
+
+    def test_enforce_scope_rejects_bytes_allowed(self):
+        with self.assertRaisesRegex(ValueError, "enforce_scope"):
+            orca_core.enforce_scope({"a": ()}, b"a")
+
+    def test_cycle_ignores_unknown_dependency(self):
+        self.assertIsNone(orca_core.dependency_cycle({"A": ("Z",)}))
+
+    def test_cycle_shared_node_visited_once(self):
+        self.assertIsNone(orca_core.dependency_cycle(
+            {"A": ("C",), "B": ("C",), "C": ()}))
+
+    def test_cycle_deep_chain_does_not_recurse(self):
+        size = 1500
+        graph = {f"n{i}": (f"n{i + 1}",) for i in range(size)}
+        graph[f"n{size}"] = ()
+        self.assertIsNone(orca_core.dependency_cycle(graph))
+
+    def test_consolidate_rejects_non_dict_row(self):
+        with self.assertRaisesRegex(ValueError, "consolidate"):
+            orca_core.consolidate([["row"]], "r")
+
+    def test_consolidate_rejects_non_bool_fact(self):
+        rows = [{"task_id": "T", "revision": "r", "confidence": 1.0, "fact": "yes"}]
+        with self.assertRaisesRegex(ValueError, "fact must be a boolean"):
+            orca_core.consolidate(rows, "r")
+
+    def test_validation_rejects_non_dict_catalog(self):
+        with self.assertRaisesRegex(ValueError, "select_validation"):
+            orca_core.select_validation({}, [])
+
+    def test_validation_risk_and_complexity_thresholds(self):
+        result = orca_core.select_validation(
+            {"risk": "critical", "complexity": 3},
+            {"a": "risk", "b": "complexity"})
+        self.assertEqual(result, ("a", "b"))
+
+    def test_validation_complexity_rejects_non_integer(self):
+        self.assertEqual(orca_core.select_validation(
+            {"complexity": "high"}, {"x": "complexity"}), ())
+
+
 if __name__ == "__main__":
     unittest.main()

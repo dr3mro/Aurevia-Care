@@ -444,4 +444,58 @@ class CommandAuthorizationTest {
         assertEquals(500, deniedFailure.status());
         assertEquals("AUDIT_UNAVAILABLE", deniedFailure.code());
     }
+
+    @Test
+    void auditUnavailableSinkFailureDeniesWithItsOwnCode() {
+        CommandAuthorization.DecisionSink unavailable = decision -> {
+            throw new ApiException(403, "AUDIT_UNAVAILABLE", "authorization decision could not be recorded");
+        };
+        Resolver resolver = new Resolver();
+        resolver.roles = List.of("tenant_admin");
+        CommandAuthorization authorization =
+                CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, unavailable, CLOCK);
+        ApiException denial = assertThrows(ApiException.class,
+                () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
+        assertEquals(403, denial.status());
+        assertEquals("AUDIT_UNAVAILABLE", denial.code());
+    }
+
+    @Test
+    void auditUnavailableSinkMessageIsSanitized() {
+        CommandAuthorization.DecisionSink unavailable = decision -> {
+            throw new ApiException(403, "AUDIT_UNAVAILABLE", "SECRET_SQL_TOKEN authorization_decision");
+        };
+        Resolver resolver = new Resolver();
+        resolver.roles = List.of("tenant_admin");
+        CommandAuthorization authorization =
+                CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, unavailable, CLOCK);
+
+        ApiException denial = assertThrows(ApiException.class,
+                () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
+
+        assertEquals(403, denial.status());
+        assertEquals("AUDIT_UNAVAILABLE", denial.code());
+        assertEquals("authorization decision could not be recorded", denial.getMessage());
+        assertFalse(denial.getMessage().contains("SECRET_SQL_TOKEN"));
+    }
+
+    @Test
+    void otherSinkApiFailuresRemainMachineReadableServerErrors() {
+        ApiException[] sinkFailures = {
+                new ApiException(500, "OTHER_FAILURE", "unavailable"),
+                new ApiException(403, "FORBIDDEN", "unavailable")
+        };
+        for (ApiException sinkFailure : sinkFailures) {
+            Resolver resolver = new Resolver();
+            resolver.roles = List.of("tenant_admin");
+            CommandAuthorization authorization = CommandAuthorization.synthetic(CommandCatalog.synthetic(),
+                    resolver, decision -> {
+                        throw sinkFailure;
+                    }, CLOCK);
+            ApiException denial = assertThrows(ApiException.class,
+                    () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
+            assertEquals(500, denial.status());
+            assertEquals("DECISION_NOT_RECORDED", denial.code());
+        }
+    }
 }
