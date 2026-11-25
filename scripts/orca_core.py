@@ -469,6 +469,133 @@ def impact(changed_paths, index, routed):
             for key, value in result.items()}
 
 
+def enforce_scope(decisions, allowed):
+    """Reject changed paths that fall outside an allowed scope.
+
+    Inputs are an ``impact()`` decisions mapping and permitted path strings.
+    The output is the sorted tuple of paths with no matching permission. Bad
+    inputs raise ValueError. The invariant is that every decision path is either
+    allowed or reported as a violation, so no path is silently dropped.
+    """
+    if not isinstance(decisions, dict) or isinstance(allowed, (str, bytes)):
+        raise ValueError("enforce_scope: invalid input")
+    permitted = frozenset(allowed)
+    return tuple(sorted(p for p in decisions if p not in permitted))
+
+
+def dependency_cycle(dependencies):
+    """Detect a dependency cycle in a passive task graph.
+
+    Inputs map a task id to the ids it depends on. The output is the first cycle
+    in sorted traversal order, ending with the repeated id, or None for an
+    acyclic graph. A non-mapping raises ValueError. The invariant is a
+    deterministic result where a self-dependency is a cycle; no agent or Git
+    operation is performed. Iterative depth-first traversal keeps a deep task
+    chain from exhausting the recursion limit.
+    """
+    if not isinstance(dependencies, dict):
+        raise ValueError("dependency_cycle: dependencies must be a dict")
+
+    def children(node):
+        # Sorted so the reported cycle never depends on insertion order.
+        return tuple(sorted(dependencies.get(node, ())))
+
+    # check-ownership.py has its own reference-graph cycle finder, but it is a
+    # validator with a different contract (script path -> referenced script) and
+    # importing a runtime validator here would break this module's analysis-only
+    # import boundary. This helper works on task ids and returns the closing path.
+    visited = set()
+    for start in sorted(dependencies):
+        if start in visited:
+            continue
+        stack = [(start, children(start), 0)]
+        path, on_path = [start], {start}
+        while stack:
+            node, nodes, index = stack[-1]
+            if index >= len(nodes):
+                visited.add(node)
+                on_path.discard(node)
+                stack.pop()
+                path.pop()
+                continue
+            child = nodes[index]
+            stack[-1] = (node, nodes, index + 1)
+            if child in on_path:
+                return tuple(path[path.index(child):]) + (child,)
+            if child in dependencies and child not in visited:
+                on_path.add(child)
+                path.append(child)
+                stack.append((child, children(child), 0))
+    return None
+
+
+def consolidate(entries, current_revision):
+    """Merge attributed findings by task, keeping fresh rows first.
+
+    Inputs are publish-shaped rows and the current revision string. The output
+    maps each task id to its fresh rows sorted by confidence then fact-first;
+    stale rows are dropped through the single freshness policy. Invalid rows and
+    a non-boolean fact raise ValueError. The invariant is that no stale evidence
+    survives and the input rows are not mutated. Unlike ``select_memory``, which
+    canonicalises provenance rows under a retrieval budget, this groups raw
+    blackboard entries by task, so the two ordering rules stay separate.
+    """
+    merged = {}
+    for row in entries:
+        if not isinstance(row, dict) or "task_id" not in row:
+            raise ValueError("consolidate: invalid entry")
+        if type(row.get("fact")) is not bool:
+            raise ValueError("consolidate: fact must be a boolean")
+        if not evidence_fresh(row.get("revision"), current_revision):
+            continue
+        merged.setdefault(row["task_id"], []).append(row)
+    return {task: tuple(sorted(rows, key=lambda r: (-r["confidence"], -int(r["fact"]))))
+            for task, rows in merged.items()}
+
+
+VALIDATION_SIGNALS = frozenset(
+    ("clinical", "security", "validation", "risk", "complexity"))
+
+
+def _signal_active(signal, value):
+    """Whether one classification signal is active for validation selection.
+
+    ``clinical`` and ``security`` are boolean triggers; ``validation`` is a
+    required-check collection; ``risk`` is active only for cross-boundary or
+    critical work; ``complexity`` counts at least three contributing parts.
+    Returns a boolean. The invariant is that a truthy string such as a routine
+    risk never selects a validator by accident.
+    """
+    if signal in ("clinical", "security"):
+        return value is True
+    if signal == "validation":
+        return bool(value)
+    if signal == "risk":
+        return value in ("cross_boundary", "critical")
+    return isinstance(value, int) and value >= 3
+
+
+def select_validation(classification, catalog):
+    """Choose validators whose signal is active in a classification.
+
+    Inputs are a ``classify()`` result and a validator-name to signal-key map.
+    The output is the sorted tuple of validator names with an active signal.
+    Non-mappings and unknown signals raise ValueError. The invariant is a
+    deterministic selection that flags checks but never executes them. ORCA-039
+    also names dependency, API and database signals that ``classify()`` does not
+    currently emit; callers must supply those keys in the classification itself.
+    """
+    if not isinstance(classification, dict) or not isinstance(catalog, dict):
+        raise ValueError("select_validation: invalid input")
+    selected = []
+    for name, signal in catalog.items():
+        if signal not in VALIDATION_SIGNALS:
+            raise ValueError(f"select_validation: unknown signal: {signal}")
+        if _signal_active(signal, classification.get(signal)):
+            selected.append(name)
+    return tuple(sorted(selected))
+
+
 def save_checkpoint(path, state):
     """Write a JSON state snapshot to ``path`` and return its ``Path`` object.
 

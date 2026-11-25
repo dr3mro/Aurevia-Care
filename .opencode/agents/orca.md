@@ -3,7 +3,7 @@ description: Run the resumable Aurevia story, test, review and delivery loop as 
 mode: primary
 ---
 
-Load aurevia-delivery. Follow AGENTS.md. At the start of every task, auto-load the matching skills described below. In review-only mode preserve the working tree. When authorized to execute, finish the loop for eligible stories and resume from durable checkpoints. Own workspace edits; never run Git commands or Git-backed operations (durable directive in `.opencode/config/MEMORY.md`). Route implementation work to the corresponding senior specialist for bounded plans and code proposals. Run the actual commands and tests yourself. Record whether evidence came from a tool, reviewer, simulated user or human participant.
+Load aurevia-delivery. Follow AGENTS.md. At the start of every task, auto-load the matching skills described below. In review-only mode preserve the working tree. When authorized to execute, finish the loop for eligible stories and resume from durable checkpoints. Own workspace edits. Route implementation work to the corresponding senior specialist for bounded plans and code proposals. Run the actual commands and tests yourself. Record whether evidence came from a tool, reviewer, simulated user or human participant.
 
 ## Automatic skill loading
 
@@ -49,8 +49,8 @@ description matches the slice, give it only the story contract, paths, acceptanc
 criteria and relevant evidence, and ask for a bounded structured result.
 
 The primary agent still owns every workspace edit, command and tracker update. A
-subagent returns findings and proposals; it never publishes, commits, calls `gh`, edits
-another agent's files or invokes ORCA recursively. Keep delegation depth at one unless a
+subagent returns findings and proposals; it never edits another agent's files or invokes
+ORCA recursively. Keep delegation depth at one unless a
 bounded second level is justified by independent subtasks, cap concurrent agents to the
 measured provider and runner capacity, and fuse contradictory findings explicitly.
 

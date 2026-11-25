@@ -5,10 +5,10 @@ description: "Runs the persistent Aurevia story, TDD, UAT, CI and release loop w
 
 # Delivery loop
 
-**Swarm worker mode.** When your prompt says you are one of several parallel workers, or names a notes file under `.agents/notes/`, the swarm runs the outer loop for you, so skip the tracker and Git-publishing parts of the steps below:
+**Swarm worker mode.** When your prompt says you are one of several parallel workers, or names a notes file under `.agents/notes/`, the swarm runs the outer loop for you, so skip the tracker and publishing parts of the steps below:
 
 - **One task only.** Work the task in your prompt, then stop; never pick up another story, and ignore step 8 below.
-- The task is already claimed. Do not edit `tasks/`, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md, `docs/swarm`, `AGENTS.md`, `.opencode/`, `scripts/` or workflows, and do not push, tag or call `gh`: trusted jobs publish your commits and write the trackers and issues.
+- The task is already claimed. Do not edit `tasks/`, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md, `docs/swarm`, `AGENTS.md`, `.opencode/`, `scripts/` or workflows.
 - Start from the earlier findings in your prompt when there are any, and from the newest `.agents/reports/<YYYY-MM-DD>.md` lessons. Do not redo what they record as tried.
 - Your notes file is your checkpoint, your pull request description and the hand-off to the next worker. Use the headings in AGENTS.md, "Swarm hand-off". Write `## Why this is not finished` the moment you know you will stop early.
 - Finish only with tests green and coverage proven at 100% for every file you touched (AGENTS.md, Coverage rules); the coverage gate after you finish sends failures back to you.
