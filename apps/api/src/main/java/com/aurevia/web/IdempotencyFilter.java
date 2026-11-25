@@ -28,23 +28,28 @@ import jakarta.servlet.http.HttpServletResponse;
  * identity is bound by {@link com.aurevia.web.TenantContextInterceptor} inside
  * the dispatcher, and only an MVC interceptor can throw into the uniform
  * {@link com.aurevia.api.ApiErrorHandler}. It runs after the tenant interceptor
- * and before the handler. A replay writes the frozen status and body and
- * returns {@code false}, so the handler never executes a second time. A key
- * reused with a different body answers 422 {@code IDEMPOTENCY_KEY_REUSED}.
+ * and before the handler. A replay first re-checks the caller's live
+ * authorization; when it still holds, the frozen status and body are written
+ * and {@code false} is returned so the handler never executes a second time.
+ * Lapsed authorization is concealed with 404 and no cached body is disclosed.
+ * A key reused with a different body answers 422 {@code IDEMPOTENCY_KEY_REUSED}.
  * Requests without the header are left exactly as they were.</p>
  */
 @Component
 public final class IdempotencyFilter implements HandlerInterceptor, WebMvcConfigurer {
 
     private final IdempotencyResponseStore store;
+    private final ReplayAuthorization authorization;
 
     /**
-     * Create the interceptor with the durable replay store.
+     * Create the interceptor with the durable replay store and a live authorization check.
      *
      * @param store store that evaluates and freezes keyed responses
+     * @param authorization live check that gates disclosure of a cached response
      */
-    public IdempotencyFilter(IdempotencyResponseStore store) {
+    public IdempotencyFilter(IdempotencyResponseStore store, ReplayAuthorization authorization) {
         this.store = store;
+        this.authorization = authorization;
     }
 
     @Override
@@ -81,9 +86,15 @@ public final class IdempotencyFilter implements HandlerInterceptor, WebMvcConfig
         ResponseResolution resolution = store.evaluate(scope, key, digest);
 
         if (resolution.decision() == Decision.REPLAY) {
+            // The handler is not re-run on a replay, so its normal authorization
+            // checks must be replaced by a fresh decision from live identity state.
+            // Conceal lapsed authorization with 404 and never write the cached body.
+            if (!authorization.stillAuthorized(context, command)) {
+                throw ApiErrorCode.NOT_FOUND.exception();
+            }
             StoredResponse frozen = resolution.response();
             response.setStatus(frozen.statusCode());
-            response.setContentType("application/json");
+            response.setContentType("application/json;charset=UTF-8");
             response.getOutputStream().write(frozen.body().getBytes(StandardCharsets.UTF_8));
             return false;
         }

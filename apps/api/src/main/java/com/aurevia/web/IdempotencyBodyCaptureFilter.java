@@ -1,7 +1,9 @@
 package com.aurevia.web;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +29,9 @@ import jakarta.servlet.http.HttpServletResponse;
  *
  * <p>Only POST requests carrying a non-blank {@code Idempotency-Key} enter this
  * path; every other request flows through the original request and response
- * objects unchanged. The body is read once before dispatch so the interceptor
+ * objects unchanged. A keyed body is read with a hard cap even when
+ * Content-Length is absent, so a chunked stream cannot buffer without bound.
+ * The body is read once before dispatch so the interceptor
  * can hash it, then replayed to the handler by
  * {@link com.aurevia.web.BufferedBodyRequestWrapper}. The response is cached
  * and copied back in a {@code finally} block so an error or an early replay
@@ -87,7 +91,17 @@ public final class IdempotencyBodyCaptureFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
-        byte[] body = request.getInputStream().readAllBytes();
+        // Content-Length can be absent on chunked requests. Read at most one byte
+        // past the cap so an unbounded stream cannot exhaust the request thread;
+        // a keyed POST over the cap is refused with a fixed, non-PHI 413 body.
+        byte[] body = readBounded(request);
+        if (body == null) {
+            response.setStatus(413);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getOutputStream().write(
+                    "{\"code\":\"REQUEST_BODY_TOO_LARGE\"}".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
         request.setAttribute(BODY_ATTRIBUTE, new String(body, StandardCharsets.UTF_8));
         ContentCachingResponseWrapper cached = new ContentCachingResponseWrapper(response);
         request.setAttribute(RESPONSE_ATTRIBUTE, cached);
@@ -100,6 +114,30 @@ public final class IdempotencyBodyCaptureFilter extends OncePerRequestFilter {
                 cached.copyBodyToResponse();
             }
         }
+    }
+
+    /**
+     * Read a keyed request body with a hard cap, independent of the declared length.
+     *
+     * @param request current request whose stream supplies the body
+     * @return the buffered bytes, or {@code null} when the body exceeds the cap
+     * @throws IOException when the servlet stream cannot be read
+     */
+    private static byte[] readBounded(HttpServletRequest request) throws IOException {
+        byte[] buffer = new byte[MAX_CAPTURE_BYTES + 1];
+        InputStream stream = request.getInputStream();
+        int total = 0;
+        while (total < buffer.length) {
+            int count = stream.read(buffer, total, buffer.length - total);
+            if (count < 0) {
+                break;
+            }
+            total += count;
+        }
+        if (total > MAX_CAPTURE_BYTES) {
+            return null;
+        }
+        return Arrays.copyOf(buffer, total);
     }
 
     /**

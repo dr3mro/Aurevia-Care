@@ -16,10 +16,12 @@ import com.aurevia.api.contract.IdempotencyLedger.Scope;
 /**
  * PostgreSQL replay ledger for keyed write commands (ARC-03, ARC-04).
  *
- * <p>V66 owns the tenant-scoped {@code idempotency_record} table. Every
- * statement names the active organization and runs inside the tenant-guarded
- * transaction that binds {@code app.current_org}, so forced row-level security
- * is the second isolation boundary. Reads ignore rows past their expiry and
+ * <p>V66 owns the tenant-scoped {@code idempotency_record} table. Keys are
+ * owned by the active tenant, the authenticated caller and the matched command,
+ * so a caller can reuse one key on two routes independently. Every statement
+ * names the active organization and runs inside the tenant-guarded transaction
+ * that binds {@code app.current_org}, so forced row-level security is the second
+ * isolation boundary. Reads ignore rows past their expiry and
  * writes first clear an expired row before inserting the frozen response;
  * {@code ON CONFLICT DO NOTHING} makes the first committed response win without
  * overwriting a concurrent winner. Only a SHA-256 request digest and the
@@ -36,7 +38,7 @@ public class JdbcIdempotencyLedger implements IdempotencyResponseStore {
             SELECT request_hash, status_code, response_body::text AS response_body
             FROM public.idempotency_record
             WHERE organization_id = CAST(:organizationId AS uuid)
-              AND subject = :subject AND key = :key
+              AND subject = :subject AND command = :command AND key = :key
               AND expires_at > CAST(:now AS timestamptz)
             """;
 
@@ -49,16 +51,17 @@ public class JdbcIdempotencyLedger implements IdempotencyResponseStore {
     private static final String DELETE_EXPIRED = """
             DELETE FROM public.idempotency_record
             WHERE organization_id = CAST(:organizationId AS uuid)
-              AND subject = :subject AND key = :key
+              AND subject = :subject AND command = :command AND key = :key
               AND expires_at <= CAST(:now AS timestamptz)
             """;
 
     private static final String INSERT = """
             INSERT INTO public.idempotency_record
-                (organization_id, subject, key, request_hash, status_code, response_body, created_at, expires_at)
-            VALUES (CAST(:organizationId AS uuid), :subject, :key, :requestHash, :statusCode,
+                (organization_id, subject, command, key, request_hash, status_code,
+                 response_body, created_at, expires_at)
+            VALUES (CAST(:organizationId AS uuid), :subject, :command, :key, :requestHash, :statusCode,
                     CAST(:body AS jsonb), CAST(:createdAt AS timestamptz), CAST(:expiresAt AS timestamptz))
-            ON CONFLICT (organization_id, subject, key) DO NOTHING
+            ON CONFLICT (organization_id, subject, command, key) DO NOTHING
             """;
 
     private final LedgerStore collaborators;
@@ -119,6 +122,7 @@ public class JdbcIdempotencyLedger implements IdempotencyResponseStore {
         return new MapSqlParameterSource()
                 .addValue("organizationId", scope.organizationId())
                 .addValue("subject", scope.subject())
+                .addValue("command", scope.command())
                 .addValue("key", key.value());
     }
 

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,13 +70,15 @@ class IdempotencyFilterTest {
     private FakeStore store;
     private MockMvc mvc;
     private IdempotencyFilter filter;
+    private java.util.concurrent.atomic.AtomicBoolean replayAuthorized;
 
     /** Wire the real filters and interceptors around a synthetic counting route. */
     @BeforeEach
     void setUp() {
         controller = new CountingController();
         store = new FakeStore();
-        filter = new IdempotencyFilter(store);
+        replayAuthorized = new java.util.concurrent.atomic.AtomicBoolean(true);
+        filter = new IdempotencyFilter(store, (context, command) -> replayAuthorized.get());
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("synthetic-auth");
         mvc = MockMvcBuilders.standaloneSetup(controller)
@@ -98,11 +101,28 @@ class IdempotencyFilterTest {
                 .andReturn().getResponse().getContentAsString();
         String retry = postBody("idem-key-1", "{\"marker\":\"a\"}", SUBJECT, ORG)
                 .andExpect(status().isCreated())
+                .andExpect(header().string("Content-Type",
+                        org.hamcrest.Matchers.containsString("charset=UTF-8")))
                 .andReturn().getResponse().getContentAsString();
 
         assertEquals(first, retry);
         assertEquals(1, controller.calls.get());
         assertEquals(1, store.rows.size());
+    }
+
+    @Test
+    void aReplayIsConcealedWhenAuthorizationNoLongerHolds() throws Exception {
+        postBody("idem-key-auth", "{\"marker\":\"a\"}", SUBJECT, ORG)
+                .andExpect(status().isCreated());
+        replayAuthorized.set(false);
+
+        String denial = postBody("idem-key-auth", "{\"marker\":\"a\"}", SUBJECT, ORG)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertFalse(denial.contains("marker"), "a lapsed authorization must not disclose the cached body");
+        assertEquals(1, controller.calls.get());
     }
 
     @Test
@@ -167,6 +187,20 @@ class IdempotencyFilterTest {
 
         assertEquals(3, controller.calls.get());
         assertEquals(3, store.rows.size());
+    }
+
+    @Test
+    void theSameKeyOnTwoCommandsOwnsTwoIndependentResponses() throws Exception {
+        postBody("idem-key-command", "{\"marker\":\"a\"}", SUBJECT, ORG).andExpect(status().isCreated());
+        mvc.perform(post("/api/v1/idempotency/{id}/variable", "one")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"marker\":\"a\"}")
+                        .header("Idempotency-Key", "idem-key-command")
+                        .header("X-Synthetic-Subject", SUBJECT)
+                        .header("X-Active-Organization", ORG))
+                .andExpect(status().isCreated());
+
+        assertEquals(2, controller.calls.get());
+        assertEquals(2, store.rows.size());
     }
 
     @Test
@@ -288,6 +322,38 @@ class IdempotencyFilterTest {
     }
 
     @Test
+    void anUnknownLengthOversizedBodyIsRefusedWith413BeforeItIsBuffered() throws Exception {
+        IdempotencyBodyCaptureFilter capture = new IdempotencyBodyCaptureFilter(store);
+        // A chunked stream reports an unknown length, so the declared-size guard
+        // cannot protect this request.
+        MockHttpServletRequest chunked = unknownLengthRequest(
+                new byte[IdempotencyBodyCaptureFilter.MAX_CAPTURE_BYTES + 1], "idem-key-chunked");
+        org.springframework.mock.web.MockFilterChain chain = new org.springframework.mock.web.MockFilterChain();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        capture.doFilter(chunked, response, chain);
+
+        assertEquals(413, response.getStatus());
+        assertEquals("application/json;charset=UTF-8", response.getContentType());
+        assertTrue(response.getContentAsString().contains("REQUEST_BODY_TOO_LARGE"));
+        assertNull(chain.getRequest(), "an oversized body must not reach the handler");
+        assertNull(chunked.getAttribute(IdempotencyBodyCaptureFilter.BODY_ATTRIBUTE));
+    }
+
+    @Test
+    void anUnknownLengthSmallBodyIsStillCaptured() throws Exception {
+        IdempotencyBodyCaptureFilter capture = new IdempotencyBodyCaptureFilter(store);
+        MockHttpServletRequest chunked = unknownLengthRequest(
+                "{\"marker\":\"a\"}".getBytes(StandardCharsets.UTF_8), "idem-key-chunked-small");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        capture.doFilter(chunked, response, new org.springframework.mock.web.MockFilterChain());
+
+        assertEquals("{\"marker\":\"a\"}",
+                chunked.getAttribute(IdempotencyBodyCaptureFilter.BODY_ATTRIBUTE));
+    }
+
+    @Test
     void aLedgerFailureDoesNotBreakAnAlreadySuccessfulResponse() throws Exception {
         IdempotencyResponseStore failing = mock(IdempotencyResponseStore.class);
         when(failing.evaluate(any(), any(), any()))
@@ -319,6 +385,22 @@ class IdempotencyFilterTest {
         TenantContext.set(new TenantContext(ORG, SUBJECT, TenantContext.PURPOSE, "corr-1"));
 
         assertTrue(filter.preHandle(request, new MockHttpServletResponse(), new Object()));
+        assertNull(request.getAttribute(IdempotencyBodyCaptureFilter.STORE_ATTRIBUTE),
+                "a missing captured body must not claim the key");
+    }
+
+    /** Build a JSON POST whose servlet length is unknown, as with chunked transfer. */
+    private static MockHttpServletRequest unknownLengthRequest(byte[] body, String key) {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", PATH) {
+            @Override
+            public long getContentLengthLong() {
+                return -1;
+            }
+        };
+        request.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        request.addHeader("Idempotency-Key", key);
+        request.setContent(body);
+        return request;
     }
 
     /** Post one synthetic keyed command through the full MVC pipeline. */

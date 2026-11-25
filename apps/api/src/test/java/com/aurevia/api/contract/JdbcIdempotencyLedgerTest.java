@@ -91,6 +91,17 @@ class JdbcIdempotencyLedgerTest {
     }
 
     @Test
+    void theCommandIsBoundToTheKeyOnEveryLookup() {
+        rows(List.of());
+
+        store.evaluate(scope, key, digest);
+
+        ArgumentCaptor<SqlParameterSource> bound = ArgumentCaptor.forClass(SqlParameterSource.class);
+        verify(jdbc).query(anyString(), bound.capture(), any(RowMapper.class));
+        assertEquals(scope.command(), bound.getValue().getValue("command"));
+    }
+
+    @Test
     void aLiveRowWithTheSameDigestReplaysItsStoredResponse() {
         rows(List.of(new JdbcIdempotencyLedger.Row(digest.hex(), 201, OUTCOME)));
 
@@ -121,6 +132,8 @@ class JdbcIdempotencyLedgerTest {
         ArgumentCaptor<SqlParameterSource> bound = ArgumentCaptor.forClass(SqlParameterSource.class);
         verify(jdbc, times(2)).update(anyString(), bound.capture());
         SqlParameterSource insert = bound.getAllValues().get(1);
+        assertEquals(scope.command(), insert.getValue("command"));
+        assertEquals(scope.command(), bound.getAllValues().get(0).getValue("command"));
         assertEquals(digest.hex(), insert.getValue("requestHash"));
         assertEquals(OUTCOME, insert.getValue("body"));
         assertEquals(201, insert.getValue("statusCode"));
