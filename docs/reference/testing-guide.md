@@ -70,11 +70,13 @@ tests), `frontend` (`scripts/frontend-check.sh`), `java-verify` (the reusable
 `.github/actions/java-verify` action runs `apps/api/check.sh` and `db/check.sh` with
 PostgreSQL 17 and the full JaCoCo/OWASP/SpotBugs tier), and `docs` (`scripts/docs.sh`).
 The single `Delivery gate` job requires every verification job to pass or be skipped
-on purpose, and branch protection checks it on the exact commit. Every pull request
-runs this workflow, including documentation-only changes: there is no path filter on
-either trigger, so a path-filtered PR or push would leave the required exact-SHA check
-unreported and block the protected branch. Every push to `main` and every `v*` tag
-runs the chain too.
+on purpose, and branch protection checks it on the exact commit. Every pull request,
+every push to `main`, and every `v*` tag runs this workflow, including
+documentation-only changes: there is no path filter on either the PR or push trigger,
+so a path-filtered run would leave the required exact-SHA check unreported and block
+the protected branch. Runs use one concurrency queue per PR head SHA or other ref with
+`cancel-in-progress: false` and `queue: max`, so a new head is never dropped and
+every exact SHA receives its own verdict (`.github/workflows/delivery.yml`).
 
 **Integrator (before merge and on tags).** The integrator runs
 `bash scripts/integrator-gate.sh` — full `check.sh` plus `docs.sh` — on each merge

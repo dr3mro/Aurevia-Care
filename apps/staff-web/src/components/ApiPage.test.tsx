@@ -208,7 +208,7 @@ describe('ApiPage recovery actions', () => {
     );
 
     await waitFor(() => expect(screen.getByText('Your session has expired')).toBeTruthy());
-    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSessionExpired).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(onSignIn).toHaveBeenCalledTimes(1);
     expect(onSessionExpired).toHaveBeenCalledTimes(1);

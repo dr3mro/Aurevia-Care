@@ -11,4 +11,4 @@ cd "$(dirname "$0")/.."
 base="${1:?usage: quality-gate.sh BASE_SHA NOTES_FILE}"
 notes="${2:?usage: quality-gate.sh BASE_SHA NOTES_FILE}"
 python3 -I scripts/check-constraints.py --base "$base" --require-base
-python3 -I scripts/check-verdicts.py "$notes" --base "$base"
+python3 -I scripts/check-verdicts.py "$notes" --base "$base" --require "aurevia-code-reviewer,aurevia-coverage-auditor,aurevia-devsecops,aurevia-qa-reviewer"
