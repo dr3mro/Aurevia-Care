@@ -241,7 +241,7 @@ jobs:
     needs: [plan, worker, integrate]
     if: always() && needs.plan.result == 'success' && needs.integrate.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: read
@@ -255,6 +255,21 @@ jobs:
             scripts
             tasks/
             tasks
+      - name: Wait for Delivery on main before advancing
+        if: vars.SWARM_SINGLE_TASK == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+        run: |
+          for i in $(seq 1 30); do
+            if python3 -c "import sys; sys.path.insert(0,'scripts'); import swarm; print('red' if swarm.main_is_red() else 'green')" | grep -q green; then
+              echo "Delivery green on main; advancing."
+              exit 0
+            fi
+            echo "Delivery not green yet; waiting 60s ($i/30)."
+            sleep 60
+          done
+          echo "Delivery not green after 30 minutes; skipping advancement."
+          exit 0
       - env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
