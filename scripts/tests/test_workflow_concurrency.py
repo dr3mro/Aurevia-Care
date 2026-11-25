@@ -87,3 +87,12 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         self.assertIsInstance(trigger, dict)
         self.assertNotIn("paths", trigger)
         self.assertNotIn("paths-ignore", trigger)
+
+    def test_delivery_documentation_matches_unfiltered_triggers(self):
+        # A stale filter claim tells maintainers a check runs that GitHub never creates,
+        # so the operator guide must describe the same trigger contract as the workflow.
+        guide = " ".join(
+            (ROOT / "docs/reference/testing-guide.md").read_text(encoding="utf-8").split()
+        )
+        self.assertNotIn("`paths-ignore` on `push`", guide)
+        self.assertIn("Every push to `main` and every version tag runs it", guide)
