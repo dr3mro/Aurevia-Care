@@ -1,6 +1,6 @@
 - [-] FIX-TEST-WORKSPACE-RESET · Prevent tooling tests from resetting the real workspace
-  - agent: swarm-8
-  - attempts: 20
+  - agent: swarm-9
+  - attempts: 21
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm.py, scripts/tests/test_swarm_delivery_state.py, scripts/tests/test_workspace_git_isolation.py, .opencode/config/BUGS.md, .opencode/config/MEMORY.md, .opencode/config/WORKSPACE.md, tasks/01278000-FIX-TEST-WORKSPACE-RESET.md
   - details: Full tooling suite reset the real checkout twice at 14:26:36 -0500. Root cause: conflict-path integrator tests call real integrate_batch without mocking swarm.git; production rollback calls git reset --hard in the current directory. Add a regression that forbids subprocess execution, mock every Git boundary in affected tests, verify no workspace mutation, and record non-Git evidence.
