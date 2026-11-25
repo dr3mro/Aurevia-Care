@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { RenderResult } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../theme/breakpoints';
 import { ThemeProvider } from '../../../theme/ThemeProvider';
@@ -86,8 +87,8 @@ function propsFor(overrides: Partial<StaffMessageLayoutProps> = {}): StaffMessag
   };
 }
 
-function renderLayout(props: StaffMessageLayoutProps = propsFor()): void {
-  render(
+function renderLayout(props: StaffMessageLayoutProps = propsFor()): RenderResult {
+  return render(
     <ThemeProvider>
       <StaffMessageLayout {...props} />
     </ThemeProvider>,
@@ -164,9 +165,25 @@ describe('responsive staff message layout (WEB-07, UX-01, WEB-09 R9)', () => {
       'compact',
     );
     expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-composer')).toBeTruthy();
     expect(screen.queryByTestId('staff-message-pane-detail')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Back to list' })).toBeNull();
     expect(tracksOf(paneGrid())).toHaveLength(1);
+  });
+
+  it('does not show a back action on tablet or desktop when a detail is open', () => {
+    installMatchMedia('medium');
+    const first = renderLayout(propsFor({ detailOpen: true }));
+    expect(screen.queryByRole('button', { name: 'Back to list' })).toBeNull();
+    expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-detail')).toBeTruthy();
+    first.unmount();
+
+    installMatchMedia('expanded');
+    renderLayout(propsFor({ detailOpen: true }));
+    expect(screen.queryByRole('button', { name: 'Back to list' })).toBeNull();
+    expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-detail')).toBeTruthy();
   });
 
   it('compact shows the detail and a back action when a detail is open', () => {
@@ -201,8 +218,14 @@ describe('no horizontal scroll and keyboard-reachable composer', () => {
 
     const root = screen.getByTestId('staff-message-layout');
     const grid = paneGrid();
-    expect(root.style.overflowX).toBe('hidden');
-    expect(grid.style.overflowX).toBe('hidden');
+    // A clipping overflow would make this a scroll container and defeat the
+    // sticky composer, so the tracks and wrapping must carry the no-scroll
+    // guarantee instead. The painted measurement belongs to Playwright.
+    expect(root.style.overflowX).toBe('');
+    expect(root.style.overflow).toBe('');
+    expect(grid.style.overflowX).toBe('');
+    expect(grid.style.overflow).toBe('');
+    expect(root.style.scrollPaddingBlockEnd).toBe('var(--sc-space-8, 32px)');
     for (const track of tracksOf(grid)) {
       expect(track.startsWith('minmax(0,')).toBe(true);
     }
@@ -220,7 +243,8 @@ describe('no horizontal scroll and keyboard-reachable composer', () => {
     // DOM/stylesheet check only; painted keyboard behaviour is a Playwright proof.
     expect(composer.style.position).toBe('sticky');
     expect(composer.style.insetBlockEnd).toBe('0');
-    expect(composer.style.paddingBlockEnd).toContain('var(--safe-block-end, 0px)');
+    expect(composer.style.paddingBlockEnd).toBe('max(8px, var(--safe-block-end, 0px))');
+    expect(composer.style.background).toBe('var(--sc-color-surface-default, #ffffff)');
   });
 
   it('uses logical properties only under right-to-left', () => {

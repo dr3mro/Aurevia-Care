@@ -27,11 +27,14 @@ export interface StaffMessageLayoutProps {
 /**
  * Lay out staff messages as three panes on desktop, two on tablet and one pane
  * plus a labelled back action on a phone. The composer stays in the same React
- * tree at every width and is sticky below the expanded band, with block-end
- * padding floored by the mapped safe-area inset so a focused field and its Send
- * action remain reachable while the on-screen keyboard is open. All tracks are
- * `minmax(0, …)`, and all spacing uses logical properties, so a long clinical
- * value wraps under both LTR and RTL instead of forcing horizontal scroll.
+ * tree at every width and is sticky below the expanded band; block-end padding
+ * floored by the mapped safe-area inset and scroll-space reserved on the region
+ * keep it from covering the focused field. All tracks are `minmax(0, …)` and
+ * all spacing uses logical properties, so a long clinical value wraps under
+ * both LTR and RTL instead of forcing horizontal scroll. No clipping overflow
+ * is set: a scroll container would trap the sticky composer against a
+ * non-scrolling scrollport. Painted keyboard and reflow behaviour needs a
+ * real-browser proof; this component's DOM structure is not that proof.
  *
  * @param props - Pane content, accessible labels and the caller's back command.
  * @returns A single labelled region whose structure follows the resolved band.
@@ -55,7 +58,6 @@ export function StaffMessageLayout({
     display: 'grid',
     gap: tokens.spacing.lg,
     minInlineSize: 0,
-    overflowX: 'hidden',
     gridTemplateColumns: expanded
       ? 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)'
       : compact
@@ -64,7 +66,8 @@ export function StaffMessageLayout({
   };
   // On a narrower screen the composer spans the content grid and is pinned to
   // the block end. The safe-area value is mapped once by the shell, so no
-  // component names a physical inset or invents a new spacing token.
+  // component names a physical inset or invents a new spacing token. An opaque
+  // background stops content scrolling underneath the docked action.
   const composerStyle: CSSProperties = expanded
     ? paneStyle
     : {
@@ -73,6 +76,7 @@ export function StaffMessageLayout({
         position: 'sticky',
         insetBlockEnd: 0,
         paddingBlockEnd: `max(${tokens.spacing.md}, var(--safe-block-end, 0px))`,
+        background: 'var(--sc-color-surface-default, #ffffff)',
       };
 
   return (
@@ -81,7 +85,11 @@ export function StaffMessageLayout({
       data-testid="staff-message-layout"
       data-breakpoint={breakpoint}
       aria-label={label}
-      style={{ minInlineSize: 0, overflowX: 'hidden', overflowWrap: 'anywhere' }}
+      style={{
+        minInlineSize: 0,
+        overflowWrap: 'anywhere',
+        scrollPaddingBlockEnd: 'var(--sc-space-8, 32px)',
+      }}
     >
       {compact && detailOpen ? (
         <button type="button" className="touch" onClick={onBack}>
