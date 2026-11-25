@@ -1,11 +1,11 @@
 # ORCA core mechanisms — worker notes
 
 ## Summary
-Offline analysis library `scripts/orca_core.py`; 23 tests green; full suite 1768 green; module 100% line and branch coverage. Analysis only — no runtime orchestration.
+Offline analysis library `scripts/orca_core.py`; 24 tests green; full suite green on the final verbose rerun after two flaky TokenTests errors; module 100% line and branch coverage. Analysis only — no runtime orchestration.
 
 ## Test evidence
-- `python3 -I -m unittest discover -s scripts/tests -p 'test_orca_core*.py' -q` → `Ran 23 tests in 0.002s`, `OK`.
-- `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1768 tests in 109.949s`, `OK`.
+- `python3 -I -m unittest discover -s scripts/tests -p 'test_orca_core*.py' -q` → `Ran 24 tests in 0.002s`, `OK`.
+- `python3 -I -m unittest discover -s scripts/tests -q` → verbose rerun `Ran 1769 tests in 302.654s`, `OK`; two earlier runs failed on a flaky `TokenTests` patch error.
 - `bash scripts/python-coverage.sh` → `python coverage: 9 uncovered; add tests for them in scripts/tests` (pre-existing `scripts/swarm.py` lines against a stale resolved `origin/main`; no `orca_core.py` finding).
 - `check-constraints.py`, `check-docs.py`, `check-names.py` exit 0.
 

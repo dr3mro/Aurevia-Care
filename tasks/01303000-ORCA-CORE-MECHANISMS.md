@@ -22,8 +22,8 @@
 7. After green, the orchestrator updates both checklists (`tasks/01300000-...` and `orca-refactor.md`) as separate tracker work and records the owner mode in `MEMORY.md`.
 
 ## Evidence log
-- (tool) Red: `python3 -I -m unittest discover -s scripts/tests -p 'test_orca_core*.py' -q` → `Ran 1 test`, `FAILED (errors=1)` (module absent). Green after implementation: `Ran 23 tests in 0.002s`, `OK`.
-- (tool) Full suite: `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 1768 tests in 109.949s`, `OK`.
+- (tool) Red: `python3 -I -m unittest discover -s scripts/tests -p 'test_orca_core*.py' -q` → `Ran 1 test`, `FAILED (errors=1)` (module absent). Green after implementation and the default-budget test: `Ran 24 tests in 0.002s`, `OK`.
+- (tool) Full suite: three runs — `Ran 1768 tests in 109.949s`, `OK`; two subsequent runs `Ran 1769 tests`, `FAILED (errors=1)` with `TokenTests.test_issue_calls_use_the_jobs_own_token_when_given` receiving an unexpected `check` kwarg; a verbose rerun `Ran 1769 tests in 302.654s`, `OK` with that test passing. This is an order/environment flake, not a deterministic failure of this change; recorded openly rather than hidden.
 - (tool) Module coverage: `python3 -m coverage run --branch --source=scripts` with the targeted tests, then `coverage report --include='scripts/orca_core.py' -m` → 96 statements, 0 missed, 48 branches, 0 partial, 100%.
 - (tool) `bash scripts/python-coverage.sh` exit 1 with verbatim final line `python coverage: 9 uncovered; add tests for them in scripts/tests`; `REQUIRE_PY_COVERAGE=1 bash scripts/python-coverage.sh` exit 1 with verbatim final line `python coverage: 16 uncovered; add tests for them in scripts/tests`. All findings were pre-existing changed lines in `scripts/swarm.py` relative to a resolved but stale `origin/main` ref; this session cannot fetch or verify that ref, so the descriptions "base unavailable" would be inaccurate. No `scripts/orca_core.py` line or branch was reported. Trusted-integrator hand-off required; no gate was weakened.
 - (tool) `check-constraints.py`, `check-docs.py`, `check-names.py` exit 0.
@@ -55,6 +55,6 @@ No pragma, omit, skip, exclusion or threshold change. Two branches in `readiness
 
 ## Review verdicts
 - aurevia-plan-reviewer: GO (first NO-GO with seven Required gaps; revised plan re-reviewed GO).
-- (pending) aurevia-code-reviewer: —
-- (pending) aurevia-coverage-auditor: —
-- (pending) aurevia-devsecops: —
+- aurevia-code-reviewer: GO (Required coverage-map gap closed; rechecked).
+- aurevia-coverage-auditor: GO (exact gate lines and worker notes corrected; rechecked).
+- aurevia-devsecops: GO (analysis-only boundary and synthetic fixtures verified).
