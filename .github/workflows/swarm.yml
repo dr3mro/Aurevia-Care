@@ -107,14 +107,13 @@ jobs:
   plan:
     name: Plan the wave
     needs: select
-    if: always()
+    if: always() && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     # Planning reads tasks/ and claims tasks, so it never overlaps another
     # plan, whichever wave it belongs to.
     concurrency:
       group: swarm-plan-${{ github.repository }}
       cancel-in-progress: false
       queue: max
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -150,9 +149,11 @@ jobs:
         run: |
           if [[ "${SWARM_ENABLED:-true}" == "false" || "${SWARM_ENABLED:-true}" == "0" || "${SWARM_ENABLED:-true}" == "off" || "${SWARM_ENABLED:-true}" == "no" ]]; then
             echo "Swarm kill switch SWARM_ENABLED is off; skipping this wave." >&2
-            echo 'enabled=false' >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            echo 'count=0' >> "$GITHUB_OUTPUT"
+            {
+              echo 'enabled=false'
+              echo 'matrix={"include":[]}'
+              echo 'count=0'
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo 'enabled=true' >> "$GITHUB_OUTPUT"
