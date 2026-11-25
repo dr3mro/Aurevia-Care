@@ -1,5 +1,6 @@
-- [-] ORCA-BENCHMARK-HARNESS · Add a passive deterministic benchmark and evidence harness
-  - agent: orca
+- [x] ORCA-BENCHMARK-HARNESS · Add a passive deterministic benchmark and evidence harness
+  - evidence: Red `Ran 17 tests in 0.004s`, `FAILED (errors=16)` → green `Ran 20 tests in 0.018s`, `OK`; module coverage 61 statements/16 branches, 100%; full suite `Ran 1825 tests in 107.546s`, `OK`; `COVERAGE_BASE=origin/main bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; plan/code/coverage/security reviewers GO. Evidence source: tool commands and read-only reviewers; no simulated or human user feedback.
+  - pr: none — no Git or `gh` operation is permitted in this session; scoped patch handed to the trusted integrator.
   - parent: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
   - requirements: ORCA-002, 007, 028, 041, 044, 045, 051, 059, 081
   - scope: scripts/orca_benchmark.py, scripts/tests/test_orca_benchmark.py, tasks/01306000-ORCA-BENCHMARK-HARNESS.md
@@ -38,6 +39,6 @@ No pragma, omit, skip, exclusion or threshold change.
 
 ## Review verdicts
 - aurevia-plan-reviewer: GO (first NO-GO with five Required gaps; revised plan re-reviewed GO).
-- (pending) aurevia-code-reviewer: —
-- (pending) aurevia-coverage-auditor: —
-- (pending) aurevia-devsecops: —
+- aurevia-code-reviewer: GO (passive boundary, counted doc loads, anti-fabrication and hermetic planner fix verified).
+- aurevia-coverage-auditor: GO (all 16 branches named, no pragma/skip/exclusion/threshold change).
+- aurevia-devsecops: GO (no process/network/clock/tokeniser API; unavailable metrics textual and targets labelled).

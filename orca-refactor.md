@@ -418,7 +418,7 @@ Fail closed when mandatory skill activation fails.
 
 # PHASE 3 — TASK INTELLIGENCE AND CONTEXT COMPILATION
 
-## [ ] ORCA-014 — Intelligent task classification
+## [-] ORCA-014 — Intelligent task classification
 
 Classify tasks by:
 
@@ -1380,7 +1380,7 @@ Delivery, workers, pull requests, watchdog, diagnostics, and workflow tests.
 
 Document arguments, environment variables, outputs, and exit codes.
 
-## [-] ORCA-060 — Script ownership validator
+## [x] ORCA-060 — Script ownership validator
 
 Detect:
 
@@ -1434,7 +1434,7 @@ Verify:
 
 # PHASE 13 — ADVANCED AGENT INTELLIGENCE
 
-## [ ] ORCA-064 — Intelligent task decomposition
+## [-] ORCA-064 — Intelligent task decomposition
 
 Split oversized tasks into independently testable subtasks.
 

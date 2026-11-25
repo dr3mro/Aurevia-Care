@@ -38,8 +38,8 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 11 | Task-to-skill routing matrix | Partial: `scripts/route-task.py` exists | tool (file read) |
 | 12 | Standardised skill definitions | Pending Stage E | no evidence |
 | 13 | Agent capability contracts | Pending Stage E | no evidence |
-| 14 | Task execution contract schema | Pending Stage F | no evidence |
-| 15 | Task readiness assessment | Pending Stage F | no evidence |
+| 14 | Task execution contract schema | Analysis schema available | `scripts/orca_core.py`, task 01307000 |
+| 15 | Task readiness assessment | Analysis scoring available | `scripts/orca_core.py` readiness/assess readiness |
 | 16 | Repository knowledge index | Pending Stage F | no evidence |
 | 17 | Impact analysis mechanism | Pending Stage F | no evidence |
 | 18 | Context compiler | Pending Stage F | no evidence |
@@ -65,7 +65,7 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 38 | Script ownership and path validator | Implemented locally; 100% module coverage; full gate red on stale base | `scripts/check-ownership.py`, `scripts/ownership.json`, task 01304000 |
 | 39 | Updated test discovery configuration | Pending Stage D | no evidence |
 | 40 | Complete regression test suite | Partial: ~75 Python modules, targeted run green | tool |
-| 41 | Baseline benchmark results | Available as byte/line and test-count proxies; token metrics unavailable | tool, task 01300000 evidence log |
+| 41 | Baseline benchmark results | Available: passive harness plus byte/line and test-count proxies; token metrics unavailable | `scripts/orca_benchmark.py`, task 01306000 |
 | 42 | Post-refactoring benchmark results | Pending Stage N | no evidence |
 | 43 | Skill effectiveness results | Pending Stage N | no evidence |
 | 44 | Instruction adherence results | Pending Stage N | no evidence |
