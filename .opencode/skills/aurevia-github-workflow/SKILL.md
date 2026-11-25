@@ -10,7 +10,7 @@ Verify required checks for the exact SHA, version derivation from tag, least-pri
 Swarm workflow invariants (each one broke or nearly broke a run):
 - An agent step never holds a write token. Untrusted output (bundles, JSON, notes, a pull request's own code) is acted on by a second job on a fresh runner that checks out `main`'s scripts; never run untrusted code in the job or step that holds the token.
 - A reusable workflow's jobs may only request permissions the calling job grants; a missing scope fails the whole run at startup (`test_reusable_workflow_jobs_ask_only_for_what_the_caller_grants`).
-- Concurrency groups that must not drop a waiting run use `cancel-in-progress: false` and `queue: max`. GitHub rejects the combination of `queue: max` with cancellation of a running run at workflow validation time, before any job starts, so cancellation is never an option on a queueing gate. Every push to main, tag, dispatch and merge-group run stays per ref because branch protection checks the exact SHA. A pull request can only merge its current head, so Delivery groups PR runs by head SHA: a new head starts in its own group instead of queueing behind a stale head, and the current head always reports `Delivery gate`.
+- Concurrency groups that must not drop a waiting run use `cancel-in-progress: false` and `queue: max`. GitHub rejects the combination of `queue: max` with cancellation of a running run at workflow validation time, before any job starts, so cancellation is never an option on a queueing gate. Delivery groups pull-request runs by `${{ github.event.pull_request.head.sha }}` and every other trigger by `${{ github.ref }}`, so each PR head gets its own queue and every exact SHA receives its own `Delivery gate` verdict; main, tag, dispatch and merge-group runs queue per ref.
 - Job outputs that may contain anything masked as a secret are dropped by GitHub; pass ids, not task text, through matrices.
 - Commits to `main` from automation carry `[skip ci]` and push only the paths they own; reporting (issues, comments) is best effort and must never fail the job that called it.
 - Cron is UTC: a local-time schedule needs one cron per daylight-saving season, each guarded to run only in its season. Scheduled runs can start late.
@@ -23,7 +23,7 @@ Swarm workflow invariants (each one broke or nearly broke a run):
 |---|---|
 | The agent step can hold the token, it is our own code. | Never. Untrusted output is acted on by a second job on a fresh runner that uses main's scripts. |
 | I will test the workflow after merging. | Run `actionlint`, `shellcheck` and the unit tests first; workflow changes are protected files. |
-| Cancel the older run, it is stale. | No queueing gate may cancel a running run: GitHub rejects `queue: max` with `cancel-in-progress: true` before any job starts. Separate PR heads with a per-SHA concurrency group instead. |
+| Cancel the older run, it is stale. | No queueing gate may cancel a running run: GitHub rejects `queue: max` with `cancel-in-progress: true` before any job starts. Keep one per-branch queue so every head, including a re-pushed PR, receives its own verdict. |
 
 ## Red flags
 

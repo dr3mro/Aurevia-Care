@@ -43,3 +43,6 @@ apps/*/reports/mutation/
 
 # Generated from tasks/ by scripts/taskstore.py; not stored in git
 /TODO.md
+
+# Local PR worktrees created by gh_pr_workspace / gh_pr_fix_conflict
+/.workspaces/
