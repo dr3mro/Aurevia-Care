@@ -9,6 +9,13 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 DELIVERY_GROUP = "${{ github.event.pull_request.head.sha || github.ref }}"
 PLAN_GROUP = "swarm-plan-${{ github.repository }}"
 INTEGRATOR_GROUP = "swarm-integrator-${{ github.repository }}"
+# Operator docs that describe Delivery's triggers must stay in step with the
+# workflow; a stale path-filter claim makes reviewers expect a check that never
+# runs for the exact SHA branch protection requires.
+DELIVERY_DOCS = (
+    ROOT / "docs" / "reference" / "testing-guide.md",
+    ROOT / "docs" / "swarm" / "EFFICIENCY.md",
+)
 
 
 def load(path):
@@ -83,3 +90,11 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         self.assertIsInstance(trigger, dict)
         self.assertNotIn("paths", trigger)
         self.assertNotIn("paths-ignore", trigger)
+
+    def test_operator_docs_describe_the_unfiltered_delivery_trigger(self):
+        """The listed operator docs must not imply a filter suppresses the exact-SHA check."""
+        for path in DELIVERY_DOCS:
+            with self.subTest(doc=path.name):
+                text = path.read_text(encoding="utf-8").lower()
+                self.assertIn("no path filter", text)
+                self.assertNotIn("paths-ignore", text)

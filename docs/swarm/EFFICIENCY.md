@@ -57,12 +57,13 @@ of tasks/PRs; image rebuilds are rare (only on image-input changes or monthly).
 |---|---:|---:|---:|
 | Wave of 3 real tasks | 25 | 11 | 14 |
 | Integrator, 3 PRs | 9 | 3 | 6 |
-| Delivery per push to main (docs-only) | 7 | 1 | 6 |
 | Slot images rebuild | 11 | 1–3 | 8–10 |
 
 Estimates are naive runner-minute arithmetic from the observed job times; they are
 **not** measured GitHub billing. Items that cannot be measured locally are marked
-unverified in the change log below.
+unverified in the change log below. A former docs-only push saving is no longer
+claimed: there is no path filter on either Delivery trigger, so every push to `main`
+and every pull request runs the full chain and reports the exact-SHA check.
 
 ## Minutes saved by each change (estimated)
 
@@ -73,7 +74,7 @@ unverified in the change log below.
 | 3 | Fewer jobs | ~1 min per extra slot | Publish is one job for all slots instead of a 10-way matrix; the separate publish job's 5–11s setup billed as a minute per slot. Folding into the worker would save another minute but was rejected to keep the token out of agent-written code. |
 | 4 | Right-size pool | up to ~21 min per idle wave | Default cap 10 → 3 ready tasks; empty plan starts no worker jobs. Observed no-op wave billed 3 min; a full 10-slot image build billed 11 min. |
 | 5 | Faster launch | ~1 min per base rebuild, unverified | Dropped `curl`/`shellcheck` from the worker image and put the warm Maven repo in one layer; slot layers stay config-only and only slots in the wave are pulled. Image pull cost (13–19s) and size/billing cannot be measured locally (no Docker); the V1→V2 CLI fix is carried over. |
-| 6 | Fewer triggers | ~6 min per docs-only push to main | `paths-ignore` for `docs/**` and Markdown on `push` skips Delivery's ~6-minute job set for documentation-only commits already on main. Pull requests have no path filter: every PR must report the required `Delivery gate` check, so a documentation-only PR runs the full chain. Waves still run only on tasks/ changes or manual dispatch. |
+| 6 | Fewer triggers (retired) | none — the filter was removed | There is no path filter on either Delivery trigger: a filtered PR or push would leave the exact-SHA `Delivery gate` check unreported and block the protected branch. Every PR and every push to `main` runs the full chain; waves still run on `tasks/` pushes, the hourly schedule, completed slot-image runs or manual dispatch. |
 | 7 | Budget guard | unbounded risk reduction | Refuses a wave above 90% of the 1,500-minute cap and opens an issue; no direct per-wave saving, but limits worst-case monthly spend. |
 
 **Unverified on GitHub:** integrator merge seconds (no merge job completed in the
