@@ -852,6 +852,10 @@ async function runConfigurationVersions(ctx: TaskContext): Promise<void> {
     ctx,
     dialog.getByRole('button', { name: words.text('approveConfirm'), exact: true }),
   );
+  // The dialog unmounts only after the command resolves, so this is the durable
+  // proof that the irreversible action reached the boundary. Waiting here also
+  // keeps the recorded-call assertion from racing the async fetch.
+  await expect(dialog).toHaveCount(0);
   const approvalCall = `POST /api/v1/configuration/${configurationKey}/versions/2/approve`;
   expect(store.calls, `approval calls: ${JSON.stringify(store.calls)}`).toContain(approvalCall);
   // The approved row is the durable outcome; the transient status line has a
@@ -916,11 +920,13 @@ async function runAudit(ctx: TaskContext): Promise<void> {
   ];
   await enter(ctx, fields[0] ?? form.locator('#audit-action'), 'CONFIG_CREATE');
   await submitForm(ctx, form, fields);
+  // Assert the filtered result first: it is rendered only after the query
+  // resolves, so the recorded-call check cannot race the async fetch.
+  await expect(events).toContainText('CONFIG_CREATE');
+  await expect(events).not.toContainText('FACILITY_READ');
   expect(
     store.calls.some((call) => call.includes('action=CONFIG_CREATE')),
   ).toBe(true);
-  await expect(events).toContainText('CONFIG_CREATE');
-  await expect(events).not.toContainText('FACILITY_READ');
 
   const from = fields[3] ?? form.locator('#audit-from');
   await enter(ctx, from, 'not-a-real-instant');

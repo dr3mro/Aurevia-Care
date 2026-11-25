@@ -139,6 +139,7 @@ const currentSpecs: readonly string[] = [
   'radflow/radiology-bilingual-journey.spec.ts',
   'radflow/radiology-journey.spec.ts',
   'reception/reception-journey.spec.ts',
+  'responsive-admin.spec.ts',
   'responsive-scheduling.spec.ts',
   'responsive-system.spec.ts',
   'responsiveLayout.spec.ts',
@@ -255,13 +256,16 @@ describe('WEB-10 clause 2 — real-browser role journeys', () => {
       ),
     );
     // Pin the whole matched set so a genuinely new visual-evidence spec still
-    // trips this wire. `reflowAndZoom.spec.ts` and `rightToLeftResponsive.spec.ts`
-    // match through computed-style layout reads, while `darkModeResponsive.spec.ts`
-    // supplies the light/dark theme evidence; all three are committed and active.
+    // trips this wire. `reflowAndZoom.spec.ts`, `rightToLeftResponsive.spec.ts`
+    // and `responsive-admin.spec.ts` match through computed-style layout reads,
+    // while `darkModeResponsive.spec.ts` supplies the light/dark theme evidence;
+    // all four are committed and active. The admin match measures overflow, not
+    // theme state, so the light/dark clause half stays honestly unpinned.
     expect(visualChecks.sort()).toEqual(
       [
         'darkModeResponsive.spec.ts',
         'reflowAndZoom.spec.ts',
+        'responsive-admin.spec.ts',
         'rightToLeftResponsive.spec.ts',
       ].sort(),
     );
