@@ -418,7 +418,7 @@ Fail closed when mandatory skill activation fails.
 
 # PHASE 3 — TASK INTELLIGENCE AND CONTEXT COMPILATION
 
-## [ ] ORCA-014 — Intelligent task classification
+## [-] ORCA-014 — Intelligent task classification
 
 Classify tasks by:
 
@@ -723,7 +723,7 @@ Do not mutate tracked configuration during execution.
 
 # PHASE 6 — MEMORY AND KNOWLEDGE MANAGEMENT
 
-## [ ] ORCA-029 — Scoped memory retrieval
+## [-] ORCA-029 — Scoped memory retrieval
 
 Classify memory into:
 
@@ -756,7 +756,7 @@ Use concurrency-safe updates.
 
 Preserve user-maintained notes.
 
-## [ ] ORCA-031 — Failure knowledge
+## [-] ORCA-031 — Failure knowledge
 
 For verified failures, record:
 
@@ -874,7 +874,7 @@ Use disposable repositories for unsafe-operation tests.
 
 # PHASE 9 — ENGINEERING QUALITY AND INDEPENDENT VERIFICATION
 
-## [ ] ORCA-038 — Acceptance criteria traceability
+## [-] ORCA-038 — Acceptance criteria traceability
 
 Map each acceptance criterion to:
 
@@ -1380,7 +1380,7 @@ Delivery, workers, pull requests, watchdog, diagnostics, and workflow tests.
 
 Document arguments, environment variables, outputs, and exit codes.
 
-## [-] ORCA-060 — Script ownership validator
+## [x] ORCA-060 — Script ownership validator
 
 Detect:
 
@@ -1434,7 +1434,7 @@ Verify:
 
 # PHASE 13 — ADVANCED AGENT INTELLIGENCE
 
-## [ ] ORCA-064 — Intelligent task decomposition
+## [-] ORCA-064 — Intelligent task decomposition
 
 Split oversized tasks into independently testable subtasks.
 
@@ -1459,7 +1459,7 @@ Invalidate stale entries when source changes.
 
 Prefer existing indexing capabilities over introducing a new service.
 
-## [ ] ORCA-066 — Change impact analysis
+## [-] ORCA-066 — Change impact analysis
 
 Identify affected:
 
@@ -1993,7 +1993,7 @@ Check precedence, native discovery, selected skills, duplication, permissions, a
 
 # PHASE 15 — COMPLETE FEATURE DELIVERY AND ENGINEERING RELIABILITY
 
-## [ ] ORCA-101 — Closed-loop feature verification
+## [-] ORCA-101 — Closed-loop feature verification
 
 Verify applicable feature layers:
 
@@ -2239,7 +2239,7 @@ Prevent simultaneous conflicting writes.
 
 Require controlled ownership transfer.
 
-## [ ] ORCA-123 — Adaptive concurrency
+## [-] ORCA-123 — Adaptive concurrency
 
 Adjust concurrency according to:
 

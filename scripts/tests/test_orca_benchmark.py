@@ -76,6 +76,26 @@ class CountTests(unittest.TestCase):
             empty.write_text("x = 1\n", encoding="utf-8")
             self.assertEqual(self.module.count_tests(empty), 0)
 
+    def test_doc_load_count_rejects_non_list_instructions(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            profile = Path(scratch) / "config.json"
+            profile.write_text('{"instructions": "abc"}', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "no instruction list"):
+                self.module.doc_load_count(profile)
+            profile.write_text("[]", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "cannot read"):
+                self.module.doc_load_count(profile)
+
+    def test_count_tests_handles_invalid_source(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            path = Path(scratch) / "bad.py"
+            path.write_text("def broken(:", encoding="utf-8")
+            self.assertEqual(self.module.count_tests(path), 0)
+
+    def test_count_tests_handles_a_missing_file(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            self.assertEqual(self.module.count_tests(Path(scratch) / "missing.py"), 0)
+
     def test_count_agents_and_skills(self):
         self.assertEqual(self.module.count_agents(ROOT), 39)
         self.assertEqual(self.module.count_skills(ROOT), 40)
@@ -167,12 +187,16 @@ class BoundaryTests(unittest.TestCase):
                 names.update(alias.name.split(".")[0] for alias in node.names)
             elif isinstance(node, ast.ImportFrom) and node.module:
                 names.add(node.module.split(".")[0])
+                names.update(alias.name for alias in node.names)
+                names.update(alias.asname for alias in node.names if alias.asname)
             elif isinstance(node, ast.Attribute):
                 names.add(node.attr)
             elif isinstance(node, ast.Name):
                 names.add(node.id)
         for forbidden in ("subprocess", "Popen", "socket", "urllib", "requests",
-                          "time", "datetime", "tokenizer", "getenv", "environ"):
+                          "http", "ftplib", "smtplib", "ssl", "git", "run_agent",
+                          "time", "datetime", "timeit", "tokenizer", "getenv",
+                          "environ"):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, names)
 

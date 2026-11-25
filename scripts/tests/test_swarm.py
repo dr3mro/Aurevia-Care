@@ -142,8 +142,17 @@ class ConcurrentWaveTests(unittest.TestCase):
                 self.assertFalse(started)
                 self.assertFalse(fake.said("--ref", "swarm.yml"))
 
-    def test_twenty_story_workers_per_wave(self):
-        self.assertEqual(swarm.STORY_WAVE_WORKERS, 20)
+    def test_wave_workers_cap_is_seven(self):
+        self.assertEqual(swarm.WAVE_WORKERS, 7)
+        self.assertEqual(swarm.STORY_WAVE_WORKERS, 7)
+
+    def test_plan_workers_clamps_a_request_above_seven(self):
+        self.assertEqual(swarm.clamp_wave_workers(20), 7)
+        self.assertEqual(swarm.clamp_wave_workers(3), 3)
+        self.assertEqual(swarm.clamp_wave_workers(0), 1)
+
+    def test_seven_story_workers_per_wave(self):
+        self.assertEqual(swarm.STORY_WAVE_WORKERS, 7)
 
     def test_a_wave_needs_free_worker_capacity_and_none_waiting(self):
         for waiting, live, room in ((0, 19, True), (0, 20, False), (1, 2, False)):
@@ -151,12 +160,13 @@ class ConcurrentWaveTests(unittest.TestCase):
                  mock.patch.object(swarm, "active_workers", return_value=live):
                 self.assertEqual(swarm.wave_has_room(), room)
 
-    def test_all_twenty_workers_can_use_ten_accounts_with_unique_tasks(self):
+    def test_seven_workers_use_seven_accounts_with_unique_tasks(self):
         accounts = [{"slot": i} for i in range(1, 11)]
-        tasks = "\n".join(f"- [ ] SYN-{i} · Task {i}\n  - scope: app/{i:02d}/module" for i in range(20))
-        plan = swarm.plan_workers(20, swarm.worker_slots(accounts, 0), tasks, [])
-        self.assertEqual(len({worker["id"] for worker in plan}), 20)
-        self.assertEqual([worker["slot"] for worker in plan], list(range(1, 11)) * 2)
+        tasks = "\n".join(f"- [ ] SYN-{i} · Task {i}\n  - scope: app/{i:02d}/module" for i in range(7))
+        plan = swarm.plan_workers(swarm.WAVE_WORKERS, swarm.worker_slots(accounts, 0), tasks, [])
+        self.assertEqual(len({worker["id"] for worker in plan}), 7)
+        self.assertEqual({worker["slot"] for worker in plan}, set(range(1, 8)))
+        self.assertEqual([worker["slot"] for worker in plan], list(range(1, 8)))
 
     def test_fix_wave_queues_disjoint_prs_and_defers_conflicting_paths(self):
         text = ("- [ ] SYN-1 · First\n  - scope: app/common\n"
@@ -1048,11 +1058,20 @@ class PlanTests(unittest.TestCase):
         self.assertIn("for attempt in 1 2 3", text)
         self.assertIn("apt install attempt", text)
 
-    def test_wave_runs_twenty_workers_and_each_publishes_on_its_own(self):
+    def test_wave_runs_one_branch_group_and_seven_workers(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertIn("default: '20'", text)
-        self.assertIn("inputs.workers || '20'", text)
-        self.assertIn("max-parallel: 20", text)
+        self.assertIn("group: swarm-${{ github.ref }}", text)
+        self.assertIn("queue: max", text)
+        self.assertNotIn("group: swarm-${{ github.run_id }}", text)
+        self.assertIn("default: '7'", text)
+        self.assertIn("inputs.workers || '7'", text)
+        self.assertIn("max-parallel: 7", text)
+
+    def test_wave_runs_seven_workers_and_each_publishes_on_its_own(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertIn("default: '7'", text)
+        self.assertIn("inputs.workers || '7'", text)
+        self.assertIn("max-parallel: 7", text)
         # Each worker is a reusable-workflow call, so its publish job needs only its
         # own work job and never waits for the slowest worker of the wave.
         self.assertIn("uses: ./.github/workflows/swarm-worker.yml", text)
@@ -1078,7 +1097,7 @@ class PlanTests(unittest.TestCase):
         self.assertIn('if [[ "$GITHUB_EVENT_NAME" == schedule ]]', gate)
         self.assertIn('scripts/swarm.py daily-admission', gate)
 
-    def test_waves_overlap_but_planning_is_repository_serialized(self):
+    def test_one_wave_per_branch_and_planning_is_repository_serialized(self):
         import yaml
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         config = yaml.safe_load(text)
@@ -1101,7 +1120,8 @@ class PlanTests(unittest.TestCase):
             called = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
             self.assertEqual(called[True]["workflow_call"]["inputs"]["ignore_red_main"]["type"],
                              "boolean")
-        self.assertIn("github.run_id", config["concurrency"]["group"])
+        self.assertEqual(config["concurrency"]["group"], "swarm-${{ github.ref }}")
+        self.assertEqual(config["concurrency"]["queue"], "max")
         self.assertIs(config["concurrency"]["cancel-in-progress"], False)
         plan = config["jobs"]["plan"]["concurrency"]
         self.assertEqual(plan["group"], "swarm-plan-${{ github.repository }}")

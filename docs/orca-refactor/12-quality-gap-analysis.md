@@ -13,7 +13,7 @@ Read-only QA analysis; no implementation claim. Evidence source: tool file reads
 
 ## Smallest missing checks
 
-1. ORCA-101: add a matrix-path and pending-block rule to `check-docs.py` over `04-completion-and-safety.md:7-16`; command `python3 -I scripts/check-docs.py`.
+1. ORCA-101: DONE locally (task 01312000) — `completion_matrix_problems()` in `check-docs.py` validates the status cells of `04-completion-and-safety.md:7-16`; command `python3 -I scripts/check-docs.py` exits 0. This is a shape check only; it cannot verify human clinical acceptance or that a cited BUGS entry is still open.
 2. ORCA-102: add an architecture-rule test under `apps/api/src/test/java/com/aurevia/it/contract/`; command `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=ArchitectureRulesTest test` (not `-Pfast`).
 3. ORCA-103: add `disconnected-ui` and `missing-auth` rules to `check-wiring.py`; UI reachability via `bash apps/staff-web/check.sh`.
 4. ORCA-104: add POST-mapping↔catalog and DB-schema↔OpenAPI parity tests next to `OpenApiRouteParityTest`; keep `python3 -I contracts/openapi/check.py`.

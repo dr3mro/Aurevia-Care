@@ -29,6 +29,129 @@ class IdTests(unittest.TestCase):
         self.assertEqual(docs.spec_ids(text), {"IAM-01", "ARC-02"})
 
 
+class CompletionMatrixTests(unittest.TestCase):
+    """The completion matrix must state explicit, evidence-bearing statuses."""
+
+    HEADER = ("| Feature / spec IDs | Requirements | DB | Backend | API | Authorization | "
+              "Tenant isolation | Staff web | Patient mobile | Wiring | Unit | Integration | "
+              "Clinical safety | Docs | Independent review | Delivery |")
+    SEP = "|" + "---|" * 16
+    MATRIX = "docs/orca-refactor/04-completion-and-safety.md"
+
+    def repo(self, rows=()):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        if rows is not None:
+            path = tmp / self.MATRIX
+            path.parent.mkdir(parents=True)
+            lines = [self.HEADER, self.SEP]
+            lines.extend(rows)
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return tmp
+
+    def row(self, *statuses):
+        cells = ["Feature"] + list(statuses)
+        cells += ["verified"] * (16 - len(cells))
+        return "| " + " | ".join(cells) + " |"
+
+    def test_a_clean_matrix_has_no_errors(self):
+        self.assertEqual(docs.completion_matrix_problems(self.repo()), [])
+
+    def test_a_missing_matrix_is_an_error(self):
+        tmp = self.repo(rows=None)
+        (tmp / "docs" / "orca-refactor").mkdir(parents=True, exist_ok=True)
+        problems = docs.completion_matrix_problems(tmp)
+        self.assertTrue(any(self.MATRIX in item and "missing" in item for item in problems))
+
+    def test_a_missing_header_is_an_error(self):
+        tmp = self.repo()
+        (tmp / self.MATRIX).write_text("| Other | header |\n|---|---|\n", encoding="utf-8")
+        self.assertTrue(any("header" in item for item in docs.completion_matrix_problems(tmp)))
+
+    def test_bare_and_cited_verified_are_accepted(self):
+        tmp = self.repo([self.row("verified", "verified: `test_a`"),
+                         self.row("verified: V1__x.sql", "pending", "failed")])
+        self.assertEqual(docs.completion_matrix_problems(tmp), [])
+
+    def test_verified_without_a_citation_is_an_error(self):
+        tmp = self.repo([self.row("verified:   ")])
+        self.assertTrue(any("verified" in item for item in docs.completion_matrix_problems(tmp)))
+
+    def test_pending_needs_a_named_gap(self):
+        tmp = self.repo([self.row("pending: G1 human gate open")])
+        self.assertEqual(docs.completion_matrix_problems(tmp), [])
+        (tmp / self.MATRIX).write_text(
+            "\n".join([self.HEADER, self.SEP, self.row("pending:")]) + "\n", encoding="utf-8")
+        self.assertTrue(any("pending" in item for item in docs.completion_matrix_problems(tmp)))
+
+    def test_failed_accepts_a_bug_id_and_a_gate_ref(self):
+        tmp = self.repo([self.row("failed: `QA-SOURCE-05`", "failed: `g0:41,52-69`")])
+        self.assertEqual(docs.completion_matrix_problems(tmp), [])
+
+    def test_failed_without_a_reference_is_an_error(self):
+        tmp = self.repo([self.row("failed:")])
+        self.assertTrue(any("failed" in item for item in docs.completion_matrix_problems(tmp)))
+
+    def test_not_applicable_needs_a_justification(self):
+        tmp = self.repo([self.row("not applicable (PRD-06)")])
+        self.assertEqual(docs.completion_matrix_problems(tmp), [])
+        (tmp / self.MATRIX).write_text(
+            "\n".join([self.HEADER, self.SEP, self.row("not applicable")]) + "\n",
+            encoding="utf-8")
+        self.assertTrue(any("not applicable" in item
+                            for item in docs.completion_matrix_problems(tmp)))
+
+    def test_empty_and_unknown_cells_are_errors(self):
+        for status in ("", "green"):
+            with self.subTest(status=status):
+                tmp = self.repo([self.row(status)])
+                self.assertTrue(docs.completion_matrix_problems(tmp))
+
+    def test_errors_are_ordered_row_major_then_left_to_right(self):
+        tmp = self.repo([self.row("pending:", "verified:"), self.row("green")])
+        problems = docs.completion_matrix_problems(tmp)
+        self.assertEqual(len(problems), 3)
+        self.assertTrue(problems[0].endswith("3: pending has no gap"))
+        self.assertTrue(problems[1].endswith("3: verified has no citation"))
+        self.assertTrue(problems[2].endswith("4: unrecognised status green"))
+
+    def test_check_reports_a_bad_matrix_cell(self):
+        tmp = self.repo([self.row("verified:   ")])
+        spec = tmp / docs.SPEC
+        spec.parent.mkdir(parents=True, exist_ok=True)
+        spec.write_text("| IAM-01 | x |\n", encoding="utf-8")
+        (tmp / "NOTE.md").write_text("IAM-01 clean\n", encoding="utf-8")
+        errors = docs.check(tmp)
+        self.assertTrue(any("04-completion-and-safety.md:3: verified has no citation"
+                            in error for error in errors), errors)
+
+    def test_repository_without_the_docs_tree_ignores_the_matrix(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        self.assertEqual(docs.completion_matrix_problems(tmp), [])
+
+    def test_not_applicable_with_empty_justification_is_an_error(self):
+        tmp = self.repo([self.row("not applicable ()")])
+        self.assertTrue(any("not applicable has no justification" in item
+                            for item in docs.completion_matrix_problems(tmp)))
+
+    def test_a_ragged_row_is_left_to_the_structural_pass(self):
+        tmp = self.repo(["| Feature | pending: |"])
+        self.assertEqual(docs.completion_matrix_problems(tmp), [])
+
+    def test_specification_ids_are_not_checked_as_a_consumer(self):
+        tmp = self.repo()
+        spec = tmp / docs.SPEC
+        spec.parent.mkdir(parents=True, exist_ok=True)
+        spec.write_text("| IAM-01 | x |\n| IAM-99 | y |\n", encoding="utf-8")
+        self.assertFalse(any("unknown requirement ID" in item for item in docs.check(tmp)))
+
+    def test_non_matrix_documents_are_ignored(self):
+        tmp = self.repo()
+        (tmp / "README.md").write_text("| Feature | x |\n", encoding="utf-8")
+        self.assertEqual(docs.completion_matrix_problems(tmp), [])
+
+
 class RepositoryTests(unittest.TestCase):
     def test_repository_docs_are_consistent(self):
         self.assertEqual(docs.check(ROOT), [])
