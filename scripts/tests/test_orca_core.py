@@ -377,6 +377,123 @@ class IndexTests(unittest.TestCase):
         self.assertEqual(different["stale"], ("a",))
 
 
+class ImpactTests(unittest.TestCase):
+    """Impact analysis is deterministic and never drops a changed path."""
+
+    def test_impact_outputs_sorted_tuples_and_decisions(self):
+        result = orca_core.impact(
+            ("apps/api/A.java",),
+            {"apps/api/A.java": {"hash": "h", "kind": "backend", "ids": ("A",)}},
+            {"apps/api/A.java": ("senior-backend",)})
+        self.assertEqual(set(result), {"consumers", "entities", "web", "mobile",
+                                       "contracts", "tests", "security", "clinical",
+                                       "unmapped", "decisions"})
+        self.assertEqual(result["consumers"], ("senior-backend",))
+        self.assertEqual(result["decisions"], {"apps/api/A.java": ("consumers",)})
+        for key in ("entities", "web", "mobile", "contracts", "tests", "security",
+                    "clinical", "unmapped"):
+            self.assertEqual(result[key], ())
+
+    def test_impact_maps_each_boundary_and_multiple_categories(self):
+        paths = ("apps/staff-web/a.tsx", "apps/patient-mobile/b.ts", "contracts/openapi.yaml",
+                 "db/migrations/V1.sql", "scripts/tests/test_a.py", "apps/api/auth/C.java",
+                 "clinical/form.md")
+        result = orca_core.impact(paths, {}, {})
+        self.assertEqual(result["web"], ("apps/staff-web/a.tsx",))
+        self.assertEqual(result["mobile"], ("apps/patient-mobile/b.ts",))
+        self.assertEqual(result["contracts"], ("contracts/openapi.yaml",))
+        self.assertEqual(result["entities"], ("db/migrations/V1.sql",))
+        self.assertEqual(result["tests"], ("scripts/tests/test_a.py",))
+        self.assertEqual(result["security"], ("apps/api/auth/C.java",))
+        self.assertEqual(result["clinical"], ("clinical/form.md",))
+        self.assertIn("web", result["decisions"]["apps/staff-web/a.tsx"])
+
+    def test_impact_uses_index_kind_and_exact_reverse_ids(self):
+        index = {
+            "db/entity.sql": {"hash": "h", "kind": "database", "ids": ()},
+            "contracts/spec.yaml": {"hash": "c", "kind": "contract", "ids": ()},
+            "src/service.py": {"hash": "s", "kind": "backend",
+                               "ids": ("apps/api/A.java", "repo-id")},
+        }
+        result = orca_core.impact(("db/entity.sql", "contracts/spec.yaml",
+                                   "apps/api/A.java"), index, {})
+        self.assertEqual(result["entities"], ("db/entity.sql",))
+        self.assertEqual(result["contracts"], ("contracts/spec.yaml",))
+        self.assertEqual(result["consumers"], ("apps/api/A.java", "repo-id"))
+
+    def test_impact_security_and_clinical_names_and_or_sides(self):
+        result = orca_core.impact(
+            ("apps/api/plain.java", "apps/api/secure.java", "apps/api/clinical.java"),
+            {}, {"apps/api/plain.java": ("senior-backend",),
+                 "apps/api/secure.java": ("senior-spring-security",),
+                 "apps/api/clinical.java": ("physician-reviewer",)})
+        self.assertEqual(result["security"], ("apps/api/secure.java",))
+        self.assertEqual(result["clinical"], ("apps/api/clinical.java",))
+
+    def test_impact_unmapped_is_the_complement_and_no_path_is_dropped(self):
+        paths = ("docs/x.md", "apps/api/A.java", "docs/x.md")
+        result = orca_core.impact(paths, {}, {"apps/api/A.java": ("senior-backend",)})
+        self.assertEqual(result["unmapped"], ("docs/x.md",))
+        self.assertEqual(set(result["decisions"]), set(paths))
+        self.assertEqual(result["decisions"]["docs/x.md"], ("unmapped",))
+        self.assertTrue(all(result["decisions"][path] for path in paths))
+
+    def test_impact_covers_each_short_circuit_alternative(self):
+        with self.assertRaisesRegex(ValueError, "impact"):
+            orca_core.impact(("apps/api/A.java",), {}, {"apps/api/A.java": "senior-backend"})
+        kind_contract = orca_core.impact(
+            ("spec.yaml",), {"spec.yaml": {"hash": "h", "kind": "contract", "ids": ()}}, {})
+        self.assertEqual(kind_contract["contracts"], ("spec.yaml",))
+        security_path = orca_core.impact(("apps/api/security/A.java",), {}, {})
+        self.assertEqual(security_path["security"], ("apps/api/security/A.java",))
+        physician = orca_core.impact(("neutral.txt",), {}, {"neutral.txt": ("physician-reviewer",)})
+        clinical = orca_core.impact(("neutral.txt",), {}, {"neutral.txt": ("clinical-reviewer",)})
+        self.assertEqual(physician["clinical"], ("neutral.txt",))
+        self.assertEqual(clinical["clinical"], ("neutral.txt",))
+
+    def test_impact_accepts_a_generator_and_multiple_categories(self):
+        paths = (path for path in ("apps/api/auth/test_service.java",))
+        result = orca_core.impact(paths, {}, {"apps/api/auth/test_service.java":
+                                              ("senior-spring-security",)})
+        path = "apps/api/auth/test_service.java"
+        self.assertEqual(result["decisions"][path],
+                         ("consumers", "security", "tests"))
+        self.assertEqual(result["consumers"], ("senior-spring-security",))
+        self.assertEqual(result["security"], (path,))
+
+    def test_impact_empty_and_deterministic(self):
+        empty = orca_core.impact((), {}, {})
+        self.assertTrue(all(empty[key] == () for key in empty if key != "decisions"))
+        self.assertEqual(empty["decisions"], {})
+        args = (("apps/api/A.java", "db/migrations/V1.sql"),
+                {"apps/api/A.java": {"hash": "h", "kind": "backend", "ids": ()}},
+                {"apps/api/A.java": ("senior-backend",)})
+        self.assertEqual(orca_core.impact(*args), orca_core.impact(*args))
+
+    def test_impact_rejects_invalid_inputs(self):
+        for args in ((None, {}, {}), ("apps/api/A.java", {}, {}),
+                     ((1,), {}, {}), ((), [], {}), ((), {}, []),
+                     ((), {}, {"path": (1,)})):
+            with self.subTest(args=args), self.assertRaisesRegex(ValueError, "impact"):
+                orca_core.impact(*args)
+
+    def test_impact_source_has_no_dispatch_call(self):
+        source = Path(orca_core.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        function = next(node for node in tree.body
+                        if isinstance(node, ast.FunctionDef) and node.name == "impact")
+        names = set()
+        for node in ast.walk(function):
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name):
+                    names.add(node.func.id)
+                elif isinstance(node.func, ast.Attribute):
+                    names.add(node.func.attr)
+        for token in ("dispatch", "spawn", "run_agent", "subprocess"):
+            with self.subTest(token=token):
+                self.assertNotIn(token, names)
+
+
 class ContextTests(unittest.TestCase):
     """Context compilation keeps mandatory rules whole and applies budgets."""
 

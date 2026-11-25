@@ -2239,7 +2239,7 @@ Prevent simultaneous conflicting writes.
 
 Require controlled ownership transfer.
 
-## [ ] ORCA-123 — Adaptive concurrency
+## [-] ORCA-123 — Adaptive concurrency
 
 Adjust concurrency according to:
 

@@ -392,6 +392,83 @@ def stale_entries(index, files):
     }
 
 
+def impact(changed_paths, index, routed):
+    """Map changed paths to affected boundaries without executing any analysis.
+
+    Inputs: an iterable of changed path strings, an ``index_sources`` result and
+    a mapping of path to specialist-name strings. Output: a dict of sorted
+    tuples for eight non-exclusive categories plus an exclusive ``unmapped``
+    complement and a per-path ``decisions`` map so callers can prove no path was
+    dropped. Fragments and ids are case-sensitive and matched exactly as
+    documented; invalid input types raise ValueError. No file, Git command,
+    tracker or agent is touched. ``classify`` uses different signals because it
+    reasons about task risk, not about changed path boundaries.
+    """
+    if isinstance(changed_paths, str):
+        raise ValueError("impact: changed_paths must be an iterable of path strings")
+    try:
+        paths = tuple(changed_paths)  # materialize once: generators are single-pass
+    except TypeError as exc:
+        raise ValueError("impact: changed_paths must be an iterable of path strings") from exc
+    if not isinstance(index, dict):
+        raise ValueError("impact: index must be a dict")
+    if not isinstance(routed, dict):
+        raise ValueError("impact: routed must be a dict")
+    for path in paths:
+        if not isinstance(path, str):
+            raise ValueError("impact: path must be a string")
+    for names in routed.values():
+        if not isinstance(names, (list, tuple, set, frozenset)) or any(
+            not isinstance(name, str) for name in names
+        ):
+            raise ValueError("impact: routed names must be strings")
+    result = {key: set() for key in (
+        "consumers", "entities", "web", "mobile", "contracts", "tests",
+        "security", "clinical", "unmapped",
+    )}
+    decisions = {}
+    for path in sorted(set(paths)):
+        names = tuple(routed.get(path, ()))
+        matched = []
+        consumers = set(names)
+        for entry in index.values():
+            if path in entry.get("ids", ()):
+                consumers.update(entry["ids"])
+        if consumers:
+            result["consumers"].update(consumers)
+            matched.append("consumers")
+        if "db/migrations" in path or index.get(path, {}).get("kind") == "database":
+            result["entities"].add(path)
+            matched.append("entities")
+        if "apps/staff-web" in path:
+            result["web"].add(path)
+            matched.append("web")
+        if "apps/patient-mobile" in path:
+            result["mobile"].add(path)
+            matched.append("mobile")
+        if "contracts/" in path or index.get(path, {}).get("kind") == "contract":
+            result["contracts"].add(path)
+            matched.append("contracts")
+        if "test" in path:
+            result["tests"].add(path)
+            matched.append("tests")
+        if "auth" in path or "security" in path or any("security" in name for name in names):
+            result["security"].add(path)
+            matched.append("security")
+        if "clinical" in path or any(
+            "physician" in name or "clinical" in name for name in names
+        ):
+            result["clinical"].add(path)
+            matched.append("clinical")
+        if not matched:
+            result["unmapped"].add(path)
+            matched.append("unmapped")
+        decisions[path] = tuple(sorted(matched))
+    result["decisions"] = decisions
+    return {key: tuple(sorted(value)) if key != "decisions" else value
+            for key, value in result.items()}
+
+
 def save_checkpoint(path, state):
     """Write a JSON state snapshot to ``path`` and return its ``Path`` object.
 

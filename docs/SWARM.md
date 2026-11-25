@@ -81,7 +81,7 @@ Each task may carry `priority: high|normal|low`. Without it a task is **high** w
 
 ## Forcing a task
 
-To start one task now, run **Agent swarm** by hand (Actions, Run workflow) and put its id in `task` (for example `FIX-INSTANT-OPENAPI`), or run `gh workflow run swarm.yml --ref main -f task=<ID> -f now=true`. The plan job puts that task first, ignores its attempt limit and the "pull request waiting for a fix" gate, and starts it even when other waves are queued. It still refuses a task that is not open, has no scope, has unmet `depends`, or whose scope overlaps a running task.
+To start one task now, run **Agent swarm** by hand (Actions, Run workflow) and put its id in `task` (for example `FIX-INSTANT-OPENAPI`), or run `gh workflow run swarm.yml --ref main -f task=<ID>`. The `now=true` input is reserved and currently inert: a dispatch still queues behind the running wave for this branch. The plan job puts that task first and ignores its attempt limit and the "pull request waiting for a fix" gate, but cannot bypass the one-wave-per-branch group. It still refuses a task that is not open, has no scope, has unmet `depends`, or whose scope overlaps a running task.
 
 ## Issues and hand-off
 

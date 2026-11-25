@@ -1,5 +1,6 @@
-- [-] SWARM-WAVE-LIMITS · One swarm wave per branch and seven workers per wave
-  - agent: orca
+- [x] SWARM-WAVE-LIMITS · One swarm wave per branch and seven workers per wave
+  - evidence: Red on missing `WAVE_WORKERS`/clamp/branch group → green `test_swarm.py` 365/365, `test_workflow_concurrency.py` 9/9, full suite `Ran 1864 tests in 106.117s`, `OK`; `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; four verdicts GO. `actionlint` 1.7.12 rejects `queue:` in new and pre-existing workflows (version limitation); live GitHub queue proof blocked. Evidence source: tool commands, owner directive and read-only reviewers.
+  - pr: none — no Git or `gh` operation is permitted in this session; protected `.github/` and `scripts/` patch will be held `needs-human` by the integrator.
   - requirements: OPS-06
   - scope: .github/workflows/swarm.yml, scripts/swarm.py, scripts/tests/test_swarm.py, scripts/tests/test_workflow_concurrency.py, docs/SWARM.md
   - details: Owner directive 2026-11-24: at most one running swarm wave per branch, and at most seven workers per wave. Keep queued runs waiting (never cancel a running wave), keep the global capacity ledger and branch protection unchanged, and update tests/documentation intentionally because the wave size changed. No live GitHub verification in this session.
@@ -27,6 +28,6 @@ Worker hand-off notes: `.agents/notes/01310000-20261124.md` includes the tradeof
 
 ## Review verdicts
 - aurevia-plan-reviewer: GO (first NO-GO with nine Required gaps; revised plan re-reviewed GO).
-- (pending) aurevia-code-reviewer: —
-- (pending) aurevia-coverage-auditor: —
-- (pending) aurevia-devsecops: —
+- aurevia-code-reviewer: GO (branch group, clamp and preserved global cap verified).
+- aurevia-coverage-auditor: GO (all clamp and workflow assertions named; intentional test changes retain assertions).
+- aurevia-devsecops: GO (no gate weakening, cancellation or token change; inert `now` input documented truthfully).

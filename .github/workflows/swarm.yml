@@ -21,7 +21,7 @@ on:
         description: 'Task id to launch first (optional; ignores the attempt limit, still needs open status, met dependencies and a free scope)'
         default: ''
       now:
-        description: 'Start immediately when this branch has no running wave; it does not bypass the one-wave-per-branch group'
+        description: 'Reserved and currently inert: a dispatch still queues behind the running wave for this branch. The one-wave-per-branch group cannot be bypassed.'
         type: boolean
         default: false
       ignore_red_main:
