@@ -17,7 +17,6 @@ import math
 import os
 import random
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -114,11 +113,25 @@ TRACKERS = [
 BOXES = {"todo": " ", "taken": "-", "done": "x"}
 STATUS = {box: name for name, box in BOXES.items()}
 # Read-only Git commands must not refresh or write the index opportunistically.
-READ_ONLY_GIT_COMMANDS = frozenset({
-    "diff", "status", "rev-parse", "merge-base", "ls-files", "ls-tree", "show",
-    "cat-file", "merge-tree", "rev-list", "log", "symbolic-ref", "for-each-ref",
-    "check-ref-format", "remote",
-})
+READ_ONLY_GIT_COMMANDS = frozenset(
+    {
+        "diff",
+        "status",
+        "rev-parse",
+        "merge-base",
+        "ls-files",
+        "ls-tree",
+        "show",
+        "cat-file",
+        "merge-tree",
+        "rev-list",
+        "log",
+        "symbolic-ref",
+        "for-each-ref",
+        "check-ref-format",
+        "remote",
+    }
+)
 ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · (.*)$")
 FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
 
@@ -184,7 +197,7 @@ def gh(*args, check=True):
         r"\b(?:500|502|503|504)\b|Bad Gateway|Service Unavailable|Internal Server Error"
         r"|secondary rate limit|abuse detection|rate limit exceeded|connection reset"
         r"|timed out|TLS handshake|temporary failure|unexpected EOF",
-        re.I,
+        re.IGNORECASE,
     )
     # Issue, comment and label calls use the job's own token when GH_ISSUES_TOKEN is set:
     # it always has issues: write, while SWARM_TOKEN (used for pushes) may not.
@@ -196,7 +209,10 @@ def gh(*args, check=True):
     attempt = 0
     while True:  # the last attempt always returns or raises
         done = subprocess.run(
-            ["gh", *args], capture_output=True, text=True, env=child_environment(extra)
+            ["gh", *args],
+            capture_output=True,
+            text=True,
+            env=child_environment(extra),
         )
         if not (check and done.returncode):
             return done.stdout
@@ -216,7 +232,7 @@ def gh(*args, check=True):
         )
 
 
-AUTH_HEADER_ARG = re.compile(r"(AUTHORIZATION:\s*basic\s+)\S+", re.I)
+AUTH_HEADER_ARG = re.compile(r"(AUTHORIZATION:\s*basic\s+)\S+", re.IGNORECASE)
 
 
 def safe_command(args):
@@ -233,6 +249,9 @@ class ReconciliationError(RuntimeError):
     """Authoritative merge evidence is missing, malformed or inconsistent."""
 
 
+class CapacityUnavailable(RuntimeError):
+    """The live worker count could not be established; treat capacity as full."""
+
 class TrackerPushBlocked(RuntimeError):
     """A tracker write was rejected by a repository rule and must not be retried."""
 
@@ -248,7 +267,7 @@ def repo_rule_rejection(stderr):
             r"GH013|repository rule violations|push declined due to repository rule|"
             r"required status checks are expected|protected branch",
             stderr or "",
-            re.I,
+            re.IGNORECASE,
         )
     )
 
@@ -256,7 +275,9 @@ def repo_rule_rejection(stderr):
 def git(*args, check=True):
     read_only = bool(args) and args[0] in READ_ONLY_GIT_COMMANDS
     done = subprocess.run(
-        ["git", *args], capture_output=True, text=True,
+        ["git", *args],
+        capture_output=True,
+        text=True,
         env=child_environment(read_only=read_only),
     )
     if check and done.returncode:
@@ -976,7 +997,15 @@ def run_event(run_id):
     ):
         # A red main is repaired by the next plan. Start it now instead of waiting for the
         # watchdog's half hour, because nothing else merges while main is red.
-        gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
+        gh(
+            "workflow",
+            "run",
+            "swarm.yml",
+            "--ref",
+            "main",
+            *wave_dispatch_args(),
+            check=False,
+        )
     suspected = first_error(log) or where
     if kind == "repository-rules":
         proposed = (
@@ -1129,7 +1158,15 @@ def watchdog():
     if not active and work and idle >= START_IDLE_MINUTES:
         # Nothing runs, so no worker's last job will start the next wave and the hourly schedule
         # did not either. A dispatch is the only thing left that can.
-        gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
+        gh(
+            "workflow",
+            "run",
+            "swarm.yml",
+            "--ref",
+            "main",
+            *wave_dispatch_args(),
+            check=False,
+        )
         print(f"No wave for {idle} minutes while work waits; started one.")
     if not active and work and idle >= STALL_MINUTES:
         number = record_issue(
@@ -1403,26 +1440,48 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
     branch = os.environ.get("DEFAULT_BRANCH", "main")
     try:
         out = subprocess.check_output(
-            ["gh", "pr", "list", "--state", "merged", "--base", branch,
-             "--limit", "500", "--json", "number,title,baseRefName,state"],
+            [
+                "gh",
+                "pr",
+                "list",
+                "--state",
+                "merged",
+                "--base",
+                branch,
+                "--limit",
+                "500",
+                "--json",
+                "number,title,baseRefName,state",
+            ],
             text=True,
             stderr=subprocess.DEVNULL,
             env=child_environment(read_only=True),
         )
         merged = json.loads(out) if out else None
     except (subprocess.CalledProcessError, ValueError, OSError, RuntimeError) as error:
-        raise ReconciliationError(f"cannot read merged pull requests: {error}") from error
+        raise ReconciliationError(
+            f"cannot read merged pull requests: {error}"
+        ) from error
     if not isinstance(merged, list) or len(merged) >= 500:
-        raise ReconciliationError("merged pull-request evidence is malformed or incomplete")
+        raise ReconciliationError(
+            "merged pull-request evidence is malformed or incomplete"
+        )
     by_task, by_number = {}, {}
     for item in merged:
         if not isinstance(item, dict):
             raise ReconciliationError("merged pull-request record is not an object")
         number, title = item.get("number"), item.get("title")
-        if (not isinstance(number, int) or isinstance(number, bool) or number <= 0
-                or not isinstance(title, str) or item.get("baseRefName") != branch
-                or item.get("state") != "MERGED"):
-            raise ReconciliationError("merged pull-request record has invalid identity or base")
+        if (
+            not isinstance(number, int)
+            or isinstance(number, bool)
+            or number <= 0
+            or not isinstance(title, str)
+            or item.get("baseRefName") != branch
+            or item.get("state") != "MERGED"
+        ):
+            raise ReconciliationError(
+                "merged pull-request record has invalid identity or base"
+            )
         if number in by_number:
             raise ReconciliationError("merged pull-request number is duplicated")
         task_id = task_id_of_title(title)
@@ -1458,7 +1517,9 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
             number = int(raw_number.lstrip("#"))
             item = by_number.get(number)
             if item is None or task_id_of_title(item["title"]) != tid:
-                raise ReconciliationError(f"task {tid} does not match merged PR #{number}")
+                raise ReconciliationError(
+                    f"task {tid} does not match merged PR #{number}"
+                )
         else:
             item = by_task.get(tid)
             if item is None:
@@ -1486,11 +1547,16 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
     if not changed or not persist:
         return len(changed)
     git("add", *changed)
-    git(*IDENTITY, "commit", "-qm", f"Reconcile {len(changed)} merged task(s) [skip ci]")
+    git(
+        *IDENTITY, "commit", "-qm", f"Reconcile {len(changed)} merged task(s) [skip ci]"
+    )
     if os.environ.get("GH_TOKEN"):
         authed_git("push", "origin", f"HEAD:{branch}")
     else:
-        print("GH_TOKEN not set: reconciliation was committed but not pushed", file=sys.stderr)
+        print(
+            "GH_TOKEN not set: reconciliation was committed but not pushed",
+            file=sys.stderr,
+        )
     return len(changed)
 
 
@@ -1556,7 +1622,18 @@ def monitor_select(mode, text, out_dir, now=None):
     _COMMENTS.clear()  # one fetch per issue per run, never stale across runs
     by_id = {t["id"]: t for t in parse_tasks(text)}
     open_tasks = {n: t for n, t in issue_tasks(text).items() if t["status"] != "done"}
-    live = set(live_workers())
+    try:
+        live = set(live_workers())
+    except CapacityUnavailable:
+        # Capacity unknown: do not dispatch new issue work this pass.
+        return {
+            "triage": [],
+            "prs": [],
+            "nudge": [],
+            "reset": [],
+            "close": [],
+            "exhausted": [],
+        }
     chosen = {
         "triage": [],
         "prs": [],
@@ -1906,7 +1983,9 @@ def ensure_labels():
 def _contains_model_key(value):
     """Return whether a JSON value contains a model-selection key at any depth."""
     if isinstance(value, dict):
-        return "model" in value or any(_contains_model_key(item) for item in value.values())
+        return "model" in value or any(
+            _contains_model_key(item) for item in value.values()
+        )
     if isinstance(value, list):
         return any(_contains_model_key(item) for item in value)
     return False
@@ -1916,7 +1995,9 @@ def load_slots(path):
     """Load slot definitions, rejecting model selection in top-level or nested config."""
     slots = json.loads(Path(path).read_text())["slots"]
     if any(_contains_model_key(slot) for slot in slots):
-        raise ValueError("slot configuration must not select a model; use SWARM_MODEL at run time")
+        raise ValueError(
+            "slot configuration must not select a model; use SWARM_MODEL at run time"
+        )
     return slots
 
 
@@ -3616,7 +3697,9 @@ def referenced_notes():
             text = Path(name).read_text(errors="replace")
         except OSError:
             continue
-        names.update(re.findall(r"(?:pr/notes|\.agents/notes)/([A-Za-z0-9._-]+\.md)", text))
+        names.update(
+            re.findall(r"(?:pr/notes|\.agents/notes)/([A-Za-z0-9._-]+\.md)", text)
+        )
     return names
 
 
@@ -3800,7 +3883,9 @@ def open_rules_pr(day, patch_path):
     # would only turn main red on the next code push: check the docs here instead.
     for check in ("check-docs.py", "check-secrets.py"):
         checked = subprocess.run(
-            [sys.executable, "-I", f"scripts/{check}"], capture_output=True, text=True,
+            [sys.executable, "-I", f"scripts/{check}"],
+            capture_output=True,
+            text=True,
             env=child_environment(read_only=True),
         )
         if checked.returncode:
@@ -3986,8 +4071,10 @@ def main_is_red(workflow="delivery.yml"):
     so one dispatched wave works through end to end. The override never changes
     what the gate reports on main; it only stops the swarm from deferring work."""
     if scheduling_override():
-        print("main_is_red: SWARM_IGNORE_RED_MAIN override; treating main as green",
-              file=sys.stderr)
+        print(
+            "main_is_red: SWARM_IGNORE_RED_MAIN override; treating main as green",
+            file=sys.stderr,
+        )
         return False
     try:
         runs = (
@@ -4139,12 +4226,19 @@ def delivery_pr_matches(pull_requests, pr, head):
     if not isinstance(pull_requests, list) or len(pull_requests) != 1:
         raise ValueError("Delivery run PR association is missing or ambiguous")
     item = pull_requests[0]
-    if not isinstance(item, dict) or not isinstance(item.get("number"), int) \
-            or isinstance(item.get("number"), bool):
+    if (
+        not isinstance(item, dict)
+        or not isinstance(item.get("number"), int)
+        or isinstance(item.get("number"), bool)
+    ):
         raise ValueError("Delivery run PR association is malformed")
     base, head_ref = item.get("base"), item.get("head")
-    if not isinstance(base, dict) or not isinstance(base.get("ref"), str) \
-            or not isinstance(head_ref, dict) or not isinstance(head_ref.get("sha"), str):
+    if (
+        not isinstance(base, dict)
+        or not isinstance(base.get("ref"), str)
+        or not isinstance(head_ref, dict)
+        or not isinstance(head_ref.get("sha"), str)
+    ):
         raise ValueError("Delivery run PR base or head is malformed")
     return (
         item["number"] == pr
@@ -4155,8 +4249,11 @@ def delivery_pr_matches(pull_requests, pr, head):
 
 def delivery_record_matches(run, pr, head):
     """Whether an already validated run record still names the expected PR association."""
-    if not isinstance(run, dict) or run.get("event") != "pull_request" \
-            or (run.get("headSha") or run.get("head_sha")) != head:
+    if (
+        not isinstance(run, dict)
+        or run.get("event") != "pull_request"
+        or (run.get("headSha") or run.get("head_sha")) != head
+    ):
         return False
     return delivery_pr_matches(run.get("pullRequests"), pr, head)
 
@@ -4167,24 +4264,34 @@ def validated_delivery_runs(raw_runs, head, pr, workflow_id):
         raise ValueError("Delivery run listing is not an array")
     validated = []
     for run in raw_runs:
-        if not isinstance(run, dict) or run.get("event") != "pull_request" \
-                or (run.get("headSha") or "") != head \
-                or run.get("workflowDatabaseId") != workflow_id:
+        if (
+            not isinstance(run, dict)
+            or run.get("event") != "pull_request"
+            or (run.get("headSha") or "") != head
+            or run.get("workflowDatabaseId") != workflow_id
+        ):
             continue
         run_id = delivery_run_id(run.get("databaseId"))
         if run_id is None:
             continue
         detail = gh_json("api", f"repos/{repo_slug()}/actions/runs/{run_id}")
-        if not isinstance(detail, dict) or detail.get("workflow_id") != workflow_id \
-                or detail.get("event") != "pull_request" or detail.get("head_sha") != head:
-            raise ValueError("Delivery run identity does not match the canonical workflow")
+        if (
+            not isinstance(detail, dict)
+            or detail.get("workflow_id") != workflow_id
+            or detail.get("event") != "pull_request"
+            or detail.get("head_sha") != head
+        ):
+            raise ValueError(
+                "Delivery run identity does not match the canonical workflow"
+            )
         if not delivery_pr_matches(detail.get("pull_requests"), pr, head):
             continue
         jobs = gh_json("run", "view", run_id, "--json", "jobs")
         if not isinstance(jobs, dict) or not isinstance(jobs.get("jobs"), list):
             raise ValueError("Delivery run jobs are malformed")
-        validated.append({**run, "jobs": jobs["jobs"],
-                          "pullRequests": detail["pull_requests"]})
+        validated.append(
+            {**run, "jobs": jobs["jobs"], "pullRequests": detail["pull_requests"]}
+        )
     return validated
 
 
@@ -4196,8 +4303,14 @@ def delivery_runs(head, pr):
     """
     workflow_id = delivery_workflow_id()
     runs = gh_json(
-        "run", "list", "--workflow", str(workflow_id), "--commit", head,
-        "--json", "databaseId,headSha,status,conclusion,event,workflowDatabaseId",
+        "run",
+        "list",
+        "--workflow",
+        str(workflow_id),
+        "--commit",
+        head,
+        "--json",
+        "databaseId,headSha,status,conclusion,event,workflowDatabaseId",
     )
     return validated_delivery_runs(runs, head, pr, workflow_id)
 
@@ -4206,9 +4319,14 @@ def delivery_listing():
     """Return the raw newest Delivery window shared by one PR-flow pass."""
     workflow_id = delivery_workflow_id()
     runs = gh_json(
-        "run", "list", "--workflow", str(workflow_id), "--limit",
+        "run",
+        "list",
+        "--workflow",
+        str(workflow_id),
+        "--limit",
         str(DELIVERY_LISTING_LIMIT),
-        "--json", "databaseId,headSha,status,conclusion,event,workflowDatabaseId",
+        "--json",
+        "databaseId,headSha,status,conclusion,event,workflowDatabaseId",
     )
     if not isinstance(runs, list):
         raise ValueError("Delivery run listing is not an array")
@@ -4227,33 +4345,49 @@ def delivery_runs_from(listing, head, pr):
 
 def request_delivery_rerun(pr, head, runs):
     """Re-run only an existing terminal pull-request Delivery run for this exact head."""
+
     def notify(message):
         try:
-            gh("pr", "comment", str(pr), "--body",
-               f"{MARK}\n{marker('delivery-rerun', head)}\n{message}", check=False)
+            gh(
+                "pr",
+                "comment",
+                str(pr),
+                "--body",
+                f"{MARK}\n{marker('delivery-rerun', head)}\n{message}",
+                check=False,
+            )
         except (subprocess.CalledProcessError, OSError) as error:
             print(f"delivery rerun comment failed: {error}", file=sys.stderr)
 
     candidates = [
-        run for run in (runs or [])
+        run
+        for run in (runs or [])
         if delivery_record_matches(run, pr, head)
         and delivery_run_id(run.get("databaseId")) is not None
     ]
     if not candidates:
-        notify(f"Delivery has no valid pull-request run for {head[:12]}; waiting for one.")
+        notify(
+            f"Delivery has no valid pull-request run for {head[:12]}; waiting for one."
+        )
         return False
     run = candidates[0]
     if run.get("status") != "completed" or _delivery_needs_approval(run):
-        notify(f"Delivery for {head[:12]} is active or awaiting approval; it will not be re-run.")
+        notify(
+            f"Delivery for {head[:12]} is active or awaiting approval; it will not be re-run."
+        )
         return False
     if run.get("conclusion") not in DELIVERY_FAILED | {"skipped"}:
         return False
     try:
         gh("run", "rerun", delivery_run_id(run["databaseId"]))
     except (subprocess.CalledProcessError, OSError) as error:
-        notify(f"Delivery rerun for {head[:12]} failed: {error}. Nothing merges until it passes.")
+        notify(
+            f"Delivery rerun for {head[:12]} failed: {error}. Nothing merges until it passes."
+        )
         return False
-    notify(f"Delivery rerun was requested for {head[:12]}. Nothing merges until it passes.")
+    notify(
+        f"Delivery rerun was requested for {head[:12]}. Nothing merges until it passes."
+    )
     return True
 
 
@@ -4413,9 +4547,9 @@ def comment_best_effort(pr, text):
 def confirm_pr_ready(pr, head):
     """Confirm a fresh PR read still names the tested open, non-draft head."""
     try:
-        info = gh_json(
-            "pr", "view", str(pr), "--json", "isDraft,headRefOid,state"
-        ) or {}
+        info = (
+            gh_json("pr", "view", str(pr), "--json", "isDraft,headRefOid,state") or {}
+        )
     except (subprocess.CalledProcessError, ValueError, OSError):
         return False
     return (
@@ -4462,10 +4596,16 @@ def plan_integration(red=False):
                 try:
                     gh("pr", "ready", str(number))
                 except (subprocess.CalledProcessError, OSError):
-                    comment_best_effort(number, "Draft promotion failed; the pull request stays blocked.")
+                    comment_best_effort(
+                        number,
+                        "Draft promotion failed; the pull request stays blocked.",
+                    )
                     continue
                 if not confirm_pr_ready(number, p["headRefOid"]):
-                    comment_best_effort(number, "Draft state could not be confirmed; the pull request stays blocked.")
+                    comment_best_effort(
+                        number,
+                        "Draft state could not be confirmed; the pull request stays blocked.",
+                    )
                     continue
             elif decision == DRAFT_FIX:
                 fail(number, "Draft pull request: local checks failed", simple=True)
@@ -4680,7 +4820,9 @@ def scheduler_room(capacity, busy, force=False):
     an operator can start a wave even when other waves still have workers. The
     per-wave ``--max`` and capacity remain the explicit operator choice.
     """
-    return max(0, min(capacity, MAX_ACTIVE_WORKERS if force else MAX_ACTIVE_WORKERS - busy))
+    return max(
+        0, min(capacity, MAX_ACTIVE_WORKERS if force else MAX_ACTIVE_WORKERS - busy)
+    )
 
 
 WAITING_WAVE_MAX_AGE_MIN = 30
@@ -4729,33 +4871,47 @@ def live_workers():
     The entry is the worker's task id (a worker's Work and Publish jobs count once;
     a name without a task id counts as its own entry). Waves may overlap, so this
     both bounds the combined worker cap and tells reclaim which claims are alive.
-    Returns [] when the API call fails (the per-wave cap and the budget gate still
-    apply)."""
-    runs = gh(
-        "run",
-        "list",
-        "--workflow",
-        "swarm.yml",
-        "--limit",
-        "100",
-        "--json",
-        "databaseId,status",
-        "-q",
-        '.[] | select(.status != "completed") | .databaseId',
-        check=False,
-    )
+    Fail-closed: if the GitHub API cannot be read, raise CapacityUnavailable instead
+    of pretending no workers are running (which would let a new wave over-launch and
+    wedge the system). An unfinished run that has not produced job records yet (a
+    freshly dispatched wave) still counts as busy, so a queued wave is never treated
+    as empty capacity."""
+    try:
+        runs = gh(
+            "run",
+            "list",
+            "--workflow",
+            "swarm.yml",
+            "--limit",
+            "100",
+            "--json",
+            "databaseId,status",
+            "-q",
+            '.[] | select(.status != "completed") | .databaseId',
+        )
+    except (subprocess.CalledProcessError, OSError, RuntimeError) as error:
+        raise CapacityUnavailable(f"cannot list swarm runs: {error}") from error
     live = []
     for run_id in runs.split():
-        out = gh(
-            "api",
-            f"repos/{repo_slug()}/actions/runs/{run_id}/jobs?per_page=100",
-            "--paginate",
-            "--jq",
-            '.jobs[] | select(.status != "completed") | .name',
-            check=False,
-        )
+        run_id = run_id.strip()
+        if not run_id:
+            continue
+        try:
+            out = gh(
+                "api",
+                f"repos/{repo_slug()}/actions/runs/{run_id}/jobs?per_page=100",
+                "--paginate",
+                "--jq",
+                '.jobs[] | select(.status != "completed") | .name',
+            )
+        except (subprocess.CalledProcessError, OSError, RuntimeError) as error:
+            live.append(f"run:{run_id}")
+            continue
         keys = {worker_task_id(n) or n for n in out.splitlines() if is_worker_job(n)}
-        live.extend(sorted(keys))
+        if keys:
+            live.extend(sorted(keys))
+        else:
+            live.append(f"run:{run_id}")
     return live
 
 
@@ -4766,7 +4922,10 @@ def top_up(finished_id):
     A wave ends only when its slowest worker does, so the slots of the quick ones stayed idle for
     hours. The planner still decides what runs: the combined worker cap, scopes, dependencies and
     the budget gate all apply to the wave this starts. Returns True when a wave was started."""
-    live = [name for name in live_workers() if name != finished_id]
+    try:
+        live = [name for name in live_workers() if name != finished_id]
+    except CapacityUnavailable:
+        return False
     if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves():
         return False
     prs = (
@@ -4800,10 +4959,25 @@ def top_up(finished_id):
         or []
     )
     text = reclaim(todo_read(), everything, live)
-    if not plan_workers(1, [{"slot": 1}], text, prs, live=live, red=main_is_red(),
-                        force=scheduling_override()):
+    if not plan_workers(
+        1,
+        [{"slot": 1}],
+        text,
+        prs,
+        live=live,
+        red=main_is_red(),
+        force=scheduling_override(),
+    ):
         return False
-    gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
+    gh(
+        "workflow",
+        "run",
+        "swarm.yml",
+        "--ref",
+        "main",
+        *wave_dispatch_args(),
+        check=False,
+    )
     return True
 
 
@@ -4816,7 +4990,10 @@ def wave_dispatch_args():
 
 def active_workers():
     """Number of workers running or queued across all waves right now."""
-    return len(live_workers())
+    try:
+        return len(live_workers())
+    except CapacityUnavailable:
+        return MAX_ACTIVE_WORKERS
 
 
 def rotate_slots(slots, busy):
@@ -5161,10 +5338,13 @@ def delivery_requested(pr, head):
     tag = marker("delivery-rerun", head)
     return any(
         trusted_author(c)
-        and (tag in (c.get("body") or "") or (
-            "Delivery is" in (c.get("body") or "")
-            and head[:12] in (c.get("body") or "")
-        ))
+        and (
+            tag in (c.get("body") or "")
+            or (
+                "Delivery is" in (c.get("body") or "")
+                and head[:12] in (c.get("body") or "")
+            )
+        )
         for c in comments
     )
 
@@ -5243,10 +5423,15 @@ def pr_flow(now=None, dispatch_wave=True):
                     try:
                         gh("pr", "ready", str(pr))
                     except (subprocess.CalledProcessError, OSError):
-                        comment_best_effort(pr, "Draft promotion failed; needs-fix stays in place.")
+                        comment_best_effort(
+                            pr, "Draft promotion failed; needs-fix stays in place."
+                        )
                         continue
                 if not confirm_pr_ready(pr, head):
-                    comment_best_effort(pr, "Draft state could not be confirmed; needs-fix stays in place.")
+                    comment_best_effort(
+                        pr,
+                        "Draft state could not be confirmed; needs-fix stays in place.",
+                    )
                     continue
                 remove_label(pr, "needs-fix")
                 ready.append((pr, 0))
@@ -5603,7 +5788,9 @@ TRACKER_PATHS = ("tasks/", "docs/swarm/")
 
 def tracker_restore_plan(path):
     """Return main/current tracker paths, refusing untracked collisions."""
-    desired = set(git("ls-tree", "-r", "--name-only", "origin/main", "--", path).splitlines())
+    desired = set(
+        git("ls-tree", "-r", "--name-only", "origin/main", "--", path).splitlines()
+    )
     tracked = set(git("ls-files", "--", path).splitlines())
     collisions = sorted(name for name in desired - tracked if os.path.lexists(name))
     if collisions:
@@ -5717,10 +5904,14 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
         raise ReconciliationError("pull request evidence is malformed")
     if info["headRefOid"] != sha:
         raise BranchMoved("the branch changed after it was tested; it will be retested")
-    if (task_id_of_title(info["title"]) != task_id
-            or info["baseRefName"] != os.environ.get("DEFAULT_BRANCH", "main")
-            or info["state"] not in {"OPEN", "MERGED"}):
-        raise ReconciliationError("pull request no longer matches the task being completed")
+    if (
+        task_id_of_title(info["title"]) != task_id
+        or info["baseRefName"] != os.environ.get("DEFAULT_BRANCH", "main")
+        or info["state"] not in {"OPEN", "MERGED"}
+    ):
+        raise ReconciliationError(
+            "pull request no longer matches the task being completed"
+        )
     tasks = [t for t in parse_tasks(todo_read()) if t["id"] == task_id]
     if len(tasks) != 1:
         raise ReconciliationError(f"task {task_id} is missing or duplicated")
@@ -5802,7 +5993,10 @@ def daily_can_start():
     # the daily notes that every later agent reads for lessons.
     if pending_note_days():
         return True
-    live = live_workers()
+    try:
+        live = live_workers()
+    except CapacityUnavailable:
+        return False
     if len(live) >= MAX_ACTIVE_WORKERS:
         return False
     prs = (
@@ -5841,7 +6035,9 @@ def daily_can_start():
         return True
     runs = delivery_listing()
     return not any(
-        delivery_state(delivery_runs_from(runs, p["headRefOid"], p["number"]), p["headRefOid"])
+        delivery_state(
+            delivery_runs_from(runs, p["headRefOid"], p["number"]), p["headRefOid"]
+        )
         == "passed"
         for p in mergeable
     )
@@ -5945,7 +6141,9 @@ def pr_already_in_main(pr, head, base):
 
     def run(*args):
         return subprocess.run(
-            ["git", *args], capture_output=True, text=True,
+            ["git", *args],
+            capture_output=True,
+            text=True,
             env=child_environment(read_only=True),
         )
 
@@ -5979,6 +6177,7 @@ def close_integrated_pr(pr, task_id):
         "The task remains recoverable until an authoritative merge is confirmed.",
     )
     if task_id:
+
         def reopen(text):
             for old in (f"- [-] {task_id}", f"- [x] {task_id}"):
                 if old in text:
@@ -6210,6 +6409,7 @@ def integrate_finalize(merged, gates, gate):
     :data:`INTEGRATION_FAILED` when no batch was published. Every pre-push
     failure restores the latest task snapshot and the original note bytes.
     """
+
     def snapshot_records(items):
         notes = {}
         for _, task_id, _ in items:
@@ -6289,7 +6489,8 @@ def integrate_finalize(merged, gates, gate):
                             "the protected-branch write. A person must take over.",
                         )
                         report_pr_stuck(
-                            pr, "protected-main push rejected",
+                            pr,
+                            "protected-main push rejected",
                             "Repository rules blocked the write.",
                         )
                     emit("merged", 0)
@@ -6333,7 +6534,9 @@ def integrate_finalize(merged, gates, gate):
                     "--allow-empty",
                 )
                 # Re-gate with the strictest gate the batch used: the full one if any PR needed it.
-                regate = gate if any(g == gate for g, _ in gates.values()) else REPAIR_GATE
+                regate = (
+                    gate if any(g == gate for g, _ in gates.values()) else REPAIR_GATE
+                )
                 renv = next((e for g, e in gates.values() if g == regate), {})
                 ok, log = run_gate(regate, renv)
                 if not ok:
@@ -6535,8 +6738,11 @@ def main(argv=None):
     p.add_argument("--file", default="")
     p.add_argument("--repair-run", default="")
     p.add_argument("--task", default="")
-    p.add_argument("--ignore-red-main", action="store_true",
-                   help="plan ordinary work even while main is red (explicit safety override)")
+    p.add_argument(
+        "--ignore-red-main",
+        action="store_true",
+        help="plan ordinary work even while main is red (explicit safety override)",
+    )
     sub.add_parser("watchdog")
     p = sub.add_parser("pr-flow")
     p.add_argument("--no-wave", action="store_true")
@@ -6673,7 +6879,13 @@ def main(argv=None):
             )
             or []
         )
-        live = live_workers()
+        try:
+            live = live_workers()
+        except CapacityUnavailable:
+            print("Capacity unavailable; skipping this wave.")
+            emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
+            emit("count", 0)
+            return 0
         text = reclaim(todo_read(a.file), everything, live)
         busy = len(live)
         override = a.ignore_red_main or scheduling_override()
@@ -6813,7 +7025,12 @@ def main(argv=None):
             )
             or []
         )
-        live = live_workers()
+        try:
+            live = live_workers()
+        except CapacityUnavailable:
+            print("Capacity unavailable; not starting a wave.")
+            print("No further wave to start now.")
+            return
         # Persist the reclaimed state. Computing it in memory only left merged
         # or dead claims as `[-]` forever and blocked their dependants.
         update_todo(
@@ -6829,7 +7046,15 @@ def main(argv=None):
             print("No free workers or a wave is already waiting.")
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
-            gh("workflow", "run", "swarm.yml", "--ref", "main", *wave_dispatch_args(), check=False)
+            gh(
+                "workflow",
+                "run",
+                "swarm.yml",
+                "--ref",
+                "main",
+                *wave_dispatch_args(),
+                check=False,
+            )
     elif a.cmd == "top-up":
         print("Started another wave." if top_up(a.id) else "No room or no ready task.")
     elif a.cmd == "release":
@@ -6923,7 +7148,11 @@ def main(argv=None):
     elif a.cmd == "reconcile-tasks":
         try:
             print(f"reconciled {reconcile_tasks(a.dir, a.file, persist=True)} task(s)")
-        except (ReconciliationError, TrackerPushBlocked, subprocess.CalledProcessError) as exc:
+        except (
+            ReconciliationError,
+            TrackerPushBlocked,
+            subprocess.CalledProcessError,
+        ) as exc:
             reason = exc.reason if isinstance(exc, TrackerPushBlocked) else str(exc)
             print(f"reconcile: {reason}", file=sys.stderr)
             return 1

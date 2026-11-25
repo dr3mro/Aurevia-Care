@@ -60,7 +60,8 @@ def compile_context(contract, sources, budgets):
 
     ``sources`` maps a section name to its text; ``budgets`` maps a section to a
     character limit, with ``default`` used when a section has no entry. Mandatory
-    sections are never truncated. The returned manifest carries the task id,
+    sections are never truncated; an optional section with a zero or negative
+    budget is kept whole rather than dropped. The returned manifest carries the task id,
     selected content, ordered section names and a stable content hash; it is
     analysis output, not a runtime context handed to an agent.
     """
@@ -96,10 +97,10 @@ def readiness(contract):
     """
     if not contract.acceptance or contract.risk not in RISKS:
         return 0
-    score = 0
+    # Acceptance and risk are guaranteed by the mandatory gate above, so their
+    # points are unconditional; a guard here would be an unreachable branch.
+    score = 30
     if contract.objective:
-        score += 20
-    if contract.acceptance:
         score += 20
     if contract.scope:
         score += 15
@@ -108,8 +109,6 @@ def readiness(contract):
     if contract.depends:
         score += 10
     if contract.assumptions:
-        score += 10
-    if contract.risk in RISKS:
         score += 10
     return score
 
@@ -172,7 +171,7 @@ def evidence_fresh(evidence_revision, current_revision):
 
 
 def save_checkpoint(path, state):
-    """Write a JSON state snapshot to ``path`` and return the resolved path.
+    """Write a JSON state snapshot to ``path`` and return its ``Path`` object.
 
     Missing parent directories are created. ``state`` must be JSON-serialisable;
     no repository or agent state is read or written.

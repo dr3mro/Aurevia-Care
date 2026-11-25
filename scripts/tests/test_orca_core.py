@@ -66,6 +66,12 @@ class ContextTests(unittest.TestCase):
             {"safety": "rules", "reference": "abcdef"}, {"reference": 0})
         self.assertEqual(manifest["content"]["reference"], "abcdef")
 
+    def test_the_default_budget_applies_to_an_unlisted_section(self):
+        manifest = compile_context(
+            TaskContract("T", "o", ("a",), ("scripts",), "routine"),
+            {"safety": "rules", "reference": "abcdef"}, {"default": 2})
+        self.assertEqual(manifest["content"]["reference"], "ab")
+
     def test_missing_sources_are_skipped(self):
         manifest = compile_context(
             TaskContract("T", "o", ("a",), ("scripts",), "routine"),
@@ -185,7 +191,9 @@ class BoundaryTests(unittest.TestCase):
     def test_no_production_script_imports_orca_core(self):
         for path in (ROOT / "scripts").glob("*.py"):
             with self.subTest(path=path.name):
-                self.assertNotIn("import orca_core", path.read_text(encoding="utf-8"))
+                text = path.read_text(encoding="utf-8")
+                self.assertNotIn("import orca_core", text)
+                self.assertNotIn("from orca_core import", text)
 
     def test_module_has_no_launch_or_git_api(self):
         text = Path(orca_core.__file__).read_text(encoding="utf-8")
