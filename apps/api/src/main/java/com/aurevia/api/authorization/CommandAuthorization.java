@@ -26,9 +26,11 @@ import com.aurevia.scheduling.checkin.WorklistPolicy;
  * command identifier and inert claimed fields; the subject comes from the
  * server request context, membership and roles are re-resolved on every call,
  * and the action is decided by exactly the policy that owns it. Other policies
- * cannot widen a command through a colliding action key. Every outcome,
- * including malformed, unauthenticated and denied calls, is recorded before the
- * caller receives a response.</p>
+ * cannot widen a command through a colliding action key. Every outcome for a
+ * tenant-scoped identity, including malformed and denied calls, is recorded before
+ * the caller receives a response. A tenant-less identity is denied with 401 before
+ * any sink call, because a forced-RLS ledger cannot hold a row without an owning
+ * organization.</p>
  *
  * <p>This gate is deliberately coarse: it does not replace the owning service's
  * object authorization, revision preconditions or human clinical attestation
@@ -138,14 +140,14 @@ public final class CommandAuthorization {
     /**
      * Auditable OPS-02 authorization outcome for one command.
      *
-     * @param commandId     command that was evaluated
-     * @param action        action key from the catalog
+     * @param commandId     bounded catalog command id or the fixed reason code of an unresolved command
+     * @param action        action key from the catalog, or empty when no action was resolved
      * @param organizationId active tenant of the request
-     * @param subject       authenticated subject, or empty when unauthenticated
+     * @param subject       authenticated subject of the active tenant
      * @param correlationId correlation identifier, or empty when absent
      * @param allowed       whether the command may proceed
-     * @param reasonCode    ALLOWED, UNAUTHENTICATED, INVALID_COMMAND, UNKNOWN_COMMAND,
-     *                      MEMBERSHIP_INACTIVE, MEMBERSHIP_UNAVAILABLE, POLICY_UNAVAILABLE or COMMAND_FORBIDDEN
+     * @param reasonCode    ALLOWED, INVALID_COMMAND, UNKNOWN_COMMAND, MEMBERSHIP_INACTIVE,
+     *                      MEMBERSHIP_UNAVAILABLE, POLICY_UNAVAILABLE or COMMAND_FORBIDDEN
      * @param rolesUsed     freshly resolved roles considered for the decision
      * @param occurredAt    decision instant from the injected clock
      */
@@ -198,18 +200,21 @@ public final class CommandAuthorization {
      */
     public Decision authorize(CommandRequest request, ServerIdentity identity) {
         if (identity == null || !token(identity.organizationId()) || !token(identity.subject())) {
-            record("", "", identity, false, "UNAUTHENTICATED", List.of());
+            // A tenant-less identity cannot own a row in a forced-RLS ledger. Raise
+            // the defined 401 before calling a sink whose tenant precondition would
+            // otherwise mask the authentication outcome with an audit error.
             throw new ApiException(401, "UNAUTHENTICATED", "authentication required");
         }
         String commandId = request == null ? null : request.commandId();
         if (!token(commandId)) {
-            record("", "", identity, false, "INVALID_COMMAND", List.of());
+            record("INVALID_COMMAND", "", identity, false, "INVALID_COMMAND", List.of());
             throw new ApiException(422, "INVALID_COMMAND", "command identifier is required");
         }
         CommandDefinition definition = catalog.find(commandId).orElse(null);
         if (definition == null) {
-            // The identifier is untrusted here: bound it before it reaches the OPS-02 ledger.
-            record(auditableCommandId(commandId), "", identity, false, "UNKNOWN_COMMAND", List.of());
+            // The identifier is untrusted: record the bounded reason code instead so
+            // no client-supplied text can enter the append-only ledger.
+            record("UNKNOWN_COMMAND", "", identity, false, "UNKNOWN_COMMAND", List.of());
             throw new ApiException(422, "UNKNOWN_COMMAND", "command is not in the catalog");
         }
         MemberContext member;
@@ -258,7 +263,7 @@ public final class CommandAuthorization {
      * @param reasonCode stable reason code
      * @param roles      roles considered
      * @return the recorded decision
-     * @throws ApiException {@code 500 DECISION_NOT_RECORDED} when the sink cannot persist the decision
+     * @throws ApiException {@code 500 AUDIT_UNAVAILABLE} when the sink cannot persist the decision
      */
     private Decision record(String commandId, String action, ServerIdentity identity, boolean allowed,
                             String reasonCode, List<String> roles) {
@@ -270,7 +275,7 @@ public final class CommandAuthorization {
         } catch (RuntimeException failure) {
             // A failed audit write must fail the command closed with a defined,
             // machine-readable error instead of leaking an unstructured runtime fault.
-            throw new ApiException(500, "DECISION_NOT_RECORDED", "authorization decision could not be recorded");
+            throw new ApiException(500, "AUDIT_UNAVAILABLE", "authorization decision could not be recorded");
         }
         return decision;
     }
@@ -283,9 +288,6 @@ public final class CommandAuthorization {
      * @return the field value or an empty string
      */
     private static String value(ServerIdentity identity, java.util.function.Function<ServerIdentity, String> field) {
-        if (identity == null) {
-            return "";
-        }
         String result = field.apply(identity);
         return result == null ? "" : result;
     }
@@ -298,24 +300,6 @@ public final class CommandAuthorization {
      */
     private static boolean token(String value) {
         return value != null && !value.isBlank();
-    }
-
-    /**
-     * Bound an untrusted command identifier before writing it to the append-only ledger.
-     *
-     * <p>The value is only evidence for an {@code UNKNOWN_COMMAND} denial; it never selects
-     * a policy or a role. Truncation and control-character removal prevent log forging and
-     * unbounded growth of an audit field while keeping the 422 outcome unchanged.</p>
-     *
-     * @param commandId client-supplied identifier, already checked non-blank
-     * @return a bounded, control-character-free audit value
-     */
-    private static String auditableCommandId(String commandId) {
-        String bounded = commandId.trim();
-        if (bounded.length() > 128) {
-            bounded = bounded.substring(0, 128);
-        }
-        return bounded.replaceAll("\\p{Cntrl}", "");
     }
 
     /**
