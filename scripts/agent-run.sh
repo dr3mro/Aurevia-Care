@@ -85,8 +85,15 @@ worktree_status() {
 }
 
 require_clean_worktree() {
-  local status
-  if ! status=$(worktree_status); then
+  local status _tmp
+  _tmp=$(mktemp)
+  if ! worktree_status > "$_tmp"; then
+    rm -f "$_tmp"
+    return 1
+  fi
+  status=$(<"$_tmp")
+  rm -f "$_tmp"
+  if [[ $? -ne 0 ]]; then
     return 1
   fi
   if [[ -n "$status" ]]; then
@@ -118,7 +125,7 @@ auth_active=0
 auth_mode=""
 auth_tmp=""
 cleanup() {
-  local failed=0
+  local saved=$? failed=0
   if [[ "$config_active" == 1 ]]; then
     restore_config || failed=1
   fi
@@ -134,7 +141,8 @@ cleanup() {
     exit 1
   fi
   rm -f "$config_backup" "$auth_backup"
-  rmdir "$backup_dir"
+  rmdir "$backup_dir" 2>/dev/null || true
+  exit "$saved"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
@@ -1246,7 +1254,14 @@ cmd_review() {
       record_configuration_error
       return 1
     fi
-    if ! status=$(worktree_status -- . ":(exclude)$out" ":(exclude)$out/**"); then
+    _tmp=$(mktemp)
+    if ! worktree_status -- . ":(exclude)$out" ":(exclude)$out/**" > "$_tmp"; then
+      rm -f "$_tmp"
+      return 1
+    fi
+    status=$(<"$_tmp")
+    rm -f "$_tmp"
+    if [[ $? -ne 0 ]]; then
       return 1
     fi
     if [[ -n "$status" ]]; then
