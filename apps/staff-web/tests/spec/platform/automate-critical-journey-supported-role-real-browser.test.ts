@@ -150,6 +150,10 @@ const currentSpecs: readonly string[] = [
   'responsive-chart.spec.ts',
   'responsive-patients.spec.ts',
   'softKeyboardAndForms.spec.ts',
+  // Staff messaging real-browser journey (English LTR + Arabic RTL). Adding it
+  // to the exact pin keeps the GAP tripwire honest: the set still matches the
+  // committed harness, so the next added spec will flip this assertion.
+  'staffmsg/staffmsg-journey.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {
