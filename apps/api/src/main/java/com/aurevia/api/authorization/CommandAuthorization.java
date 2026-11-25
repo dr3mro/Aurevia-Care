@@ -192,9 +192,9 @@ public final class CommandAuthorization {
      * @param identity server-derived active identity
      * @return the allowed decision
      * @throws ApiException {@code 401} when unauthenticated, {@code 403} when membership is
-     *         inactive, the owner is unknown or no active role is permitted,
-     *         {@code 422} for a malformed or unknown command, and {@code 500} when the
-     *         decision cannot be recorded
+     *         inactive, the owner is unknown, no active role is permitted or the durable
+     *         ledger is unavailable ({@code AUDIT_UNAVAILABLE}), {@code 422} for a malformed
+     *         or unknown command, and {@code 500} when the decision cannot be recorded
      */
     public Decision authorize(CommandRequest request, ServerIdentity identity) {
         if (identity == null || !token(identity.organizationId()) || !token(identity.subject())) {
@@ -258,7 +258,8 @@ public final class CommandAuthorization {
      * @param reasonCode stable reason code
      * @param roles      roles considered
      * @return the recorded decision
-     * @throws ApiException {@code 500 DECISION_NOT_RECORDED} when the sink cannot persist the decision
+     * @throws ApiException {@code 403 AUDIT_UNAVAILABLE} when the durable sink rejects the
+     *         write, or {@code 500 DECISION_NOT_RECORDED} for any other sink failure
      */
     private Decision record(String commandId, String action, ServerIdentity identity, boolean allowed,
                             String reasonCode, List<String> roles) {
@@ -267,6 +268,13 @@ public final class CommandAuthorization {
                 allowed, reasonCode, roles, clock.instant());
         try {
             sink.record(decision);
+        } catch (ApiException failure) {
+            // Only the durable sink's own deny signal may reach the caller unchanged.
+            // Other sink-supplied statuses are not trusted to render an apparent success.
+            if (failure.status() == 403 && "AUDIT_UNAVAILABLE".equals(failure.code())) {
+                throw failure;
+            }
+            throw new ApiException(500, "DECISION_NOT_RECORDED", "authorization decision could not be recorded");
         } catch (RuntimeException failure) {
             // A failed audit write must fail the command closed with a defined,
             // machine-readable error instead of leaking an unstructured runtime fault.

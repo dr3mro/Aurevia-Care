@@ -184,6 +184,68 @@ def markdown_errors(text, rel):
     return errors
 
 
+MATRIX_PATH = "docs/orca-refactor/04-completion-and-safety.md"
+MATRIX_HEADER_START = "| Feature / spec IDs | Requirements |"
+
+
+def completion_matrix_problems(root=ROOT):
+    """Check that completion-matrix status cells carry explicit evidence.
+
+    Input is a repository root; output is deterministic ``path:line: message``
+    problems. Bare ``verified``, ``pending`` and ``failed`` markers are accepted
+    because the matrix caveats explain them; the colon forms ``verified:``,
+    ``pending:`` and ``failed:`` must name a citation, gap or reference, and
+    ``not applicable`` must give a justification. This is a shape check only:
+    it does not read BUGS.md, move human acceptance into verified, or repeat
+    the link and requirement-ID passes.
+    """
+    if not (Path(root) / "docs" / "orca-refactor").is_dir():
+        return []  # unrelated temporary repositories have no completion matrix
+    path = Path(root) / MATRIX_PATH
+    if not path.is_file():
+        return [f"{MATRIX_PATH}: missing completion matrix"]
+    lines = path.read_text(encoding="utf-8").splitlines()
+    header = next(
+        (index for index, line in enumerate(lines)
+         if line.strip().startswith(MATRIX_HEADER_START)),
+        None,
+    )
+    if header is None:
+        return [f"{MATRIX_PATH}: missing completion matrix header"]
+    # _cells counts pipe delimiters; a 16-cell row has 17 of them.
+    expected = _cells(lines[header]) - 1
+    problems = []
+    for number, line in enumerate(lines[header + 1:], header + 2):
+        if not TABLE_ROW.match(line) or TABLE_SEP.match(line):
+            continue
+        cells = [cell.strip() for cell in TABLE_PIPE.split(line)[1:-1]]
+        if len(cells) != expected:
+            continue  # the structural pass owns ragged rows
+        for cell in cells[1:]:
+            status = cell.strip()
+            if status in ("verified", "pending", "failed"):
+                # Bare status markers are explained by the matrix caveats; only a
+                # colon-form cell promises a citation that must actually exist.
+                continue
+            if status.startswith("verified:"):
+                if not status.split(":", 1)[1].strip():
+                    problems.append(f"{MATRIX_PATH}:{number}: verified has no citation")
+            elif status.startswith("pending:"):
+                if not status.split(":", 1)[1].strip():
+                    problems.append(f"{MATRIX_PATH}:{number}: pending has no gap")
+            elif status.startswith("failed:"):
+                if not status.split(":", 1)[1].strip():
+                    problems.append(f"{MATRIX_PATH}:{number}: failed has no reference")
+            elif status.startswith("not applicable"):
+                if "(" not in status or not status.split("(", 1)[1].strip(" )"):
+                    problems.append(f"{MATRIX_PATH}:{number}: not applicable has no justification")
+            elif not status:
+                problems.append(f"{MATRIX_PATH}:{number}: empty evidence cell")
+            else:
+                problems.append(f"{MATRIX_PATH}:{number}: unrecognised status {status}")
+    return problems
+
+
 def check(root=ROOT):
     errors = []
     defined = spec_ids((root / SPEC).read_text(encoding="utf-8"))
@@ -201,14 +263,15 @@ def check(root=ROOT):
                 continue
             if file_part and not (path.parent / file_part).exists():
                 errors.append(f"{rel}: broken link {target}")
-        if rel.name == SPEC:
-            continue
+        if rel.as_posix() == SPEC:
+            continue  # the specification defines its own IDs; it is not a consumer
         for ident in sorted(mentioned_ids(text, prefixes) - defined):
             errors.append(f"{rel}: unknown requirement ID {ident}")
     for path in generated_markdown_files(root):
         rel = path.relative_to(root).as_posix()
         text = path.read_text(encoding="utf-8")
         errors.extend(markdown_errors(text, rel))
+    errors.extend(completion_matrix_problems(root))
     return errors
 
 

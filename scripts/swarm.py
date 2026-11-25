@@ -4809,8 +4809,21 @@ def add_latest_repair_task(path=""):
 
 
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
+# One branch runs one wave at a time; each wave offers at most seven story
+# workers. The global ledger still caps overlapping waves across branches.
+WAVE_WORKERS = 7
 # Repairs, fixes and the debugger are planned first; stories (high, normal, then low) fill every other slot.
-STORY_WAVE_WORKERS = MAX_ACTIVE_WORKERS
+STORY_WAVE_WORKERS = WAVE_WORKERS
+
+
+def clamp_wave_workers(requested):
+    """Bound a requested story-worker count to the supported 1–7 wave range.
+
+    Input is the workflow's ``workers`` value; output is an integer. A request
+    above the cap is reduced rather than rejected, so a stale dispatch with 20
+    can never launch more than seven workers. No scheduling side effect occurs.
+    """
+    return max(1, min(int(requested), WAVE_WORKERS))
 
 
 def scheduler_room(capacity, busy, force=False):
@@ -6886,6 +6899,13 @@ def main(argv=None):
             emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
             emit("count", 0)
             return 0
+        # Do not plan a new wave while another wave is already queued or waiting:
+        # each queued wave would otherwise plan its own full matrix and over-launch.
+        if not (a.ignore_red_main or scheduling_override()) and waiting_waves() > 0:
+            print("Another wave is already waiting; skipping this wave.")
+            emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
+            emit("count", 0)
+            return 0
         text = reclaim(todo_read(a.file), everything, live)
         busy = len(live)
         override = a.ignore_red_main or scheduling_override()
@@ -6905,7 +6925,7 @@ def main(argv=None):
             prs,
             repair,
             live,
-            story_wave=a.max,
+            story_wave=clamp_wave_workers(a.max),
             focus=a.task,
             red=red,
             force=override,

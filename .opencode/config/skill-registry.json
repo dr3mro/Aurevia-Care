@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "note": "Skeleton registry (ORCA-008). Populated by scripts/gen-skill-registry.py in a later pass. run-workflow excluded (system namespace).",
+  "skills": []
+}
