@@ -129,4 +129,59 @@ class DurableReplayAuthorizationTest {
         assertFalse(authorization.stillAuthorized(TenantContext.current(),
                 "GET /api/v1/orders/{id}/accept"));
     }
+
+    @Test
+    void aPharmacyStaffMayReplayASubstitutionProposal() {
+        when(jdbc.queryForObject(eq(MEMBERSHIP_SQL), eq(Map.of("subject", SUBJECT)), eq(Boolean.class)))
+                .thenReturn(true);
+        when(jdbc.queryForList(eq(ROLES_SQL), eq(Map.of("subject", SUBJECT)), eq(String.class)))
+                .thenReturn(List.of("pharmacy_staff"));
+
+        assertTrue(authorization.stillAuthorized(TenantContext.current(),
+                "POST /api/v1/pharmacy/substitutions/{prescriptionId}/proposals"));
+    }
+
+    @Test
+    void aClinicianMayNotReplayASubstitutionProposal() {
+        when(jdbc.queryForObject(eq(MEMBERSHIP_SQL), eq(Map.of("subject", SUBJECT)), eq(Boolean.class)))
+                .thenReturn(true);
+        when(jdbc.queryForList(eq(ROLES_SQL), eq(Map.of("subject", SUBJECT)), eq(String.class)))
+                .thenReturn(List.of("clinician"));
+
+        assertFalse(authorization.stillAuthorized(TenantContext.current(),
+                "POST /api/v1/pharmacy/substitutions/{prescriptionId}/proposals"));
+    }
+
+    @Test
+    void aClinicianMayReplayASubstitutionApproval() {
+        when(jdbc.queryForObject(eq(MEMBERSHIP_SQL), eq(Map.of("subject", SUBJECT)), eq(Boolean.class)))
+                .thenReturn(true);
+        when(jdbc.queryForList(eq(ROLES_SQL), eq(Map.of("subject", SUBJECT)), eq(String.class)))
+                .thenReturn(List.of("clinician"));
+
+        assertTrue(authorization.stillAuthorized(TenantContext.current(),
+                "POST /api/v1/pharmacy/substitutions/{proposalId}/approve"));
+    }
+
+    @Test
+    void aClinicianMayReplayASubstitutionDecline() {
+        when(jdbc.queryForObject(eq(MEMBERSHIP_SQL), eq(Map.of("subject", SUBJECT)), eq(Boolean.class)))
+                .thenReturn(true);
+        when(jdbc.queryForList(eq(ROLES_SQL), eq(Map.of("subject", SUBJECT)), eq(String.class)))
+                .thenReturn(List.of("clinician"));
+
+        assertTrue(authorization.stillAuthorized(TenantContext.current(),
+                "POST /api/v1/pharmacy/substitutions/{proposalId}/decline"));
+    }
+
+    @Test
+    void aPharmacistMayNotReplayASubstitutionApproval() {
+        when(jdbc.queryForObject(eq(MEMBERSHIP_SQL), eq(Map.of("subject", SUBJECT)), eq(Boolean.class)))
+                .thenReturn(true);
+        when(jdbc.queryForList(eq(ROLES_SQL), eq(Map.of("subject", SUBJECT)), eq(String.class)))
+                .thenReturn(List.of("pharmacy_staff"));
+
+        assertFalse(authorization.stillAuthorized(TenantContext.current(),
+                "POST /api/v1/pharmacy/substitutions/{proposalId}/approve"));
+    }
 }
