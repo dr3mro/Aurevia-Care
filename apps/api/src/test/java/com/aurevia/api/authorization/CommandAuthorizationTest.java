@@ -419,7 +419,10 @@ class CommandAuthorizationTest {
     }
 
     @Test
-    void sinkFailureFailsClosedWithAMachineReadableError() {
+    void sinkFailureFailsClosedWithAuditUnavailableOnAllowAndDenyPaths() {
+        // OPS-02: a ledger failure can never let a command through. The effective
+        // decision is a denial with one stable reason code, whether the policy
+        // would have allowed or denied the command.
         CommandAuthorization.DecisionSink broken = decision -> {
             throw new IllegalStateException("sink unavailable");
         };
@@ -427,9 +430,18 @@ class CommandAuthorizationTest {
         resolver.roles = List.of("tenant_admin");
         CommandAuthorization authorization =
                 CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, broken, CLOCK);
-        ApiException failure = assertThrows(ApiException.class,
+        ApiException allowedFailure = assertThrows(ApiException.class,
                 () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
-        assertEquals(500, failure.status());
-        assertEquals("DECISION_NOT_RECORDED", failure.code());
+        assertEquals(500, allowedFailure.status());
+        assertEquals("AUDIT_UNAVAILABLE", allowedFailure.code());
+
+        Resolver deniedResolver = new Resolver();
+        deniedResolver.roles = List.of("reception");
+        CommandAuthorization deniedAuthorization =
+                CommandAuthorization.synthetic(CommandCatalog.synthetic(), deniedResolver, broken, CLOCK);
+        ApiException deniedFailure = assertThrows(ApiException.class,
+                () -> deniedAuthorization.authorize(request("createFacility"), id(ORG, "reception-1")));
+        assertEquals(500, deniedFailure.status());
+        assertEquals("AUDIT_UNAVAILABLE", deniedFailure.code());
     }
 }

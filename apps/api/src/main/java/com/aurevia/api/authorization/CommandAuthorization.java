@@ -145,7 +145,8 @@ public final class CommandAuthorization {
      * @param correlationId correlation identifier, or empty when absent
      * @param allowed       whether the command may proceed
      * @param reasonCode    ALLOWED, UNAUTHENTICATED, INVALID_COMMAND, UNKNOWN_COMMAND,
-     *                      MEMBERSHIP_INACTIVE, MEMBERSHIP_UNAVAILABLE, POLICY_UNAVAILABLE or COMMAND_FORBIDDEN
+     *                      MEMBERSHIP_INACTIVE, MEMBERSHIP_UNAVAILABLE, POLICY_UNAVAILABLE,
+     *                      COMMAND_FORBIDDEN or AUDIT_UNAVAILABLE
      * @param rolesUsed     freshly resolved roles considered for the decision
      * @param occurredAt    decision instant from the injected clock
      */
@@ -193,8 +194,8 @@ public final class CommandAuthorization {
      * @return the allowed decision
      * @throws ApiException {@code 401} when unauthenticated, {@code 403} when membership is
      *         inactive, the owner is unknown or no active role is permitted,
-     *         {@code 422} for a malformed or unknown command, and {@code 500} when the
-     *         decision cannot be recorded
+     *         {@code 422} for a malformed or unknown command, and {@code 500 AUDIT_UNAVAILABLE}
+     *         when the decision cannot be recorded; the command is never allowed in that case
      */
     public Decision authorize(CommandRequest request, ServerIdentity identity) {
         if (identity == null || !token(identity.organizationId()) || !token(identity.subject())) {
@@ -258,7 +259,8 @@ public final class CommandAuthorization {
      * @param reasonCode stable reason code
      * @param roles      roles considered
      * @return the recorded decision
-     * @throws ApiException {@code 500 DECISION_NOT_RECORDED} when the sink cannot persist the decision
+     * @throws ApiException {@code 500 AUDIT_UNAVAILABLE} when the sink cannot persist the decision,
+     *         which denies the command instead of leaving an unaudited allow in the ledger
      */
     private Decision record(String commandId, String action, ServerIdentity identity, boolean allowed,
                             String reasonCode, List<String> roles) {
@@ -269,8 +271,9 @@ public final class CommandAuthorization {
             sink.record(decision);
         } catch (RuntimeException failure) {
             // A failed audit write must fail the command closed with a defined,
-            // machine-readable error instead of leaking an unstructured runtime fault.
-            throw new ApiException(500, "DECISION_NOT_RECORDED", "authorization decision could not be recorded");
+            // machine-readable reason: AUDIT_UNAVAILABLE is itself a deny outcome,
+            // not a licence to proceed without evidence.
+            throw new ApiException(500, "AUDIT_UNAVAILABLE", "authorization decision could not be recorded");
         }
         return decision;
     }
