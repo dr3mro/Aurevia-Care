@@ -8,7 +8,7 @@ description: "Resolve Aurevia swarm merge conflicts. Use when Git reports unmerg
 - Identify unmerged paths with `git diff --name-only --diff-filter=U` and `git ls-files -u`. Inspect the merge base and both index stages with `git show :1:<path>`, `git show :2:<path>` and `git show :3:<path>`. An absent stage can represent an add, delete or rename. Read the surrounding code and relevant tests.
 - Reconcile the intended behavior on both branches. For generated clients or config, resolve inputs first and run the repository generator. Preserve pending migrations and existing test assertions. Escalate contradictory contracts or migration histories with exact paths and evidence.
 - Stage only deliberate resolutions. Verify the unmerged index is empty, run `git diff --cached --check`, and run the affected tests against the merged tree. Finish the merge with the runner’s prescribed command and checks.
-- Work locally. Leave retry and rollback to the runner. Never push, force-push, rewrite either branch, or use a blanket ours/theirs resolution.
+- Work locally. Do not force-push, rewrite either branch, or use a blanket ours/theirs resolution. Leave retry and rollback to the runner.
 
 ## Common rationalizations
 

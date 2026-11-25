@@ -1,0 +1,73 @@
+{
+  "exceptions": [
+    {
+      "path": "scripts/swarm.py",
+      "reason": "_checker loads sibling helpers dynamically; static parsing cannot see that edge",
+      "rule": "dynamic-load"
+    },
+    {
+      "path": "scripts/check-doc-sync.py",
+      "reason": "design document only",
+      "rule": "future-design"
+    },
+    {
+      "path": "scripts/gen-skill-registry.py",
+      "reason": "design document only",
+      "rule": "future-design"
+    },
+    {
+      "path": "scripts/orca_benchmark.py",
+      "reason": "design document only",
+      "rule": "future-design"
+    },
+    {
+      "path": "scripts/example.py",
+      "reason": "illustrative path in docs",
+      "rule": "future-design"
+    }
+  ],
+  "files": {
+    "scripts/agent-run.sh": "project",
+    "scripts/aurevia/aurevia.sh": "project",
+    "scripts/build-and-test.sh": "project",
+    "scripts/check-constraints.py": "project",
+    "scripts/check-delivery-gate.py": "project",
+    "scripts/check-docs.py": "project",
+    "scripts/check-migrations.py": "project",
+    "scripts/check-names.py": "project",
+    "scripts/check-ownership.py": "project",
+    "scripts/check-pack.py": "project",
+    "scripts/check-secrets.py": "project",
+    "scripts/check-verdicts.py": "project",
+    "scripts/check-wiring.py": "project",
+    "scripts/check.sh": "project",
+    "scripts/coverage-check.sh": "project",
+    "scripts/docs.sh": "project",
+    "scripts/failure_classes.py": "project",
+    "scripts/frontend-check.sh": "project",
+    "scripts/frontend-typecheck-check.sh": "project",
+    "scripts/gen-opencode.py": "project",
+    "scripts/integrator-gate.sh": "project",
+    "scripts/monitor.py": "project",
+    "scripts/monitor.sh": "project",
+    "scripts/mutation-check.sh": "project",
+    "scripts/orca_benchmark.py": "project",
+    "scripts/orca_core.py": "project",
+    "scripts/orca_memory.py": "project",
+    "scripts/process_env.py": "project",
+    "scripts/project-name.py": "project",
+    "scripts/python-coverage.sh": "project",
+    "scripts/python_coverage.py": "project",
+    "scripts/quality-gate.sh": "project",
+    "scripts/quick-check.sh": "project",
+    "scripts/repair-gate.sh": "project",
+    "scripts/route-task.py": "project",
+    "scripts/smoke-image.sh": "project",
+    "scripts/swarm.py": "project",
+    "scripts/swarm_gate.py": "project",
+    "scripts/taskstore.py": "project",
+    "scripts/verify.sh": "project",
+    "scripts/worker-check.sh": "project",
+    "scripts/worker_gate.py": "project"
+  }
+}

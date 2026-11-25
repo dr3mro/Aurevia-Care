@@ -10,7 +10,10 @@ authoritative policy text lives in the instruction files themselves.
 import unittest
 from pathlib import Path
 
+from helpers import load
+
 ROOT = Path(__file__).resolve().parents[2]
+GEN = load("gen-opencode")
 
 # (document, canonical reference that the document must name).
 CANONICAL_REFERENCES = (
@@ -56,6 +59,18 @@ class InstructionPathTest(unittest.TestCase):
             with self.subTest(document=document, stale=stale):
                 text = (ROOT / document).read_text(encoding="utf-8")
                 self.assertNotIn(stale, text)
+
+
+class SetupInstructionCoverageTest(unittest.TestCase):
+    """Every Markdown file under .opencode/setup must be loaded by every agent."""
+
+    def test_every_setup_markdown_file_is_natively_loaded(self):
+        """The generated instruction list covers all setup documents."""
+        setup = ROOT / ".opencode" / "setup"
+        expected = {path.relative_to(ROOT).as_posix() for path in setup.glob("*.md")}
+        self.assertTrue(expected)
+        missing = expected.difference(GEN.INSTRUCTIONS)
+        self.assertEqual(missing, set())
 
 
 if __name__ == "__main__":

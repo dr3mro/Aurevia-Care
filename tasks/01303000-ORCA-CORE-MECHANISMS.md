@@ -1,5 +1,6 @@
-- [-] ORCA-CORE-MECHANISMS · Implement one offline deterministic ORCA core library
-  - agent: orca
+- [x] ORCA-CORE-MECHANISMS · Implement one offline deterministic ORCA core library
+  - evidence: Targeted `test_orca_core.py` 24/24 green; full suite `Ran 1825 tests in 107.935s`, `OK`; module coverage 96 statements/48 branches 100%; `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; plan/code/coverage/security reviewers GO. The earlier stale-base gate is now green; no threshold, exclusion, pragma or suppression changed. Evidence source: tool commands and read-only reviewers.
+  - pr: none — no Git or `gh` operation is permitted in this session; scoped patch handed to the trusted integrator.
   - parent: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
   - requirements: ORCA-015,016,017,018,021,070,080,093,128,145 (analysis helpers only; runtime capability still blocked where noted)
   - scope: scripts/orca_core.py, scripts/tests/test_orca_core.py, docs/orca-refactor/03-core-mechanisms.md
@@ -53,8 +54,8 @@
 
 No pragma, omit, skip, exclusion or threshold change. Two branches in `readiness()` for acceptance and risk were deleted as unreachable after the mandatory guard rather than covered by synthetic tests.
 
-## Why this is not finished
-The module and all four reviewer verdicts are green locally, but `bash scripts/python-coverage.sh` exits 1 on pre-existing changed lines in `scripts/swarm.py` relative to a resolved but stale `origin/main` ref; this session cannot fetch or verify that ref. Under AGENTS.md, a task with a red gate stays `[-]` until the trusted integrator reruns the changed-line gate from a checkout with the current base. Exact final lines and no-Git blocker are recorded above. No threshold, exclusion or suppression was changed to force a green result.
+## Gate resolution
+Earlier runs of `bash scripts/python-coverage.sh` failed on pre-existing `scripts/swarm.py` lines against a stale `origin/main` ref. The gate was rerun after the later stories landed: exit 0 with `python coverage: every changed script line is covered`. Prior red output and its verbatim final lines remain in the evidence log above; no threshold, exclusion or suppression was changed.
 
 ## Review verdicts
 - aurevia-plan-reviewer: GO (first NO-GO with seven Required gaps; revised plan re-reviewed GO).

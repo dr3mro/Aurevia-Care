@@ -2,153 +2,194 @@ package com.aurevia.api.authorization;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.dao.DataRetrievalFailureException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.api.ApiException;
-import com.aurevia.api.authorization.CommandAuthorization.ActionRule;
-import com.aurevia.api.authorization.CommandAuthorization.CommandRequest;
 import com.aurevia.api.authorization.CommandAuthorization.Decision;
-import com.aurevia.api.authorization.CommandAuthorization.MemberContext;
-import com.aurevia.api.authorization.CommandAuthorization.ServerIdentity;
+import com.aurevia.tenant.TenantContext;
 
-/** OPS-02 decision ledger adapter: bounded codes only, tenant-bound insert, fail closed on audit loss. */
+/**
+ * OPS-02 decision ledger unit assertions. Every branch of the durable sink is
+ * taken with a mocked JDBC boundary so the failure paths are deterministic.
+ */
 class JdbcDecisionSinkTest {
 
-    private static final String ORG = "11111111-1111-1111-1111-111111111111";
-    private static final Instant WHEN = Instant.parse("2026-11-25T10:00:00Z");
-    private static final Clock CLOCK = Clock.fixed(WHEN, ZoneOffset.UTC);
+    private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
+    private static final String ORG_B = "22222222-2222-2222-2222-222222222222";
+    private static final Instant DECIDED = Instant.parse("2026-11-25T06:00:00Z");
 
     private NamedParameterJdbcTemplate jdbc;
-    private JdbcDecisionSink sink;
+    private TransactionTemplate transactions;
 
     @BeforeEach
     void setUp() {
         jdbc = mock(NamedParameterJdbcTemplate.class);
-        sink = new JdbcDecisionSink(jdbc);
-        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(1);
+        transactions = mock(TransactionTemplate.class);
+        when(transactions.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(null);
+        });
     }
 
-    private static Decision decision(boolean allowed, String reasonCode, String commandId,
-                                     String subject, String correlationId) {
-        return new Decision(commandId, "FACILITY_WRITE", ORG, subject, correlationId,
-                allowed, reasonCode, List.of("tenant_admin"), WHEN);
+    @AfterEach
+    void clearTenant() {
+        TenantContext.clear();
     }
 
-    private SqlParameterSource capturedParameters() {
+    private static JdbcDecisionSink sink(NamedParameterJdbcTemplate jdbc, TransactionTemplate transactions) {
+        return new JdbcDecisionSink(jdbc, transactions);
+    }
+
+    private static Decision decision(String organization, boolean allowed, String reasonCode) {
+        return new Decision("createFacility", "FACILITY_WRITE", organization, "admin-1", "corr-1",
+                allowed, reasonCode, List.of("tenant_admin"), DECIDED);
+    }
+
+    private static void bind(String organization) {
+        TenantContext.set(new TenantContext(organization, "admin-1", "FACILITY_ADMIN", "corr-1"));
+    }
+
+    private static SqlParameterSource captured(NamedParameterJdbcTemplate jdbc) {
         ArgumentCaptor<SqlParameterSource> params = ArgumentCaptor.forClass(SqlParameterSource.class);
         verify(jdbc).update(anyString(), params.capture());
         return params.getValue();
     }
 
+    private static void assertDenied(Runnable action) {
+        ApiException failure = assertThrows(ApiException.class, action::run);
+        assertEquals(403, failure.status());
+        assertEquals("AUDIT_UNAVAILABLE", failure.code());
+        assertEquals("authorization decision could not be recorded", failure.getMessage());
+    }
+
     @Test
-    void allowDecisionIsWrittenAsBoundedCodesWithoutPayloadFields() {
-        sink.record(decision(true, "ALLOWED", "createFacility", "admin-1", "corr-1"));
-        SqlParameterSource params = capturedParameters();
+    void allowDecisionWritesOnlyCodedColumns() {
+        bind(ORG_A);
+        sink(jdbc, transactions).record(decision(ORG_A, true, "ALLOWED"));
+        SqlParameterSource params = captured(jdbc);
+        assertEquals(ORG_A, params.getValue("organizationId"));
+        assertEquals("admin-1", params.getValue("subject"));
+        assertEquals("FACILITY_WRITE", params.getValue("action"));
+        assertEquals(JdbcDecisionSink.RESOURCE_TYPE, params.getValue("resourceType"));
         assertEquals("allow", params.getValue("decision"));
         assertEquals("ALLOWED", params.getValue("reasonCode"));
-        assertEquals("createFacility", params.getValue("resourceType"));
-        assertEquals("FACILITY_WRITE", params.getValue("action"));
-        assertEquals("admin-1", params.getValue("subject"));
         assertEquals("corr-1", params.getValue("correlationId"));
-        assertEquals(ORG, params.getValue("organizationId"));
-        assertEquals(WHEN.toString(), params.getValue("decidedAt"));
-        assertNotNullId(params.getValue("id"));
+        assertEquals(OffsetDateTime.ofInstant(DECIDED, ZoneOffset.UTC), params.getValue("decidedAt"));
+        assertFalse(params.hasValue("rolesUsed"));
+        assertFalse(params.hasValue("payload"));
     }
 
     @Test
-    void denyDecisionKeepsItsReasonCodeAndDecisionValue() {
-        sink.record(decision(false, "COMMAND_FORBIDDEN", "createFacility", "reception-1", "corr-2"));
-        SqlParameterSource params = capturedParameters();
+    void denyDecisionWritesTheDenyOutcomeAndReason() {
+        bind(ORG_A);
+        sink(jdbc, transactions).record(decision(ORG_A, false, "COMMAND_FORBIDDEN"));
+        SqlParameterSource params = captured(jdbc);
         assertEquals("deny", params.getValue("decision"));
         assertEquals("COMMAND_FORBIDDEN", params.getValue("reasonCode"));
-        assertEquals("reception-1", params.getValue("subject"));
+        assertEquals("FACILITY_WRITE", params.getValue("action"));
     }
 
     @Test
-    void freeTextValuesAreBoundedAndControlCharactersAreRemoved() {
-        sink.record(decision(false, "x".repeat(200), "y".repeat(300), "a\nb", "c\n" + "d".repeat(300)));
-        SqlParameterSource params = capturedParameters();
-        assertEquals("x".repeat(64), params.getValue("reasonCode"));
-        assertEquals("y".repeat(128), params.getValue("resourceType"));
-        assertEquals("ab", params.getValue("subject"));
-        assertEquals("c" + "d".repeat(127), params.getValue("correlationId"));
+    void blankDecisionOrganizationUsesTheVerifiedTenant() {
+        bind(ORG_A);
+        sink(jdbc, transactions).record(decision("", true, "ALLOWED"));
+        assertEquals(ORG_A, captured(jdbc).getValue("organizationId"));
     }
 
     @Test
-    void absentFreeTextValuesBecomeEmptyStrings() {
-        sink.record(new Decision("createFacility", "FACILITY_WRITE", ORG, null, null,
-                true, "ALLOWED", List.of(), WHEN));
-        SqlParameterSource params = capturedParameters();
-        assertEquals("", params.getValue("subject"));
-        assertEquals("", params.getValue("correlationId"));
+    void nullDecisionOrganizationUsesTheVerifiedTenant() {
+        bind(ORG_A);
+        sink(jdbc, transactions).record(decision(null, false, "COMMAND_FORBIDDEN"));
+        assertEquals(ORG_A, captured(jdbc).getValue("organizationId"));
     }
 
     @Test
-    void decisionsWithoutAUsableTenantAreNotStoredAndBecomeAuditUnavailableDenials() {
-        for (String badOrg : new String[] {null, "", "   ", "not-a-uuid", "11111111-1111-1111-1111-11111111111g"}) {
-            Decision source = new Decision("createFacility", "FACILITY_WRITE", badOrg, "admin-1", "corr-3",
-                    true, "ALLOWED", List.of("tenant_admin"), WHEN);
-            DecisionAuditUnavailable failure = assertThrows(DecisionAuditUnavailable.class,
-                    () -> sink.record(source));
-            assertEquals("AUDIT_UNAVAILABLE", failure.decision().reasonCode());
-            assertFalse(failure.decision().allowed());
-            assertEquals(badOrg, failure.decision().organizationId());
-        }
+    void foreignDecisionOrganizationDeniesWithoutWriting() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_B, true, "ALLOWED")));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
     }
 
     @Test
-    void jdbcFailureBecomesAnAuditUnavailableDenyThatFailsTheWholeCommandClosed() {
-        when(jdbc.update(anyString(), any(SqlParameterSource.class)))
-                .thenThrow(new DataRetrievalFailureException("ledger unavailable"));
-        Decision source = decision(true, "ALLOWED", "createFacility", "admin-1", "corr-4");
-        DecisionAuditUnavailable failure = assertThrows(DecisionAuditUnavailable.class,
-                () -> sink.record(source));
-        assertEquals("AUDIT_UNAVAILABLE", failure.decision().reasonCode());
-        assertFalse(failure.decision().allowed());
-        assertEquals("admin-1", failure.decision().subject());
-        assertEquals("corr-4", failure.decision().correlationId());
-        assertEquals(List.of("tenant_admin"), failure.decision().rolesUsed());
-        assertEquals(WHEN, failure.decision().occurredAt());
-
-        Map<String, ActionRule> owners = Map.of(CommandCatalog.ACTION_POLICY,
-                (action, role) -> "tenant_admin".equals(role));
-        CommandAuthorization authorization = new CommandAuthorization(CommandCatalog.synthetic(),
-                owners, identity -> new MemberContext(List.of("tenant_admin"), true), sink, CLOCK);
-        ApiException denied = assertThrows(ApiException.class,
-                () -> authorization.authorize(new CommandRequest("createFacility", null, null),
-                        new ServerIdentity(ORG, "admin-1", "corr-4")));
-        assertEquals(500, denied.status());
-        assertEquals("DECISION_NOT_RECORDED", denied.code());
+    void unknownReasonCodeDeniesWithoutWriting() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, false, "FREE_TEXT_REASON")));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
     }
 
     @Test
-    void nullDecisionIsRejectedBeforeAnySql() {
+    void missingTenantContextDeniesWithoutWriting() {
+        TenantContext.clear();
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, true, "ALLOWED")));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void nullOrganizationInContextDeniesWithoutWriting() {
+        TenantContext.set(new TenantContext(null, "admin-1", "FACILITY_ADMIN", "corr-1"));
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, true, "ALLOWED")));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void blankOrganizationInContextDeniesWithoutWriting() {
+        bind("   ");
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, true, "ALLOWED")));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void jdbcFailureDeniesWithoutLeakingSqlDetails() {
+        bind(ORG_A);
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenThrow(
+                new DataAccessException("SECRET_SQL_TOKEN authorization_decision") { });
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        ApiException failure = assertThrows(ApiException.class,
+                () -> sink.record(decision(ORG_A, true, "ALLOWED")));
+        assertEquals(403, failure.status());
+        assertEquals("AUDIT_UNAVAILABLE", failure.code());
+        assertFalse(failure.getMessage().contains("SECRET_SQL_TOKEN"));
+    }
+
+    @Test
+    void nullDecisionIsAProgrammingErrorAndNeverWrites() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
         assertThrows(NullPointerException.class, () -> sink.record(null));
-        assertThrows(NullPointerException.class, () -> new JdbcDecisionSink(null));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
     }
 
-    private static void assertNotNullId(Object id) {
-        assertInstanceOf(String.class, id);
-        assertTrue(((String) id).matches("[0-9a-f-]{36}"));
+    @Test
+    void collaboratorsAreRequired() {
+        assertThrows(NullPointerException.class, () -> new JdbcDecisionSink(null, transactions));
+        assertThrows(NullPointerException.class, () -> new JdbcDecisionSink(jdbc, null));
+        assertTrue(JdbcDecisionSink.REASON_CODES.contains("AUDIT_UNAVAILABLE"));
     }
 }
