@@ -93,9 +93,6 @@ require_clean_worktree() {
   fi
   status=$(<"$_tmp")
   rm -f "$_tmp"
-  if [[ $? -ne 0 ]]; then
-    return 1
-  fi
   if [[ -n "$status" ]]; then
     printf 'refusing to run in a dirty workspace; commit or stash unrelated work first\n' >&2
     return 1
@@ -1261,9 +1258,6 @@ cmd_review() {
     fi
     status=$(<"$_tmp")
     rm -f "$_tmp"
-    if [[ $? -ne 0 ]]; then
-      return 1
-    fi
     if [[ -n "$status" ]]; then
       printf 'reviewer changed the workspace; refusing to delete its changes\n' >&2
       return 1
