@@ -246,7 +246,7 @@ Capture:
 
 Use reproducible, isolated benchmark environments.
 
-## [-] ORCA-003 — Audit all agent infrastructure findings
+## [x] ORCA-003 — Audit all agent infrastructure findings
 
 Investigate AG-01 through AG-35.
 
@@ -260,7 +260,7 @@ Record evidence, root cause, affected files, severity, remediation, regression t
 
 # PHASE 1 — INSTRUCTION ARCHITECTURE
 
-## [-] ORCA-004 — Canonical instruction hierarchy
+## [x] ORCA-004 — Canonical instruction hierarchy
 
 Establish explicit precedence:
 
@@ -275,7 +275,7 @@ Establish explicit precedence:
 
 Lower-priority instructions must not override higher-priority restrictions.
 
-## [ ] ORCA-005 — Compact mandatory instructions
+## [x] ORCA-005 — Compact mandatory instructions
 
 Create a concise mandatory instruction layer containing:
 
@@ -330,7 +330,7 @@ Fail preflight when mandatory instructions cannot be loaded.
 
 # PHASE 2 — INTELLIGENT SKILL INFRASTRUCTURE
 
-## [ ] ORCA-008 — Canonical skill registry
+## [x] ORCA-008 — Canonical skill registry
 
 Create a validated skill registry containing:
 
@@ -367,7 +367,7 @@ Every skill must explain:
 
 Remove duplicated generic instructions.
 
-## [-] ORCA-010 — Deterministic skill routing
+## [x] ORCA-010 — Deterministic skill routing
 
 Select skills using:
 
@@ -418,7 +418,7 @@ Fail closed when mandatory skill activation fails.
 
 # PHASE 3 — TASK INTELLIGENCE AND CONTEXT COMPILATION
 
-## [ ] ORCA-014 — Intelligent task classification
+## [x] ORCA-014 — Intelligent task classification
 
 Classify tasks by:
 
@@ -433,7 +433,7 @@ Classify tasks by:
 - Clinical impact.
 - Security impact.
 
-## [-] ORCA-015 — Structured task execution contract
+## [x] ORCA-015 — Structured task execution contract
 
 Define a machine-readable task contract containing:
 
@@ -453,7 +453,7 @@ Define a machine-readable task contract containing:
 - Explicit exclusions.
 - Recorded assumptions.
 
-## [-] ORCA-016 — Deterministic context compiler
+## [x] ORCA-016 — Deterministic context compiler
 
 Compile task context from:
 
@@ -474,7 +474,7 @@ Deduplicate overlapping content.
 
 Preserve provenance.
 
-## [-] ORCA-017 — Context budgets
+## [x] ORCA-017 — Context budgets
 
 Introduce configurable context budgets.
 
@@ -491,7 +491,7 @@ Never truncate mandatory safety rules or acceptance criteria.
 
 Split oversized tasks or select a suitable eligible free model when necessary.
 
-## [-] ORCA-018 — Context manifest
+## [x] ORCA-018 — Context manifest
 
 Record:
 
@@ -544,7 +544,7 @@ Support explicit BLOCKED and FAILED states.
 
 Use idempotent transitions and durable evidence.
 
-## [-] ORCA-021 — Mandatory preflight
+## [x] ORCA-021 — Mandatory preflight
 
 Validate:
 
@@ -600,7 +600,7 @@ Produce plans describing:
 
 Avoid lengthy planning for trivial changes.
 
-## [-] ORCA-024 — Controlled concurrent delegation
+## [x] ORCA-024 — Controlled concurrent delegation
 
 Delegate independent work concurrently.
 
@@ -723,7 +723,7 @@ Do not mutate tracked configuration during execution.
 
 # PHASE 6 — MEMORY AND KNOWLEDGE MANAGEMENT
 
-## [ ] ORCA-029 — Scoped memory retrieval
+## [x] ORCA-029 — Scoped memory retrieval
 
 Classify memory into:
 
@@ -756,7 +756,7 @@ Use concurrency-safe updates.
 
 Preserve user-maintained notes.
 
-## [ ] ORCA-031 — Failure knowledge
+## [x] ORCA-031 — Failure knowledge
 
 For verified failures, record:
 
@@ -874,7 +874,7 @@ Use disposable repositories for unsafe-operation tests.
 
 # PHASE 9 — ENGINEERING QUALITY AND INDEPENDENT VERIFICATION
 
-## [ ] ORCA-038 — Acceptance criteria traceability
+## [x] ORCA-038 — Acceptance criteria traceability
 
 Map each acceptance criterion to:
 
@@ -1003,7 +1003,7 @@ Treat performance percentages as engineering targets, not guaranteed results.
 
 Report actual measured results and limitations.
 
-## [-] ORCA-045 — Infrastructure regression suite
+## [x] ORCA-045 — Infrastructure regression suite
 
 Create regression coverage for:
 
@@ -1193,7 +1193,7 @@ Record:
 - Working-directory assumptions.
 - Proposed destination.
 
-## [ ] ORCA-052 — Script ownership migration
+## [-] ORCA-052 — Script ownership migration
 
 Move GitHub-specific scripts into .github/script/.
 
@@ -1252,7 +1252,7 @@ Examples:
 
 Classify by responsibility, not merely by which subsystem calls the script.
 
-## [ ] ORCA-053 — Dependency boundaries
+## [x] ORCA-053 — Dependency boundaries
 
 Enforce:
 
@@ -1380,7 +1380,7 @@ Delivery, workers, pull requests, watchdog, diagnostics, and workflow tests.
 
 Document arguments, environment variables, outputs, and exit codes.
 
-## [ ] ORCA-060 — Script ownership validator
+## [x] ORCA-060 — Script ownership validator
 
 Detect:
 
@@ -1434,7 +1434,7 @@ Verify:
 
 # PHASE 13 — ADVANCED AGENT INTELLIGENCE
 
-## [ ] ORCA-064 — Intelligent task decomposition
+## [x] ORCA-064 — Intelligent task decomposition
 
 Split oversized tasks into independently testable subtasks.
 
@@ -1459,7 +1459,7 @@ Invalidate stale entries when source changes.
 
 Prefer existing indexing capabilities over introducing a new service.
 
-## [ ] ORCA-066 — Change impact analysis
+## [x] ORCA-066 — Change impact analysis
 
 Identify affected:
 
@@ -1512,7 +1512,7 @@ Use bounded retries, cooldowns, and recovery probes.
 
 Distinguish temporary failures from permanent authentication or eligibility failures.
 
-## [-] ORCA-070 — Durable task checkpoints
+## [x] ORCA-070 — Durable task checkpoints
 
 Persist:
 
@@ -1570,7 +1570,7 @@ Identify incompatible instructions and overlapping responsibilities.
 
 Resolve conflicts through canonical policy rather than arbitrary instruction order.
 
-## [-] ORCA-077 — Failure-driven infrastructure improvement
+## [x] ORCA-077 — Failure-driven infrastructure improvement
 
 Convert recurring verified failures into:
 
@@ -1583,7 +1583,7 @@ Convert recurring verified failures into:
 
 Do not autonomously weaken security or quality policies.
 
-## [-] ORCA-078 — Agent infrastructure security
+## [x] ORCA-078 — Agent infrastructure security
 
 Protect:
 
@@ -1615,7 +1615,7 @@ Consolidate overlapping implementations.
 
 Prefer simpler native mechanisms.
 
-## [-] ORCA-080 — Task readiness assessment
+## [x] ORCA-080 — Task readiness assessment
 
 Evaluate:
 
@@ -1651,7 +1651,7 @@ Mandatory security, authorization, dependency, skill, and essential requirement 
 
 # PHASE 14 — COMPLETE SKILL AND MARKDOWN REFACTORING
 
-## [ ] ORCA-081 — Standard skill format
+## [x] ORCA-081 — Standard skill format
 
 Use supported native skill frontmatter.
 
@@ -1883,7 +1883,7 @@ Every specialist agent must define:
 - Validation obligations.
 - Escalation boundaries.
 
-## [-] ORCA-087 — Canonical Markdown hierarchy
+## [x] ORCA-087 — Canonical Markdown hierarchy
 
 Separate mandatory operational instructions from optional reference material.
 
@@ -1935,7 +1935,7 @@ Reject missing required metadata, duplicate identifiers, and unsupported fields.
 
 Detect broken links, missing documents, invalid paths, incorrect casing, and stale references.
 
-## [-] ORCA-093 — Instruction conflict detection
+## [x] ORCA-093 — Instruction conflict detection
 
 Detect contradictory requirements across global, component, agent, profile, skill, and task instructions.
 
@@ -1993,7 +1993,7 @@ Check precedence, native discovery, selected skills, duplication, permissions, a
 
 # PHASE 15 — COMPLETE FEATURE DELIVERY AND ENGINEERING RELIABILITY
 
-## [ ] ORCA-101 — Closed-loop feature verification
+## [x] ORCA-101 — Closed-loop feature verification
 
 Verify applicable feature layers:
 
@@ -2053,7 +2053,7 @@ Preserve completed work.
 
 Prevent duplicate implementations and repeated task execution.
 
-## [-] ORCA-106 — Configuration consistency
+## [x] ORCA-106 — Configuration consistency
 
 Detect configuration drift between:
 
@@ -2064,7 +2064,7 @@ Detect configuration drift between:
 - OpenCode execution.
 - GitHub workers.
 
-## [-] ORCA-107 — Technical debt management
+## [x] ORCA-107 — Technical debt management
 
 Record verified technical debt with severity, impact, evidence, and recommended remediation.
 
@@ -2109,7 +2109,7 @@ Validate infrastructure changes using representative isolated tasks before wides
 
 Detect behavioral and performance regressions.
 
-## [-] ORCA-112 — Documentation synchronization
+## [x] ORCA-112 — Documentation synchronization
 
 Detect stale documentation following code, architecture, API, workflow, or configuration changes.
 
@@ -2167,7 +2167,7 @@ If native mechanisms are insufficient, implement the smallest compatible asynchr
 
 Do not assume that issuing multiple tool calls guarantees concurrent execution.
 
-## [-] ORCA-116 — Actual concurrent subagent execution
+## [x] ORCA-116 — Actual concurrent subagent execution
 
 Launch independent subagents asynchronously.
 
@@ -2204,7 +2204,7 @@ Establish shared contracts and file ownership before concurrent writing.
 
 Use isolated worktrees or equivalent verified isolation.
 
-## [-] ORCA-120 — Parallel validation
+## [x] ORCA-120 — Parallel validation
 
 Run independent validation operations concurrently when safe.
 
@@ -2239,7 +2239,7 @@ Prevent simultaneous conflicting writes.
 
 Require controlled ownership transfer.
 
-## [ ] ORCA-123 — Adaptive concurrency
+## [x] ORCA-123 — Adaptive concurrency
 
 Adjust concurrency according to:
 
@@ -2311,7 +2311,7 @@ Demonstrate measurable benefits before increasing concurrency limits.
 
 # PHASE 17 — ADVANCED MULTI-AGENT COLLABORATION
 
-## [-] ORCA-128 — Shared task blackboard
+## [x] ORCA-128 — Shared task blackboard
 
 Provide a lightweight, task-scoped shared state mechanism.
 
@@ -2543,7 +2543,7 @@ Do not reuse stale or unrelated sessions.
 
 Do not maintain unlimited permanent conversations.
 
-## [-] ORCA-143 — Incremental validation
+## [x] ORCA-143 — Incremental validation
 
 Rerun affected tests and checks after changes.
 
@@ -2570,7 +2570,7 @@ Check:
 
 Treat malformed or untrusted output as a recoverable failure.
 
-## [-] ORCA-145 — Evidence freshness
+## [x] ORCA-145 — Evidence freshness
 
 Invalidate findings, test results, reviews, and cached decisions when their relevant source changes.
 

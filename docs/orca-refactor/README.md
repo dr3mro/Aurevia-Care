@@ -31,41 +31,41 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 4 | Script ownership inventory | Available | `01-inventory.md`; tool + reviewer |
 | 5 | Current architecture diagram | Available | `01-inventory.md`; tool |
 | 6 | Target architecture diagram | Draft, blocked on owner decisions | `01-inventory.md`; human decisions pending |
-| 7 | Canonical instruction hierarchy | Pending Stage E | no evidence |
+| 7 | Canonical instruction hierarchy | Design available | `05-instruction-skill-design.md`; reviewer |
 | 8 | Markdown loading policy | Partial: four global instructions verified | tool (generated configs) |
-| 9 | Validated skill registry | Pending Stage E | no evidence |
+| 9 | Validated skill registry | Design available | `05-instruction-skill-design.md`; reviewer |
 | 10 | Skill dependency graph | Pending Stage E | no evidence |
 | 11 | Task-to-skill routing matrix | Partial: `scripts/route-task.py` exists | tool (file read) |
 | 12 | Standardised skill definitions | Pending Stage E | no evidence |
 | 13 | Agent capability contracts | Pending Stage E | no evidence |
-| 14 | Task execution contract schema | Pending Stage F | no evidence |
-| 15 | Task readiness assessment | Pending Stage F | no evidence |
+| 14 | Task execution contract schema | Analysis schema documented | `scripts/orca_core.py`, `13-orca-schema.md`, task 01314000 |
+| 15 | Task readiness assessment | Analysis scoring available | `scripts/orca_core.py` readiness/assess readiness |
 | 16 | Repository knowledge index | Pending Stage F | no evidence |
-| 17 | Impact analysis mechanism | Pending Stage F | no evidence |
-| 18 | Context compiler | Pending Stage F | no evidence |
-| 19 | Context manifest schema | Pending Stage F | no evidence |
-| 20 | Preflight validation mechanism | Pending Stage G | no evidence |
+| 17 | Impact analysis mechanism | Analysis available | `scripts/orca_core.py` impact, task 01311000 |
+| 18 | Context compiler | Available as passive helper | `compile_context()` in `scripts/orca_core.py`; pinned by `test_orca_schema_doc.py` |
+| 19 | Context manifest schema | Available: worked synthetic artifact pinned | `13-orca-schema.md`; `scripts/tests/test_orca_schema_doc.py` |
+| 20 | Preflight validation mechanism | Available as reporting helper; gate enforcement separate | `preflight()` in `scripts/orca_core.py`; documented in `13-orca-schema.md` |
 | 21 | Canonical agent configuration | Available: generated from one generator | tool (`gen-opencode.py --check`, exit 0) |
 | 22 | Execution profiles | Pending Stage G; conflicts with owner model decision | blocked |
 | 23 | Model routing policy | Conflicts with owner decision | blocked, `MEMORY.md:33` |
 | 24 | Model capability profiles | Conflicts with owner decision | blocked |
 | 25 | Provider circuit breaker | Conflicts with owner decision | blocked |
-| 26 | Scoped memory retrieval | Pending Stage H | no evidence |
+| 26 | Scoped memory retrieval | Partial: passive provenance and scoped selection | `scripts/orca_memory.py`; task 01313000; runtime retrieval remains blocked |
 | 27 | Durable checkpointing | Available: task files plus daily notes | tool (`tasks/`, `.agents/`) |
 | 28 | Task recovery mechanism | Partial: leases and stale-worker logic in `scripts/swarm.py` | reviewer (WF-14) |
 | 29 | Independent review protocol | Partial: AG-19 bypass removed; AG-22 blocked on a trusted runner | reviewer (AG-19/AG-22), tasks 01301100/01301200 |
-| 30 | Feature completion matrix | Partial: `docs/gates/`, `docs/security/` | tool |
-| 31 | Healthcare safety verification policy | Available: `docs/launch/`, `docs/gates/` | tool |
+| 30 | Feature completion matrix | Available: status cells enforced by the docs checker | `04-completion-and-safety.md`; tool (`python3 -I scripts/check-docs.py`, exit 0), task 01312000 |
+| 31 | Healthcare safety verification policy | Available | `04-completion-and-safety.md`; reviewer + tool |
 | 32 | Architecture enforcement mechanism | Partial: `scripts/check-wiring.py` | tool + reviewer |
 | 33 | Contract synchronization checks | Partial: OpenAPI generation checks | tool |
-| 34 | Script ownership migration table | Pending Stage D | no evidence |
-| 35 | Updated repository directory structure | Pending Stage D | no evidence |
-| 36 | Subsystem dependency diagram | Pending Stage D | no evidence |
-| 37 | Canonical script entry point documentation | Pending Stage D | no evidence |
-| 38 | Script ownership and path validator | Pending Stage D | no evidence |
+| 34 | Script ownership migration table | Design available | `07-script-ownership-design.md`; reviewer |
+| 35 | Updated repository directory structure | Current source structure recorded (migration not done) | `14-script-ownership-structure.md`; tool (`find`/`rg`) |
+| 36 | Subsystem dependency diagram | Current source boundaries recorded | `14-script-ownership-structure.md`; tool + reviewer |
+| 37 | Canonical script entry point documentation | Available: all `check.sh` owners and Python `main()` entry points | `14-script-ownership-structure.md`; tool (`find`/`rg`) |
+| 38 | Script ownership and path validator | Implemented locally; 100% module coverage; full gate red on stale base | `scripts/check-ownership.py`, `scripts/ownership.json`, task 01304000 |
 | 39 | Updated test discovery configuration | Pending Stage D | no evidence |
 | 40 | Complete regression test suite | Partial: ~75 Python modules, targeted run green | tool |
-| 41 | Baseline benchmark results | Available as byte/line and test-count proxies; token metrics unavailable | tool, task 01300000 evidence log |
+| 41 | Baseline benchmark results | Available: passive harness plus byte/line and test-count proxies; token metrics unavailable | `scripts/orca_benchmark.py`, task 01306000 |
 | 42 | Post-refactoring benchmark results | Pending Stage N | no evidence |
 | 43 | Skill effectiveness results | Pending Stage N | no evidence |
 | 44 | Instruction adherence results | Pending Stage N | no evidence |
@@ -73,8 +73,8 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 46 | Agent canary validation | Pending Stage N | no evidence |
 | 47 | Migration and rollback documentation | Pending Stage M | no evidence |
 | 48 | Updated project documentation | In progress: this directory | tool |
-| 49 | Technical debt and remaining risks report | Pending Stage N | no evidence |
-| 50 | Final independent audit report | Pending Stage N | no evidence |
+| 49 | Technical debt and remaining risks report | Available: owner rulings, debt table, retest status | `15-technical-debt.md`; tool + reviewer + human |
+| 50 | Final independent audit report | Draft with honest blockers; cannot be GO while mandatory requirements remain unresolved | `16-final-audit.md`; tool + reviewer |
 
 ## Blocker summary
 

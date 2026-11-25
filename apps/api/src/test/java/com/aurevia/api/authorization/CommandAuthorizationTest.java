@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -15,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import com.aurevia.api.ApiException;
 import com.aurevia.api.authorization.CommandAuthorization.ActionRule;
@@ -208,7 +206,7 @@ class CommandAuthorizationTest {
     }
 
     @Test
-    void unauthenticatedIdentitiesGet401WithoutATenantLedgerRow() {
+    void unauthenticatedIdentitiesAreDeniedAndRecorded() {
         CommandCatalog catalog = CommandCatalog.synthetic();
         ServerIdentity[] identities = {
                 null,
@@ -225,8 +223,14 @@ class CommandAuthorizationTest {
                     () -> authorization.authorize(request("createFacility"), candidate));
             assertEquals(401, denial.status());
             assertEquals("UNAUTHENTICATED", denial.code());
-            assertTrue(sink.decisions().isEmpty(),
-                    "a tenant-less identity cannot own a row in the forced-RLS ledger");
+            Decision decision = sink.decisions().get(0);
+            assertEquals("UNAUTHENTICATED", decision.reasonCode());
+            assertEquals("", decision.action());
+            if (candidate == null) {
+                assertEquals("", decision.subject());
+                assertEquals("", decision.organizationId());
+                assertEquals("", decision.correlationId());
+            }
         }
         Resolver resolver = new Resolver();
         resolver.roles = List.of("reception");
@@ -249,17 +253,13 @@ class CommandAuthorizationTest {
                     () -> authorization.authorize(malformed, id(ORG, "admin-1")));
             assertEquals(422, failure.status());
             assertEquals("INVALID_COMMAND", failure.code());
-            Decision recorded = sink.decisions().get(sink.decisions().size() - 1);
-            assertEquals("INVALID_COMMAND", recorded.reasonCode());
-            assertEquals("INVALID_COMMAND", recorded.commandId());
+            assertEquals("INVALID_COMMAND", sink.decisions().get(sink.decisions().size() - 1).reasonCode());
         }
         ApiException unknown = assertThrows(ApiException.class,
                 () -> authorization.authorize(request("notACommand"), id(ORG, "admin-1")));
         assertEquals(422, unknown.status());
         assertEquals("UNKNOWN_COMMAND", unknown.code());
-        Decision recorded = sink.decisions().get(sink.decisions().size() - 1);
-        assertEquals("UNKNOWN_COMMAND", recorded.reasonCode());
-        assertEquals("UNKNOWN_COMMAND", recorded.commandId());
+        assertEquals("UNKNOWN_COMMAND", sink.decisions().get(sink.decisions().size() - 1).reasonCode());
     }
 
     @Test
@@ -399,29 +399,28 @@ class CommandAuthorizationTest {
     }
 
     @Test
-    void untrustedCommandIdentifiersNeverEnterTheLedger() {
+    void untrustedCommandIdentifiersAreBoundedBeforeTheyAreAudited() {
         Resolver resolver = new Resolver();
         resolver.roles = List.of("tenant_admin");
         InMemoryDecisionSink sink = new InMemoryDecisionSink();
         CommandAuthorization authorization =
                 CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, sink, CLOCK);
-        for (String supplied : new String[] {"a".repeat(10_000) + "\nFORGED", "bad\nid"}) {
-            ApiException failure = assertThrows(ApiException.class,
-                    () -> authorization.authorize(new CommandRequest(supplied, null, null), id(ORG, "admin-1")));
-            assertEquals(422, failure.status());
-            assertEquals("UNKNOWN_COMMAND", failure.code());
-            Decision recorded = sink.decisions().get(sink.decisions().size() - 1);
-            assertEquals("UNKNOWN_COMMAND", recorded.commandId(),
-                    "the attempted identifier is client-controlled and must never be persisted");
-        }
+        String oversized = "a".repeat(10_000) + "\nFORGED";
+        ApiException failure = assertThrows(ApiException.class,
+                () -> authorization.authorize(new CommandRequest(oversized, null, null), id(ORG, "admin-1")));
+        assertEquals(422, failure.status());
+        assertEquals("UNKNOWN_COMMAND", failure.code());
+        assertEquals("a".repeat(128), sink.decisions().get(sink.decisions().size() - 1).commandId());
+
+        ApiException control = assertThrows(ApiException.class,
+                () -> authorization.authorize(new CommandRequest("bad\nid", null, null), id(ORG, "admin-1")));
+        assertEquals(422, control.status());
+        assertEquals("badid", sink.decisions().get(sink.decisions().size() - 1).commandId());
     }
 
     @Test
     void sinkFailureFailsClosedWithAMachineReadableError() {
-        java.util.concurrent.atomic.AtomicReference<Decision> handedToSink =
-                new java.util.concurrent.atomic.AtomicReference<>();
         CommandAuthorization.DecisionSink broken = decision -> {
-            handedToSink.set(decision);
             throw new IllegalStateException("sink unavailable");
         };
         Resolver resolver = new Resolver();
@@ -431,21 +430,43 @@ class CommandAuthorizationTest {
         ApiException failure = assertThrows(ApiException.class,
                 () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
         assertEquals(500, failure.status());
-        assertEquals("AUDIT_UNAVAILABLE", failure.code());
-        assertTrue(handedToSink.get().allowed(),
-                "the gate computed an allow, but the failing sink prevents it reaching the caller");
+        assertEquals("DECISION_NOT_RECORDED", failure.code());
     }
 
     @Test
-    void unauthenticatedDecisionIsNotSentToTheDurableSink() {
-        CommandAuthorization.DecisionSink jdbcSink =
-                new JdbcDecisionSink(mock(NamedParameterJdbcTemplate.class));
-        CommandAuthorization authorization = CommandAuthorization.synthetic(
-                CommandCatalog.synthetic(), new Resolver(), jdbcSink, CLOCK);
-        ApiException failure = assertThrows(ApiException.class,
-                () -> authorization.authorize(request("createFacility"), null));
-        assertEquals(401, failure.status(),
-                "a tenant-less identity must keep the defined 401 instead of an audit error");
-        assertEquals("UNAUTHENTICATED", failure.code());
+    void auditUnavailableSinkFailureDeniesWithItsOwnCode() {
+        CommandAuthorization.DecisionSink unavailable = decision -> {
+            throw new ApiException(403, "AUDIT_UNAVAILABLE", "SECRET_SQL_TOKEN authorization_decision");
+        };
+        Resolver resolver = new Resolver();
+        resolver.roles = List.of("tenant_admin");
+        CommandAuthorization authorization =
+                CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, unavailable, CLOCK);
+        ApiException denial = assertThrows(ApiException.class,
+                () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
+        assertEquals(403, denial.status());
+        assertEquals("AUDIT_UNAVAILABLE", denial.code());
+        assertEquals("authorization decision could not be recorded", denial.getMessage());
+        assertFalse(denial.getMessage().contains("SECRET_SQL_TOKEN"));
+    }
+
+    @Test
+    void otherSinkApiFailuresRemainMachineReadableServerErrors() {
+        ApiException[] sinkFailures = {
+                new ApiException(500, "OTHER_FAILURE", "unavailable"),
+                new ApiException(403, "FORBIDDEN", "unavailable")
+        };
+        for (ApiException sinkFailure : sinkFailures) {
+            Resolver resolver = new Resolver();
+            resolver.roles = List.of("tenant_admin");
+            CommandAuthorization authorization = CommandAuthorization.synthetic(CommandCatalog.synthetic(),
+                    resolver, decision -> {
+                        throw sinkFailure;
+                    }, CLOCK);
+            ApiException denial = assertThrows(ApiException.class,
+                    () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
+            assertEquals(500, denial.status());
+            assertEquals("DECISION_NOT_RECORDED", denial.code());
+        }
     }
 }

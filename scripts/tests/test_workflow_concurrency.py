@@ -9,6 +9,7 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 DELIVERY_GROUP = "${{ github.event.pull_request.head.sha || github.ref }}"
 PLAN_GROUP = "swarm-plan-${{ github.repository }}"
 INTEGRATOR_GROUP = "swarm-integrator-${{ github.repository }}"
+SWARM_GROUP = "swarm-${{ github.ref }}"
 
 
 def load(path):
@@ -38,7 +39,7 @@ class WorkflowConcurrencyTest(unittest.TestCase):
 
     def test_other_workflows_run_concurrently_per_run(self):
         for path in self.workflows():
-            if path.name in {"delivery.yml", "swarm-integrator.yml"}:
+            if path.name in {"delivery.yml", "swarm-integrator.yml", "swarm.yml"}:
                 continue
             with self.subTest(workflow=path.name):
                 concurrency = load(path)["concurrency"]
@@ -50,6 +51,9 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         group = load(WORKFLOWS / "swarm-worker.yml")["concurrency"]["group"]
         self.assertIn("github.run_id", group)
         self.assertIn("inputs.slot", group)
+
+    def test_swarm_allows_one_wave_per_branch(self):
+        self.assert_queue(load(WORKFLOWS / "swarm.yml")["concurrency"], SWARM_GROUP)
 
     def test_swarm_plan_serializes_all_waves_in_the_repository(self):
         plan = load(WORKFLOWS / "swarm.yml")["jobs"]["plan"]["concurrency"]

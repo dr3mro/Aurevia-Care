@@ -50,7 +50,7 @@ This is a draft, not an approved target: the isolation, model-policy and evidenc
 
 | Layer | Files | Loaded natively |
 |---|---|---|
-| Always-on | `.opencode/setup/AGENTS.md`, `.opencode/setup/CODING_STYLE.md`, `.opencode/config/README-SETUP.md`, `docs/WORKFLOW.md` | Yes, identical 4-entry arrays at `opencode.json:4-9` and `opencode.ci.json:4-9` |
+| Always-on | `.opencode/setup/AGENTS.md`, `.opencode/setup/CODING_STYLE.md`, `.opencode/setup/CONSTRAINTS.md`, `.opencode/config/README-SETUP.md`, `docs/WORKFLOW.md` | Yes, identical 5-entry arrays at `opencode.json:4-10` and `opencode.ci.json:4-10` |
 | Manual rules | `tasks/_head.md:25-43`, `.opencode/agents/orca.md:6,36,40,42`, `.opencode/setup/CONSTRAINTS.md` | No; read by instruction |
 | Spec and trackers | `.opencode/config/PROJECT_V1_SPEC.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md` | No; by requirement ID |
 | Skill bodies | 40 files under `.opencode/skills/*/SKILL.md` | Advertised by description; body on `skill` tool call |

@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from helpers import load  # noqa: E402
+from helpers import ROOT, load  # noqa: E402
 
 route = load("route-task")
 
@@ -46,6 +46,12 @@ class RouteTests(unittest.TestCase):
 
     def test_pick_of_an_unknown_path_is_empty(self):
         self.assertEqual(route.pick(["docs/x.md"]), [])
+
+    def test_existing_accepts_real_repository_layout(self):
+        # Real agents are bare files; skills are prefixed except the system skill.
+        self.assertIn("context-optimizer", route.existing(["context-optimizer"], ROOT))
+        self.assertIn("delivery", route.existing(["delivery"], ROOT, "skills"))
+        self.assertIn("run-workflow", route.existing(["run-workflow"], ROOT, "skills"))
 
     def test_existing_drops_missing_agents(self):
         root = make_root(["senior-backend"], skills=["delivery"])
