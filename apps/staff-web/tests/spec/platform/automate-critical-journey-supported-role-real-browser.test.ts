@@ -150,6 +150,9 @@ const currentSpecs: readonly string[] = [
   'responsive-chart.spec.ts',
   'responsive-patients.spec.ts',
   'softKeyboardAndForms.spec.ts',
+  // The tenant-admin responsive journey is part of the committed harness; keep
+  // the inventory exact so the tripwire still detects the next added spec.
+  'responsive-admin.spec.ts',
 ];
 
 describe('WEB-10 clause 2 — real-browser role journeys', () => {

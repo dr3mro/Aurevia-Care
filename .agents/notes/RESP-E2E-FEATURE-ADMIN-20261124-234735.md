@@ -61,6 +61,22 @@ The branch was merged with `origin/main` before this segment. Per the durable di
 10. `npm run e2e -- e2e/responsive-admin.spec.ts --project=phone-portrait-390x844 --retries=0` (from `apps/staff-web`) → `E2E_EXIT=0`, final lines `3 skipped` / `7 passed (42.0s)`. This confirms the merged production code still satisfies the scoped spec at a phone viewport; the dev server was started by the Playwright config.
 11. Source reads (tool evidence): `apps/staff-web/index.html`, `apps/staff-web/src/features/admin/ConfigPage.tsx` and `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` were read in full at their current merged state; no defect was silently fixed and no assertion was weakened.
 
+### Segment 3 — coverage-repair attempt 1 (tool evidence)
+
+The coverage check failed on the exact-spec inventory pin: `e2eSpecs()` returned 29 specs while `currentSpecs` pinned 28, so the assertion at `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:239` reported the extra `responsive-admin.spec.ts`. The scoped spec adds no production line or branch and contains none of the visual-check vocabulary tokens (`toHaveScreenshot|toMatchSnapshot|getComputedStyle|data-theme|colorScheme`), so the separate visual-check pin at line 261 was unaffected. The only change refreshes the inventory pin so the exact-set assertion stays strict and keeps detecting the next added spec — the maintenance action the file's own comment at lines 86-105 prescribes. No threshold was lowered and no exclusion, ignore comment or skip was added. This is the one-line integrator update requested in finding 3 and the first `task-requests` entry; the repair request authorises it despite the earlier out-of-scope note.
+
+- Scope change: one entry added to `currentSpecs` in `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`. No production, dependency, tracker, workflow, script or protected file was edited.
+- Loaded skills for this repair:
+  - `aurevia-delivery` — "use when working any story or swarm task" (repair of a story's coverage gate).
+  - `aurevia-coverage-auditor` — "when a coverage run reports a miss" (the canonical check failed).
+  - `aurevia-test-engineer` — "a coverage gate fails" / name the test for every branch.
+  - `aurevia-senior-react` — staff-web test change; requires `apps/staff-web/check.sh` plus typecheck lines.
+  - `aurevia-senior-typescript` — "a change touches TypeScript in any app".
+
+12. Targeted red→green: before the fix the canonical check failed at line 239 with `expected [ …(29) ] to deeply equal [ …(28) ]` and `+ "responsive-admin.spec.ts"` (tool evidence, failure output in the repair prompt). After the fix: `npx vitest run tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts` (from `apps/staff-web`) → `Test Files  1 passed (1)` / `Tests  3 passed (3)`, `TARGETED_EXIT=0`.
+13. Canonical module check: `bash apps/staff-web/check.sh` (from repository root) → `CHECK_EXIT=0`; final lines `Test Files  283 passed (283)` / `Tests  3225 passed (3225)`, `No files with missing coverage.`, `283 files fully covered.`, `Statements 100% (5754/5754)`, `Branches 100% (2886/2886)`, `Functions 100% (1899/1899)`, `Lines 100% (5528/5528)`. Generated-client, typecheck, lint, build and gzip-budget stages all passed before the Vitest/coverage stage.
+14. `npm run typecheck` (from `apps/staff-web`) → `TYPECHECK_EXIT=0`; final lines `> tsc --noEmit -p tsconfig.json` with no diagnostics.
+
 ## Review verdicts
 
 - aurevia-plan-reviewer: GO
@@ -68,9 +84,11 @@ The branch was merged with `origin/main` before this segment. Per the durable di
 - aurevia-coverage-auditor: GO
 - aurevia-devsecops: GO
 
+Coverage-repair attempt 1 changed only a test-data pin entry (no production behavior, no assertion weakened, no threshold or exclusion touched), so the four GO verdicts above still apply.
+
 ## Coverage
 
-No production source file changed. `apps/staff-web/package.json` excludes `e2e/**` from the Vitest coverage run; Playwright execution above is the proof for the new spec. The diagnostic Vitest run reports 100% on every metric for all production files. Every branch added to the spec is exercised by a named test:
+No production source file changed. `apps/staff-web/package.json` excludes `e2e/**` from the Vitest coverage run; Playwright execution above is the proof for the new spec. Coverage is 100% on every metric for all production files, now reported by the canonical `bash apps/staff-web/check.sh` itself (item 13), not only the earlier diagnostic run. Every branch added to the spec is exercised by a named test:
 
 | Branch / helper side | Test that covers it |
 |---|---|
@@ -91,14 +109,24 @@ No production source file changed. `apps/staff-web/package.json` excludes `e2e/*
 | `visibleValues` empty/non-empty node text | parity test across the four screens |
 | `expectCommandMetadata` present and non-empty headers | command journeys; audit screen is read-only and excluded |
 
+### Coverage-repair branch-to-test list
+
+No production line or branch was added or changed in this repair; the sole edit is a test-data pin entry. Every assertion side of the touched test is exercised by the existing named test:
+
+| Branch / assertion side | Test that covers it |
+|---|---|
+| Exact e2e inventory set: extra spec present (the observed failure) and set equal after the refresh | `records light/dark visual evidence and pins the remaining all-role and staging-RC gaps` — `expect(specs.sort()).toEqual([...currentSpecs].sort())` at line 239; the 29-vs-28 mismatch was the red, now 29-vs-29 green (`283 passed`, `CHECK_EXIT=0`) |
+| Visual-check vocabulary set remains exactly the three committed specs | same test, line 261 — the new spec has none of the tokens, so this pin was unchanged and passes |
+| Compile-time supported-role union tripwire | same test, line 269 `expectTypeOf<Role>()...`; typecheck `TYPECHECK_EXIT=0` |
+
 No threshold, exclusion, suppression or skip was added. The three `test.fixme` cases are the story-prescribed outcome for real out-of-scope defects and keep their strict assertions.
 
 ## Findings
 
 1. **RTL skip-link defect (tool evidence, out of scope):** `apps/staff-web/index.html:16-27` boots `.skip-link` with physical `left: -9999px` while `src/theme/responsive.css` uses `inset-inline-start`. Under `dir=rtl` both offsets apply; measured document `scrollWidth` was 10359px at a 360px viewport, and the stretched link intercepts pointer events at compact or short viewports. Strict assertions are parked in two `test.fixme` cases; keyboard routes remain active. The same defect is recorded in `e2e/responsive-system.spec.ts`.
 2. **Config status masking (tool evidence, out of scope):** `apps/staff-web/src/features/admin/ConfigPage.tsx:576-578` renders `defined ?? approved`, so an approval performed after a proposal keeps announcing "Defined a pending version…". Both commands reach the API. The active task approves before proposing and still asserts both announcements; the natural propose→approve order is kept as a strict `test.fixme`.
-3. **Exact-spec pin (tool evidence):** `bash apps/staff-web/check.sh` fails only because `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:107-153` pins the exact e2e spec set and omits `responsive-admin.spec.ts`. That file is outside this task's scope and owned by the integrator; the request below asks for the update. No assertion was weakened to make the gate pass.
-4. **Diagnostic coverage command:** the canonical check stops at finding 3, so the 100% evidence is from a Vitest run that excludes only that one pin test file. No coverage threshold or configured exclusion was changed.
+3. **Exact-spec pin — resolved in coverage-repair attempt 1 (tool evidence):** `bash apps/staff-web/check.sh` failed only because `tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts:107-153` pins the exact e2e spec set and omits `responsive-admin.spec.ts`. The repair added that one entry so the pin stays exact; the canonical check now passes (`CHECK_EXIT=0`, 100% coverage). The assertion was not weakened — only the inventory expectation was refreshed to match the already-reviewed scoped spec.
+4. **Diagnostic coverage command (historical):** before the pin was refreshed the canonical check stopped at finding 3, so the segment-1 100% evidence came from a Vitest run excluding only that one pin test file. After the repair the canonical check itself reports 100% (item 13). No coverage threshold or configured exclusion was changed.
 5. **Environment:** Playwright browser binaries and OS dependencies were installed in the worker (`npx playwright install chromium`, `npx playwright install-deps chromium`). No dependency was added to the repository.
 6. Review history (tool evidence from read-only reviewers): the plan reviewer's first pass was NO-GO with nine Required gaps, all closed before the GO; the code reviewer's first pass was NO-GO on missing notes sections and a stale evidence tally, both closed; devsecops first pass was NO-GO on an absent-header false green, closed with presence assertions. Each reviewer then answered GO.
 7. Evidence sources: executed tool commands and read-only specialist reviews; no simulated user walkthrough and no authorized human feedback.
@@ -107,7 +135,7 @@ No threshold, exclusion, suppression or skip was added. The three `test.fixme` c
 
 ## In-scope status: complete
 
-The scoped deliverable `apps/staff-web/e2e/responsive-admin.spec.ts` is complete and stable after the merge. It covers all four admin screens at every configured phone, tablet and desktop project, drives each main task by keyboard, pointer and real tap, asserts no horizontal scroll, English and Arabic `lang`/`dir` and exact bilingual words, an axe serious/critical gate, desktop-to-phone value reachability and command boundary metadata. No further in-scope change is needed or possible. The story cannot be accepted or marked `[x]` yet because the canonical check is still red on the out-of-scope inventory pin and three product defects remain out of scope (below); each has a task request and keeps its strict assertion.
+The scoped deliverable `apps/staff-web/e2e/responsive-admin.spec.ts` is complete and stable after the merge. It covers all four admin screens at every configured phone, tablet and desktop project, drives each main task by keyboard, pointer and real tap, asserts no horizontal scroll, English and Arabic `lang`/`dir` and exact bilingual words, an axe serious/critical gate, desktop-to-phone value reachability and command boundary metadata. No further in-scope change is needed or possible. The canonical check is green after the coverage-repair pin refresh (segment 3). The story is still not accepted or marked `[x]` because three product defects remain out of scope (below); each has a task request and keeps its strict assertion.
 
 ## Lessons for workers
 
@@ -119,8 +147,8 @@ The scoped deliverable `apps/staff-web/e2e/responsive-admin.spec.ts` is complete
 
 ## Why this is not finished
 
-- Segment 2 stop: the in-scope spec is complete and re-verified after the merge (see "In-scope status: complete"). No file outside `apps/staff-web/e2e/responsive-admin.spec.ts` may be edited by this worker, so there is no remaining in-scope action; this worker stops here rather than weakening an assertion or masking a defect.
-- The canonical `bash apps/staff-web/check.sh` remains red on the out-of-scope exact-spec pin (finding 3). The exact next step is for the integrator to add `'responsive-admin.spec.ts'` to `currentSpecs` in `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`, then rerun the canonical check.
+- Segment 2 stop (historical): the in-scope spec was complete and re-verified after the merge. In coverage-repair attempt 1 the authorising repair request expanded scope to the single inventory-pin file (finding 3); that one-line refresh is done and the canonical check is green. This worker stops after the repair as instructed, without weakening an assertion or masking a defect.
+- Resolved: the canonical `bash apps/staff-web/check.sh` was red on the exact-spec pin (finding 3). Coverage-repair attempt 1 added `'responsive-admin.spec.ts'` to `currentSpecs` in `apps/staff-web/tests/spec/platform/automate-critical-journey-supported-role-real-browser.test.ts`; targeted and canonical runs are green with 100% coverage. No further step is needed for the coverage failure.
 - Three strict `test.fixme` cases remain: Arabic document overflow, Arabic pointer activation at compact/short viewports (fix `apps/staff-web/index.html` to use a logical skip-link offset and re-enable), and the config approve-after-propose announcement (fix `ConfigPage.tsx` status precedence and re-enable). All three keep their assertions unchanged.
 
 ```task-requests
