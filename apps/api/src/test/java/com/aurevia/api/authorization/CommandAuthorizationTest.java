@@ -432,4 +432,19 @@ class CommandAuthorizationTest {
         assertEquals(500, failure.status());
         assertEquals("DECISION_NOT_RECORDED", failure.code());
     }
+
+    @Test
+    void durableSinkFailureKeepsTheAuditUnavailableDenyReason() {
+        CommandAuthorization.DecisionSink unavailable = decision -> {
+            throw new ApiException(500, "AUDIT_UNAVAILABLE", "authorization ledger unavailable");
+        };
+        Resolver resolver = new Resolver();
+        resolver.roles = List.of("tenant_admin");
+        CommandAuthorization authorization =
+                CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, unavailable, CLOCK);
+        ApiException failure = assertThrows(ApiException.class,
+                () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
+        assertEquals(500, failure.status());
+        assertEquals("AUDIT_UNAVAILABLE", failure.code());
+    }
 }
