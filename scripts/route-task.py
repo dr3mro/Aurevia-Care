@@ -69,11 +69,22 @@ def pick(scope):
 
 
 def existing(names, root, kind="agents"):
-    """Keep only the agents (or skills) that exist in this repository."""
+    """Keep only the agents or skills that exist in this repository.
+
+    Agent files are bare today, while skill directories carry the product prefix
+    except for system skills. ORCA-081 renames skills atomically, so both forms
+    are accepted during the transition. Inputs are candidate short names, a
+    repository root and the resource kind; the output is the existing subset in
+    input order. No exception is raised for a missing name.
+    """
     def has(name):
         if kind == "skills":
-            return (root / ".opencode/skills" / f"aurevia-{name}" / "SKILL.md").is_file()
-        return (root / ".opencode/agents" / f"aurevia-{name}.md").is_file()
+            base = root / ".opencode/skills"
+            return ((base / name / "SKILL.md").is_file()
+                    or (base / f"aurevia-{name}" / "SKILL.md").is_file())
+        base = root / ".opencode/agents"
+        return ((base / f"{name}.md").is_file()
+                or (base / f"aurevia-{name}.md").is_file())
     return [n for n in names if has(n)]
 
 
@@ -83,9 +94,10 @@ def render(scope, requirements, title, root=ROOT):
     skills = existing(["delivery"] + specialists, root, "skills")
     dirs = [e for e in scope if (root / e).exists()]
     lines = ["## Routing", f"Task: {title or 'untitled'}",
-             "Consult these read-only specialists (the agent name is aurevia-<name>): "
+             "Consult these read-only specialists (files are .opencode/agents/<name>.md): "
              + ", ".join(specialists),
-             "Load these skills before you start (they are .opencode/skills/aurevia-<name>/SKILL.md): "
+             "Load these skills before you start (under .opencode/skills/<name>/SKILL.md; "
+             "most are currently prefixed): "
              + ", ".join(skills),
              "Read first: AGENTS.md, CODING_STYLE.md, the requirement IDs " + (", ".join(requirements) or "(none)")
              + " in .opencode/config/PROJECT_V1_SPEC.md, and these paths in scope: " + (", ".join(dirs) or "(new files only)")]

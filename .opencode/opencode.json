@@ -4,6 +4,7 @@
   "instructions": [
     ".opencode/setup/AGENTS.md",
     ".opencode/setup/CODING_STYLE.md",
+    ".opencode/setup/CONSTRAINTS.md",
     ".opencode/config/README-SETUP.md",
     "docs/WORKFLOW.md"
   ],
