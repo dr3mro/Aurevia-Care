@@ -1,6 +1,6 @@
 - [-] FIX-DELIVERY-GATE-EXPECTED · Report the required Delivery gate check for every PR head
-  - agent: swarm-7
-  - attempts: 34
+  - agent: swarm-1
+  - attempts: 35
   - evidence: Red first: `python3 -I -m unittest discover -s scripts/tests -p 'test_workflow_concurrency.py' -v` failed 3 tests (paths-ignore present, cancel-in-progress False). Green after fix: 5 tests OK. `python3 -I -m unittest discover -s scripts/tests -q`: Ran 1386 tests OK. `bash scripts/python-coverage.sh`: "python coverage: every changed script line is covered". `bash scripts/quick-check.sh`: "quick check: policy, compile and unit tests passed". `actionlint -ignore 'unexpected key \"queue\" ...'` exit 0; check-pack/check-docs/check-secrets/check-names/check-wiring/check-constraints/check-migrations/gen-opencode --check all exit 0. aurevia-github-workflow reviewer NO-GO findings (stale docs/comments, cancelled-run handling) closed in the same change. Committed c959c39b, merged into main as e33a2ae7, HEAD 69eafc47. GitHub CI: Delivery run 45289808826 (push, e33a2ae7) and 45289961489 (push, 69eafc47) both PENDING/queued at 23:38Z; REST rate limit resets 23:42Z. aurevia-github-workflow re-review: VERDICT GO (all three prior Required findings closed). No production application code changed.
   - requirements: OPS-06
   - scope: .github/workflows/delivery.yml, scripts/tests/test_workflow_concurrency.py, scripts/tests/test_swarm_delivery_state.py, scripts/swarm.py, docs/reference/testing-guide.md, docs/swarm/EFFICIENCY.md, .opencode/skills/aurevia-github-workflow/SKILL.md
