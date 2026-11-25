@@ -6886,6 +6886,13 @@ def main(argv=None):
             emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
             emit("count", 0)
             return 0
+        # Do not plan a new wave while another wave is already queued or waiting:
+        # each queued wave would otherwise plan its own full matrix and over-launch.
+        if not (a.ignore_red_main or scheduling_override()) and waiting_waves() > 0:
+            print("Another wave is already waiting; skipping this wave.")
+            emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
+            emit("count", 0)
+            return 0
         text = reclaim(todo_read(a.file), everything, live)
         busy = len(live)
         override = a.ignore_red_main or scheduling_override()

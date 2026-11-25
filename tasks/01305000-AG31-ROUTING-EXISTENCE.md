@@ -1,5 +1,6 @@
-- [-] AG31-ROUTING-EXISTENCE · Make route-task.py find real agent and skill files
-  - agent: orca
+- [x] AG31-ROUTING-EXISTENCE · Make route-task.py find real agent and skill files
+  - evidence: Red `Ran 13 tests in 0.003s`, `FAILED (failures=1)` → green `Ran 13 tests in 0.003s`, `OK`; full suite `Ran 1771 tests in 108.458s`, `OK`; `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; plan/code/coverage/security reviewers GO. Evidence source: tool commands and read-only reviewers; no simulated or human user feedback.
+  - pr: none — no Git or `gh` operation is permitted in this session; scoped patch handed to the trusted integrator.
   - requirements: ORCA-027, AG-31
   - scope: scripts/route-task.py, scripts/tests/test_route_task.py, tasks/01305000-AG31-ROUTING-EXISTENCE.md
   - details: `existing()` in `scripts/route-task.py:71-77` checks `.opencode/agents/aurevia-<name>.md` and `.opencode/skills/aurevia-<name>/SKILL.md`, but real agent files are bare (`context-optimizer.md`) while skills are prefixed. The current tests build synthetic prefixed fixtures and hide the defect. Add a real-layout red test first, then accept both bare and prefixed names. Do not rewrite existing tests; they remain valid for the legacy layout during the staged skill rename.

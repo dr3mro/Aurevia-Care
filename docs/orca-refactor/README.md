@@ -62,7 +62,7 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 35 | Updated repository directory structure | Pending Stage D | no evidence |
 | 36 | Subsystem dependency diagram | Pending Stage D | no evidence |
 | 37 | Canonical script entry point documentation | Pending Stage D | no evidence |
-| 38 | Script ownership and path validator | Design available, not implemented | `07-script-ownership-design.md`; reviewer |
+| 38 | Script ownership and path validator | Implemented locally; 100% module coverage; full gate red on stale base | `scripts/check-ownership.py`, `scripts/ownership.json`, task 01304000 |
 | 39 | Updated test discovery configuration | Pending Stage D | no evidence |
 | 40 | Complete regression test suite | Partial: ~75 Python modules, targeted run green | tool |
 | 41 | Baseline benchmark results | Available as byte/line and test-count proxies; token metrics unavailable | tool, task 01300000 evidence log |
