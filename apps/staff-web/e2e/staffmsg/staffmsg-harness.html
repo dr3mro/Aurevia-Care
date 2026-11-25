@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Staff messaging browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only harness for the bilingual staff-messaging journey (MSG-02,
+         MSG-03, WEB-09). Vite dev serves this at
+         /e2e/staffmsg/staffmsg-harness.html. The real messenger panel, mail
+         page and reference components are mounted under production providers;
+         the pre-login shell hard-codes a reception role and denies these
+         routes. A query parameter selects one of three synthetic staff views
+         in two facilities. Every value here is synthetic. -->
+    <main>
+      <div id="staffmsg-harness" data-testid="staffmsg-harness"></div>
+    </main>
+    <script type="module" src="./staffmsg-harness.tsx"></script>
+  </body>
+</html>
