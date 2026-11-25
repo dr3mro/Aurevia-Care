@@ -462,6 +462,13 @@ FULL
   cat <<PROMPT
 Work exactly one story, test first, with synthetic data only. Commit to the
 current branch. Do not push, tag or call gh. $(tracker_rules)
+If SWARM_SINGLE_TASK is enabled, work as the single active task: decompose the story
+into ordered steps before coding, implement one step at a time, and do not start a
+new story. Before coding, run aurevia-plan-reviewer and fix any NO-GO findings.
+After coding, run aurevia-code-reviewer, aurevia-coverage-auditor, aurevia-devsecops and
+aurevia-qa-reviewer (plus any specialist the brief names) and record each final VERDICT
+line under "## Review verdicts" in ${notes_file} as "- <reviewer>: GO". Do not publish
+until all of them answer GO.
 Keep the branch current with the base branch: at the start, after each stage of the story and
 before you finish, run git merge --no-edit origin/${BASE_BRANCH:-main} (origin/${BASE_BRANCH:-main} is already fetched;
 do not fetch, you have no token). If it stops with conflicts, resolve every conflicted file by keeping both
@@ -934,10 +941,10 @@ cmd_merge_main() {
     scan_files=()
     while IFS= read -r scan_file; do
       scan_files+=("$scan_file")
-    done < <({ printf '%s\n' "${conflicted_files[@]}"; git diff --name-only "$pre" HEAD; } | sort -u | sed '/^$/d')
+    done < <({ printf '%s\n' ${conflicted_files[@]+"${conflicted_files[@]}"}; git diff --name-only "$pre" HEAD; } | sort -u | sed '/^$/d')
     if [[ ! -f "$(git rev-parse --git-path MERGE_HEAD)" && -z "$(git ls-files -u)" ]] \
         && git merge-base --is-ancestor "$base" HEAD \
-        && ! git grep -qE '^(<<<<<<<|>>>>>>>) ' HEAD -- "${scan_files[@]}" 2> /dev/null; then
+        && ! git grep -qE '^(<<<<<<<|>>>>>>>) ' HEAD -- ${scan_files[@]+"${scan_files[@]}"} 2> /dev/null; then
       outcome=merged
     else
       # Not a clean merge: start the next attempt from the original conflict.
@@ -1008,9 +1015,11 @@ cmd_fetch_prs() {
     prs+=("$pr")
   done < <(jq -r '.[]' <<< "$CONFLICTED")
   local pr
-  for pr in "${prs[@]}"; do
-    github_git fetch -q origin "pull/$pr/head:pr-$pr"
-  done
+  if [[ ${#prs[@]} -gt 0 ]]; then
+    for pr in "${prs[@]}"; do
+      github_git fetch -q origin "pull/$pr/head:pr-$pr"
+    done
+  fi
 }
 
 # resolve: the integrator could not merge these PRs into main. Merge main into
@@ -1026,6 +1035,7 @@ cmd_resolve() {
   done < <(jq -r '.[]' <<< "$CONFLICTED")
   local pr
   mkdir -p "$out/resolve"
+  if [[ ${#prs[@]} -gt 0 ]]; then
   for pr in "${prs[@]}"; do
     require_clean_worktree
     git switch -q -C "resolve-$pr" "pr-$pr"
@@ -1048,6 +1058,7 @@ cmd_resolve() {
         || printf 'failed' > "$out/resolve/$pr"
     fi
   done
+  fi
 }
 
 cmd_audit() {
@@ -1303,8 +1314,13 @@ cmd_publish() {
     cat .github/pull_request_template.md
   } > "$body"
   [[ "$checks" != passed || "$result" != ok ]] && args+=(--draft)
-  gh pr create --base "${BASE_BRANCH:-main}" --head "$branch" \
-    --title "${STORY_TITLE:-${STORY_ID}}" --body-file "$body" "${args[@]}"
+  if [[ ${#args[@]} -gt 0 ]]; then
+    gh pr create --base "${BASE_BRANCH:-main}" --head "$branch" \
+      --title "${STORY_TITLE:-${STORY_ID}}" --body-file "$body" "${args[@]}"
+  else
+    gh pr create --base "${BASE_BRANCH:-main}" --head "$branch" \
+      --title "${STORY_TITLE:-${STORY_ID}}" --body-file "$body"
+  fi
   emit pr "$(gh pr view "$branch" --json number --jq .number)"
 }
 
