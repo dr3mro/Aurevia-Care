@@ -58,8 +58,56 @@ env:
   SWARM_SINGLE_TASK: ${{ vars.SWARM_SINGLE_TASK || 'false' }}
 
 jobs:
+  select:
+    name: Select task (PO + scrum master)
+    if: vars.SWARM_SINGLE_TASK == 'true' && vars.SWARM_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      task_id: ${{ steps.run.outputs.task_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            tasks/
+            tasks
+      - name: Select one task with OpenCode
+        id: run
+        env:
+          SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_1 || secrets.OPENCODE_API_KEY }}
+        run: |
+          set +e
+          image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')-agent-1:latest"
+          echo "Selecting with image $image" >&2
+          mkdir -p .agent
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+            -e SWARM_MODEL -e OPENCODE_API_KEY \
+            "$image" bash -lc '
+              opencode run --auto --agent aurevia-product-owner --model "$SWARM_MODEL" \
+                "Read tasks/. Pick exactly one open eligible task (depends done, attempts below 5, free scope). Reply with only the task id on the last line." \
+                > .agent/selected-task.txt 2>/tmp/select.log || true
+            '
+          rc=$?
+          echo "docker rc=$rc" >&2
+          if [[ -s .agent/selected-task.txt ]]; then
+            tid=$(tail -n 1 .agent/selected-task.txt | tr -d "[:space:]")
+            echo "Selected task: $tid" >&2
+            echo "task_id=$tid" >> "$GITHUB_OUTPUT"
+          else
+            echo "No selection produced; falling back to deterministic plan." >&2
+            echo "task_id=" >> "$GITHUB_OUTPUT"
+          fi
   plan:
     name: Plan the wave
+    needs: select
+    if: always()
     # Planning reads tasks/ and claims tasks, so it never overlaps another
     # plan, whichever wave it belongs to.
     concurrency:
@@ -142,7 +190,7 @@ jobs:
           WORKERS: ${{ inputs.workers || '7' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
-          LAUNCH_TASK: ${{ inputs.task }}
+          LAUNCH_TASK: ${{ needs.select.outputs.task_id || inputs.task }}
           IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}
           IMAGES_REASON: ${{ steps.images.outputs.reason }}
