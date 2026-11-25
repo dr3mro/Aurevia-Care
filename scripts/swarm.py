@@ -5225,6 +5225,29 @@ def protected_override():
     }
 
 
+def swarm_enabled():
+    """True unless the kill switch SWARM_ENABLED is set to a false value.
+
+    The switch pauses picking the next task and halts wave advancement. It does
+    not stop workers that are already running; they finish and publish. Turn it
+    off by setting SWARM_ENABLED to 0/false/no/off (case-insensitive); delete or
+    leave it unset to keep the swarm running."""
+    value = os.environ.get("SWARM_ENABLED", "").strip().lower()
+    if value == "":
+        return True
+    return value not in {"0", "false", "no", "off"}
+
+
+def single_task_mode():
+    """True when the single-task-per-wave redesign is enabled (SWARM_SINGLE_TASK=1)."""
+    return os.environ.get("SWARM_SINGLE_TASK", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def debug_rounds(names):
     """How many debugger rounds a pull request has been through (labels debug-1 to debug-3)."""
     return len([n for n in names if re.fullmatch(r"debug-\d", n)])

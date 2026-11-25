@@ -624,7 +624,10 @@ $(tail -n 40 "$out/quality.log")" "$out/quality-fix-${attempt}.log" > /dev/null
   fi
 
   local commits checks=skipped
-  commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  commits=0
+  if [[ -s "$out/base-sha" ]]; then
+    commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  fi
   # A rate limit or timeout ends this worker now: do not spend runner minutes on
   # the full check. The trusted publish job still sees the commit count.
   if [[ "$result" == rate_limited || "$result" == timeout ]]; then
@@ -910,7 +913,10 @@ cmd_merge_main() {
   while [[ "$outcome" == conflict && $attempt -lt $max ]]; do
     attempt=$((attempt + 1))
     files=$(git diff --name-only --diff-filter=U)
-    mapfile -t conflicted_files <<< "$files"
+    conflicted_files=()
+    while IFS= read -r conflicted_file; do
+      conflicted_files+=("$conflicted_file")
+    done <<< "$files"
     activate_ci_config
     result=$(run_agent orca "$(conflict_prompt "$files")" "$out/merge-$attempt.log")
     restore_config
@@ -925,7 +931,10 @@ cmd_merge_main() {
       git commit -q --no-edit || true
     fi
     # Look for leftover conflict markers in the conflicted files and in everything the merge brought in.
-    mapfile -t scan_files < <({ printf '%s\n' "${conflicted_files[@]}"; git diff --name-only "$pre" HEAD; } | sort -u | sed '/^$/d')
+    scan_files=()
+    while IFS= read -r scan_file; do
+      scan_files+=("$scan_file")
+    done < <({ printf '%s\n' "${conflicted_files[@]}"; git diff --name-only "$pre" HEAD; } | sort -u | sed '/^$/d')
     if [[ ! -f "$(git rev-parse --git-path MERGE_HEAD)" && -z "$(git ls-files -u)" ]] \
         && git merge-base --is-ancestor "$base" HEAD \
         && ! git grep -qE '^(<<<<<<<|>>>>>>>) ' HEAD -- "${scan_files[@]}" 2> /dev/null; then
@@ -994,7 +1003,10 @@ cmd_fetch_prs() {
   : "${GH_TOKEN:?GH_TOKEN is required}" "${CONFLICTED:?CONFLICTED is required}"
   validate_conflicted
   local -a prs
-  mapfile -t prs < <(jq -r '.[]' <<< "$CONFLICTED")
+  prs=()
+  while IFS= read -r pr; do
+    prs+=("$pr")
+  done < <(jq -r '.[]' <<< "$CONFLICTED")
   local pr
   for pr in "${prs[@]}"; do
     github_git fetch -q origin "pull/$pr/head:pr-$pr"
@@ -1008,7 +1020,10 @@ cmd_resolve() {
   : "${CONFLICTED:?CONFLICTED is required}"
   validate_conflicted
   local -a prs
-  mapfile -t prs < <(jq -r '.[]' <<< "$CONFLICTED")
+  prs=()
+  while IFS= read -r pr; do
+    prs+=("$pr")
+  done < <(jq -r '.[]' <<< "$CONFLICTED")
   local pr
   mkdir -p "$out/resolve"
   for pr in "${prs[@]}"; do
@@ -1196,8 +1211,11 @@ cmd_sync_generated() {
 cmd_bundle() {
   local commits
   local prerequisite
-  prerequisite=$(cat "$out/bundle-base" 2>/dev/null || cat "$out/base-sha")
-  commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  prerequisite=$(cat "$out/bundle-base" 2>/dev/null || cat "$out/base-sha" 2>/dev/null || true)
+  commits=0
+  if [[ -s "$out/base-sha" ]]; then
+    commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  fi
   if [[ "$commits" -gt 0 ]]; then
     git bundle create "$out/result.bundle" "^${prerequisite}" HEAD
   fi
@@ -1209,7 +1227,7 @@ cmd_review() {
   local role result status
   for role in $REVIEWERS; do
     activate_ci_config
-    result=$(run_agent orca "Review the changes on this branch against $(cat "$out/base-sha") in review-only mode. Do not edit files, commit or push. Delegate to ${role}. Reply with findings only, each naming the requirement ID, impact, evidence and suggested fix. State plainly when evidence is only simulated." "$out/review-${role}.md")
+    result=$(run_agent orca "Review the changes on this branch against $(cat "$out/base-sha" 2>/dev/null || echo 'the current branch') in review-only mode. Do not edit files, commit or push. Delegate to ${role}. Reply with findings only, each naming the requirement ID, impact, evidence and suggested fix. State plainly when evidence is only simulated." "$out/review-${role}.md")
     # Reviewers are read-only. Preserve any evidence of a violation instead of
     # deleting it, and stop before another reviewer can overwrite the trail.
     restore_config
