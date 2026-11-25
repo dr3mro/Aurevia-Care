@@ -433,7 +433,7 @@ Classify tasks by:
 - Clinical impact.
 - Security impact.
 
-## [ ] ORCA-015 — Structured task execution contract
+## [-] ORCA-015 — Structured task execution contract
 
 Define a machine-readable task contract containing:
 
@@ -453,7 +453,7 @@ Define a machine-readable task contract containing:
 - Explicit exclusions.
 - Recorded assumptions.
 
-## [ ] ORCA-016 — Deterministic context compiler
+## [-] ORCA-016 — Deterministic context compiler
 
 Compile task context from:
 
@@ -474,7 +474,7 @@ Deduplicate overlapping content.
 
 Preserve provenance.
 
-## [ ] ORCA-017 — Context budgets
+## [-] ORCA-017 — Context budgets
 
 Introduce configurable context budgets.
 
@@ -491,7 +491,7 @@ Never truncate mandatory safety rules or acceptance criteria.
 
 Split oversized tasks or select a suitable eligible free model when necessary.
 
-## [ ] ORCA-018 — Context manifest
+## [-] ORCA-018 — Context manifest
 
 Record:
 
@@ -544,7 +544,7 @@ Support explicit BLOCKED and FAILED states.
 
 Use idempotent transitions and durable evidence.
 
-## [ ] ORCA-021 — Mandatory preflight
+## [-] ORCA-021 — Mandatory preflight
 
 Validate:
 
@@ -1615,7 +1615,7 @@ Consolidate overlapping implementations.
 
 Prefer simpler native mechanisms.
 
-## [ ] ORCA-080 — Task readiness assessment
+## [-] ORCA-080 — Task readiness assessment
 
 Evaluate:
 
@@ -2311,7 +2311,7 @@ Demonstrate measurable benefits before increasing concurrency limits.
 
 # PHASE 17 — ADVANCED MULTI-AGENT COLLABORATION
 
-## [ ] ORCA-128 — Shared task blackboard
+## [-] ORCA-128 — Shared task blackboard
 
 Provide a lightweight, task-scoped shared state mechanism.
 
@@ -2570,7 +2570,7 @@ Check:
 
 Treat malformed or untrusted output as a recoverable failure.
 
-## [ ] ORCA-145 — Evidence freshness
+## [-] ORCA-145 — Evidence freshness
 
 Invalidate findings, test results, reviews, and cached decisions when their relevant source changes.
 

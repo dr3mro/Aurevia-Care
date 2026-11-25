@@ -19,6 +19,7 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 - [x] AG-34 false annotations from untrusted context (01302100) and from untrusted story prompts (01302200).
 - [x] Stage C baseline measurements (proxy metrics; token counts unavailable).
 - [!] AG-22 reviewer provenance — blocked on a trusted runner; not code-fixed.
+- [-] Offline ORCA core analysis module (01303000): contracts, context budgets and manifest, preflight analysis, readiness scoring, blackboard, evidence freshness and checkpoints; 24 tests green and 100% module coverage, but runtime capabilities remain blocked and the changed-line gate is red on a stale base.
 
 ## Deliverable map
 

@@ -38,6 +38,7 @@ Both checklists are updated after each stage: this `## Stage status` list and th
   - [x] AG-34 untrusted story title/body/comment in agent prompts (task 01302200; 123/123, full suite 1745/1745).
   - [!] AG-22 reviewer provenance — BLOCKED: needs a trusted runner to produce review evidence outside the worker's write authority (tasks 01301000 released, 01301200 blocked); no code change was made.
 - [x] Stage C baseline benchmarking — reproducible commands and final lines recorded under `## Evidence log` and `docs/orca-refactor/01-inventory.md`; character/line proxies only, with token metrics explicitly unavailable (no tokeniser in this session).
+- [-] Offline ORCA core analysis module (01303000) — `scripts/orca_core.py` green with 24 tests and 100% module coverage; four reviewer verdicts GO; runtime capabilities still blocked and the changed-line gate red on stale base, so the story stays `[-]`.
 - [ ] Stage D script ownership foundation — inventory complete (`docs/orca-refactor/01-inventory.md`), ownership migration, dependency boundaries and validator not started.
 - [ ] Stage E instructions and skills.
 - [ ] Stage F task intelligence.
