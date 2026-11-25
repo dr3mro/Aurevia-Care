@@ -1,6 +1,6 @@
 - [-] FIX-JOBS-EXPORTS-TEST-COMPILE · Restore Java test compilation for the ARC-02 tenant clause suite
-  - agent: swarm-7
-  - attempts: 37
+  - agent: swarm-4
+  - attempts: 38
   - requirements: ARC-02, OPS-06
   - scope: apps/api/src/test/java/com/aurevia/tenancy/clauses/JobsExportsSearchAttachmentsIntegrationsApplySameTest.java, tasks/01276000-FIX-JOBS-EXPORTS-TEST-COMPILE.md
   - depends: none
