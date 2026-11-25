@@ -1,0 +1,5 @@
+- [ ] ORCA-TRUSTED-REVIEW-EVIDENCE · Produce independent review evidence from a trusted runner
+  - parent: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
+  - requirements: ORCA-040, AG-22
+  - blocked: needs Git/GitHub execution and workflow changes; not permitted in this session
+  - details: Implement the real fix for ORCA-REVIEWER-PROVENANCE. A trusted runner must invoke each read-only reviewer itself, capture its verdict and session id, write a review evidence artifact outside the worker's write authority, bind it to the reviewed HEAD revision (not the pre-change base), and expose it to `scripts/check-verdicts.py`. Starting point: `scripts/agent-run.sh:1191-1216` `cmd_review` already captures `$out/review-<role>.md`, but no workflow invokes it. Define artifact lifecycle (gitignored, excluded from `changed_files()`), schema and failure modes. Add red/green tests for missing, malformed, forged, stale-revision and valid evidence. Keep ORCA-040 open until this lands.

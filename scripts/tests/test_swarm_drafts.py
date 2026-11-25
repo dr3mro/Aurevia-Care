@@ -184,8 +184,8 @@ class PlanDraftTest(unittest.TestCase):
         prs = [draft(), {"number": 8, "title": "CW-002: Ordinary", "isDraft": False,
                          "labels": [{"name": "swarm"}], "headRefOid": "d" * 40,
                          "isCrossRepository": False}]
-        for answer in (subprocess.CalledProcessError(1, ("pr", "view")), "not-json",
-                       json.dumps({"isDraft": "false"})):
+        for answer in (subprocess.CalledProcessError(1, ("pr", "view")), OSError("offline"),
+                       "not-json", "null", "[]", json.dumps({"isDraft": "false"})):
             with self.subTest(answer=str(answer)):
                 def fake(*args, check=True):
                     if args[:2] == ("pr", "list"):

@@ -401,9 +401,21 @@ def mask(text):
 
 
 def clean(text, limit=3000, lines=60):
-    """The end of a log, safe to show: tokens masked, code fences neutralised."""
+    """The end of untrusted text, safe to quote into prompts and Actions logs.
+
+    Inputs are arbitrary text, a character limit and a line count; the result is
+    the masked tail, or an empty string for empty input. GitHub parses lines
+    beginning with ``##[`` or ``::`` as workflow commands even when they came
+    from an issue or pull-request comment. Quoting those lines with ``> `` after
+    truncation and before masking keeps the evidence readable without letting
+    untrusted findings create failure annotations.
+    """
     tail = "\n".join((text or "").splitlines()[-lines:])[-limit:]
-    return mask(tail)
+    quoted = "\n".join(
+        f"> {line}" if line.lstrip().startswith(("##[", "::")) else line
+        for line in tail.splitlines()
+    )
+    return mask(quoted)
 
 
 def fingerprint(*parts):
@@ -5667,7 +5679,7 @@ class BranchMoved(SystemExit):
 
 def integration_exit_code(result):
     """Map a nonnegative merge count or negative failure sentinel to a process status."""
-    return 1 if isinstance(result, int) and result < 0 else 0
+    return 1 if result < 0 else 0
 
 
 def record_merges(merged, gates):
@@ -6262,7 +6274,15 @@ def integrate_finalize(merged, gates, gate):
                     )
                     for pr, _, _ in merged:
                         remove_label(pr, "needs-fix")
-                        add_labels(pr, "needs-human")
+                        # A label API failure must not hide the terminal push rejection:
+                        # the human handoff and tracker restore still have to happen.
+                        try:
+                            add_labels(pr, "needs-human")
+                        except subprocess.CalledProcessError as label_error:
+                            print(
+                                f"integrator: could not label PR {pr} needs-human: {label_error}",
+                                file=sys.stderr,
+                            )
                         comment_best_effort(
                             pr,
                             "Integration could not push to main: repository rules rejected "

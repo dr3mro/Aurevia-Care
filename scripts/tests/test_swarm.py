@@ -1574,6 +1574,34 @@ class DebuggerTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", FakeGh()):
             self.assertEqual(swarm.pr_context(9, "/nonexistent/never-written.md"), 0)
 
+    def test_untrusted_context_cannot_become_a_workflow_command(self):
+        # Synthetic token-shaped string: proves masking still happens after quoting.
+        fake_token = "ghp_" + "A" * 24
+        comments = [
+            self.comment(f"{swarm.MARK}\n##[error]Process completed with exit code 1."),
+            self.comment(f"{swarm.MARK}\n::error::untrusted finding"),
+            self.comment(f"{swarm.MARK}\n  ##[warning]indented finding"),
+            self.comment(f"{swarm.MARK}\n::error:: {fake_token}"),
+        ]
+        count, text = self.history(comments)
+        self.assertEqual(count, 4)
+        self.assertIn("> ##[error]Process completed with exit code 1.", text)
+        self.assertIn("> ::error::untrusted finding", text)
+        # pr_context strips each body before clean(), so indentation is already gone here.
+        self.assertIn("> ##[warning]indented finding", text)
+        self.assertNotIn(fake_token, text)
+        for line in text.splitlines():
+            self.assertFalse(line.lstrip().startswith("##["), line)
+            self.assertFalse(line.lstrip().startswith("::"), line)
+
+    def test_a_retained_tail_starting_with_a_command_is_quoted(self):
+        marker_line = "##[error]tail boundary"
+        text = "x" * 40 + "\n" + marker_line
+        cleaned = swarm.clean(text, limit=len(marker_line))
+        self.assertEqual(cleaned, f"> {marker_line}")
+        self.assertFalse(cleaned.startswith("##["))
+        self.assertEqual(swarm.clean("  ##[error]indented"), ">   ##[error]indented")
+
     def test_the_command_line_runs_select_context_and_publish(self):
         with mock.patch.object(swarm, "debug_select", return_value=5) as select, \
                 mock.patch.object(swarm, "pr_context", return_value=2) as context, \
@@ -2238,7 +2266,7 @@ class PrFlowTests(unittest.TestCase):
                 "labels": [{"name": n} for n in ("swarm", *labels)], "headRefOid": f"sha{number}" * 4,
                 "updatedAt": stamp}
 
-    def run(self, number, conclusion="success", status="completed", database_id=None, head=None):
+    def make_run(self, number, conclusion="success", status="completed", database_id=None, head=None):
         sha = head or self.pr(number)["headRefOid"]
         return {"databaseId": database_id or number, "headSha": sha, "status": status,
                 "conclusion": conclusion, "event": "pull_request", "workflowDatabaseId": 123,
@@ -2266,7 +2294,7 @@ class PrFlowTests(unittest.TestCase):
     def test_actionable_delivery_failures_launch_one_shared_fix_wave(self):
         fake = FakeGh()
         prs = [self.pr(7), self.pr(8)]
-        runs = [self.run(pr["number"], conclusion="failure") for pr in prs]
+        runs = [self.make_run(pr["number"], conclusion="failure") for pr in prs]
         with mock.patch.object(swarm, "gh", fake), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
                 mock.patch.object(swarm, "delivery_listing", return_value=self.listing(runs)), \
@@ -2287,7 +2315,7 @@ class PrFlowTests(unittest.TestCase):
     def test_first_debug_queue_entry_can_join_the_fix_wave(self):
         fake = FakeGh()
         candidates = [self.pr(7, ("needs-debug",)), self.pr(8, ("needs-debug", "fix-1"))]
-        run = self.run(7, conclusion="failure", database_id=70)
+        run = self.make_run(7, conclusion="failure", database_id=70)
         with mock.patch.object(swarm, "gh", fake), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
                 mock.patch.object(swarm, "delivery_listing", return_value=self.listing([run])), \
@@ -2331,7 +2359,7 @@ class PrFlowTests(unittest.TestCase):
     def test_ambiguous_failures_launch_one_shared_debugger_run(self):
         fake = FakeGh()
         prs = [self.pr(7), self.pr(8)]
-        runs = [self.run(pr["number"], conclusion="failure") for pr in prs]
+        runs = [self.make_run(pr["number"], conclusion="failure") for pr in prs]
         with mock.patch.object(swarm, "gh", fake), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
                 mock.patch.object(swarm, "delivery_listing", return_value=self.listing(runs)), \
@@ -2452,8 +2480,8 @@ class PrFlowTests(unittest.TestCase):
         self.assertFalse(fake.said("swarm.yml"))
 
     def test_a_pass_lists_delivery_runs_once_for_all_pull_requests(self):
-        records = [self.run(1, head="a", database_id=1),
-                   self.run(2, head="b", database_id=2, conclusion="failure")]
+        records = [self.make_run(1, head="a", database_id=1),
+                   self.make_run(2, head="b", database_id=2, conclusion="failure")]
         listing = self.listing(records)
         calls = []
 
@@ -2469,12 +2497,12 @@ class PrFlowTests(unittest.TestCase):
             raise AssertionError(args)
 
         with mock.patch.object(swarm, "gh_json", side_effect=answer):
-            self.assertEqual(swarm.delivery_runs_from(listing, "a", 1), [records[0]])
-            self.assertEqual(swarm.delivery_runs_from(listing, "b", 2), [records[1]])
+            self.assertEqual([r["databaseId"] for r in swarm.delivery_runs_from(listing, "a", 1)], [1])
+            self.assertEqual([r["databaseId"] for r in swarm.delivery_runs_from(listing, "b", 2)], [2])
         self.assertFalse(any(call[:2] == ("run", "list") for call in calls))
 
     def test_unfinished_run_reads_jobs_and_old_heads_fall_back_when_listing_is_full(self):
-        running = self.run(1, status="in_progress", conclusion=None, database_id=9, head="a")
+        running = self.make_run(1, status="in_progress", conclusion=None, database_id=9, head="a")
 
         def answer(*args):
             if args[0] == "api" and "actions/runs/" in args[-1]:
@@ -2515,7 +2543,7 @@ class PrFlowTests(unittest.TestCase):
 
     def test_pr_flow_rerun_uses_exact_pr_run(self):
         fake = FakeGh()
-        run = self.run(7, conclusion="skipped")
+        run = self.make_run(7, conclusion="skipped")
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "gh_json", side_effect=lambda *a: [self.pr(7)] if a[:2] == ("pr", "list") else {}), \
              mock.patch.object(swarm, "main_is_red", return_value=False), \
@@ -2533,7 +2561,7 @@ class PrFlowTests(unittest.TestCase):
             if args[:2] == ("run", "rerun"):
                 raise error
             return ""
-        run = self.run(7, conclusion="skipped")
+        run = self.make_run(7, conclusion="skipped")
         with mock.patch.object(swarm, "gh", fake_gh), \
              mock.patch.object(swarm, "gh_json", side_effect=lambda *a: [self.pr(7)] if a[:2] == ("pr", "list") else {}), \
              mock.patch.object(swarm, "main_is_red", return_value=False), \
@@ -2591,6 +2619,77 @@ class PrFlowTests(unittest.TestCase):
             self.assertTrue(swarm.delivery_requested(7, "sha777777777"))
             self.assertTrue(swarm.delivery_requested(7, "marker-head"))
             self.assertFalse(swarm.delivery_requested(7, "other0000000"))
+
+    def test_untrusted_or_missing_rerun_markers_are_ignored(self):
+        head = self.pr(7)["headRefOid"]
+        comments = (
+            [],
+            [{"body": swarm.marker("delivery-rerun", head),
+              "user": {"login": "stranger"}, "author_association": "NONE"}],
+        )
+        for answer in comments:
+            with self.subTest(answer=answer), \
+                    mock.patch.object(swarm, "gh_json", return_value=answer), \
+                    mock.patch.object(swarm, "repo_slug", return_value="o/r"):
+                self.assertFalse(swarm.delivery_requested(7, head))
+
+    def test_delivery_listing_failure_stops_the_pass(self):
+        fake = FakeGh()
+        error = subprocess.CalledProcessError(1, ("run", "list"))
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "gh_json", lambda *a: [self.pr(7)] if a[:2] == ("pr", "list") else {}), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "delivery_listing", side_effect=error), \
+                mock.patch("sys.stderr", new_callable=io.StringIO) as err:
+            acted = swarm.pr_flow(self.NOW)
+        self.assertEqual(acted, [])
+        self.assertIn("delivery listing failed", err.getvalue())
+        self.assertFalse(fake.said("workflow", "run"))
+
+    def test_empty_head_does_not_clear_needs_fix(self):
+        item = self.pr(7, ("needs-fix",))
+        item["headRefOid"] = ""
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "gh_json", lambda *a: [item] if a[:2] == ("pr", "list") else {}), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "delivery_listing", return_value=swarm.DeliveryListing([], 123, False)), \
+                mock.patch.object(swarm, "delivery_state", return_value="passed"):
+            acted = swarm.pr_flow(self.NOW)
+        self.assertNotIn((7, "needs-fix cleared: delivery already passed"), acted)
+        self.assertFalse(any(c[:2] == ("api", "--method") and "DELETE" in c
+                             for c in fake.calls))
+        self.assertFalse(fake.said("workflow", "run", "swarm-integrator.yml"))
+
+    def test_needs_fix_draft_ready_failures_keep_label(self):
+        item = self.pr(7, ("needs-fix",))
+        item["isDraft"] = True
+        for ready_fails in (True, False):
+            with self.subTest(ready_fails=ready_fails):
+                calls = []
+
+                def fake(*args, check=True):
+                    calls.append(args)
+                    if args[:2] == ("pr", "list"):
+                        return [item]
+                    if args[:2] == ("pr", "ready") and ready_fails:
+                        raise subprocess.CalledProcessError(1, args)
+                    if args[:2] == ("pr", "view"):
+                        return {"isDraft": True, "headRefOid": item["headRefOid"],
+                                "state": "OPEN"}
+                    return ""
+
+                with mock.patch.object(swarm, "gh", mock.Mock(side_effect=fake)), \
+                        mock.patch.object(swarm, "gh_json", lambda *a: [item] if a[:2] == ("pr", "list") else {}), \
+                        mock.patch.object(swarm, "main_is_red", return_value=False), \
+                        mock.patch.object(swarm, "delivery_listing", return_value=swarm.DeliveryListing([], 123, False)), \
+                        mock.patch.object(swarm, "delivery_state", return_value="passed"):
+                    acted = swarm.pr_flow(self.NOW)
+                self.assertNotIn((7, "needs-fix cleared: delivery already passed"), acted)
+                self.assertFalse(any(c[:2] == ("api", "--method") and "DELETE" in c
+                                     for c in calls))
+                self.assertFalse(any(c[:3] == ("workflow", "run", "swarm-integrator.yml")
+                                     for c in calls))
 
     def test_the_cli_and_workflow(self):
         with mock.patch.object(swarm, "pr_flow", return_value=[(7, "x")]) as flow:
@@ -4242,7 +4341,7 @@ class IntegratorTwoTierDispatchTest(unittest.TestCase):
         validate.assert_called_once_with([7], "gate.sh", "validated")
 
     def test_integrate_publish_dispatches_to_the_publisher(self):
-        with mock.patch.object(swarm, "integrate_publish") as publish:
+        with mock.patch.object(swarm, "integrate_publish", return_value=0) as publish:
             swarm.main(["integrate-publish", "--manifest", "m.json", "--bundle", "b.bundle",
                         "--gate", "gate.sh"])
         publish.assert_called_once_with("m.json", "b.bundle", "gate.sh")

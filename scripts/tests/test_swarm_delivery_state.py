@@ -195,6 +195,14 @@ class DeliveryRunsTest(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 swarm.delivery_runs(HEAD, 7)
 
+    def test_non_object_workflow_endpoint_fails_closed(self):
+        for answer in ("not-json-object", ["Delivery"], 0):
+            with self.subTest(answer=answer), \
+                    mock.patch.object(swarm, "gh", self.gh_for([], workflow_info=answer)) as gh:
+                with self.assertRaises(ValueError):
+                    swarm.delivery_runs(HEAD, 7)
+            self.assertFalse(any(c.args[:2] == ("run", "list") for c in gh.call_args_list))
+
     def test_wrong_workflow_id_is_not_evidence(self):
         runs = [delivery_run(workflow_id=999)]
         with mock.patch.object(swarm, "gh", self.gh_for(runs)) as gh:
@@ -280,6 +288,50 @@ class DeliveryRunsTest(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         swarm.delivery_runs(HEAD, 7)
                 self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
+
+    def test_malformed_pr_association_shapes_fail_closed(self):
+        valid = {"number": 7, "base": {"ref": "main"}, "head": {"sha": HEAD}}
+        malformed = (
+            [], [valid, valid],
+            [{**valid, "number": "7"}],
+            [{**valid, "base": "main"}],
+            [{**valid, "head": HEAD}],
+        )
+        for pull_requests in malformed:
+            with self.subTest(pull_requests=pull_requests), mock.patch.object(
+                    swarm, "gh", self.gh_for([delivery_run()],
+                                             details={7: {"workflow_id": WORKFLOW_ID,
+                                                          "event": "pull_request",
+                                                          "head_sha": HEAD,
+                                                          "pull_requests": pull_requests}})):
+                with self.assertRaises(ValueError):
+                    swarm.delivery_runs(HEAD, 7)
+        detail = {"workflow_id": WORKFLOW_ID, "event": "pull_request", "head_sha": HEAD,
+                  "pull_requests": [{**valid, "head": {"sha": OLD}}]}
+        with mock.patch.object(swarm, "gh", self.gh_for(
+                [delivery_run()], details={7: detail})) as gh:
+            self.assertEqual(swarm.delivery_runs(HEAD, 7), [])
+        self.assertFalse(any(c.args[:2] == ("run", "view") for c in gh.call_args_list))
+
+    def test_malformed_rest_detail_or_jobs_fails_closed(self):
+        valid = [{"number": 7, "base": {"ref": "main"}, "head": {"sha": HEAD}}]
+        details = (
+            {7: "not-an-object"},
+            {7: {"workflow_id": WORKFLOW_ID, "event": "push", "head_sha": HEAD,
+                 "pull_requests": valid}},
+            {7: {"workflow_id": WORKFLOW_ID, "event": "pull_request", "head_sha": OLD,
+                 "pull_requests": valid}},
+        )
+        for answer in details:
+            with self.subTest(answer=answer), mock.patch.object(
+                    swarm, "gh", self.gh_for([delivery_run()], details=answer)):
+                with self.assertRaises(ValueError):
+                    swarm.delivery_runs(HEAD, 7)
+        for jobs in ("not-an-object", {"jobs": "not-a-list"}):
+            with self.subTest(jobs=jobs), mock.patch.object(
+                    swarm, "gh", self.gh_for([delivery_run()], job_answer=jobs)):
+                with self.assertRaises(ValueError):
+                    swarm.delivery_runs(HEAD, 7)
 
     def test_full_mixed_listing_still_falls_back(self):
         old = delivery_run(sha=OLD)
@@ -416,6 +468,51 @@ class DeliveryGateTest(unittest.TestCase):
         listed.assert_not_called()
         gh.assert_any_call("run", "rerun", "7")
 
+    def test_rerun_filters_records_and_selects_newest_valid_run(self):
+        runs = [
+            delivery_run(database_id=9, conclusion="skipped"),
+            delivery_run(database_id=8, conclusion="failure"),
+            delivery_run(sha=OLD, database_id=7, conclusion="skipped"),
+            delivery_run(event="push", database_id=6, conclusion="skipped"),
+            delivery_run(database_id="bad", conclusion="skipped"),
+        ]
+        gh = mock.Mock(return_value="")
+        with mock.patch.object(swarm, "gh", gh):
+            self.assertTrue(swarm.request_delivery_rerun(7, HEAD, runs))
+        reruns = [c.args[2] for c in gh.call_args_list if c.args[:2] == ("run", "rerun")]
+        self.assertEqual(reruns, ["9"])
+
+    def test_rerun_rejects_malformed_association(self):
+        with mock.patch.object(swarm, "gh"):
+            with self.assertRaises(ValueError):
+                swarm.request_delivery_rerun(7, HEAD, [
+                    {"headSha": HEAD, "event": "pull_request", "databaseId": 5}])
+
+    def test_rerun_helper_refuses_active_approval_and_non_failed_runs(self):
+        records = (
+            delivery_run(status="in_progress", conclusion=None),
+            delivery_run(status="waiting", conclusion=None),
+            delivery_run(conclusion="success"),
+        )
+        for record in records:
+            with self.subTest(record=record), mock.patch.object(swarm, "gh") as gh:
+                self.assertFalse(swarm.request_delivery_rerun(7, HEAD, [record]))
+            self.assertFalse(any(c.args[:2] == ("run", "rerun") for c in gh.call_args_list))
+
+    def test_malformed_pr_head_fails_closed(self):
+        for answer in (None, ["head"], {"headRefOid": 7}, {}):
+            with self.subTest(answer=answer), \
+                    mock.patch.object(swarm, "gh_json", return_value=answer):
+                self.assertEqual(swarm.delivery_head(7), "")
+
+    def test_best_effort_comment_failure_is_contained(self):
+        for error in (subprocess.CalledProcessError(1, ("pr", "comment")), OSError("offline")):
+            with self.subTest(error=error), \
+                    mock.patch.object(swarm, "gh", side_effect=error), \
+                    mock.patch("sys.stderr", new_callable=__import__("io").StringIO) as err:
+                swarm.comment_best_effort(7, "diagnostic")
+            self.assertIn("PR #7 comment failed", err.getvalue())
+
     def test_zero_or_non_ascii_run_id_is_not_rerun(self):
         for run_id in (0, -1, True, "１２", "0", "7x"):
             with self.subTest(run_id=run_id):
@@ -547,7 +644,7 @@ class IntegratorWiringTest(unittest.TestCase):
         gate.assert_not_called()
 
     def test_cli_keeps_its_documented_call_contract(self):
-        with mock.patch.object(swarm, "integrate_batch") as batch:
+        with mock.patch.object(swarm, "integrate_batch", return_value=0) as batch:
             swarm.main(["integrate-batch", "--queue", "[7]"])
         batch.assert_called_once_with([7], "scripts/quick-check.sh")
 

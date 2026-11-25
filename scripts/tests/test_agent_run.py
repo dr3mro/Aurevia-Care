@@ -79,6 +79,9 @@ class AgentRunTests(unittest.TestCase):
             (bin_dir / name).write_text(body)
             (bin_dir / name).chmod(0o755 | stat.S_IXUSR)
         self.gh_log = tmp / "gh.log"
+        # Publish rejections return before the fake CLI runs, so the log must already
+        # exist for the assertion that no `pr create` was attempted.
+        self.gh_log.touch()
         self.bin_dir = bin_dir
 
     def fixture_environment(self):
@@ -704,6 +707,10 @@ class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentR
     def test_daily_review_success_emits_ok(self):
         for role in ("qa", "devsecops"):
             with self.subTest(role=role):
+                # cmd_daily writes context-files.txt, daily-<role>.log and result under
+                # .agents/. In CI each role runs in its own job, so this fixture must
+                # clear the previous role's outputs before the clean-worktree guard.
+                shutil.rmtree(self.repo / ".agents", ignore_errors=True)
                 result = self.run_cmd(f"daily-{role}", FAKE_MODE="none",
                                       PROMPT_LOG=str(self.tmp / f"daily-{role}-success.log"))
                 self.assertEqual(result.returncode, 0, result.stderr)

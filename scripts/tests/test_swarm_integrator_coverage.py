@@ -590,6 +590,46 @@ class IntegratorBatchTest(unittest.TestCase):
         dispatch.assert_not_called()
         self.assertTrue(any("needs-human" in str(arg) for c in gh.call_args_list for arg in c.args))
 
+    def test_a_label_failure_still_fails_the_protected_main_rejection(self):
+        self.repo()
+        push_error = subprocess.CalledProcessError(
+            1, ("push",), stderr="error: GH013: Repository rule violations found for refs/heads/main."
+        )
+        label_error = subprocess.CalledProcessError(1, ("api",), stderr="label API failed")
+        with mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "gh_json", return_value=self.view()), \
+                mock.patch.object(swarm, "is_repair", return_value=False), \
+                mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "git", return_value="main-sha"), \
+                mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
+                mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+                mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
+                mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+                mock.patch.object(swarm, "record_merges",
+                                  return_value=([(7, "CW-001", "abc")], ["comment"], [])), \
+                mock.patch.object(swarm, "todo_read", return_value="before\n"), \
+                mock.patch.object(swarm, "todo_write") as write, \
+                mock.patch.object(swarm, "authed_git", side_effect=push_error) as push, \
+                mock.patch.object(swarm, "add_labels", side_effect=label_error) as labels, \
+                mock.patch.object(swarm, "remove_label") as remove, \
+                mock.patch.object(swarm, "comment_best_effort") as comment, \
+                mock.patch.object(swarm, "report_pr_stuck") as stuck, \
+                mock.patch.object(swarm, "dispatch_delivery") as dispatch, \
+                mock.patch.object(swarm, "emit") as emit:
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                result = swarm.integrate_batch([7], check_delivery=False)
+        self.assertEqual(result, swarm.INTEGRATION_FAILED)
+        push.assert_called_once()
+        labels.assert_called_once_with(7, "needs-human")
+        remove.assert_called_once_with(7, "needs-fix")
+        comment.assert_called_once()
+        stuck.assert_called_once()
+        write.assert_called_once_with("", "before\n")
+        emit.assert_any_call("merged", 0)
+        dispatch.assert_not_called()
+        self.assertIn("could not label", stderr.getvalue())
+
     def test_integrate_publish_rejection_restores_tasks_and_returns_nonzero(self):
         root = self.repo()
         manifest = root / "manifest.json"
@@ -791,6 +831,94 @@ class IntegratorBatchTest(unittest.TestCase):
             self.assertEqual(swarm.integrate_finalize(
                 merged, {7: ("gate.sh", {})}, "gate.sh"), swarm.INTEGRATION_FAILED)
         dispatch.assert_not_called()
+
+    def test_initial_add_failure_restores_records(self):
+        self.repo()
+        notes = Path("docs/swarm")
+        notes.mkdir(parents=True)
+        note = notes / "CW-001.md"
+        note.write_text("original\n")
+        error = subprocess.CalledProcessError(1, ("git", "add"))
+
+        def record(items, gates):
+            note.write_text("changed\n")
+            swarm.todo_write("", "after\n")
+            return items, ["comment"], []
+
+        def git(*args, **kwargs):
+            if args[:1] == ("add",):
+                raise error
+            return "main-sha\n"
+
+        with mock.patch.object(swarm, "record_merges", side_effect=record), \
+                mock.patch.object(swarm, "todo_read", return_value="before\n"), \
+                mock.patch.object(swarm, "todo_write") as write, \
+                mock.patch.object(swarm, "git", side_effect=git), \
+                mock.patch.object(swarm, "authed_git") as push:
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.integrate_finalize([(7, "CW-001", "abc")], {7: ("gate.sh", {})}, "gate.sh")
+        write.assert_any_call("", "before\n")
+        self.assertEqual(note.read_text(), "original\n")
+        push.assert_not_called()
+
+    def test_third_push_failure_restores_records_and_stops(self):
+        self.repo()
+        merged = [(7, "CW-001", "abc")]
+        error = subprocess.CalledProcessError(1, ("push",), stderr="fetch first")
+
+        def push(*args, **kwargs):
+            if args[:2] == ("push", "origin"):
+                raise error
+            return ""
+
+        def record(items, gates):
+            swarm.todo_write("", "after\n")
+            return items, ["comment"], []
+
+        with mock.patch.object(swarm, "record_merges", side_effect=record), \
+                mock.patch.object(swarm, "todo_read", return_value="before\n"), \
+                mock.patch.object(swarm, "todo_write") as write, \
+                mock.patch.object(swarm, "git", return_value="main-sha"), \
+                mock.patch.object(swarm, "authed_git", side_effect=push) as pushed, \
+                mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+                mock.patch.object(swarm, "dispatch_delivery") as dispatch, \
+                mock.patch.object(swarm, "emit"):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.integrate_finalize(merged, {7: ("gate.sh", {})}, "gate.sh")
+        # The loop raises before the third push when attempt == 2, so two writes are attempted.
+        self.assertEqual(pushed.call_count, 2)
+        write.assert_any_call("", "before\n")
+        dispatch.assert_not_called()
+
+    def test_rejection_removes_needs_fix_and_never_reports_merge(self):
+        self.repo()
+        error = subprocess.CalledProcessError(
+            1, ("push",), stderr="error: GH013: Repository rule violations found for refs/heads/main."
+        )
+        with mock.patch.object(swarm, "gh") as gh, \
+                mock.patch.object(swarm, "gh_json", return_value=self.view()), \
+                mock.patch.object(swarm, "is_repair", return_value=False), \
+                mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "git", return_value="main-sha"), \
+                mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
+                mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+                mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
+                mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+                mock.patch.object(swarm, "record_merges",
+                                  return_value=([(7, "CW-001", "abc")], ["merged comment"], [])), \
+                mock.patch.object(swarm, "close_merged_issues") as closed, \
+                mock.patch.object(swarm, "authed_git", side_effect=error), \
+                mock.patch.object(swarm, "dispatch_delivery") as dispatch, \
+                mock.patch.object(swarm, "emit") as emit:
+            self.assertEqual(swarm.integrate_batch([7], check_delivery=False),
+                             swarm.INTEGRATION_FAILED)
+        emit.assert_any_call("merged", 0)
+        closed.assert_not_called()
+        dispatch.assert_not_called()
+        self.assertTrue(any("labels%5B%5D=needs-human" in str(a) or "needs-human" in str(a)
+                            for c in gh.call_args_list for a in c.args))
+        self.assertFalse(any("merged comment" in str(a)
+                             for c in gh.call_args_list for a in c.args))
 
     def test_a_reconciled_regate_uses_the_repair_gate_when_no_full_gate_was_used(self):
         self.repo()

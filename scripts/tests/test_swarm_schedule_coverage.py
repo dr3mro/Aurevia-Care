@@ -261,6 +261,23 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
         self.assertEqual(unknown.read_text(), "- [ ] CW-003 · unknown\n  - attempts: 1\n")
         self.assertEqual(heading.read_text(), "# Just a heading\n")
 
+    def test_malformed_evidence_shapes_fail_before_write(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        answers = (
+            "",
+            json.dumps([{"number": 7, "title": "CW-001: one"}, "not-an-object"]),
+            json.dumps([{"number": "7", "title": "CW-001: one", "baseRefName": "main", "state": "MERGED"}]),
+            json.dumps([{"number": 7, "title": 42, "baseRefName": "main", "state": "MERGED"}]),
+        )
+        for answer in answers:
+            with self.subTest(answer=answer), \
+                    mock.patch.object(subprocess, "check_output", return_value=answer), \
+                    mock.patch.object(swarm, "git") as git:
+                with self.assertRaises(swarm.ReconciliationError):
+                    swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
+            git.assert_not_called()
+            self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
+
     def test_full_500_record_window_fails_before_write(self):
         path = self.write("one.md", "- [ ] CW-001 · one\n")
         merged = [{"number": n + 1, "title": f"X-{n}: task", "baseRefName": "main",

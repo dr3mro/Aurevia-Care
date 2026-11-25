@@ -106,6 +106,21 @@ class DeliveryListingCoverageTests(CliTestCase):
             "run", "list", "--workflow", "123", "--limit", str(swarm.DELIVERY_LISTING_LIMIT),
             "--json", "databaseId,headSha,status,conclusion,event,workflowDatabaseId")
 
+    def test_full_window_is_flagged_and_valid_runs_do_not_fallback(self):
+        head = "a" * 40
+        valid = {"databaseId": 7, "headSha": head, "event": "pull_request",
+                 "workflowDatabaseId": 123, "status": "completed", "conclusion": "success"}
+        raw = [valid] + [{"databaseId": n + 100, "headSha": head, "event": "push",
+                          "workflowDatabaseId": 123, "status": "completed",
+                          "conclusion": "success"} for n in range(99)]
+        with mock.patch.object(swarm, "gh_json", side_effect=[{"id": 123}, raw]):
+            listing = swarm.delivery_listing()
+        self.assertTrue(listing.full)
+        with mock.patch.object(swarm, "validated_delivery_runs", return_value=[valid]), \
+                mock.patch.object(swarm, "delivery_runs") as fallback:
+            self.assertEqual(swarm.delivery_runs_from(listing, head, 7), [valid])
+        fallback.assert_not_called()
+
     def test_a_non_list_answer_raises(self):
         with mock.patch.object(swarm, "gh_json", side_effect=[{"id": 123}, {"message": "rate limited"}]):
             with self.assertRaises(ValueError):
@@ -254,6 +269,14 @@ class MainDispatchCoverageTests(CliTestCase):
                 contextlib.redirect_stderr(io.StringIO()) as err:
             self.assertEqual(swarm.main(["reconcile-tasks"]), 1)
         self.assertIn("repository rules", err.getvalue())
+
+    def test_main_reconcile_tasks_reports_git_failure_as_nonzero(self):
+        error = subprocess.CalledProcessError(1, ("git", "push"), stderr="push rejected")
+        error.stderr = "push rejected"
+        with mock.patch.object(swarm, "reconcile_tasks", side_effect=error), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(swarm.main(["reconcile-tasks"]), 1)
+        self.assertIn("returned non-zero exit status 1", err.getvalue())
 
     def test_main_reconcile_tasks_reports_evidence_failure_as_nonzero(self):
         with mock.patch.object(swarm, "reconcile_tasks",
@@ -513,6 +536,10 @@ class MainDispatchCoverageTests(CliTestCase):
         emitted = self.emitted()
         self.assertEqual(emitted.get("queue"), "[1, 2, 3]")
         self.assertEqual(emitted.get("count"), "3")
+
+    def test_integration_exit_code_rejects_non_integer_status(self):
+        with self.assertRaises(TypeError):
+            swarm.integration_exit_code(object())
 
     def test_main_integrate_batch_maps_status_without_exiting_on_merge_count(self):
         for result, expected in ((-1, 1), (0, 0), (1, 0), (2, 0)):

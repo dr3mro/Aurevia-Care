@@ -1,6 +1,6 @@
 # Aurevia Care
 
-Aurevia Care (Aurevia Cloud V1) is a multi-tenant healthcare platform: a Spring Boot API, a React staff web app and a React Native patient app, built by a team of OpenCode agents through GitHub Actions. The product specification is in `PROJECT_V1_SPEC.md`, the task files in `tasks/` (`tasks/` is a generated view), and setup details in `README-SETUP.md`.
+Aurevia Care (Aurevia Cloud V1) is a multi-tenant healthcare platform: a Spring Boot API, a React staff web app and a React Native patient app, built by a team of OpenCode agents through GitHub Actions. The product specification is in `.opencode/config/PROJECT_V1_SPEC.md`, the task files in `tasks/`, and setup details in `.opencode/config/README-SETUP.md`.
 
 ## Run it with one command
 
@@ -100,4 +100,4 @@ The workflow file is `.github/workflows/release-app-image.yml`.
 
 - `bash scripts/quick-check.sh` is the fast gate. `bash scripts/worker-check.sh` adds PostgreSQL integration tests, the frontend standards gate and SpotBugs. `bash apps/api/check.sh` is the full Java gate with coverage.
 - Applications: `apps/api` (Spring Boot), `apps/staff-web` (React, Vite), `apps/patient-mobile` (React Native, Expo).
-- Tasks, agent rules and the swarm: `tasks/`, `AGENTS.md`, `docs/SWARM.md`. Watch the swarm with `scripts/monitor.sh`.
+- Tasks, agent rules and the swarm: `tasks/`, `.opencode/setup/AGENTS.md`, `docs/SWARM.md`. Watch the swarm with `scripts/monitor.sh`.

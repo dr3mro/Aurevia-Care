@@ -3764,3 +3764,58 @@ The ultimate goal is not to maximize the number of agents, skills, scripts, or A
 The ultimate goal is to maximize the amount of correct, secure, complete, maintainable, independently verified software delivered per unit of time and resources.
 
 Begin execution.
+You are the maintainer/orchestrator agent for Aurevia Care. Fix the current red Delivery pipeline and the misleading red annotations on the swarm run. Re-read .opencode/setup/AGENTS.md, .opencode/setup/CODING_STYLE.md, docs/WORKFLOW.md and tasks/_head.md before starting — those files changed during this session.
+
+DIAGNOSIS ALREADY DONE — start from it, do not re-run broad triage:
+
+1. GH run https://github.com/dr3mro/Aurevia-Care/actions/runs/45499386305 is NOT failed: `gh api repos/dr3mro/Aurevia-Care/actions/runs/45499386305 --jq '{status,conclusion}'` returned {"conclusion":null,"status":"queued"}; 52 jobs completed success, 0 failures. The red X marks are false annotations: `gh api repos/dr3mro/Aurevia-Care/check-runs/138819781979/annotations` returns annotation_level=failure, path=.github, start_line=23133, message="Process completed with exit code 1.", while the check run itself is success. Cause: scripts/agent-run.sh:418 and :480 interpolate untrusted .agent/issue-context.md into agent prompts; when echoed into the Actions log, literal `##[error]Process completed with exit code 1.` lines from older findings are interpreted as workflow commands.
+
+2. The real red pipeline is Delivery run 45510650619 for SHA 6d0096e18304858d76ad7807b91db61c427d5720: job "Delivery tooling tests", step "Tooling tests with the changed-line coverage gate". CI: `Ran 1681 tests ... FAILED (failures=1, errors=5)`. Local reproduction:
+   `python3 -I -m unittest discover -s scripts/tests -p 'test_agent_run.py' -q`
+   → `Ran 119 tests in 128.557s`, `FAILED (failures=1, errors=4)`.
+
+WORK ONE STORY AT A TIME. For each story, claim its entry in the relevant tasks/ file by changing `[ ]` to `[-]` and adding `- agent: orca`. Record every command and its final line under the entry. Mark `[x]` with `evidence:` and `pr:` only after every gate passes; if you stop, put it back to `[ ]`.
+
+STORY 1 — Repair the Delivery tooling tests (must fix first)
+
+Write the failing case first, then make the smallest change. Do not weaken any assertion.
+
+- `scripts/tests/test_agent_run.py:252-266`: `test_publish_rejects_wrong_task_or_run_branch` and `test_publish_rejects_when_head_is_not_the_recorded_branch` (in both AgentRunTests and DirectModelEnvironmentTests) error with `FileNotFoundError: .../gh.log`. `cmd_publish` at scripts/agent-run.sh:1250-1258 now rejects the branch/HEAD before any gh call, so the fake CLI never creates the log. Fix the stale seam at :81 by creating an empty `self.gh_log` in setUp (for example `self.gh_log.touch()`). Keep `assertNotIn("pr create", ...)` unchanged.
+- `scripts/tests/test_agent_run.py:704-713`: `test_daily_review_success_emits_ok` fails for role `devsecops` with `refusing to run in a dirty workspace`. `cmd_daily` (scripts/agent-run.sh:1103-1108) writes `.agents/daily-qa.json`; `require_clean_worktree` (:87-96) counts it as untracked when the same fixture is reused for the second role. In CI the roles run in separate jobs. Fix the fixture: give each role a fresh repo, or remove the first role's `.agents/` output between subtests. Do NOT change or relax the clean-worktree guard.
+- `scripts/swarm.py:6251-6276`: in the terminal "protected-main push rejected by repository rules" path, `add_labels(pr, "needs-human")` (implementation at :1840-1843, check=True) raises `CalledProcessError` when the GitHub API fails; `remove_label` and `comment_best_effort` are already best-effort. Make that `add_labels` call best-effort (catch CalledProcessError and log a warning) so `INTEGRATION_FAILED` is still returned and tasks/notes are still restored. Add an explicit deterministic test in `scripts/tests/test_swarm_integrator_coverage.py` that mocks the label API to fail and asserts the return value is `swarm.INTEGRATION_FAILED` and the restore still happens.
+
+STORY 2 — Stop untrusted findings from creating failure annotations
+
+- Neutralise GitHub Actions command markers in untrusted context text before it is written or echoed. The shared helper is `clean()` at scripts/swarm.py:403-406; the context writers are `issue_context()` at :1205-1238 and `pr_context()` at :5327. Rewrite lines beginning with `##[` or `::` so they cannot be parsed as workflow commands, and keep a doc comment explaining why (untrusted issue text is quoted into logs).
+- Add a regression test in `scripts/tests/test_swarm.py` (or test_swarm_delivery_state.py): a trusted comment body containing `##[error]Process completed with exit code 1.` must produce context text with no annotation-level command line. Assert the content, not just a call.
+
+HARD RULES
+
+- No `# pragma: no cover`, no omit entries, no skipped/disabled tests, no lowered thresholds, no new exclusions, no weaken/delete of an existing test unless its behaviour intentionally changed (say so explicitly).
+- Every added or changed Python line and branch needs a named test. List each branch and its test under `## Coverage` in the task/notes file.
+- No credentials, tokens or patient data in code, tests, logs or notes. Use synthetic fixtures only.
+- Public functions you add or change need a doc comment with purpose, inputs, outputs, errors and the invariant; comments explain why, not what.
+- Do not run Git commands or Git-backed operations in this session and do not call `gh` for writes. Produce the scoped patch and verification evidence; commit/push/PR goes to the trusted integrator unless the owner explicitly authorizes delivery here.
+- Record whether each piece of evidence came from a tool command, a reviewer, a simulated user walkthrough or an authorized human. No real user feedback exists here.
+
+QUALITY LOOP (mandatory, no bypass)
+
+- Before writing code, ask `aurevia-plan-reviewer` to review the plan for each story and fix every Required gap.
+- After the code and tests, ask `aurevia-code-reviewer`, `aurevia-coverage-auditor` and `aurevia-devsecops`; fix every Critical/Required finding and ask again until each ends with `VERDICT: GO`. Copy the four `VERDICT` lines into the task evidence. `scripts/quality-gate.sh` enforces the verdict check on every run; there is no `SWARM_REVIEW_GATE=off` bypass.
+
+GATES — run each exactly and paste the final lines into the task evidence
+
+1. `python3 -I -m unittest discover -s scripts/tests -p 'test_agent_run.py' -q` → all green.
+2. `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm_integrator_coverage.py' -q` → all green.
+3. `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm.py' -q` → all green (Story 2).
+4. `python3 -I -m unittest discover -s scripts/tests -q` → all green.
+5. `bash scripts/python-coverage.sh` → every changed line and branch covered.
+6. `python3 -I scripts/check-constraints.py` and `python3 -I scripts/check-docs.py` → exit 0.
+7. If no shell script changes, no shellcheck needed; if you do change one, run `shellcheck` on it.
+
+DONE WHEN
+
+- Both stories have green targeted tests, a green full Python suite and green changed-line coverage, with the red failures above recorded first.
+- The annotation regression test proves quoted `##[error]` text can no longer become a failure annotation.
+- Reviewers are all GO, trackers are updated with exact commands, and the delivery handoff is ready.
+- If you cannot finish, add `## Why this is not finished` with the failing command, first error, most likely cause, what you tried and the exact next step.

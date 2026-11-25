@@ -185,6 +185,17 @@ class MergeTests(unittest.TestCase):
                         swarm.record_merge(415, "T-01", "abc")
                 self.assertFalse(Path("docs/swarm/T-01.md").exists())
 
+    def test_record_merge_rejects_wrong_base_or_closed_pr(self):
+        for changes in ({"baseRefName": "develop"}, {"state": "CLOSED"}):
+            with self.subTest(changes=changes):
+                info = {"headRefOid": "abc", "body": "done", "title": "T-01: task",
+                        "baseRefName": "main", "state": "OPEN", **changes}
+                with mock.patch.object(swarm, "gh_json", return_value=info):
+                    with self.assertRaises(swarm.ReconciliationError):
+                        swarm.record_merge(415, "T-01", "abc")
+                self.assertFalse(Path("docs/swarm/T-01.md").exists())
+                self.assertNotIn("[x] T-01", swarm.store().read())
+
     def test_record_merge_rejects_done_task_without_pr_binding(self):
         swarm.store().write(TEXT.replace("- [-] T-01", "- [x] T-01"))
         before = swarm.store().read()
