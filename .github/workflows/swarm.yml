@@ -54,6 +54,8 @@ concurrency:
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+  SWARM_ENABLED: ${{ vars.SWARM_ENABLED || 'true' }}
+  SWARM_SINGLE_TASK: ${{ vars.SWARM_SINGLE_TASK || 'false' }}
 
 jobs:
   plan:
@@ -96,7 +98,18 @@ jobs:
         run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
       # Safety net: refuse a wave when estimated monthly runner minutes are near
       # the cap. No wave, no worker containers, and an issue for a person.
+      - id: kill
+        run: |
+          if [[ "${SWARM_ENABLED:-true}" == "false" || "${SWARM_ENABLED:-true}" == "0" || "${SWARM_ENABLED:-true}" == "off" || "${SWARM_ENABLED:-true}" == "no" ]]; then
+            echo "Swarm kill switch SWARM_ENABLED is off; skipping this wave." >&2
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'count=0' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo 'enabled=true' >> "$GITHUB_OUTPUT"
       - id: budget
+        if: steps.kill.outputs.enabled == 'true'
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py budget-gate
@@ -104,7 +117,7 @@ jobs:
       # wave, instead of a separate watchdog run per failure. The task goes in
       # task files first, so the planner below picks them up ahead of everything else.
       - id: repair
-        if: steps.budget.outputs.start == 'true' || inputs.ignore_red_main == true
+        if: steps.kill.outputs.enabled == 'true' && (steps.budget.outputs.start == 'true' || inputs.ignore_red_main == true)
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py add-repair-task --latest
@@ -115,14 +128,14 @@ jobs:
       # completed build failed. With no run history at all (cleaned or expired),
       # the slot images in GHCR decide instead of an empty `gh run list`.
       - id: images
-        if: steps.budget.outputs.start == 'true' || inputs.ignore_red_main == true
+        if: steps.kill.outputs.enabled == 'true' && (steps.budget.outputs.start == 'true' || inputs.ignore_red_main == true)
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py images-ready
       # Marks every task it starts as [-] in the task files and pushes that to main
       # (GITHUB_TOKEN pushes do not trigger another run).
       - id: plan
-        if: steps.budget.outputs.start == 'true' || inputs.ignore_red_main == true
+        if: steps.kill.outputs.enabled == 'true' && (steps.budget.outputs.start == 'true' || inputs.ignore_red_main == true)
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
@@ -149,6 +162,10 @@ jobs:
           # Repairs and fixes are queued before offering spare workers to backlog tasks.
           # Ready merges use the independent serialized integrator instead of waiting for this wave.
           python3 -I scripts/swarm.py pr-flow --no-wave
+          if [[ "${SWARM_SINGLE_TASK:-false}" == "true" ]]; then
+            WORKERS=1
+            echo "Single-task mode: planning at most one worker." >&2
+          fi
           plan_args=(--max "$WORKERS" --capacity "$capacity" --repair-run "$REPAIR_RUN" --task "$LAUNCH_TASK")
           if [[ "${IGNORE_RED_MAIN:-false}" == true ]]; then
             plan_args+=(--ignore-red-main)

@@ -204,6 +204,10 @@ Two separate native checks report on every revision; neither substitutes for the
 
 ## Kill switch
 
+`SWARM_ENABLED` is a repository **variable** (not a secret) that pauses the swarm: when set to `0`, `false`, `no` or `off` (case-insensitive), the plan job exits with an empty matrix, `continue_swarm`, `top_up`, `pr_flow` and the issue monitor do nothing, and no new wave starts. Workers that are already running finish and publish. Delete the variable or set it to `1`/`true`/`yes`/`on` to resume. It never weakens a gate.
+
+`SWARM_SINGLE_TASK` is a repository **variable** (default off) that enables the single-task-per-wave mode: at most one task worker per wave, no slot refill, and no next task is planned while a task is taken or has an open pull request. Turn it on to validate the serialized lifecycle; turn it off to restore the parallel wave.
+
 `SWARM_ALLOW_PROTECTED` is a repository **variable** (not a secret) that lifts only the "never merge protected files automatically" rule in `scripts/swarm.py guard()`. Set it to `1` (also accepted: `true`, `yes`, `on`, case-insensitive) to turn it on; turn it off by deleting the variable or setting it to `0` (`false`, `no` or empty also work). An on/off change needs no code change or redeploy.
 
 With the switch on, a pull request that touches protected files is **not** labelled `needs-human` and is not held for a person. The PR gets a comment naming the skipped files, and the integrator merges it after the full gate. What the switch does **not** relax:

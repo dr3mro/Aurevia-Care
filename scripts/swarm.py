@@ -1154,6 +1154,9 @@ def sync_issues():
 def watchdog():
     """Start a wave that nothing else started, open or update the stall issue when that did not
     help, or close it once waves run again; sync other issues."""
+    if not swarm_enabled():
+        print("watchdog: SWARM_ENABLED is off; no wave started.")
+        return
     active, work, idle, facts = swarm_idle()
     if not active and work and idle >= START_IDLE_MINUTES:
         # Nothing runs, so no worker's last job will start the next wave and the hourly schedule
@@ -1619,6 +1622,15 @@ def monitor_select(mode, text, out_dir, now=None):
     Returns {"triage": [n], "prs": [(n, pr)], "nudge": [n], "reset": [(n, task_id)],
     "close": [n], "exhausted": [n]}. A task whose attempts are used up gets them back once
     per requeue (daily only), so a stuck task is retried without a person."""
+    if not swarm_enabled():
+        return {
+            "triage": [],
+            "prs": [],
+            "nudge": [],
+            "reset": [],
+            "close": [],
+            "exhausted": [],
+        }
     _COMMENTS.clear()  # one fetch per issue per run, never stale across runs
     by_id = {t["id"]: t for t in parse_tasks(text)}
     open_tasks = {n: t for n, t in issue_tasks(text).items() if t["status"] != "done"}
@@ -1790,6 +1802,17 @@ def monitor_assign(
 
     Only issues the trusted select step chose are read: the worker cannot add a task for
     any other issue by writing another file."""
+    if not swarm_enabled():
+        return {
+            "tasks": [],
+            "failed": [],
+            "unanswered": [],
+            "prs": [],
+            "nudged": [],
+            "reset": [],
+            "closed": [],
+            "exhausted": [],
+        }
     entries, ids, failed, unanswered = [], [], [], []
     for number in triaged:
         path = Path(directory) / f"triage-{int(number)}.json"
@@ -3214,7 +3237,18 @@ def plan_workers(
     the waiting-pull-request gate, but still needs open status, a scope, met dependencies and a free scope.
     ``force`` is the workflow's scheduling override: it relaxes claim, dependency, attempt and
     waiting-wave limits so a wave can start, but never weakens a verification or merge gate."""
+    if not swarm_enabled():
+        return []
+    if single_task_mode():
+        max_workers = 1
+        slots = list(slots)[:1]
     tasks = parse_tasks(text)
+    if single_task_mode() and not force and repair is None:
+        # One active task at a time: do not pick another task while one is taken
+        # or has an open pull request. The task must be merged and Delivery green
+        # before anything else is planned.
+        if any(t.get("status") == "taken" for t in tasks) or (open_prs or []):
+            return []
     by_id = {t["id"]: t for t in tasks}
     for t in tasks:
         for alias in t["aliases"]:
@@ -3357,6 +3391,8 @@ def plan_workers(
             )
         ]
     )
+    if single_task_mode():
+        chosen = chosen[:1]
     # The matrix carries only slot identity; SWARM_MODEL is supplied by the
     # workflow at run time, not baked into the image or planner output.
     return [{**t, "slot": s["slot"]} for t, s in zip(chosen, slots)]
@@ -4935,6 +4971,8 @@ def top_up(finished_id):
     A wave ends only when its slowest worker does, so the slots of the quick ones stayed idle for
     hours. The planner still decides what runs: the combined worker cap, scopes, dependencies and
     the budget gate all apply to the wave this starts. Returns True when a wave was started."""
+    if not swarm_enabled() or single_task_mode():
+        return False
     try:
         live = [name for name in live_workers() if name != finished_id]
     except CapacityUnavailable:
@@ -5387,6 +5425,8 @@ def delivery_requested(pr, head):
 
 def pr_flow(now=None, dispatch_wave=True):
     """One pass over the open swarm pull requests. Returns a list of (pr, action) for the log."""
+    if not swarm_enabled():
+        return []
     prs = (
         gh_json(
             "pr",
@@ -5996,6 +6036,8 @@ def dispatch_delivery():
 
 def continue_swarm(text, prs, red=False, force=False):
     """Keep eligible workers busy while the independent integrator runs."""
+    if not swarm_enabled():
+        return False
     return bool(plan_workers(1, [{"slot": 1}], text, prs, red=red, force=force))
 
 
