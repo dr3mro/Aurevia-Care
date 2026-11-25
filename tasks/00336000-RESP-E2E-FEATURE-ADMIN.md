@@ -1,6 +1,6 @@
 - [-] RESP-E2E-FEATURE-ADMIN · Staff web end-to-end: the admin screens work on phone, tablet and desktop
-  - agent: swarm-2
-  - attempts: 20
+  - agent: swarm-7
+  - attempts: 21
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/e2e/responsive-admin.spec.ts
   - depends: RESP-E2E-PROJECTS
