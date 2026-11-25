@@ -1,5 +1,5 @@
-- [-] FIX-JOBS-EXPORTS-TEST-COMPILE · Restore Java test compilation for the ARC-02 tenant clause suite
-  - agent: swarm-7
+- [x] FIX-JOBS-EXPORTS-TEST-COMPILE · Restore Java test compilation for the ARC-02 tenant clause suite
+  - agent: orca
   - attempts: 44
   - requirements: ARC-02, OPS-06
   - scope: apps/api/src/test/java/com/aurevia/tenancy/clauses/JobsExportsSearchAttachmentsIntegrationsApplySameTest.java, tasks/01276000-FIX-JOBS-EXPORTS-TEST-COMPILE.md
@@ -39,3 +39,5 @@
   - ci-status: the same compile fix landed on main independently before
     this branch was refreshed; the exact-SHA Delivery run for main is still
     queued behind the runner backlog (see task 01273000).
+
+  - evidence (2026-11-25, orca): mvn -f apps/api/pom.xml test-compile -> BUILD SUCCESS; mvn -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=JobsExportsSearchAttachmentsIntegrationsApplySameTest test -> Tests run: 5, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS; python3 -I -m unittest discover -s scripts/tests -p test_java_conventions.py -> Ran 2 tests, OK. No production code changed.
