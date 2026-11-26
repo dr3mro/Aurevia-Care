@@ -1013,6 +1013,23 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(text.count("use tasks/ and .opencode/config/MEMORY.md"), 2)
         self.assertEqual(text.count("never search root TODO.md or MEMORY.md"), 2)
 
+    def test_po_may_select_two_features_and_parses_a_feature_list(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        select = text.split("name: Select features with OpenCode", 1)[1].split(
+            "name: Allocate", 1)[0]
+        self.assertIn("up to two features", select)
+        self.assertIn("Prefer two different feature prefixes", select)
+        self.assertIn("feature=<comma-separated feature prefixes>", select)
+        self.assertIn("^feature=[A-Za-z0-9_,-]+$", select)
+
+    def test_sm_prefers_different_features_and_falls_back_to_one_task(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        allocate = text.split("name: Allocate", 1)[1].split("  plan:", 1)[0]
+        self.assertIn("prefer tasks from different feature prefixes", allocate)
+        self.assertIn("If only one feature is selected", allocate)
+        self.assertIn("up to two tasks", allocate)
+        self.assertIn("one if a second eligible task cannot be found", allocate)
+
     def test_workflow_agents_are_configured_agents_not_skill_ids(self):
         """The PO and SM steps must name agents OpenCode can resolve.
 
@@ -1035,7 +1052,7 @@ class PlanTests(unittest.TestCase):
     def test_selection_steps_report_agency_failure_instead_of_hiding_it(self):
         """Both LLM steps keep stdout, stderr and the exit code visible."""
         workflow = (ROOT / ".github/workflows/swarm.yml").read_text()
-        select = workflow.split("name: Select one feature with OpenCode", 1)[1].split("  allocate:", 1)[0]
+        select = workflow.split("name: Select features with OpenCode", 1)[1].split("  allocate:", 1)[0]
         allocate = workflow.split("name: Allocate non-overlapping tasks with OpenCode", 1)[1]
         for step in (select, allocate):
             with self.subTest(step=step[:60]):

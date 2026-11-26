@@ -73,7 +73,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Select one feature with OpenCode
+      - name: Select features with OpenCode
         id: run
         env:
           SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
@@ -90,7 +90,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
             -e SWARM_MODEL -e OPENCODE_API_KEY -e OPENCODE_API_KEY_ALT \
             "$image" bash -lc '
-              prompt="Use the aurevia-context-optimizer skill. The single-file trackers were removed: use tasks/ and .opencode/config/MEMORY.md; never search root TODO.md or MEMORY.md. Before deciding, read the code base and evidence: .opencode/config/PROJECT_V1_SPEC.md for the requirement IDs, tasks/ for [x] done, [-] taken and [ ] open, .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, docs/decisions/ and targeted entry points under apps/, db/ and contracts/. Separate implemented, partial, planned and unknown work. A feature is a range of related tasks sharing a task-id prefix, for example SMSG or PRINT. Pick the feature where the remaining gap is real and the open eligible tasks (depends done, attempts below 5) should be directed next. Reply with exactly two lines on stdout, the last two: feature=<PREFIX> then tasks=<comma-separated task ids of that feature>. Ids only; no prose on those lines."
+              prompt="Use the aurevia-context-optimizer skill. The single-file trackers were removed: use tasks/ and .opencode/config/MEMORY.md; never search root TODO.md or MEMORY.md. Before deciding, read the code base and evidence: .opencode/config/PROJECT_V1_SPEC.md for the requirement IDs, tasks/ for [x] done, [-] taken and [ ] open, .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, docs/decisions/ and targeted entry points under apps/, db/ and contracts/. Separate implemented, partial, planned and unknown work. A feature is a range of related tasks sharing a task-id prefix, for example SMSG or PRINT. Select up to two features where the remaining gap is real and open eligible tasks exist (depends done, attempts below 5); Prefer two different feature prefixes when two gaps exist. If only one feature has an eligible gap, choose up to two tasks from it. Reply with exactly two lines on stdout, the last two: feature=<comma-separated feature prefixes> then tasks=<comma-separated task ids from those features>. Ids only; no prose on those lines."
               keys=("$OPENCODE_API_KEY")
               if [[ -n "${OPENCODE_API_KEY_ALT:-}" && "$OPENCODE_API_KEY_ALT" != "$OPENCODE_API_KEY" ]]; then
                 keys+=("$OPENCODE_API_KEY_ALT")
@@ -123,7 +123,7 @@ jobs:
             echo "::error::OpenCode produced no feature selection output" >&2
             exit 1
           fi
-          feature=$(/usr/bin/grep -oE '^feature=[A-Za-z0-9_-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2)
+          feature=$(/usr/bin/grep -oE '^feature=[A-Za-z0-9_,-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2)
           tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2)
           if [[ -z "$feature" || -z "$tasks" ]]; then
             if /usr/bin/grep -RqsE '^- \[ \]' tasks; then
@@ -136,7 +136,7 @@ jobs:
           echo "feature=${feature:-}" >> "$GITHUB_OUTPUT"
           echo "task_ids=${tasks:-}" >> "$GITHUB_OUTPUT"
           python3 -I scripts/work_trail.py --stage feature --agent product-owner \
-            --instruction "select one feature prefix and its candidate task ids" \
+            --instruction "select up to two feature prefixes and their candidate task ids" \
             --outputs "feature=${feature:-} tasks=${tasks:-}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
@@ -185,7 +185,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
             -e SWARM_MODEL -e OPENCODE_API_KEY -e OPENCODE_API_KEY_ALT -e FEATURE -e CANDIDATES -e WORKER_COUNT \
             "$image" bash -lc '
-              prompt="Use the aurevia-context-optimizer skill. The single-file trackers were removed: use tasks/ and .opencode/config/MEMORY.md; never search root TODO.md or MEMORY.md. Before deciding, read the code base and evidence: the requirement IDs in .opencode/config/PROJECT_V1_SPEC.md, the [x] done, [-] taken and [ ] open entries in tasks/, .opencode/config/BUGS.md, docs/decisions/ and the targeted source under apps/, db/ and contracts/ for each candidate. From candidates $CANDIDATES pick at most $WORKER_COUNT open tasks that are still needed, whose dependencies are met and whose scope paths do not overlap each other or any [-] task. Reply with one line only: tasks=<comma-separated task ids>. Ids only."
+              prompt="Use the aurevia-context-optimizer skill. The single-file trackers were removed: use tasks/ and .opencode/config/MEMORY.md; never search root TODO.md or MEMORY.md. Before deciding, read the code base and evidence: the requirement IDs in .opencode/config/PROJECT_V1_SPEC.md, the [x] done, [-] taken and [ ] open entries in tasks/, .opencode/config/BUGS.md, docs/decisions/ and the targeted source under apps/, db/ and contracts/ for each candidate. $FEATURE is a comma-separated list of feature prefixes selected by the Product Owner. Within the $WORKER_COUNT cap, pick open tasks from candidates $CANDIDATES that are still needed, whose dependencies are met and whose scope paths do not overlap each other or any [-] task; prefer tasks from different feature prefixes when more than one prefix was selected. If only one feature is selected, pick up to two tasks when the cap allows, or one if a second eligible task cannot be found; with two features, pick one if no second eligible task exists. Reply with one line only: tasks=<comma-separated task ids>. Ids only."
               keys=("$OPENCODE_API_KEY")
               if [[ -n "${OPENCODE_API_KEY_ALT:-}" && "$OPENCODE_API_KEY_ALT" != "$OPENCODE_API_KEY" ]]; then
                 keys+=("$OPENCODE_API_KEY_ALT")

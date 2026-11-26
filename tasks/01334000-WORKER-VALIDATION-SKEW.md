@@ -22,4 +22,6 @@
     - github-workflow: GO (0 Critical, 0 Required, 1 Optional: the extra unauthenticated `origin` fetch is redundant with `fetch-depth: 0` and would fail for a private repo; public repo makes it harmless today).
     - code-reviewer: NO-GO then GO (Required fixed: the merge now passes explicit `-c user.name`/`-c user.email` from top-level repository variables, so an identity failure cannot be misreported as stale; the workflow test asserts both flags).
 
-    Unverified: the workflow cannot run locally; no live run has exercised a stale merge yet. Full Python suite and coverage gate are pending in the orchestrator.
+    Final gates (tool, on the final tree): `/opt/homebrew/bin/python3.15 -I -m unittest discover -s scripts/tests -q` -> `Ran 2195 tests in 259.391s ... OK`; `REQUIRE_PY_COVERAGE=1 COVERAGE_BASE=origin/main bash scripts/python-coverage.sh` -> `python coverage: every changed script line is covered`.
+
+    Unverified: the workflow cannot run locally; no live run has exercised a stale merge yet. Evidence sources were tool commands and read-only reviewers; no simulated-user or authorized-human feedback was used.
