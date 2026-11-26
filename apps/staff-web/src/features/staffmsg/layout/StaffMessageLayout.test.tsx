@@ -229,7 +229,11 @@ describe('no horizontal scroll and keyboard-reachable composer', () => {
     for (const track of tracksOf(grid)) {
       expect(track.startsWith('minmax(0,')).toBe(true);
     }
-    for (const pane of [screen.getByTestId('staff-message-pane-list'), screen.getByTestId('staff-message-pane-detail'), screen.getByTestId('staff-message-pane-composer')]) {
+    for (const pane of [
+      screen.getByTestId('staff-message-pane-list'),
+      screen.getByTestId('staff-message-pane-detail'),
+      screen.getByTestId('staff-message-pane-composer'),
+    ]) {
       expect(pane.style.minInlineSize).toBe('0');
       expect(pane.style.overflowWrap).toBe('anywhere');
     }
