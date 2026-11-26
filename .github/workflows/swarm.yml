@@ -137,6 +137,7 @@ jobs:
       # the fail-closed values the downstream gates must see.
       matrix: ${{ steps.plan.outputs.matrix || steps.kill.outputs.matrix || '{"include":[]}' }}
       count: ${{ steps.plan.outputs.count || steps.kill.outputs.count || '0' }}
+      reason: ${{ steps.plan.outputs.reason || '' }}
       image_prefix: ${{ steps.image.outputs.prefix }}
       # Downstream jobs already depend on plan; forwarding the resolved flag here
       # keeps the job graph unchanged while every gate reads one canonical value.
@@ -210,8 +211,11 @@ jobs:
         run: |
           if [[ "$IMAGES_READY" != true && "${IGNORE_RED_MAIN:-false}" != true ]]; then
             echo "Prepared images not ready: $IMAGES_REASON; skipping this wave." >&2
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            echo 'count=0' >> "$GITHUB_OUTPUT"
+            {
+              echo 'matrix={"include":[]}'
+              echo 'count=0'
+              echo 'reason=images_not_ready'
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           python3 -I scripts/swarm.py ensure-labels
@@ -233,6 +237,16 @@ jobs:
             echo "Safety override: red main will not block ordinary work in this wave." >&2
           fi
           python3 -I scripts/swarm.py plan-workers "${plan_args[@]}"
+      # A zero-worker wave is a successful run with a skipped worker job. Put the
+      # planner's fixed-token reason in the run summary so developers see it without
+      # reading step logs. The value is bound through env, never interpolated into
+      # the shell, so it cannot become an Actions command.
+      - id: plan-reason
+        if: always() && steps.plan.outputs.reason != ''
+        env:
+          PLAN_REASON: ${{ steps.plan.outputs.reason }}
+        run: |
+          echo "Swarm wave skipped: $PLAN_REASON" >> "$GITHUB_STEP_SUMMARY"
   worker:
     # Static name: GitHub renders matrix values in a job name only when the
     # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.

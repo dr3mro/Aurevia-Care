@@ -222,6 +222,77 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertIn("repository rules", emitted["reason"])
         note.assert_not_called()
 
+    def test_main_plan_workers_emits_capacity_unavailable_reason(self):
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
+                mock.patch.object(swarm, "waiting_waves") as waves, \
+                mock.patch.object(swarm, "live_workers",
+                                  side_effect=swarm.CapacityUnavailable()), \
+                mock.patch("builtins.print"):
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        waves.assert_not_called()
+        self.assertEqual(self.emitted(), {"matrix": '{"include":[]}', "count": "0",
+                                          "reason": "capacity_unavailable"})
+        for line in self.output.read_text().splitlines():
+            self.assertFalse(line.startswith(("::", "##[")))
+
+    def test_main_plan_workers_emits_wave_waiting_reason(self):
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=1), \
+                mock.patch.object(swarm, "live_workers", return_value=[]), \
+                mock.patch.object(swarm, "plan_workers") as planned, \
+                mock.patch("builtins.print"):
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        planned.assert_not_called()
+        self.assertEqual(self.emitted(), {"matrix": '{"include":[]}', "count": "0",
+                                          "reason": "wave_waiting"})
+        for line in self.output.read_text().splitlines():
+            self.assertFalse(line.startswith(("::", "##[")))
+
+    def test_main_plan_workers_empty_plan_reason_carries_no_untrusted_text(self):
+        text = (
+            "# TODO\n\n"
+            "- [ ] DLV-9 · Untrusted repair title\n"
+            "  - scope: apps/api/a::error::injected##[error]leak\n"
+        )
+        with mock.patch.object(swarm, "gh_json", return_value=[]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
+                mock.patch.object(swarm, "main_is_red", return_value=True), \
+                mock.patch.object(swarm, "live_workers", return_value=["FIX-42"]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value=text), \
+                mock.patch.object(swarm, "reclaim", return_value=text), \
+                mock.patch.object(swarm, "plan_workers", return_value=[]), \
+                mock.patch.object(swarm, "update_todo"), mock.patch.object(swarm, "note_claims"), \
+                mock.patch("builtins.print") as shown:
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        lines = [str(call.args[0]) for call in shown.call_args_list if call.args]
+        self.assertTrue(any("no workers planned" in line for line in lines))
+        self.assertTrue(any("::error::injected" in line for line in lines))
+        self.assertEqual(self.emitted(), {"matrix": '{"include":[]}', "count": "0",
+                                          "reason": "empty_plan"})
+        for line in self.output.read_text().splitlines():
+            self.assertFalse(line.startswith(("::", "##[")))
+
+    def test_main_plan_workers_empty_plan_with_blocked_push_keeps_tracker_reason_last(self):
+        text = "# TODO\n\n- [ ] CW-001 · Ready\n  - scope: apps/api/a\n"
+        with mock.patch.object(swarm, "gh_json", return_value=[]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "live_workers", return_value=[]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value=text), \
+                mock.patch.object(swarm, "reclaim", return_value=text), \
+                mock.patch.object(swarm, "plan_workers", return_value=[]), \
+                mock.patch.object(swarm, "update_todo",
+                                  side_effect=swarm.TrackerPushBlocked()), \
+                mock.patch.object(swarm, "note_claims") as note, \
+                mock.patch("builtins.print"):
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        note.assert_not_called()
+        self.assertEqual(self.emitted()["reason"], "tracker push blocked by repository rules")
+        for line in self.output.read_text().splitlines():
+            self.assertFalse(line.startswith(("::", "##[")))
+
     def test_main_plan_workers_ignore_red_main_skips_the_check(self):
         include = [{"id": "CW-001", "kind": "story", "slot": 1, "title": "",
                     "body": "", "fix": ""}]
@@ -357,6 +428,24 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertTrue(all(not t[field] for t in json.loads(emitted["matrix"])["include"]
                             for field in ("title", "body", "fix")))
         self.assertEqual(emitted["count"], "2")
+        self.assertNotIn("reason", emitted)
+
+    def test_main_plan_workers_reports_when_all_claims_were_lost(self):
+        include = [{"id": "CW-001", "kind": "story", "slot": 1, "title": "",
+                    "body": "", "fix": ""}]
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "live_workers", return_value=[]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value="text"), \
+                mock.patch.object(swarm, "reclaim", return_value="text"), \
+                mock.patch.object(swarm, "plan_workers", return_value=include), \
+                mock.patch.object(swarm, "claim_open", return_value=("taken", set())), \
+                mock.patch.object(swarm, "update_todo"), mock.patch.object(swarm, "note_claims"), \
+                mock.patch("builtins.print"):
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        self.assertEqual(self.emitted()["reason"], "claims_lost")
 
     def test_main_pr_flow_reports_a_gh_failure_and_returns(self):
         # Keep subprocess real so the except clause catches a genuine error.

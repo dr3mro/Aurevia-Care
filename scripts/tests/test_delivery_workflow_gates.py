@@ -307,5 +307,30 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
         self.assertNotIn("continue-on-error", jobs["publish"])
 
 
+class SwarmPlanReasonWiringTest(unittest.TestCase):
+    """A skipped wave must expose a safe reason to the developer in the run UI."""
+
+    def test_plan_job_exposes_the_planner_reason_as_a_job_output(self):
+        plan = yaml.safe_load((WORKFLOWS / "swarm.yml").read_text(encoding="utf-8"))["jobs"]["plan"]
+        self.assertEqual(plan["outputs"]["reason"], "${{ steps.plan.outputs.reason || '' }}")
+
+    def test_images_not_ready_branch_emits_a_fixed_reason(self):
+        plan = yaml.safe_load((WORKFLOWS / "swarm.yml").read_text(encoding="utf-8"))["jobs"]["plan"]
+        step = next(item for item in plan["steps"] if item.get("id") == "plan")
+        body = run_text(step)
+        self.assertIn("echo 'reason=images_not_ready'", body)
+        self.assertIn('} >> "$GITHUB_OUTPUT"', body)
+
+    def test_plan_job_reports_the_zero_worker_reason_in_the_summary(self):
+        plan = yaml.safe_load((WORKFLOWS / "swarm.yml").read_text(encoding="utf-8"))["jobs"]["plan"]
+        step = next((item for item in plan["steps"] if item.get("id") == "plan-reason"), None)
+        self.assertIsNotNone(step)
+        self.assertEqual(step["if"], "always() && steps.plan.outputs.reason != ''")
+        self.assertEqual(step["env"]["PLAN_REASON"], "${{ steps.plan.outputs.reason }}")
+        body = run_text(step)
+        self.assertIn('echo "Swarm wave skipped: $PLAN_REASON" >> "$GITHUB_STEP_SUMMARY"', body)
+        self.assertNotIn("${{", body)
+
+
 if __name__ == "__main__":
     unittest.main()

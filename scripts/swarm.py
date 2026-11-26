@@ -6949,12 +6949,16 @@ def main(argv=None):
             )
             or []
         )
+        # A fixed token per skip cause reaches GITHUB_OUTPUT; free-form diagnostics
+        # stay in the log so untrusted task text cannot become an Actions command.
+        skip_reason = ""
         try:
             live = live_workers()
         except CapacityUnavailable:
             print("Capacity unavailable; skipping this wave.")
             emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
             emit("count", 0)
+            emit("reason", "capacity_unavailable")
             return 0
         # Do not plan a new wave while another wave is already queued or waiting:
         # each queued wave would otherwise plan its own full matrix and over-launch.
@@ -6962,6 +6966,7 @@ def main(argv=None):
             print("Another wave is already waiting; skipping this wave.")
             emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
             emit("count", 0)
+            emit("reason", "wave_waiting")
             return 0
         text = reclaim(todo_read(a.file), everything, live)
         busy = len(live)
@@ -7000,6 +7005,7 @@ def main(argv=None):
                 f"(main_red={red}, live={busy}, room={room}, open_prs={len(prs)}, "
                 f"main_repairs={','.join(repairs) or 'none'})"
             )
+            skip_reason = "empty_plan"
         claims = {
             t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"
         }
@@ -7018,19 +7024,17 @@ def main(argv=None):
         try:
             update_todo(mark, f"Take {len(claims)} task(s) for the swarm", a.file)
         except TrackerPushBlocked as exc:
-            # No claim was persisted, so no story worker may start. A successful
-            # empty wave is distinct from a planning error: this is the former,
-            # with an explicit reason the watchdog can report.
+            # No claim was persisted, so no story worker may start. The watcher
+            # needs the blocker name rather than a silent successful-looking wave.
             print(f"planner: {exc.reason}; no workers started")
             emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
             emit("count", 0)
             emit("reason", exc.reason)
             return 0
         include = [t for t in include if t["kind"] != "story" or t["id"] in granted]
+        if not include and not skip_reason:
+            skip_reason = "claims_lost"
         note_claims(include)
-        # GitHub skips a job output that contains anything it masks as a secret, which
-        # leaves the worker matrix empty. Story text is the part that can trip it, so
-        # stories travel as an id only and the worker reads their text from its task file.
         # GitHub skips a job output that contains anything it masks as a secret, which
         # leaves the worker matrix empty. No task text travels through the output: stories
         # and fix tasks alike are read from tasks/ (and the issue context file) by the
@@ -7038,6 +7042,8 @@ def main(argv=None):
         lean = [{**t, "title": "", "body": "", "fix": ""} for t in include]
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
+        if skip_reason:
+            emit("reason", skip_reason)
     elif a.cmd == "pr-flow":
         try:
             for pr, what in pr_flow(dispatch_wave=not a.no_wave):
