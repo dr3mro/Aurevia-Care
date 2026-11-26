@@ -65,6 +65,48 @@ def check(runs, sha=SHA, branch="main", repo=REPO, jobs=None):
     return code, out.getvalue(), err.getvalue()
 
 
+def state(runs, sha=SHA, branch="main", repo=REPO):
+    """Ask the checker whether a trusted Delivery run for the commit is still going."""
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = checker.main(
+            ["--state", "--sha", sha, "--branch", branch, "--repo", repo],
+            stream=io.StringIO(json.dumps({"runs": runs, "jobs": {}})),
+        )
+    return code, out.getvalue().strip(), err.getvalue()
+
+
+class ReleaseWaitStateTests(unittest.TestCase):
+    """The workflow must not decide red or green while Delivery is still running."""
+
+    def test_an_in_progress_run_on_the_exact_commit_is_pending(self):
+        for status in ("in_progress", "queued", "waiting"):
+            with self.subTest(status=status):
+                code, out, err = state({"workflow_runs": [record(status=status)]})
+                self.assertEqual((code, out, err), (0, "pending", ""))
+
+    def test_a_completed_run_is_ready_even_when_its_gate_failed(self):
+        runs = {"workflow_runs": [record(status="completed", conclusion="failure")]}
+        self.assertEqual(state(runs)[1], "ready")
+
+    def test_a_non_qualifying_run_never_holds_the_release(self):
+        for run in (record(head_sha=OTHER_SHA, status="in_progress"),
+                    record(head_branch="feature", status="in_progress"),
+                    record(event="pull_request", status="in_progress"),
+                    record(head_repository={"full_name": "other/repo"}, status="in_progress"),
+                    record(head_repository="owner/repo", status="in_progress"),
+                    "not a run", None):
+            with self.subTest(run=run):
+                self.assertEqual(state({"workflow_runs": [run]})[1], "ready")
+
+    def test_an_empty_run_list_is_ready_so_the_gate_check_fails_immediately(self):
+        self.assertEqual(state({"workflow_runs": []})[1], "ready")
+
+    def test_one_pending_run_wins_over_completed_runs(self):
+        runs = {"workflow_runs": [record(id=1), record(id=2, status="in_progress")]}
+        self.assertEqual(state(runs)[1], "pending")
+
+
 class ReleaseBaseTests(unittest.TestCase):
     def test_push_success_on_the_exact_default_branch_head_is_accepted(self):
         code, out, err = check({"workflow_runs": [record()]})

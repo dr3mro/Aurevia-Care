@@ -110,7 +110,7 @@ class AgentRunTests(unittest.TestCase):
 
     def run_cmd(self, command, **env):
         merged = {**self.fixture_environment(), **env}
-        for name in ("MODEL", "SWARM_FORCE_MODEL", "SWARM_MODEL"):
+        for name in ("MODEL", "SWARM_FORCE_MODEL", "SWARM_MODEL", "NOTES_IN"):
             if name in env and env[name] is None:
                 merged.pop(name, None)
         return subprocess.run(["bash", "scripts/agent-run.sh", command], cwd=self.repo,
@@ -736,6 +736,75 @@ class AgentRunTests(unittest.TestCase):
         self.assertRegex(self.notes_path(STORY_ID="", MODE="fix", BRANCH="main", PR_NUMBER="42", FIX_COMMENT="x"),
                          r"^.agents/notes/pr-42-fix-\d{8}-\d{6}\.md$")
 
+    def test_reconcile_reads_notes_from_an_outside_directory(self):
+        external = self.tmp / "external-notes"
+        external.mkdir()
+        (external / "2026-11-25.md").write_text("## Summary\nworker note\n")
+        prompts = self.tmp / "reconcile-external.log"
+        done = self.run_cmd("reconcile", FAKE_MODE="none",
+                            NOTES_IN=str(external), PROMPT_LOG=str(prompts))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        self.assertTrue((self.repo / ".agent/reconcile/rules.patch").exists())
+        text = prompts.read_text()
+        self.assertGreaterEqual(text.count(str(external)), 3)
+        self.assertNotIn("notes-in/", text)
+
+    def test_reconcile_defaults_to_the_local_notes_directory(self):
+        prompts = self.tmp / "reconcile-default.log"
+        done = self.run_cmd("reconcile", FAKE_MODE="none", NOTES_IN=None,
+                            PROMPT_LOG=str(prompts))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertGreaterEqual(prompts.read_text().count("notes-in/"), 3)
+
+    def test_an_untracked_notes_directory_still_refuses_reconcile(self):
+        notes = self.repo / "notes-in"
+        notes.mkdir()
+        (notes / "2026-11-25.md").write_text("worker note\n")
+        prompts = self.tmp / "reconcile-dirty.log"
+        for value in (None, str(notes)):
+            with self.subTest(notes_in=value):
+                result = self.run_cmd("reconcile", FAKE_MODE="none",
+                                      NOTES_IN=value, PROMPT_LOG=str(prompts))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("dirty workspace", result.stderr.lower())
+                self.assertFalse(prompts.exists())
+                self.assertFalse((self.repo / ".agent/reconcile/rules.patch").exists())
+
+    def test_tracker_command_markers_are_quoted_in_the_log(self):
+        external = self.tmp / "external-notes"
+        external.mkdir()
+        tasks = self.repo / "tasks"
+        tasks.mkdir()
+        (tasks / "_head.md").write_text("# Tasks\n")
+        (tasks / "00000001-CW-001.md").write_text(
+            "- [ ] CW-001 · Synthetic story\n"
+            "##[error]raw task error\n"
+            "  ::error::indented task command\n"
+            "plain task line\n")
+        self.git("add", "-A")
+        self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit",
+                 "-qm", "task markers")
+        result = self.run_cmd("reconcile", FAKE_MODE="none", NOTES_IN=str(external))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("> ##[error]raw task error", result.stdout)
+        self.assertIn("  > ::error::indented task command", result.stdout)
+        self.assertIn("plain task line", result.stdout)
+        for line in result.stdout.splitlines():
+            self.assertFalse(line.lstrip().startswith("##["), line)
+            self.assertFalse(line.lstrip().startswith("::"), line)
+
+    def test_a_failing_tracker_dump_does_not_stop_a_command(self):
+        external = self.tmp / "external-notes"
+        external.mkdir()
+        (self.repo / "scripts/taskstore.py").write_text(
+            "print('##[error]failing tracker')\nraise SystemExit(1)\n")
+        self.git("add", "-A")
+        self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit",
+                 "-qm", "failing tracker")
+        result = self.run_cmd("reconcile", FAKE_MODE="none", NOTES_IN=str(external))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("> ##[error]failing tracker", result.stdout)
 
 
 class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentRunTests"]).AgentRunTests):
