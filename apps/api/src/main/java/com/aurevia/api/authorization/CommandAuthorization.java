@@ -263,9 +263,15 @@ public final class CommandAuthorization {
      * @param reasonCode stable reason code
      * @param roles      roles considered
      * @return the recorded decision
+<<<<<<< HEAD
+     * @throws ApiException {@code 500 AUDIT_UNAVAILABLE} when the durable sink names
+     *         its own machine-readable failure, or {@code 500 DECISION_NOT_RECORDED}
+     *         for any other unstructured sink failure
+=======
      * @throws ApiException {@code 403 AUDIT_UNAVAILABLE} when the durable sink rejects the
      *         write, {@code 500 AUDIT_UNAVAILABLE} for an unstructured sink failure, or
      *         {@code 500 DECISION_NOT_RECORDED} for any other sink-supplied API failure
+>>>>>>> origin/main
      */
     private Decision record(String commandId, String action, ServerIdentity identity, boolean allowed,
                             String reasonCode, List<String> roles) {
@@ -275,12 +281,18 @@ public final class CommandAuthorization {
         try {
             sink.record(decision);
         } catch (ApiException failure) {
+<<<<<<< HEAD
+            // The durable sink already named the deny reason; masking it would
+            // hide the OPS-02 audit failure from the caller and its own audit.
+            throw failure;
+=======
             // Only the durable sink's own deny signal may reach the caller unchanged,
             // and even that signal uses a fixed message so bind details cannot leak.
             if (failure.status() == 403 && "AUDIT_UNAVAILABLE".equals(failure.code())) {
                 throw new ApiException(403, "AUDIT_UNAVAILABLE", "authorization decision could not be recorded");
             }
             throw new ApiException(500, "DECISION_NOT_RECORDED", "authorization decision could not be recorded");
+>>>>>>> origin/main
         } catch (RuntimeException failure) {
             // A failed audit write must fail the command closed with a defined,
             // machine-readable reason: AUDIT_UNAVAILABLE is itself a deny outcome,
