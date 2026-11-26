@@ -1,7 +1,7 @@
 {
   "generator": "com.aurevia.api.authorization.CommandClientGenerator",
-  "contractSha256": "7ee1fe31c8825d996da0e8e77d5e50dfdbbab081eb174c6ed6a834d7a7132e0f",
-  "clientSha256": "604b1855d5f555a84a874687fc62627dd6fefd983d3743e898502c5a304cdc7d",
+  "contractSha256": "9a897df9faf960febe2835d3c5d6eeba2d74797bdadaea8b7d14697e2862c2c0",
+  "clientSha256": "e36c0dc387f13ce7a3ad4c475d13be0ba282b9d004c9c54a07250a3d5737c6f1",
   "commands": [
     {"id": "createFacility", "action": "FACILITY_WRITE", "method": "POST", "path": "/api/v1/facilities", "policy": "ActionPolicy"},
     {"id": "inviteStaff", "action": "STAFF_INVITE", "method": "POST", "path": "/api/v1/staff", "policy": "ActionPolicy"},
@@ -26,6 +26,16 @@
     {"id": "withdrawRelease", "action": "RELEASE_WITHDRAW", "method": "POST", "path": "/api/v1/releases/{id}/withdraw", "policy": "ReleaseActionPolicy"},
     {"id": "acknowledgeCriticalResult", "action": "CRITICAL_ACKNOWLEDGE", "method": "POST", "path": "/api/v1/critical/{id}/acknowledge", "policy": "CriticalActions"},
     {"id": "issueInvoice", "action": "FINANCE_INVOICE_CREATE", "method": "POST", "path": "/api/v1/invoices", "policy": "FinanceActions"},
-    {"id": "acknowledgeInstruction", "action": "ACKNOWLEDGE", "method": "POST", "path": "/api/v1/instructions/{id}/acknowledge", "policy": "InstructionFactActions"}
+    {"id": "acknowledgeInstruction", "action": "ACKNOWLEDGE", "method": "POST", "path": "/api/v1/instructions/{id}/acknowledge", "policy": "InstructionFactActions"},
+    {"id": "verifyClinicIdentity", "action": "IDENTITY_VERIFY", "method": "POST", "path": "/api/v1/clinic/verifications", "policy": "WorklistPolicy"},
+    {"id": "checkInClinicAppointment", "action": "APPOINTMENT_CHECK_IN", "method": "POST", "path": "/api/v1/clinic/appointments/{id}/check-in", "policy": "WorklistPolicy"},
+    {"id": "assignClinicWorkItem", "action": "WORKLIST_ASSIGN", "method": "POST", "path": "/api/v1/clinic/worklist/{id}/assign", "policy": "WorklistPolicy"},
+    {"id": "acceptTherapyEpisode", "action": "SPECIALTY_PT_ACCEPT_REFERRAL", "method": "POST", "path": "/api/v1/therapy/episodes", "policy": "SpecialtyActions"},
+    {"id": "acceptExchangeResponse", "action": "EXCHANGE_ACCEPT", "method": "POST", "path": "/api/v1/xch03/orders/{id}/accept", "policy": "Xch03ActionPolicy"},
+    {"id": "rejectExchangeResponse", "action": "EXCHANGE_REJECT", "method": "POST", "path": "/api/v1/xch03/orders/{id}/reject", "policy": "Xch03ActionPolicy"},
+    {"id": "authorizePatientRelease", "action": "RELEASE_AUTHORIZE", "method": "POST", "path": "/api/v1/releases", "policy": "ReleaseActionPolicy"},
+    {"id": "acknowledgeReportedCriticalResult", "action": "CRITICAL_ACKNOWLEDGE", "method": "POST", "path": "/api/v1/critical-results/{id}/acknowledge", "policy": "CriticalActions"},
+    {"id": "createFinanceInvoice", "action": "FINANCE_INVOICE_CREATE", "method": "POST", "path": "/api/v1/finance/invoices", "policy": "FinanceActions"},
+    {"id": "acknowledgePublishedInstruction", "action": "ACKNOWLEDGE", "method": "POST", "path": "/api/v1/instructions/acknowledge", "policy": "InstructionFactActions"}
   ]
 }

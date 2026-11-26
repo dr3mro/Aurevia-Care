@@ -104,7 +104,8 @@ class CommandAuthorizationTest {
     @Test
     void catalogIsImmutableUniqueAndUnknownCommandsFailClosed() {
         CommandCatalog catalog = CommandCatalog.synthetic();
-        assertEquals(24, catalog.commands().size());
+        assertEquals(34, catalog.commands().size());
+        assertEquals(24, catalog.paths().size());
         assertTrue(catalog.find("acceptOrder").isPresent());
         assertTrue(catalog.find("notACommand").isEmpty());
         assertEquals("EXCHANGE_ACCEPT", catalog.require("acceptOrder").action());
@@ -117,6 +118,21 @@ class CommandAuthorizationTest {
         assertEquals(List.of(), new CommandCatalog(List.of()).actions());
         CommandDefinition duplicate = new CommandDefinition("acceptOrder", "ACTION", "POST", "/x", "Policy");
         assertThrows(IllegalArgumentException.class, () -> new CommandCatalog(List.of(duplicate, duplicate)));
+    }
+
+    @Test
+    void mappingOnlyDefinitionsKeepGateRegistrationUnchanged() {
+        CommandCatalog catalog = CommandCatalog.synthetic();
+        CommandDefinition published = catalog.find("createFacility").orElseThrow();
+        CommandDefinition delivered = catalog.find("acceptExchangeResponse").orElseThrow();
+
+        assertTrue(published.gated(), "published baseline remains registered");
+        assertFalse(delivered.gated(), "a delivered mapping does not silently gate its service");
+        assertTrue(catalog.paths().contains(published.path()));
+        assertFalse(catalog.paths().contains(delivered.path()));
+        assertEquals(24, catalog.paths().size());
+        assertEquals(24, catalog.commands().stream().filter(CommandDefinition::gated).count());
+        assertEquals(10, catalog.commands().stream().filter(definition -> !definition.gated()).count());
     }
 
     @Test
