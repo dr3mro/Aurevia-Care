@@ -70,21 +70,16 @@ tests), `frontend` (`scripts/frontend-check.sh`), `java-verify` (the reusable
 `.github/actions/java-verify` action runs `apps/api/check.sh` and `db/check.sh` with
 PostgreSQL 17 and the full JaCoCo/OWASP/SpotBugs tier), and `docs` (`scripts/docs.sh`).
 The single `Delivery gate` job requires every verification job to pass or be skipped
-<<<<<<< HEAD
 on purpose, and branch protection checks it on the exact commit. Every pull request
-runs this workflow, including documentation-only changes: a path-filtered PR would
-never report the required check. Neither trigger has a path filter: every pull
-request and every push to `main` or a `v*` tag that starts a run (plus dispatch and
-merge-group runs) reports the required `Delivery gate` check on its exact SHA. A
-skipped run is never verification evidence; the integrator reruns the exact
-pull-request run instead of merging.
-=======
-on purpose, and branch protection checks it on the exact commit. Every pull request and
-every push to `main` or a `v*` tag runs this workflow, including documentation-only
-changes: a path-filtered run leaves the required check unreported. Runs on one branch
-queue per PR head or ref with `cancel-in-progress: false` and `queue: max`, so a new head is never dropped
-and every exact SHA receives its own verdict (`.github/workflows/delivery.yml`).
->>>>>>> origin/main
+runs this workflow, including documentation-only changes: neither trigger has a path
+filter, because a path-filtered PR or push leaves the required exact-SHA
+`Delivery gate` check unreported and blocks the protected branch. Every push to
+`main`, every `v*` tag, and every dispatch or merge-group run also reports that check
+on its exact SHA. A skipped run is never verification evidence, so the integrator
+reruns the exact pull-request run instead of merging. Runs use one concurrency queue
+per PR head SHA or other ref with `cancel-in-progress: false` and `queue: max`, so a
+new head is never dropped and every exact SHA receives its own verdict
+(`.github/workflows/delivery.yml`).
 
 **Integrator (before merge and on tags).** The integrator runs
 `bash scripts/integrator-gate.sh` — full `check.sh` plus `docs.sh` — on each merge
