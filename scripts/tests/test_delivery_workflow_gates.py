@@ -17,6 +17,13 @@ from helpers import ROOT
 WORKFLOWS = ROOT / ".github" / "workflows"
 AUTO_MERGE = WORKFLOWS / "dependabot-auto-merge.yml"
 DELIVERY = WORKFLOWS / "delivery.yml"
+TRUSTED_NVD_EXPRESSION = (
+    "${{ (github.event_name == 'push' || "
+    "(github.event_name == 'workflow_dispatch' && "
+    "github.ref == format('refs/heads/{0}', "
+    "github.event.repository.default_branch))) "
+    "&& secrets.NVD_API_KEY || '' }}"
+)
 
 
 def steps(text):
@@ -30,9 +37,11 @@ def run_text(step):
     return body if isinstance(body, str) else ""
 
 
-def nvd_input(event_name, secret):
-    """Model the workflow's push-only secret expression for synthetic events."""
-    return secret if event_name == "push" else ""
+def nvd_input(event_name, secret, ref="refs/heads/main"):
+    """Model the push / default-branch dispatch secret expression for synthetic events."""
+    trusted_dispatch = (event_name == "workflow_dispatch"
+                        and ref == "refs/heads/main")
+    return secret if event_name == "push" or trusted_dispatch else ""
 
 
 def scalar_paths(value, path=()):
@@ -215,20 +224,24 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertIn("integrate-publish", published)
         self.assertNotIn("integrate-validate", published)
 
-    def test_delivery_nvd_secret_is_limited_to_trusted_push_events(self):
+    def test_delivery_nvd_secret_is_limited_to_trusted_push_and_default_branch_dispatch(self):
         workflow = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))
         step = next(s for s in workflow["jobs"]["java-verify"]["steps"]
                     if s.get("uses") == "./.github/actions/java-verify")
-        expression = "${{ github.event_name == 'push' && secrets.NVD_API_KEY || '' }}"
+        expression = TRUSTED_NVD_EXPRESSION
         self.assertEqual(step["with"]["nvd-api-key"], expression)
-        for event in ("pull_request", "merge_group", "workflow_dispatch"):
+        for event in ("pull_request", "merge_group"):
             with self.subTest(event=event):
                 self.assertEqual(nvd_input(event, "synthetic-secret"), "")
+        self.assertEqual(nvd_input("workflow_dispatch", "synthetic-secret",
+                                   "refs/heads/feature"), "")
+        self.assertEqual(nvd_input("workflow_dispatch", "synthetic-secret",
+                                   "refs/heads/main"), "synthetic-secret")
         self.assertEqual(nvd_input("push", "synthetic-secret"), "synthetic-secret")
         self.assertEqual(nvd_input("push", ""), "")
 
     def test_repository_nvd_references_have_one_push_guarded_secret_source(self):
-        expression = "${{ github.event_name == 'push' && secrets.NVD_API_KEY || '' }}"
+        expression = TRUSTED_NVD_EXPRESSION
         secret_refs = []
         nvd_refs = []
         inherited = []
