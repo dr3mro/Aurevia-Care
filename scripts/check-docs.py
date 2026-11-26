@@ -17,6 +17,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+# ``python3 -I scripts/check-docs.py`` omits the repository root from sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = ".opencode/config/PROJECT_V1_SPEC.md"
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
@@ -93,6 +97,7 @@ def gitignored_paths(root, paths):
             stderr=subprocess.DEVNULL,
             text=True,
             check=False,
+            env=child_environment(read_only=True),
         )
     except (OSError, subprocess.SubprocessError):
         return set()

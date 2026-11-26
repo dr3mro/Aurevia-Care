@@ -200,6 +200,18 @@ class GitIgnoreTests(unittest.TestCase):
             self.assertEqual(docs.gitignored_paths(Path("."), []), set())
         run.assert_not_called()
 
+    def test_git_ignore_child_uses_sanitized_environment(self):
+        tmp = self.make_tmp()
+        path = tmp / "plain.md"
+        path.write_text("IAM-01\n", encoding="utf-8")
+        with mock.patch.dict("os.environ", {"GIT_DIR": "/synthetic/extra"}), \
+                mock.patch.object(docs.subprocess, "run") as run:
+            run.return_value = subprocess.CompletedProcess([], 1, "", "")
+            self.assertEqual(docs.gitignored_paths(tmp, [path]), set())
+        env = run.call_args.kwargs["env"]
+        self.assertNotIn("GIT_DIR", env)
+        self.assertEqual("/dev/null", env["GIT_CONFIG_GLOBAL"])
+
     def test_unavailable_git_adds_no_skips(self):
         tmp = self.make_tmp()
         path = tmp / "plain.md"
