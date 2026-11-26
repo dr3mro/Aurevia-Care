@@ -1,5 +1,5 @@
-- [-] FIX-INTEGRATOR-TWO-TIER-DISPATCH · Wire the validate/publish CLI and publish every decision
-  - agent: swarm-2
+- [x] FIX-INTEGRATOR-TWO-TIER-DISPATCH · Wire the validate/publish CLI and publish every decision
+  - pr: #1685
   - attempts: 45
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm.py, scripts/tests/test_swarm_integrator_coverage.py, scripts/tests/test_delivery_workflow_gates.py, .github/workflows/swarm-integrator.yml, tasks/01275000-FIX-INTEGRATOR-TWO-TIER-DISPATCH.md
