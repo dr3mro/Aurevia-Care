@@ -72,10 +72,12 @@ while IFS= read -r file; do
     psql_admin -d "$DB" -qc "INSERT INTO aurevia_migrations VALUES ('$name')" >/dev/null
 done < <(printf '%s\n' "$MIGRATIONS"/V*.sql | sort -V)
 
-effective_profile="${AUREVIA_PROFILE:-synthetic-auth}"
-# The image bakes in synthetic-auth, so warn on the effective profile, not only on an unset variable.
+effective_profile="${AUREVIA_PROFILE:-}"
+# A caller may still supply synthetic-auth explicitly. Warn on the effective
+# profile without duplicating the Java startup guard, which is the only
+# authorization boundary for the permit-all header identity chain.
 if [[ "$effective_profile" == "synthetic-auth" ]]; then
-  echo "aurevia: synthetic-auth permits every request and uses header identity; this disposable image is test-only, never expose it" >&2
+    echo "aurevia: synthetic-auth permits every request and uses header identity; test-only, never expose it" >&2
 fi
 # shellcheck disable=SC2086
 AUREVIA_SERVER_PORT=8080 \

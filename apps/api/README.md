@@ -6,7 +6,7 @@ Unauthenticated health routes outside the versioned prefix: `GET /health/live` (
 
 Run `bash check.sh` from this directory for unit tests, real-PostgreSQL integration tests and the enforced 100% JaCoCo gate. The integration test creates the synthetic database `aurevia_it` and applies `../../db/migrations` with the migration role; the application connects as the non-owner runtime role.
 
-Protected requests require `X-Synthetic-Subject` and `X-Active-Organization` while the `synthetic-auth` profile is active. `X-Correlation-Id` is optional and echoed when provided. See `../../contracts/openapi.yaml` and `../../docs/decisions/0001-g0-tenant-isolation.md`.
+Protected requests require `X-Synthetic-Subject` and `X-Active-Organization` while the `synthetic-auth` profile is active and the test-only `AUREVIA_ALLOW_SYNTHETIC_AUTH` opt-in is present; without that opt-in startup fails closed. `X-Correlation-Id` is optional and echoed when provided. See `../../contracts/openapi.yaml` and `../../docs/decisions/0001-g0-tenant-isolation.md`.
 
 ## Production configuration (WEB-01, WEB-05)
 
@@ -15,6 +15,7 @@ Start with `SPRING_PROFILES_ACTIVE=production` to load `application-production.y
 | Name | Meaning | Default | Required in production |
 |---|---|---|---|
 | `SPRING_PROFILES_ACTIVE` | Active Spring profiles; must include `production` and must not include `synthetic-auth` | none | Yes |
+| `AUREVIA_ALLOW_SYNTHETIC_AUTH` | Test-only opt-in for the `synthetic-auth` header-identity chain; never set in a deployed image or production config | `false` | No — must NOT be set in production |
 | `AUREVIA_DB_URL` | JDBC URL; must contain `sslmode=require` or `verify-full` | `jdbc:postgresql://127.0.0.1:5432/aurevia_it` (test only) | Yes |
 | `AUREVIA_DB_USER` | Database role used by the application | `aurevia_app` | Yes |
 | `AUREVIA_DB_PASSWORD` | Database password; must be non-blank | empty | Yes |
@@ -25,3 +26,5 @@ Start with `SPRING_PROFILES_ACTIVE=production` to load `application-production.y
 | `AUREVIA_OIDC_AUDIENCE` | Expected OIDC token audience | empty | Yes, outside `synthetic-auth`; `SecurityConfiguration` fails startup when blank and `JwtAudienceValidator` rejects other audiences |
 | `AUREVIA_OIDC_CLIENT_ID` | Staff web OIDC client id | empty | Yes, outside `synthetic-auth` |
 | `AUREVIA_OIDC_CLIENT_SECRET` | Staff web OIDC client secret | empty | Yes, outside `synthetic-auth` |
+
+`AUREVIA_ALLOW_SYNTHETIC_AUTH` is a test-only opt-in, not a production setting. It is needed only with the `synthetic-auth` profile so tests can exercise the real header-identity filter chain; the `production` profile must never set it. When `synthetic-auth` is active without the opt-in, `SecurityConfiguration` fails startup with `IllegalStateException: AUREVIA_ALLOW_SYNTHETIC_AUTH must be set to true to enable the synthetic-auth profile`. Tests receive the opt-in only from `src/test/resources/application-synthetic-auth.yml` (test classpath) or explicit test property values (`withPropertyValues("AUREVIA_ALLOW_SYNTHETIC_AUTH=true")` or `@SpringBootTest(properties = "AUREVIA_ALLOW_SYNTHETIC_AUTH=true")`). The opt-in is deliberately absent from `src/main/resources`, all container images and all entrypoints; no main config sets it to `true`. Baking it into an image or entrypoint would re-open the permit-all header-identity chain the guard exists to prevent (IAM-01).
