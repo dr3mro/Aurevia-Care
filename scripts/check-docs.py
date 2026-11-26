@@ -19,7 +19,7 @@ SPEC = ".opencode/config/PROJECT_V1_SPEC.md"
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
 GENERATED = ("staff-web/", "patient-mobile/")
 # "plan" is a pre-existing scratch copy of this pack and is not checked.
-SKIP = {".git", "build", "node_modules", ".opencode", "plan"}
+SKIP = {".git", "build", "node_modules", ".opencode", "plan", ".workspaces"}
 
 # Structural rules for generated Markdown. The token pattern carries a
 # word-boundary guard so ordinary words such as "risk-transitions" are not
