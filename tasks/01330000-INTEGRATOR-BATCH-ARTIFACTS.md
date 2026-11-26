@@ -17,3 +17,6 @@
     Unverified: the workflow itself cannot be run locally; no live rerun of run 45823997824's queue has observed the new artifact layout. Evidence sources were tool commands and Actions reads; no simulated-user or human feedback.
   - review verdicts (read-only subagents, agent file IDs):
     - code-reviewer: GO (0 Critical, 0 Required, 2 Optional: bool values accepted by the workflow branch builder but rejected by accepted_branches, and stack-plan bases differ from the agent-created stack branches — both recorded as follow-ups, no gate weakened).
+    - github-workflow: GO (0 Critical, 0 Required, 3 Optional: duplicated accepted-JSON rules, stringified numbers drop out, stack-plan artifact is audit-only — no gate weakened).
+  - final gates (tool):
+    `/opt/homebrew/bin/python3.15 -I -m unittest discover -s scripts/tests -q` -> `Ran 2175 tests in 186.687s ... OK`. `REQUIRE_PY_COVERAGE=1 COVERAGE_BASE=origin/main bash scripts/python-coverage.sh` -> `python coverage: every changed script line is covered`.
