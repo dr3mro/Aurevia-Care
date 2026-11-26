@@ -640,7 +640,10 @@ class IntegratorBatchTest(unittest.TestCase):
             "conflict_details": []}))
         bundle.write_text("synthetic")
         error = subprocess.CalledProcessError(1, ("push",), stderr="GH013 protected branch")
+        # A rejected publish still labels, comments and opens an issue for a person.
+        # Keep those trusted GitHub writes inside the fixture so the test stays hermetic.
         with mock.patch.object(swarm, "git", return_value="tip"), \
+             mock.patch.object(swarm, "gh") as gh, \
              mock.patch.object(swarm, "gh_json", return_value={"headRefOid": "abc"}), \
              mock.patch.object(swarm, "report_validation"), \
              mock.patch.object(swarm, "record_merges",
@@ -649,10 +652,12 @@ class IntegratorBatchTest(unittest.TestCase):
              mock.patch.object(swarm, "todo_write") as write, \
              mock.patch.object(swarm, "authed_git", side_effect=error), \
              mock.patch.object(swarm, "dispatch_delivery") as dispatch, \
-             mock.patch.object(swarm, "emit"):
+             mock.patch.object(swarm, "emit") as emit:
             self.assertEqual(swarm.integrate_publish(str(manifest), str(bundle)), swarm.INTEGRATION_FAILED)
         write.assert_called_once_with("", "before\n")
         dispatch.assert_not_called()
+        emit.assert_any_call("merged", 0)
+        self.assertTrue(any("needs-human" in str(arg) for c in gh.call_args_list for arg in c.args))
 
     def test_rejection_restores_existing_note_and_removes_new_note(self):
         root = self.repo()

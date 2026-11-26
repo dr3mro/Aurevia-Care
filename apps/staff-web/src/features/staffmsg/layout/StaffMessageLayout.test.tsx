@@ -1,182 +1,304 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import type { ReactElement } from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { RenderResult } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../../../i18n/I18nProvider';
-import type { Locale } from '../../../i18n/messages';
-import { BREAKPOINT_MEDIA_QUERIES, BREAKPOINT_WIDTHS } from '../../../theme/breakpoints';
+import { BREAKPOINT_MEDIA_QUERIES } from '../../../theme/breakpoints';
 import { ThemeProvider } from '../../../theme/ThemeProvider';
-import { layoutText } from './labels';
 import { StaffMessageLayout } from './StaffMessageLayout';
+import type { StaffMessageLayoutProps } from './StaffMessageLayout';
+
+type Band = 'compact' | 'medium' | 'expanded';
+type ChangeListener = (event: MediaQueryListEvent) => void;
+
+interface QueryState {
+  matches: boolean;
+  listeners: Set<ChangeListener>;
+}
 
 /**
- * Install a deterministic matchMedia stand-in for one synthetic viewport width.
- * The answers are set before render: the breakpoint hook caches one snapshot per
- * query and does not re-read the environment between renders.
+ * Install one deterministic media-query state per query string. The hook's
+ * snapshot, subscription and change events all read the same object, so a
+ * resize can be fired without a real viewport. All content is synthetic.
  */
-function installWidth(width: number): void {
+function installMatchMedia(band: Band) {
   const answers: Record<string, boolean> = {
-    [BREAKPOINT_MEDIA_QUERIES.medium]: width >= BREAKPOINT_WIDTHS.medium,
-    [BREAKPOINT_MEDIA_QUERIES.expanded]: width >= BREAKPOINT_WIDTHS.expanded,
+    [BREAKPOINT_MEDIA_QUERIES.medium]: band !== 'compact',
+    [BREAKPOINT_MEDIA_QUERIES.expanded]: band === 'expanded',
+  };
+  const states = new Map<string, QueryState>();
+  const stateOf = (query: string): QueryState => {
+    let current = states.get(query);
+    if (!current) {
+      current = { matches: answers[query] ?? false, listeners: new Set() };
+      states.set(query, current);
+    }
+    return current;
   };
   vi.stubGlobal(
     'matchMedia',
-    vi.fn((query: string) => ({
-      matches: answers[query] ?? false,
-      media: query,
-      onchange: null,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-      addListener: () => undefined,
-      removeListener: () => undefined,
-      dispatchEvent: () => false,
-    })),
+    vi.fn((query: string) => {
+      const current = stateOf(query);
+      return {
+        get matches() {
+          return current.matches;
+        },
+        media: query,
+        onchange: null,
+        addEventListener: (_type: string, listener: ChangeListener) => {
+          current.listeners.add(listener);
+        },
+        removeEventListener: (_type: string, listener: ChangeListener) => {
+          current.listeners.delete(listener);
+        },
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      };
+    }),
+  );
+  return (query: string, matches: boolean) => {
+    const current = stateOf(query);
+    current.matches = matches;
+    for (const listener of current.listeners) {
+      listener({ matches } as MediaQueryListEvent);
+    }
+  };
+}
+
+/** A synthetic conversation list, thread and composer for one facility. */
+function fixturePanes(): Pick<StaffMessageLayoutProps, 'list' | 'detail' | 'composer'> {
+  return {
+    list: <p>Synthetic conversation list</p>,
+    detail: <p>Synthetic thread body</p>,
+    composer: <textarea aria-label="Synthetic draft" />,
+  };
+}
+
+/** Props with deterministic bilingual labels and a spyable back action. */
+function propsFor(overrides: Partial<StaffMessageLayoutProps> = {}): StaffMessageLayoutProps {
+  return {
+    label: 'Synthetic messages',
+    ...fixturePanes(),
+    detailOpen: false,
+    backLabel: 'Back to list',
+    onBack: () => undefined,
+    ...overrides,
+  };
+}
+
+function renderLayout(props: StaffMessageLayoutProps = propsFor()): RenderResult {
+  return render(
+    <ThemeProvider>
+      <StaffMessageLayout {...props} />
+    </ThemeProvider>,
   );
 }
 
-/** Mount the wrapper with synthetic panes under the shell providers. */
-function layoutElement(
-  width: number,
-  detailOpen: boolean,
-  onBack: () => void,
-  locale: Locale = 'en',
-): ReactElement {
-  installWidth(width);
+function paneGrid(): HTMLElement {
+  return screen.getByTestId('staff-message-panes');
+}
+
+function tracksOf(grid: HTMLElement): string[] {
+  return grid.style.gridTemplateColumns.match(/minmax\([^)]*\)/g) ?? [];
+}
+
+/** Compact detail navigation with an observable caller-side state change. */
+function StatefulLayout({ onBack }: { onBack: () => void }): ReactElement {
+  const [detailOpen, setDetailOpen] = useState(true);
+  const onBackTo = (): void => {
+    onBack();
+    setDetailOpen(false);
+  };
   return (
     <ThemeProvider>
-      <I18nProvider initialLocale={locale}>
-        <StaffMessageLayout
-          list={<p>Synthetic list</p>}
-          detail={<p>Synthetic detail</p>}
-          composer={<textarea aria-label="Synthetic composer" />}
-          detailOpen={detailOpen}
-          onBack={onBack}
-        />
-      </I18nProvider>
+      <StaffMessageLayout {...propsFor({ detailOpen, onBack: onBackTo })} />
     </ThemeProvider>
   );
 }
 
-/** The grid that holds the visible panes. */
-function paneGrid(): HTMLElement {
-  const grid = document.querySelector('[data-part="panes"]');
-  if (!grid) {
-    throw new Error('pane grid was not rendered');
-  }
-  return grid as HTMLElement;
-}
-
-/** The element carrying the active layout band. */
-function layoutRoot(): HTMLElement {
-  const root = document.querySelector('[data-layout]');
-  if (!root) {
-    throw new Error('layout root was not rendered');
-  }
-  return root as HTMLElement;
-}
-
-/** The composer region, including its sticky footer on tablet and phone. */
-function composerRegion(): HTMLElement {
-  const composer = document.querySelector('[data-pane="composer"]');
-  if (!composer) {
-    throw new Error('composer region was not rendered');
-  }
-  return composer as HTMLElement;
-}
-
 afterEach(() => {
   vi.unstubAllGlobals();
+  document.documentElement.removeAttribute('dir');
+  document.documentElement.removeAttribute('lang');
 });
 
-describe('staff-message panes per breakpoint', () => {
-  it('renders three panes on desktop', () => {
-    render(layoutElement(1280, false, vi.fn()));
-    expect(layoutRoot().getAttribute('data-breakpoint')).toBe('expanded');
-    expect(layoutRoot().getAttribute('data-layout')).toBe('three-pane');
-    expect(paneGrid().querySelectorAll('[data-pane]')).toHaveLength(3);
-    expect(screen.getByText('Synthetic list')).toBeTruthy();
-    expect(screen.getByText('Synthetic detail')).toBeTruthy();
-    expect(screen.getByLabelText('Synthetic composer')).toBeTruthy();
-    expect(paneGrid().style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))');
-    expect(paneGrid().style.gridTemplateColumns).not.toContain('px');
-    expect(composerRegion().parentElement).toBe(paneGrid());
-    expect(composerRegion().style.position).toBe('');
-  });
+describe('responsive staff message layout (WEB-07, UX-01, WEB-09 R9)', () => {
+  it('expanded renders three panes with a static composer', () => {
+    installMatchMedia('expanded');
+    renderLayout();
 
-  it('keeps the desktop layout and hides Back when a detail is already selected', () => {
-    render(layoutElement(1280, true, vi.fn()));
-    expect(screen.queryByRole('button', { name: layoutText('en', 'back') })).toBeNull();
-    expect(paneGrid().querySelectorAll('[data-pane]')).toHaveLength(3);
-    expect(composerRegion().parentElement).toBe(paneGrid());
-    expect(composerRegion().style.position).toBe('');
-  });
-
-  it('renders two panes and a sticky composer footer at 768 px without fixed tracks', () => {
-    render(layoutElement(768, false, vi.fn()));
-    expect(layoutRoot().getAttribute('data-breakpoint')).toBe('medium');
-    expect(layoutRoot().getAttribute('data-layout')).toBe('two-pane');
     const grid = paneGrid();
-    expect(grid.querySelectorAll('[data-pane]')).toHaveLength(2);
-    expect(grid.style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))');
-    expect(grid.style.gridTemplateColumns).not.toContain('px');
-    for (const pane of grid.querySelectorAll('[data-pane]')) {
-      expect(['0', '0px']).toContain((pane as HTMLElement).style.minInlineSize);
-    }
-    expect(composerRegion().parentElement).not.toBe(grid);
-    expect(composerRegion().style.position).toBe('sticky');
+    expect(screen.getByTestId('staff-message-layout').getAttribute('data-breakpoint')).toBe(
+      'expanded',
+    );
+    expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-detail')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-composer')).toBeTruthy();
+    expect(grid.children).toHaveLength(3);
+    expect(tracksOf(grid)).toHaveLength(3);
+    expect(screen.getByTestId('staff-message-pane-composer').style.position).toBe('');
   });
 
-  it('renders one list pane and no back action on a narrow screen without a selection', () => {
-    render(layoutElement(320, false, vi.fn()));
-    expect(layoutRoot().getAttribute('data-breakpoint')).toBe('compact');
-    expect(layoutRoot().getAttribute('data-layout')).toBe('single-pane');
-    expect(paneGrid().querySelectorAll('[data-pane]')).toHaveLength(1);
-    expect(paneGrid().style.gridTemplateColumns).toBe('minmax(0, 1fr)');
-    expect(paneGrid().style.gridTemplateColumns).not.toContain('px');
-    expect(screen.getByText('Synthetic list')).toBeTruthy();
-    expect(screen.queryByText('Synthetic detail')).toBeNull();
-    expect(screen.queryByRole('button', { name: layoutText('en', 'back') })).toBeNull();
-    expect(document.querySelector('[data-pane="composer"]')).toBeNull();
+  it('medium renders two panes with a docked composer at 768 px', () => {
+    installMatchMedia('medium');
+    renderLayout();
+
+    const grid = paneGrid();
+    const composer = screen.getByTestId('staff-message-pane-composer');
+    expect(screen.getByTestId('staff-message-layout').getAttribute('data-breakpoint')).toBe(
+      'medium',
+    );
+    expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-detail')).toBeTruthy();
+    expect(grid.children).toHaveLength(3);
+    expect(tracksOf(grid)).toHaveLength(2);
+    expect(composer.style.gridColumn).toBe('1 / -1');
+    expect(composer.style.position).toBe('sticky');
   });
 
-  it('renders one detail pane with a back action and composer on a narrow screen with a selection', () => {
-    render(layoutElement(320, true, vi.fn()));
-    expect(layoutRoot().getAttribute('data-layout')).toBe('single-pane');
-    expect(paneGrid().querySelectorAll('[data-pane]')).toHaveLength(1);
-    expect(screen.getByText('Synthetic detail')).toBeTruthy();
-    expect(screen.queryByText('Synthetic list')).toBeNull();
-    expect(screen.getByRole('button', { name: layoutText('en', 'back') })).toBeTruthy();
-    expect(composerRegion().style.position).toBe('sticky');
-  });
-});
+  it('compact shows only the list when no detail is open', () => {
+    installMatchMedia('compact');
+    renderLayout();
 
-describe('compact back action', () => {
-  it('reports the back action and restores the list after the parent clears the selection', () => {
+    expect(screen.getByTestId('staff-message-layout').getAttribute('data-breakpoint')).toBe(
+      'compact',
+    );
+    expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-composer')).toBeTruthy();
+    expect(screen.queryByTestId('staff-message-pane-detail')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back to list' })).toBeNull();
+    expect(tracksOf(paneGrid())).toHaveLength(1);
+  });
+
+  it('does not show a back action on tablet or desktop when a detail is open', () => {
+    installMatchMedia('medium');
+    const first = renderLayout(propsFor({ detailOpen: true }));
+    expect(screen.queryByRole('button', { name: 'Back to list' })).toBeNull();
+    expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-detail')).toBeTruthy();
+    first.unmount();
+
+    installMatchMedia('expanded');
+    renderLayout(propsFor({ detailOpen: true }));
+    expect(screen.queryByRole('button', { name: 'Back to list' })).toBeNull();
+    expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.getByTestId('staff-message-pane-detail')).toBeTruthy();
+  });
+
+  it('compact shows the detail and a back action when a detail is open', () => {
+    installMatchMedia('compact');
     const onBack = vi.fn();
-    const view = render(layoutElement(320, true, onBack));
-    fireEvent.click(screen.getByRole('button', { name: layoutText('en', 'back') }));
+    renderLayout(propsFor({ detailOpen: true, onBack }));
+
+    expect(screen.queryByTestId('staff-message-pane-list')).toBeNull();
+    expect(screen.getByTestId('staff-message-pane-detail')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to list' }));
+    // The wrapper is controlled: it reports the command, the caller clears its
+    // selection. The stateful harness below proves the list then returns.
     expect(onBack).toHaveBeenCalledTimes(1);
-    view.rerender(layoutElement(320, false, onBack));
-    expect(screen.getByText('Synthetic list')).toBeTruthy();
-    expect(screen.queryByText('Synthetic detail')).toBeNull();
-    expect(screen.queryByRole('button', { name: layoutText('en', 'back') })).toBeNull();
+  });
+
+  it('back action invokes the caller callback and restores the list', () => {
+    installMatchMedia('compact');
+    const onBack = vi.fn();
+    render(<StatefulLayout onBack={onBack} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to list' }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('staff-message-pane-list')).toBeTruthy();
+    expect(screen.queryByTestId('staff-message-pane-detail')).toBeNull();
   });
 });
 
-describe('keyboard clearance and bilingual names', () => {
-  it('reserves scroll space and pins the composer above the keyboard on tablet', () => {
-    render(layoutElement(768, false, vi.fn()));
-    expect(layoutRoot().style.scrollPaddingBlockEnd).not.toBe('');
-    expect(['0', '0px']).toContain(composerRegion().style.insetBlockEnd);
-    expect(screen.getByRole('region', { name: layoutText('en', 'listPane') })).toBeTruthy();
-    expect(screen.getByRole('region', { name: layoutText('en', 'detailPane') })).toBeTruthy();
-    expect(screen.getByRole('region', { name: layoutText('en', 'composerPane') })).toBeTruthy();
+describe('no horizontal scroll and keyboard-reachable composer', () => {
+  it('uses shrinkable tracks and logical properties at 768 px', () => {
+    installMatchMedia('medium');
+    renderLayout();
+
+    const root = screen.getByTestId('staff-message-layout');
+    const grid = paneGrid();
+    // A clipping overflow would make this a scroll container and defeat the
+    // sticky composer, so the tracks and wrapping must carry the no-scroll
+    // guarantee instead. The painted measurement belongs to Playwright.
+    expect(root.style.overflowX).toBe('');
+    expect(root.style.overflow).toBe('');
+    expect(grid.style.overflowX).toBe('');
+    expect(grid.style.overflow).toBe('');
+    expect(root.style.scrollPaddingBlockEnd).toBe('var(--sc-space-8, 32px)');
+    for (const track of tracksOf(grid)) {
+      expect(track.startsWith('minmax(0,')).toBe(true);
+    }
+    for (const pane of [
+      screen.getByTestId('staff-message-pane-list'),
+      screen.getByTestId('staff-message-pane-detail'),
+      screen.getByTestId('staff-message-pane-composer'),
+    ]) {
+      expect(pane.style.minInlineSize).toBe('0');
+      expect(pane.style.overflowWrap).toBe('anywhere');
+    }
   });
 
-  it('uses Arabic accessible names and document direction under RTL', () => {
-    render(layoutElement(320, true, vi.fn(), 'ar'));
-    expect(document.documentElement.dir).toBe('rtl');
-    expect(screen.getByRole('button', { name: layoutText('ar', 'back') })).toBeTruthy();
-    expect(screen.getByRole('region', { name: layoutText('ar', 'detailPane') })).toBeTruthy();
-    expect(screen.getByRole('region', { name: layoutText('ar', 'composerPane') })).toBeTruthy();
+  it('docks the composer with safe-area padding below the expanded band', () => {
+    installMatchMedia('compact');
+    renderLayout(propsFor({ detailOpen: true }));
+
+    const composer = screen.getByTestId('staff-message-pane-composer');
+    // DOM/stylesheet check only; painted keyboard behaviour is a Playwright proof.
+    expect(composer.style.position).toBe('sticky');
+    expect(composer.style.insetBlockEnd).toBe('0');
+    expect(composer.style.paddingBlockEnd).toBe('max(8px, var(--safe-block-end, 0px))');
+    expect(composer.style.background).toBe('var(--sc-color-surface-default, #ffffff)');
+  });
+
+  it('uses logical properties only under right-to-left', () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+    document.documentElement.setAttribute('lang', 'ar');
+    installMatchMedia('medium');
+    renderLayout();
+
+    const root = screen.getByTestId('staff-message-layout');
+    for (const element of [root, ...Array.from(root.querySelectorAll('*'))] as HTMLElement[]) {
+      expect(element.getAttribute('style') ?? '').not.toMatch(
+        /(?:margin|padding|border)-(?:left|right)\s*:|text-align\s*:\s*(?:left|right)/,
+      );
+      expect(element.style.direction).toBe('');
+    }
+    expect(root.getAttribute('data-breakpoint')).toBe('medium');
+    expect(screen.getByText('Synthetic conversation list')).toBeTruthy();
+  });
+});
+
+describe('rotation preserves work (WEB-09 R9)', () => {
+  it('keeps the typed composer text, open detail and focused field across resizes', () => {
+    const fire = installMatchMedia('compact');
+    renderLayout(propsFor({ detailOpen: true }));
+
+    const field = screen.getByRole('textbox', { name: 'Synthetic draft' });
+    fireEvent.change(field, { target: { value: 'Synthetic unsent draft' } });
+    field.focus();
+    expect(document.activeElement).toBe(field);
+
+    act(() => fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
+    expect(screen.getByTestId('staff-message-layout').getAttribute('data-breakpoint')).toBe(
+      'medium',
+    );
+    act(() => fire(BREAKPOINT_MEDIA_QUERIES.expanded, true));
+    expect(screen.getByTestId('staff-message-layout').getAttribute('data-breakpoint')).toBe(
+      'expanded',
+    );
+    // A real resize to a phone clears both min-width queries; the expanded
+    // band wins while it still matches, so both answers must change together.
+    act(() => {
+      fire(BREAKPOINT_MEDIA_QUERIES.expanded, false);
+      fire(BREAKPOINT_MEDIA_QUERIES.medium, false);
+    });
+    expect(screen.getByTestId('staff-message-layout').getAttribute('data-breakpoint')).toBe(
+      'compact',
+    );
+
+    expect(screen.getByTestId('staff-message-pane-detail')).toBeTruthy();
+    expect((field as HTMLTextAreaElement).value).toBe('Synthetic unsent draft');
+    expect(document.activeElement).toBe(field);
   });
 });

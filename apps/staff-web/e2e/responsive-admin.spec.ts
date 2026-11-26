@@ -30,6 +30,12 @@ const supportedUserAgent =
 /** Synthetic tenant used by every boundary response. */
 const tenantId = syntheticFacility.organizationId;
 
+/** Default loopback origin used when Playwright does not supply a base URL. */
+const defaultOrigin = 'http://127.0.0.1:5173';
+
+/** Synthetic CSRF cookie required by the real transport before every command. */
+const syntheticCsrf = 'synthetic-csrf-token';
+
 /** Opaque values created by the main task of each screen. */
 const newFacilityCode = 'SYN-FAC-01';
 const newFacilityName = 'Synthetic Satellite Facility';
@@ -48,7 +54,7 @@ const structuralDate = '2026-07-01';
 type Locale = 'en' | 'ar';
 
 /** How a control is activated in one pass. */
-type Mode = 'keyboard' | 'pointer';
+type Mode = 'keyboard' | 'pointer' | 'tap';
 
 /** One administration screen and its expected localized heading key. */
 interface Screen {
@@ -85,6 +91,139 @@ function wordsFor(locale: Locale): Words {
 
 /** Both locales, in a deterministic order. */
 const locales: readonly Words[] = [wordsFor('en'), wordsFor('ar')];
+
+/** Verbatim words that must not move with the production message dictionary. */
+interface LiteralScreenWords {
+  readonly heading: string;
+  readonly intro: string;
+  readonly submit: string;
+  readonly baseline: readonly string[];
+  readonly outcome: readonly string[];
+}
+
+/**
+ * Independent bilingual oracle for identity and task outcomes.
+ *
+ * The production dictionary remains the locator source for controls, while
+ * these fixed words catch a translation or copy regression that would otherwise
+ * move the implementation and its expectation together.
+ */
+const literalWords: Readonly<Record<Locale, Readonly<Record<Screen['id'], LiteralScreenWords>>>> = {
+  en: {
+    facilities: {
+      heading: 'Facilities',
+      intro: 'Facilities in the active organization, read from the administration API.',
+      submit: 'Create facility',
+      baseline: ['Facility code', 'Facility name', 'Time zone', 'MAIN', 'Synthetic Main Facility'],
+      outcome: [`Created facility ${newFacilityName}`],
+    },
+    staff: {
+      heading: 'Staff administration',
+      intro: 'Staff in the active organization, read from the lifecycle API.',
+      submit: 'Invite staff',
+      baseline: [
+        'Staff subject',
+        'Display name',
+        'Bounded role',
+        'Status',
+        'Roles',
+        'Actions',
+        seededStaffSubject,
+        'Synthetic Reception',
+      ],
+      outcome: [`Invited ${newStaffName}`],
+    },
+    config: {
+      heading: 'Configuration and catalogs',
+      intro: 'Enter a tenant-local key to read its versions and approval state.',
+      submit: 'Look up configuration',
+      baseline: ['Configuration key'],
+      outcome: [
+        'Configuration versions',
+        'Synthetic pending booking rule',
+        'Effective catalog entries',
+        'Synthetic catalog value',
+        `Defined a pending version of ${catalogEntryCode} in ${catalogFamily}`,
+      ],
+    },
+    audit: {
+      heading: 'Audit event search',
+      intro: 'Clear filters',
+      submit: 'Apply filters',
+      baseline: [
+        'Action',
+        'Outcome',
+        'Resource type',
+        'From (UTC instant)',
+        'To (UTC instant)',
+        'Clear filters',
+      ],
+      outcome: [
+        'Audit events and chain integrity',
+        'CONFIG_CREATE',
+        'synthetic-corr-1',
+        'Synthetic configuration review',
+      ],
+    },
+  },
+  ar: {
+    facilities: {
+      heading: 'المرافق',
+      intro: 'مرافق المؤسسة النشطة، مقروءة من خدمة الإدارة.',
+      submit: 'إنشاء مرفق',
+      baseline: ['رمز المرفق', 'اسم المرفق', 'المنطقة الزمنية', 'MAIN', 'Synthetic Main Facility'],
+      outcome: [`تم إنشاء المرفق ${newFacilityName}`],
+    },
+    staff: {
+      heading: 'إدارة الموظفين',
+      intro: 'موظفو المؤسسة النشطة، مقروءون من خدمة دورة الحياة.',
+      submit: 'دعوة موظف',
+      baseline: [
+        'معرّف الموظف',
+        'الاسم المعروض',
+        'الدور المحدود',
+        'الحالة',
+        'الأدوار',
+        'الإجراءات',
+        seededStaffSubject,
+        'Synthetic Reception',
+      ],
+      outcome: [`تمت دعوة ${newStaffName}`],
+    },
+    config: {
+      heading: 'التكوين والكتالوجات',
+      intro: 'أدخل مفتاحًا خاصًا بالمؤسسة لقراءة إصداراته وحالة اعتماده.',
+      submit: 'البحث عن تكوين',
+      baseline: ['مفتاح التكوين'],
+      outcome: [
+        'إصدارات التكوين',
+        'Synthetic pending booking rule',
+        'إدخالات الكتالوج السارية',
+        'Synthetic catalog value',
+        `تم تحديد إصدار بانتظار الاعتماد لـ ${catalogEntryCode} في ${catalogFamily}`,
+      ],
+    },
+    audit: {
+      heading: 'البحث في أحداث التدقيق',
+      intro: 'مسح المرشحات',
+      submit: 'تطبيق المرشحات',
+      baseline: [
+        'الإجراء',
+        'النتيجة',
+        'نوع المورد',
+        'من (لحظة UTC)',
+        'إلى (لحظة UTC)',
+        'مسح المرشحات',
+      ],
+      outcome: [
+        'أحداث التدقيق وسلامة السلسلة',
+        'CONFIG_CREATE',
+        'synthetic-corr-1',
+        'Synthetic configuration review',
+      ],
+    },
+  },
+};
 
 /** Resolve one registered screen by its stable identifier. */
 function screenById(id: Screen['id']): Screen {
@@ -146,9 +285,18 @@ interface AuditRow {
   readonly outcome: string;
 }
 
+/** One recorded versioned request, reduced to its boundary metadata. */
+interface RecordedCall {
+  readonly method: string;
+  readonly path: string;
+  readonly query: string;
+  readonly headers: Record<string, string>;
+}
+
 /** Mutable boundary state, reset for every browser pass. */
 interface Store {
   readonly calls: string[];
+  readonly requests: RecordedCall[];
   readonly facilities: FacilityRow[];
   readonly staff: StaffRow[];
   readonly config: ConfigRow[];
@@ -160,6 +308,7 @@ interface Store {
 function createStore(): Store {
   return {
     calls: [],
+    requests: [],
     facilities: [
       {
         organizationId: tenantId,
@@ -446,6 +595,7 @@ async function handleApi(route: Route, store: Store): Promise<void> {
   const url = new URL(request.url());
   const path = url.pathname;
   const method = request.method();
+  store.requests.push({ method, path, query: url.search, headers: request.headers() });
   store.calls.push(method === 'GET' ? `GET ${path}${url.search}` : `${method} ${path}`);
   if (path === '/api/v1/facilities' && (await handleFacilities(route, store, method))) {
     return;
@@ -472,6 +622,30 @@ async function handleApi(route: Route, store: Store): Promise<void> {
   await json(route, { code: 'NOT_FOUND' }, 404);
 }
 
+/** Guarded transformed role source, fetched once per worker. */
+let roleModuleSource: string | undefined;
+
+/**
+ * Read and validate the real Vite-transformed role module before replacing it.
+ *
+ * A staged build or changed module must fail loudly rather than silently
+ * measuring a different authorization source.
+ */
+async function roleModule(origin: string): Promise<string> {
+  if (roleModuleSource === undefined) {
+    const response = await fetch(`${origin}/src/app/useRole.ts`);
+    if (!response.ok) {
+      throw new Error(`cannot read the transformed useRole module: ${String(response.status)}`);
+    }
+    const source = await response.text();
+    if (!source.includes('useRole') || !source.includes('syntheticStaff')) {
+      throw new Error('useRole module shape changed; the tenant-admin override is unsafe');
+    }
+    roleModuleSource = source;
+  }
+  return roleModuleSource;
+}
+
 /** Fulfil the dev-only role module with a tenant administrator. */
 async function grantRole(route: Route): Promise<void> {
   await route.fulfill({
@@ -483,9 +657,9 @@ async function grantRole(route: Route): Promise<void> {
 
 /** Install the synthetic boundary and role source on one page. */
 async function installOnPage(page: Page, baseURL: string | undefined, store: Store): Promise<void> {
-  await page.context().addCookies([
-    { name: 'XSRF-TOKEN', value: 'synthetic-csrf-token', url: baseURL ?? 'http://127.0.0.1:5173' },
-  ]);
+  const origin = baseURL ?? defaultOrigin;
+  await roleModule(origin);
+  await page.context().addCookies([{ name: 'XSRF-TOKEN', value: syntheticCsrf, url: origin }]);
   await page.route('**/api/v1/**', (route) => handleApi(route, store));
   await page.route('**/src/app/useRole.ts*', (route) => grantRole(route));
 }
@@ -496,9 +670,9 @@ async function installOnContext(
   baseURL: string | undefined,
   store: Store,
 ): Promise<void> {
-  await context.addCookies([
-    { name: 'XSRF-TOKEN', value: 'synthetic-csrf-token', url: baseURL ?? 'http://127.0.0.1:5173' },
-  ]);
+  const origin = baseURL ?? defaultOrigin;
+  await roleModule(origin);
+  await context.addCookies([{ name: 'XSRF-TOKEN', value: syntheticCsrf, url: origin }]);
   await context.route('**/api/v1/**', (route) => handleApi(route, store));
   await context.route('**/src/app/useRole.ts*', (route) => grantRole(route));
 }
@@ -573,6 +747,29 @@ function hasTouchPointer(): boolean {
   return test.info().project.use.hasTouch === true;
 }
 
+/** Assert every write carried the real transport's tenant and command metadata. */
+function expectCommandMetadata(store: Store): void {
+  const writes = store.requests.filter((call) => call.method === 'POST');
+  expect(writes.length).toBeGreaterThan(0);
+  for (const write of writes) {
+    expect(write.headers['x-active-organization']).toBe(tenantId);
+    expect(write.headers['x-correlation-id']).toBeDefined();
+    expect(write.headers['x-correlation-id']).not.toBe('');
+    expect(write.headers['x-xsrf-token']).toBe(syntheticCsrf);
+    expect(write.headers['idempotency-key']).toBeDefined();
+    expect(write.headers['idempotency-key']).not.toBe('');
+  }
+}
+
+/** Assert the independent bilingual words that follow one completed screen task. */
+async function expectLiteralOutcomes(ctx: TaskContext): Promise<void> {
+  const expected = literalWords[ctx.words.locale][ctx.screen.id];
+  const main = ctx.page.locator('main#main');
+  for (const value of expected.outcome) {
+    await expect(main.getByText(value, { exact: false }).first()).toBeVisible();
+  }
+}
+
 /**
  * Whether the RTL skip-link band can cover a control at this viewport.
  * The defect is measured in `responsive-system.spec.ts`: it blocks pointer
@@ -587,12 +784,12 @@ function skipLinkCoversControls(page: Page): boolean {
 
 /** Activate a native control by the input method under test. */
 async function activate(ctx: TaskContext, control: Locator): Promise<void> {
+  if (ctx.mode === 'tap' || (ctx.mode === 'pointer' && hasTouchPointer())) {
+    await control.tap();
+    return;
+  }
   if (ctx.mode === 'pointer') {
-    if (hasTouchPointer()) {
-      await control.tap();
-    } else {
-      await control.click();
-    }
+    await control.click();
     return;
   }
   await control.focus();
@@ -602,7 +799,7 @@ async function activate(ctx: TaskContext, control: Locator): Promise<void> {
 
 /** Enter text through the chosen modality and prove it landed. */
 async function enter(ctx: TaskContext, field: Locator, value: string): Promise<void> {
-  if (ctx.mode === 'pointer' && hasTouchPointer()) {
+  if (ctx.mode === 'tap' || (ctx.mode === 'pointer' && hasTouchPointer())) {
     await field.tap();
   } else {
     await field.focus();
@@ -635,6 +832,7 @@ async function submitForm(ctx: TaskContext, form: Locator, fields: readonly Loca
 interface OverflowMeasurement {
   readonly documentScrollWidth: number;
   readonly documentClientWidth: number;
+  readonly bodyScrollWidth: number;
   readonly mainScrollWidth: number;
   readonly mainClientWidth: number;
   readonly offenders: readonly string[];
@@ -654,6 +852,7 @@ async function measureOverflow(page: Page): Promise<OverflowMeasurement> {
     const empty: OverflowMeasurement = {
       documentScrollWidth: document.documentElement.scrollWidth,
       documentClientWidth: document.documentElement.clientWidth,
+      bodyScrollWidth: document.body.scrollWidth,
       mainScrollWidth: -1,
       mainClientWidth: 0,
       offenders: [],
@@ -705,6 +904,7 @@ async function measureOverflow(page: Page): Promise<OverflowMeasurement> {
     return {
       documentScrollWidth: empty.documentScrollWidth,
       documentClientWidth: clientWidth,
+      bodyScrollWidth: empty.bodyScrollWidth,
       mainScrollWidth: main.scrollWidth,
       mainClientWidth: main.clientWidth,
       offenders,
@@ -723,6 +923,9 @@ async function expectNoHorizontalScroll(ctx: TaskContext): Promise<void> {
   expect(measured.offenders, `screen overflow: ${context}`).toEqual([]);
   if (ctx.words.locale === 'en') {
     expect(measured.documentScrollWidth, `document overflow: ${context}`).toBeLessThanOrEqual(
+      measured.documentClientWidth,
+    );
+    expect(measured.bodyScrollWidth, `body overflow: ${context}`).toBeLessThanOrEqual(
       measured.documentClientWidth,
     );
   }
@@ -753,6 +956,7 @@ async function runFacilities(ctx: TaskContext): Promise<void> {
     newFacilityName,
   );
   await expectNoHorizontalScroll(ctx);
+  expectCommandMetadata(store);
   await expectNoBlockingViolations(page);
 }
 
@@ -814,6 +1018,7 @@ async function runStaff(ctx: TaskContext): Promise<void> {
   ).toBe(true);
   await expect(row).toContainText('deactivated');
   await expectNoHorizontalScroll(ctx);
+  expectCommandMetadata(store);
   await expectNoBlockingViolations(page);
 }
 
@@ -912,6 +1117,7 @@ async function runConfig(ctx: TaskContext): Promise<void> {
   await runConfigurationVersions(ctx);
   await runCatalog(ctx);
   await expectNoHorizontalScroll(ctx);
+  expectCommandMetadata(ctx.store);
   await expectNoBlockingViolations(ctx.page);
 }
 
@@ -987,6 +1193,7 @@ async function openAndRun(options: PassOptions): Promise<TaskContext> {
     mode: options.mode,
   };
   await tasks[options.screen.id](ctx);
+  await expectLiteralOutcomes(ctx);
   return ctx;
 }
 
@@ -1060,6 +1267,24 @@ async function collectValuePairs(page: Page, sectionName: string): Promise<reado
   }, sectionName);
 }
 
+/** Value-bearing nodes whose visible text must survive desktop-to-phone reflow. */
+const parityNodeSelector =
+  'h2, h3, caption, th, td, dt, dd, p[role="status"], label, button, output';
+
+/** Read the visible values from one screen root in DOM order. */
+async function visibleValues(main: Locator): Promise<readonly string[]> {
+  const nodes = main.locator(parityNodeSelector);
+  const count = await nodes.count();
+  const values: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const text = (await nodes.nth(index).innerText()).replace(/\s+/g, ' ').trim();
+    if (text !== '') {
+      values.push(text);
+    }
+  }
+  return values;
+}
+
 /** Inputs for one independent parity browser context. */
 interface ParityOptions {
   readonly browser: Browser;
@@ -1110,6 +1335,65 @@ async function expectCompactAffordance(page: Page, screen: Screen, words: Words)
 }
 
 test.use({ userAgent: supportedUserAgent });
+
+/** Prove the fixed bilingual identity before any task mutates the synthetic store. */
+test('render the exact bilingual identity and pass the accessibility gate', async ({
+  page,
+  baseURL,
+}) => {
+  test.setTimeout(180_000);
+  for (const screen of screens) {
+    for (const words of locales) {
+      await test.step(`${screen.id} in ${words.locale}`, async () => {
+        await openScreen(page, baseURL, screen, words);
+        const expected = literalWords[words.locale][screen.id];
+        const main = page.locator('main#main');
+        await expect(
+          main.getByRole('heading', { name: expected.heading, exact: true }).first(),
+        ).toBeVisible();
+        await expect(main.getByText(expected.intro, { exact: true }).first()).toBeVisible();
+        await expect(
+          main.getByRole('button', { name: expected.submit, exact: true }).first(),
+        ).toBeVisible();
+        for (const value of expected.baseline) {
+          await expect(main.getByText(value, { exact: false }).first()).toBeVisible();
+        }
+        await expectNoBlockingViolations(page);
+      });
+    }
+  }
+});
+
+/**
+ * Fine-pointer projects cannot tap with their own page fixture. A touch-enabled
+ * copy of every project viewport proves the same real screens accept a real tap.
+ */
+test('the main task works by tap at a touch-enabled copy of every project viewport', async ({
+  browser,
+  baseURL,
+}) => {
+  test.setTimeout(180_000);
+  const viewport = test.info().project.use.viewport;
+  if (viewport === undefined) {
+    throw new Error('every device project must define a viewport for the touch pass');
+  }
+  const context = await browser.newContext({
+    ...(baseURL === undefined ? {} : { baseURL }),
+    viewport,
+    hasTouch: true,
+    userAgent: supportedUserAgent,
+  });
+  try {
+    const page = await context.newPage();
+    for (const screen of screens) {
+      await test.step(`${screen.id} in English by tap`, async () => {
+        await openAndRun({ page, baseURL, screen, words: wordsFor('en'), mode: 'tap' });
+      });
+    }
+  } finally {
+    await context.close();
+  }
+});
 
 for (const screen of screens) {
   for (const words of locales) {
@@ -1171,6 +1455,8 @@ for (const screen of screens) {
         };
         await tasks[screen.id](desktopTask);
         await tasks[screen.id](phoneTask);
+        await expectLiteralOutcomes(desktopTask);
+        await expectLiteralOutcomes(phoneTask);
         await expectCompactAffordance(phone.page, screen, words);
         // The last command may trigger one reload; pair only after both
         // contexts have settled and fonts have their final metrics.
@@ -1178,6 +1464,13 @@ for (const screen of screens) {
         await phone.page.waitForLoadState('networkidle');
         await desktop.page.evaluate(() => document.fonts.ready);
         await phone.page.evaluate(() => document.fonts.ready);
+        const desktopValues = [...new Set(await visibleValues(desktop.page.locator('main#main')))].sort();
+        expect(desktopValues.length).toBeGreaterThan(0);
+        await expect
+          .poll(async () => [...new Set(await visibleValues(phone.page.locator('main#main')))].sort(), {
+            timeout: 10_000,
+          })
+          .toEqual(desktopValues);
         const desktopPairs = await collectValuePairs(desktop.page, words.text(screen.headingKey));
         const phonePairs = await collectValuePairs(phone.page, words.text(screen.headingKey));
         expect(desktopPairs.length).toBeGreaterThan(0);
@@ -1190,6 +1483,15 @@ for (const screen of screens) {
           await expect(phoneCell).toHaveText(pair.text);
           await phoneCell.scrollIntoViewIfNeeded();
           await expect(phoneCell).toBeVisible();
+          const box = await phoneCell.boundingBox();
+          expect(box, `${screen.id} ${words.locale}: ${pair.text} has no visible box`).not.toBeNull();
+          if (box !== null) {
+            expect(box.x, `${screen.id} ${words.locale}: ${pair.text} starts off-screen`).toBeGreaterThanOrEqual(-1);
+            expect(
+              box.x + box.width,
+              `${screen.id} ${words.locale}: ${pair.text} ends off-screen`,
+            ).toBeLessThanOrEqual(361);
+          }
         }
       } finally {
         await desktop.page.context().close();
@@ -1197,6 +1499,58 @@ for (const screen of screens) {
       }
     });
   }
+}
+
+/** Prove both configuration notices when approval happens before a later proposal. */
+for (const words of locales) {
+  test(`config announces approval before a later proposal in ${words.locale}`, async ({
+    page,
+    baseURL,
+  }) => {
+    test.setTimeout(90_000);
+    const screen = screenById('config');
+    const store = await openScreen(page, baseURL, screen, words);
+    const ctx: TaskContext = { page, store, screen, words, mode: 'keyboard' };
+    const lookup = page.getByRole('form', { name: words.text('configLookup') });
+    const keyField = lookup.locator('#config-key');
+    await enter(ctx, keyField, configurationKey);
+    await submitForm(ctx, lookup, [keyField]);
+    const versions = page.locator(
+      `.table-region[aria-label=${JSON.stringify(words.text('configurationVersions'))}]`,
+    );
+    const pendingRow = versions
+      .locator('tr')
+      .filter({ hasText: 'Synthetic pending booking rule' })
+      .first();
+    await activate(ctx, pendingRow.getByRole('button', { name: words.text('approve'), exact: true }));
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await enter(ctx, dialog.locator('#approval-note'), 'Synthetic approval note');
+    await activate(
+      ctx,
+      dialog.getByRole('button', { name: words.text('approveConfirm'), exact: true }),
+    );
+    await expect(dialog).toHaveCount(0);
+    const approvalNotice =
+      words.locale === 'en'
+        ? `Approved version 2 of ${configurationKey}`
+        : `تم اعتماد الإصدار 2 من ${configurationKey}`;
+    await expect(page.getByTestId('config-status')).toContainText(approvalNotice);
+    await expect(pendingRow).toContainText(words.text('approved'));
+
+    const editor = page.getByRole('form', { name: words.text('configurationEditor') });
+    const value = editor.locator('#admin-config-value');
+    const effective = editor.locator('#admin-config-effective');
+    await enter(ctx, value, 'Synthetic later booking rule');
+    await enter(ctx, effective, structuralDate);
+    await submitForm(ctx, editor, [value, effective]);
+    const definitionNotice =
+      words.locale === 'en'
+        ? `Defined a pending version of ${configurationKey}`
+        : `تم تحديد إصدار بانتظار الاعتماد لـ ${configurationKey}`;
+    await expect(page.getByTestId('config-status')).toContainText(definitionNotice);
+    expectCommandMetadata(store);
+  });
 }
 
 // Real product defect found by this spec: ConfigContent renders the status as
@@ -1241,7 +1595,9 @@ for (const screen of screens) {
     const widths = await ctx.page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,
+      bodyScrollWidth: document.body.scrollWidth,
     }));
     expect(widths.scrollWidth).toBeLessThanOrEqual(widths.clientWidth);
+    expect(widths.bodyScrollWidth).toBeLessThanOrEqual(widths.clientWidth);
   });
 }

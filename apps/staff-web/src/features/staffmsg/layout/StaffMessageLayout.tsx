@@ -1,132 +1,116 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { Button } from '../../../components/Button';
-import { useI18n } from '../../../i18n/I18nProvider';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { useBreakpoint } from '../../../theme/useBreakpoint';
-import { layoutText } from './labels';
 
 /**
- * Props for the shared pane layout of the instant messenger and staff mail.
- * The parent owns the selection: `detailOpen` says whether a conversation or
- * message is selected, and `onBack` clears that selection. Keeping the state
- * with the parent means a resize never discards typed work or changes which
- * record is selected (WEB-09).
+ * Presentation inputs for the messenger and mail panes. The caller owns every
+ * selection and command; this component only decides which panes are visible
+ * at the current width, so width never changes authorized data or actions.
  */
 export interface StaffMessageLayoutProps {
-  /** The conversation or folder list pane. */
-  readonly list: ReactNode;
-  /** The selected thread or reading pane. */
-  readonly detail: ReactNode;
-  /** The composer; rendered only with a detail pane on narrow screens. */
-  readonly composer: ReactNode;
-  /** Whether the parent currently has a selected conversation or message. */
-  readonly detailOpen: boolean;
-  /** Clear the selection so the compact layout returns to the list. */
-  readonly onBack: () => void;
+  /** Accessible name of the whole layout region. */
+  label: string;
+  /** Conversation or folder list, shown as the first pane. */
+  list: ReactNode;
+  /** Thread or reading pane, shown beside the list from the medium band up. */
+  detail: ReactNode;
+  /** Composer, docked where a virtual keyboard cannot cover its action. */
+  composer: ReactNode;
+  /** Whether a detail has been opened on a compact screen. */
+  detailOpen: boolean;
+  /** Accessible name of the compact back action that restores the list. */
+  backLabel: string;
+  /** Invoked by the compact back action; the caller clears its selection. */
+  onBack: () => void;
 }
 
-/** Grid and layout name for each responsive band (WEB-07, UX-01). */
-const BAND_VIEW = {
-  compact: { columns: 'minmax(0, 1fr)', layout: 'single-pane' },
-  medium: { columns: 'repeat(2, minmax(0, 1fr))', layout: 'two-pane' },
-  expanded: { columns: 'repeat(3, minmax(0, 1fr))', layout: 'three-pane' },
-} as const;
-
 /**
- * Presentational pane wrapper shared by messenger and mail. Desktop shows the
- * list, detail and composer side by side; tablet shows the two reading panes
- * with the composer as a full-width footer; a narrow screen shows one pane at a
- * time and offers a labelled Back action to restore the list.
+ * Lay out staff messages as three panes on desktop, two on tablet and one pane
+ * plus a labelled back action on a phone. The composer stays in the same React
+ * tree at every width and is sticky below the expanded band; block-end padding
+ * floored by the mapped safe-area inset and scroll-space reserved on the region
+ * keep it from covering the focused field. All tracks are `minmax(0, …)` and
+ * all spacing uses logical properties, so a long clinical value wraps under
+ * both LTR and RTL instead of forcing horizontal scroll. No clipping overflow
+ * is set: a scroll container would trap the sticky composer against a
+ * non-scrolling scrollport. Painted keyboard and reflow behaviour needs a
+ * real-browser proof; this component's DOM structure is not that proof.
  *
- * Every track is `minmax(0, 1fr)` and every pane may shrink, so a long clinical
- * value wraps rather than forcing horizontal scroll at 768 px. Side-aware
- * styles are logical properties only, so one DOM mirrors under right-to-left.
- * The footer is sticky with a logical scroll-space reservation: an on-screen
- * keyboard shrinks the viewport and the composer must stay reachable without
- * dismissing it. jsdom can assert these attributes but cannot paint a keyboard
- * or measure reflow; real-browser verification belongs to the E2E stories.
+ * @param props - Pane content, accessible labels and the caller's back command.
+ * @returns A single labelled region whose structure follows the resolved band.
  */
 export function StaffMessageLayout({
+  label,
   list,
   detail,
   composer,
   detailOpen,
+  backLabel,
   onBack,
 }: StaffMessageLayoutProps) {
-  const { locale } = useI18n();
   const { tokens } = useTheme();
   const breakpoint = useBreakpoint();
-  const band = BAND_VIEW[breakpoint];
+  const expanded = breakpoint === 'expanded';
+  const compact = breakpoint === 'compact';
 
   const paneStyle: CSSProperties = { minInlineSize: 0, overflowWrap: 'anywhere' };
   const gridStyle: CSSProperties = {
     display: 'grid',
     gap: tokens.spacing.lg,
-    gridTemplateColumns: band.columns,
     minInlineSize: 0,
+    gridTemplateColumns: expanded
+      ? 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)'
+      : compact
+        ? 'minmax(0, 1fr)'
+        : 'minmax(0, 1fr) minmax(0, 1fr)',
   };
-  const stickyComposer = breakpoint !== 'expanded';
-  const composerStyle: CSSProperties = stickyComposer
-    ? {
+  // On a narrower screen the composer spans the content grid and is pinned to
+  // the block end. The safe-area value is mapped once by the shell, so no
+  // component names a physical inset or invents a new spacing token. An opaque
+  // background stops content scrolling underneath the docked action.
+  const composerStyle: CSSProperties = expanded
+    ? paneStyle
+    : {
         ...paneStyle,
-        // The keyboard covers the bottom of the viewport; a logical sticky
-        // inset keeps the composer above it in both writing directions.
+        gridColumn: '1 / -1',
         position: 'sticky',
         insetBlockEnd: 0,
-        paddingBlock: 'var(--sc-space-2, 8px)',
-        paddingInline: 'var(--sc-space-4, 16px)',
+        paddingBlockEnd: `max(${tokens.spacing.md}, var(--safe-block-end, 0px))`,
         background: 'var(--sc-color-surface-default, #ffffff)',
-        scrollMarginBlockEnd: tokens.spacing.lg,
-        zIndex: 1,
-      }
-    : paneStyle;
-
-  const listPane = (
-    <div key="list" data-pane="list" role="region" aria-label={layoutText(locale, 'listPane')} style={paneStyle}>
-      {list}
-    </div>
-  );
-  const detailPane = (
-    <div key="detail" data-pane="detail" role="region" aria-label={layoutText(locale, 'detailPane')} style={paneStyle}>
-      {detail}
-    </div>
-  );
-  const composerPane = (
-    <div
-      key="composer"
-      data-pane="composer"
-      data-part="composer"
-      role="region"
-      aria-label={layoutText(locale, 'composerPane')}
-      style={composerStyle}
-    >
-      {composer}
-    </div>
-  );
-
-  const visible =
-    breakpoint === 'expanded'
-      ? [listPane, detailPane, composerPane]
-      : breakpoint === 'medium'
-        ? [listPane, detailPane]
-        : detailOpen
-          ? [detailPane]
-          : [listPane];
-  const showBack = breakpoint === 'compact' && detailOpen;
-  const footer = breakpoint === 'medium' || showBack ? composerPane : null;
+      };
 
   return (
     <section
       className="page"
+      data-testid="staff-message-layout"
       data-breakpoint={breakpoint}
-      data-layout={band.layout}
-      style={{ scrollPaddingBlockEnd: 'var(--sc-space-8, 32px)' }}
+      aria-label={label}
+      style={{
+        minInlineSize: 0,
+        overflowWrap: 'anywhere',
+        scrollPaddingBlockEnd: 'var(--sc-space-8, 32px)',
+      }}
     >
-      {showBack ? <Button onClick={onBack}>{layoutText(locale, 'back')}</Button> : null}
-      <div data-part="panes" style={gridStyle}>
-        {visible}
+      {compact && detailOpen ? (
+        <button type="button" className="touch" onClick={onBack}>
+          {backLabel}
+        </button>
+      ) : null}
+      <div data-testid="staff-message-panes" style={gridStyle}>
+        {!compact || !detailOpen ? (
+          <div data-testid="staff-message-pane-list" style={paneStyle}>
+            {list}
+          </div>
+        ) : null}
+        {!compact || detailOpen ? (
+          <div data-testid="staff-message-pane-detail" style={paneStyle}>
+            {detail}
+          </div>
+        ) : null}
+        <div data-testid="staff-message-pane-composer" style={composerStyle}>
+          {composer}
+        </div>
       </div>
-      {footer}
     </section>
   );
 }
