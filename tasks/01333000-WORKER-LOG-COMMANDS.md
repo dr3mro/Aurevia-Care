@@ -1,6 +1,7 @@
-- [-] WORKER-LOG-COMMANDS · Stop worker logs from fake error annotations and 17 MB of output
+- [x] WORKER-LOG-COMMANDS · Stop worker logs from fake error annotations and 17 MB of output
   - agent: orca
   - pr: 1766
+  - evidence: Local verified commit `191992fa6ae8edf73291b10ef93481775a061eb3`; PR #1766 head `70ecc8b110c01683985641f6c885cf07223abb06`; Delivery run 45858095353 `success` on that exact head with Delivery gate, tooling tests, Frontend standards, Java and database verification, Policy and tooling and Developer reference all pass; Swarm gate run 45858095221 pass. To: `python3 -I -m unittest discover -s scripts/tests -q` → 2201 tests OK; `bash scripts/python-coverage.sh` → 2201 tests OK, every changed script line covered; shellcheck, actionlint (pre-existing `queue: max` only), check-constraints, check-pack, check-docs, check-secrets and git diff --check recorded above. All six reviewer verdicts GO.
   - requirements: OPS-06
   - scope: scripts/agent-run.sh, scripts/tests/test_agent_run.py, scripts/tests/test_swarm.py, .github/workflows/swarm.yml, .github/workflows/swarm-worker.yml, tasks/01333000-WORKER-LOG-COMMANDS.md
   - details:
