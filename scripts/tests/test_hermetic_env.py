@@ -31,7 +31,8 @@ case "$*" in
     [[ "${FAIL_STATUS_AT:-0}" != "$count" ]] || exit 1
     if [[ "${SIGNAL_AT_STATUS:-0}" == "$count" ]]; then
       parent=$(ps -o ppid= -p "$PPID" | tr -d ' ')
-      kill -"${SIGNAL_STATUS:-TERM}" "$parent"
+      kill -"${SIGNAL_STATUS:-TERM}" "$parent" 2>/dev/null || true
+      kill -"${SIGNAL_STATUS:-TERM}" -"$parent" 2>/dev/null || true
       exit 0
     fi
     [[ -f "$DIRTY_MARKER" ]] && printf ' M feature.txt\\n'
