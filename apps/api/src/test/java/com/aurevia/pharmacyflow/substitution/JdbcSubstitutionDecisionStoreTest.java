@@ -11,6 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.ResultSet;
 import java.time.Instant;
 import java.util.List;
 
@@ -90,6 +91,23 @@ class JdbcSubstitutionDecisionStoreTest {
         assertEquals("proposal-1", store.findReplayProposalId(SubstitutionFixtures.ORG, "approve", "key"));
         rows(List.of());
         assertNull(store.findReplayProposalId(SubstitutionFixtures.ORG, "approve", "key"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void replayProposalIdIsMappedFromTheDecisionRow() throws Exception {
+        // The store reads the winning proposal by column position; a canned list would
+        // leave that mapping untested, so drive the real RowMapper with a synthetic row.
+        ResultSet row = mock(ResultSet.class);
+        when(row.getString(1)).thenReturn("proposal-1");
+        when(jdbc.query(anyString(), any(SqlParameterSource.class), any(RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    RowMapper<String> mapper = invocation.getArgument(2);
+                    return List.of(mapper.mapRow(row, 0));
+                });
+
+        assertEquals("proposal-1",
+                store.findReplayProposalId(SubstitutionFixtures.ORG, "approve", "key"));
     }
 
     @Test
