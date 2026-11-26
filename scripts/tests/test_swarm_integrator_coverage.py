@@ -1357,3 +1357,31 @@ class ValidatorReportTest(unittest.TestCase):
         seals = [json.loads(call.args[1]) for call in emitted.call_args_list
                  if call.args[0] == "seal"]
         self.assertEqual(seals, [{"accepted": []}])
+
+    def test_integrate_validate_emits_exact_heads_and_trees_to_the_seal(self):
+        """The trusted seal payload carries exact PR heads and gated trees."""
+        head_a, tree_a, head_b, tree_b = ("a" * 40, "b" * 40, "c" * 40, "d" * 40)
+        result = {
+            "accepted": [
+                {"pr": 1768, "task_id": "AUD-19", "head_sha": head_a,
+                 "merge_sha": head_a, "tree_sha": tree_a},
+                {"pr": 1769, "task_id": "AUD-14", "head_sha": head_b,
+                 "merge_sha": head_b, "tree_sha": tree_b},
+            ],
+            "rejected": [], "already": [], "conflicted": [], "conflict_details": [],
+            "gates": {},
+        }
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(swarm, "integrate_prepare", return_value=result), \
+             mock.patch.object(swarm, "git", return_value="tip"), \
+             mock.patch.object(swarm, "emit") as emitted:
+            swarm.integrate_validate([1768, 1769], "gate.sh", str(Path(directory) / "validated"))
+        seals = [json.loads(call.args[1]) for call in emitted.call_args_list
+                 if call.args[0] == "seal"]
+        self.assertEqual(seals, [{"accepted": [
+            {"pr": 1768, "head_sha": head_a, "tree_sha": tree_a},
+            {"pr": 1769, "head_sha": head_b, "tree_sha": tree_b},
+        ]}])
+        accepted = [json.loads(call.args[1]) for call in emitted.call_args_list
+                    if call.args[0] == "accepted"]
+        self.assertEqual(accepted, [[1768, 1769]])
