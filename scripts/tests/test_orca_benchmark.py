@@ -25,6 +25,9 @@ def load_module():
     return module
 
 
+orca_benchmark = load_module()
+
+
 class CountTests(unittest.TestCase):
     def setUp(self):
         self.module = load_module()

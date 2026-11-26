@@ -22,9 +22,13 @@ import com.aurevia.tenant.TenantContext;
  * command rolls back; the trade-off is that an allowed decision remains recorded
  * even if the command later fails. Only coded columns are persisted: no role
  * list, request body, credential or patient value reaches the ledger. A
- * constraint violation, missing context or cross-tenant decision denies the
- * request with {@code AUDIT_UNAVAILABLE} using a fixed error message, so no SQL
- * or bind detail is echoed to the caller.</p>
+ * constraint violation, missing tenant context for a tenant-scoped decision or
+ * cross-tenant decision denies the request with {@code AUDIT_UNAVAILABLE} using
+ * a fixed error message, so no SQL or bind detail is echoed to the caller. A
+ * valid {@code UNAUTHENTICATED} denial has no row when no verified tenant context
+ * exists; the gate still returns its defined 401 because forced RLS cannot own
+ * such a row. If a verified-tenant write fails, the fixed audit error still
+ * denies the request.</p>
  */
 public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink {
 
@@ -37,7 +41,7 @@ public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink
     /** Fixed, non-sensitive failure message. */
     static final String FAILURE_MESSAGE = "authorization decision could not be recorded";
 
-    /** Reason codes emitted by the gate; the V65 constraint allows exactly these. */
+    /** Accepted ledger reason codes; the V65 constraint allows exactly these. */
     static final Set<String> REASON_CODES = Set.of(
             "ALLOWED", "UNAUTHENTICATED", "INVALID_COMMAND", "UNKNOWN_COMMAND",
             "MEMBERSHIP_INACTIVE", "MEMBERSHIP_UNAVAILABLE", "POLICY_UNAVAILABLE",
@@ -73,28 +77,39 @@ public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink
     }
 
     /**
-     * Append one authorization decision to the active tenant's ledger.
+     * Append one validated decision under the verified tenant context.
      *
-     * @param decision allow or deny outcome with stable reason code and decision time
-     * @throws NullPointerException  when the decision is absent
-     * @throws ApiException         {@code 403 AUDIT_UNAVAILABLE} when the tenant or reason is
-     *                             invalid, the insert fails, or no row was written
+     * <p>A valid unauthenticated denial without a verified tenant is not written
+     * because forced RLS cannot own such a row; every other missing-tenant or
+     * invalid-evidence case fails closed.</p>
+     *
+     * @param decision bounded authorization outcome; {@code null} is a programming error
+     * @throws NullPointerException when the decision is absent
+     * @throws ApiException fixed {@code 403 AUDIT_UNAVAILABLE} for invalid evidence or a failed write
      */
     @Override
     public void record(Decision decision) {
         Objects.requireNonNull(decision, "decision");
+        String reason = decision.reasonCode();
+        if (reason == null || !REASON_CODES.contains(reason)
+                || decision.allowed() != reason.equals("ALLOWED")) {
+            // Contradictory outcome evidence is more dangerous than a missing row:
+            // reject it before the tenant-less unauthenticated no-row exception.
+            throw unavailable();
+        }
         TenantContext context = TenantContext.current();
         String organization = context == null ? null : context.organizationId();
+        if (reason.equals("UNAUTHENTICATED") && (organization == null || organization.isBlank())) {
+            // Forced RLS cannot own this row. The command is already denied, so skip
+            // only the impossible audit write and preserve the gate's 401 contract.
+            return;
+        }
         if (organization == null || organization.isBlank()) {
             throw unavailable();
         }
         String decidedFor = decision.organizationId();
         if (decidedFor != null && !decidedFor.isBlank() && !decidedFor.equals(organization)) {
             // The decision's tenant is evidence, never an authority to write under.
-            throw unavailable();
-        }
-        String reason = decision.reasonCode();
-        if (reason == null || !REASON_CODES.contains(reason)) {
             throw unavailable();
         }
         String outcome = decision.allowed() ? "allow" : "deny";
