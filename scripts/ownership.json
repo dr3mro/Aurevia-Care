@@ -32,6 +32,7 @@
     "scripts/build-and-test.sh": "project",
     "scripts/check-constraints.py": "project",
     "scripts/check-delivery-gate.py": "project",
+    "scripts/check-release-base.py": "project",
     "scripts/check-docs.py": "project",
     "scripts/check-migrations.py": "project",
     "scripts/check-names.py": "project",

@@ -307,3 +307,165 @@ class DeliveryGateContractTest(unittest.TestCase):
                 # Exactly one label proves the mutation caused this violation
                 # rather than a guard that appends the label unconditionally.
                 self.assertEqual(gate_contract_violations(changed).count(expected), 1, label)
+
+
+RELEASE_STEP_NAME = "Require a green default-branch run for this commit"
+RELEASE_CALLERS = (("delivery.yml", "release"), ("release-app-image.yml", "publish"))
+
+
+def release_step(jobs):
+    """Return the green-run precondition step from a parsed release job."""
+    steps = jobs.get("steps", []) if isinstance(jobs, dict) else []
+    return next((item for item in steps if isinstance(item, dict)
+                 and item.get("name") == RELEASE_STEP_NAME), None)
+
+
+def release_violations(step):
+    """Return every way the release precondition could accept the wrong evidence."""
+    run = str(step.get("run", "")) if isinstance(step, dict) else ""
+    env = step.get("env", {}) if isinstance(step, dict) and isinstance(step.get("env"), dict) else {}
+    violations = []
+    if "scripts/check-release-base.py" not in run:
+        violations.append("helper")
+    if "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" not in run:
+        violations.append("workflow url")
+    for token, label in (("-f event=", "event filter"), ("-f status=", "status filter"),
+                         (".total_count", "count")):
+        if token in run:
+            violations.append(label)
+    for token, label in (('--sha "$GITHUB_SHA"', "sha"),
+                         ('--branch "$DEFAULT_BRANCH"', "branch"),
+                         ('--repo "$GITHUB_REPOSITORY"', "repo")):
+        if token not in run:
+            violations.append(label)
+    if "set -euo pipefail" not in run:
+        violations.append("pipefail")
+    if "|| true" in run or "exit 0" in run:
+        violations.append("swallowed exit")
+    if isinstance(step, dict) and step.get("continue-on-error"):
+        violations.append("continue-on-error")
+    if env.get("DEFAULT_BRANCH") != "${{ github.event.repository.default_branch }}":
+        violations.append("branch binding")
+    return violations
+
+
+def release_checkout_violations(jobs):
+    """Return why the trusted helper would be unavailable or unsafe at release time."""
+    steps = jobs.get("steps", []) if isinstance(jobs, dict) else []
+    if not isinstance(steps, list):
+        return ["steps"]
+    checkouts = [index for index, item in enumerate(steps)
+                 if isinstance(item, dict)
+                 and str(item.get("uses", "")).startswith("actions/checkout@")]
+    if len(checkouts) != 1:
+        return ["checkout count"]
+    helper = next((index for index, item in enumerate(steps)
+                   if isinstance(item, dict) and item.get("name") == RELEASE_STEP_NAME), None)
+    if helper is None:
+        return ["helper"]
+    settings = steps[checkouts[0]].get("with", {})
+    if not isinstance(settings, dict):
+        settings = {}
+    violations = []
+    if checkouts[0] > helper:
+        violations.append("order")
+    if settings.get("ref") != "${{ github.event.repository.default_branch }}":
+        violations.append("ref")
+    if settings.get("persist-credentials") is not False:
+        violations.append("credentials")
+    return violations
+
+
+class ReleaseGreenRunWiringTest(unittest.TestCase):
+    """Both publish paths must delegate the exact-SHA decision to a tested helper."""
+
+    def test_both_release_paths_call_the_helper_without_raw_filters(self):
+        for filename, job_name in RELEASE_CALLERS:
+            with self.subTest(workflow=filename):
+                workflow = load(WORKFLOWS / filename)
+                step = release_step(workflow["jobs"][job_name])
+                self.assertEqual(release_violations(step), [])
+
+    def test_app_image_publish_job_can_read_actions(self):
+        workflow = load(WORKFLOWS / "release-app-image.yml")
+        permissions = workflow["jobs"]["publish"].get("permissions", {})
+        self.assertEqual(permissions.get("actions"), "read")
+
+    def test_both_release_paths_check_out_the_default_branch_before_the_helper(self):
+        for filename, job_name in RELEASE_CALLERS:
+            with self.subTest(workflow=filename):
+                jobs = load(WORKFLOWS / filename)["jobs"][job_name]
+                self.assertEqual(release_checkout_violations(jobs), [])
+
+    def test_release_checkout_detector_rejects_each_regression(self):
+        jobs = copy.deepcopy(load(WORKFLOWS / "delivery.yml")["jobs"]["release"])
+
+        def checkout_index(value):
+            return next(index for index, item in enumerate(value["steps"])
+                        if str(item.get("uses", "")).startswith("actions/checkout@"))
+
+        mutations = (
+            ("no checkout", lambda j: j["steps"].pop(checkout_index(j)), "checkout count"),
+            ("checkout after helper", lambda j: j["steps"].append(
+                j["steps"].pop(checkout_index(j))), "order"),
+            ("tagged tree instead of default branch", lambda j: j["steps"][checkout_index(j)][
+                "with"].update(ref="${{ github.ref }}"), "ref"),
+            ("stored credentials", lambda j: j["steps"][checkout_index(j)][
+                "with"].update(**{"persist-credentials": True}), "credentials"),
+            ("malformed steps", lambda j: j.update(steps="checkout"), "steps"),
+            ("renamed precondition", lambda j: j["steps"][next(
+                index for index, item in enumerate(j["steps"])
+                if item.get("name") == RELEASE_STEP_NAME)].update(name="Other"), "helper"),
+        )
+        for label, mutate, expected in mutations:
+            with self.subTest(mutation=label):
+                changed = copy.deepcopy(jobs)
+                mutate(changed)
+                self.assertEqual(release_checkout_violations(changed).count(expected), 1, label)
+
+    def test_release_wiring_detector_rejects_each_regression(self):
+        step = release_step(load(WORKFLOWS / "delivery.yml")["jobs"]["release"])
+        mutations = (
+            ("raw event filter", lambda s: s.update(
+                run=s["run"] + "\n  -f event=push"), "event filter"),
+            ("raw status filter", lambda s: s.update(
+                run=s["run"] + "\n  -f status=success"), "status filter"),
+            ("count instead of records", lambda s: s.update(
+                run=s["run"] + "\n  --jq '.total_count'"), "count"),
+            ("wrong helper", lambda s: s.update(
+                run=s["run"].replace("scripts/check-release-base.py", "tools/other.py")),
+             "helper"),
+            ("wrong workflow", lambda s: s.update(
+                run=s["run"].replace("workflows/delivery.yml/runs", "workflows/other.yml/runs")),
+             "workflow url"),
+            ("missing sha", lambda s: s.update(
+                run=s["run"].replace('--sha "$GITHUB_SHA"', "")), "sha"),
+            ("missing branch", lambda s: s.update(
+                run=s["run"].replace('--branch "$DEFAULT_BRANCH"', "")), "branch"),
+            ("missing repo", lambda s: s.update(
+                run=s["run"].replace('--repo "$GITHUB_REPOSITORY"', "")), "repo"),
+            ("no pipefail", lambda s: s.update(
+                run=s["run"].replace("set -euo pipefail", "")), "pipefail"),
+            ("swallowed exit", lambda s: s.update(run=s["run"] + " || true"),
+             "swallowed exit"),
+            ("swallowed exit via exit 0", lambda s: s.update(
+                run=s["run"] + "\nexit 0"), "swallowed exit"),
+            ("continue on error", lambda s: s.update({"continue-on-error": True}),
+             "continue-on-error"),
+            ("wrong branch binding", lambda s: s["env"].update(
+                DEFAULT_BRANCH="${{ github.ref }}"), "branch binding"),
+        )
+        for label, mutate, expected in mutations:
+            with self.subTest(mutation=label):
+                changed = copy.deepcopy(step)
+                mutate(changed)
+                self.assertEqual(release_violations(changed).count(expected), 1, label)
+
+    def test_release_documentation_accepts_dispatch_evidence(self):
+        guide = " ".join((ROOT / "docs" / "reference" / "testing-guide.md").read_text(
+            encoding="utf-8").split()).lower()
+        self.assertIn("workflow_dispatch", guide)
+        self.assertNotIn("removes the exact-sha success", guide)
+        efficiency = " ".join((ROOT / "docs" / "swarm" / "EFFICIENCY.md").read_text(
+            encoding="utf-8").split()).lower()
+        self.assertIn("workflow_dispatch", efficiency)

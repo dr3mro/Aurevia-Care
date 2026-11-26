@@ -88,9 +88,13 @@ branch. Pull requests use the head SHA as their concurrency group, so a new head
 verified without waiting behind an older one. Superseded branch pushes are cancelled
 so a burst of commits does not queue behind older gate runs; pull request heads, tags,
 dispatches and merge groups keep their exact-SHA verdicts
-(`.github/workflows/delivery.yml`). Tag only an already-green main commit: cancelling
-its branch-push run removes the exact-SHA success that the release job requires, so
-release fails closed for a superseded commit.
+(`.github/workflows/delivery.yml`). A tag must point to a commit with a green
+`Delivery gate` on main: if a newer push cancelled that commit's push run, run
+Delivery again on that exact SHA with `gh workflow run delivery.yml --ref <tagged-sha>`
+(a `workflow_dispatch`) and wait for it to finish; GitHub reports the default branch
+as that run's head branch (observed on run 45784861813). The release check accepts a
+green exact-SHA run from a push or a default-branch dispatch, and refuses pull
+requests, merge groups and cancelled runs (`scripts/check-release-base.py`).
 
 **Integrator (before merge and on tags).** The integrator runs
 `bash scripts/integrator-gate.sh` — full `check.sh` plus `docs.sh` — on each merge

@@ -130,9 +130,11 @@ jobs:
       - uses: ./.github/actions/java-verify
         with:
           pg-admin: postgres
-          # Candidate PR/merge-group code must never receive repository secrets.
-          # Trusted main/tag pushes may refresh NVD; other events use the cache.
-          nvd-api-key: ${{ github.event_name == 'push' && secrets.NVD_API_KEY || '' }}
+          # Candidate PR/merge-group code and dispatch on any other ref must
+          # never receive repository secrets. Trusted main/tag pushes and a
+          # default-branch dispatch (the recovery for a cancelled push run) may
+          # refresh NVD; other events use the cache.
+          nvd-api-key: ${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && secrets.NVD_API_KEY || '' }}
 
   docs:
     name: Developer reference
@@ -205,6 +207,13 @@ jobs:
       contents: write
       packages: write
     steps:
+      # The trusted precondition helper must exist even when the tag points to
+      # a commit older than the helper, so check out the default branch, not
+      # the tagged tree, and do not keep a credential in this workspace.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.repository.default_branch }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: smoke-tested-image-*
@@ -214,10 +223,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          total=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
-            -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" -f event=push -f status=success \
-            --jq '.total_count')
-          [[ "$total" -gt 0 ]]
+          set -euo pipefail
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
+            -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" \
+            --jq '.' | python3 -I scripts/check-release-base.py \
+            --sha "$GITHUB_SHA" --branch "$DEFAULT_BRANCH" --repo "$GITHUB_REPOSITORY"
       - name: Publish exact tested image and release
         env:
           GH_TOKEN: ${{ github.token }}
