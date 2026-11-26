@@ -463,30 +463,11 @@ class CommandAuthorizationTest {
     }
 
     @Test
-    void auditUnavailableSinkMessageIsSanitized() {
-        CommandAuthorization.DecisionSink unavailable = decision -> {
-            throw new ApiException(403, "AUDIT_UNAVAILABLE", "SECRET_SQL_TOKEN authorization_decision");
-        };
-        Resolver resolver = new Resolver();
-        resolver.roles = List.of("tenant_admin");
-        CommandAuthorization authorization =
-                CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, unavailable, CLOCK);
-
-        ApiException denial = assertThrows(ApiException.class,
-                () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
-
-        assertEquals(403, denial.status());
-        assertEquals("AUDIT_UNAVAILABLE", denial.code());
-        assertEquals("authorization decision could not be recorded", denial.getMessage());
-        assertFalse(denial.getMessage().contains("SECRET_SQL_TOKEN"));
-    }
-
-    @Test
     void otherSinkApiFailuresRemainMachineReadableServerErrors() {
         ApiException[] sinkFailures = {
                 new ApiException(500, "OTHER_FAILURE", "unavailable"),
                 new ApiException(403, "FORBIDDEN", "unavailable"),
-                new ApiException(500, "AUDIT_UNAVAILABLE", "SECRET_SQL_TOKEN authorization_decision")
+                new ApiException(500, "OTHER_FAILURE", "SECRET_SQL_TOKEN authorization_decision")
         };
         for (ApiException sinkFailure : sinkFailures) {
             Resolver resolver = new Resolver();

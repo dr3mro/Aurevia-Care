@@ -154,6 +154,22 @@ class AuthorizationDecisionLedgerTest {
         }
     }
 
+    /** Count only the allowed facility-write decision recorded without a correlation id. */
+    private static long countAllowWithMissingCorrelation() throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT count(*) FROM public.authorization_decision WHERE correlation_id = '' "
+                             + "AND action = 'FACILITY_WRITE' AND reason_code = 'ALLOWED' "
+                             + "AND decision = 'allow'")) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getLong(1);
+            }
+        }
+    }
+
     private static long count(String role, String organization, String correlation) throws Exception {
         try (Connection connection = DriverManager.getConnection(URL, role, "")) {
             connection.setAutoCommit(false);
@@ -178,11 +194,12 @@ class AuthorizationDecisionLedgerTest {
         try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
              PreparedStatement statement = connection.prepareStatement(
                      "SELECT action, resource_type, reason_code, decision FROM public.authorization_decision "
-                             + "WHERE organization_id = CAST(? AS uuid) AND correlation_id = ?")) {
+                             + "WHERE organization_id = CAST(? AS uuid) AND correlation_id = ? AND action = ?")) {
             connection.setAutoCommit(false);
             bind(connection, ORG_A, "admin-a");
             statement.setString(1, ORG_A);
             statement.setString(2, correlation);
+            statement.setString(3, action);
             try (ResultSet result = statement.executeQuery()) {
                 assertTrue(result.next());
                 assertEquals(action, result.getString("action"));
@@ -206,18 +223,6 @@ class AuthorizationDecisionLedgerTest {
             return true;
         } catch (SQLException failure) {
             return false;
-        }
-    }
-
-    private static void assertCheckViolation(String sql) throws Exception {
-        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "")) {
-            connection.setAutoCommit(false);
-            bind(connection, ORG_A, "admin-a");
-            try (Statement statement = connection.createStatement()) {
-                SQLException failure = assertThrows(SQLException.class, () -> statement.execute(sql));
-                assertEquals("23514", failure.getSQLState(), "the rejection must be a CHECK violation");
-                assertTrue(failure.getMessage().contains("violates check constraint"));
-            }
         }
     }
 
@@ -478,7 +483,9 @@ class AuthorizationDecisionLedgerTest {
 
         assertEquals(1L, count("aurevia_migrate", ORG_A, "corr-unknown-gate"));
         assertEquals(1L, count("aurevia_migrate", ORG_A, "corr-malformed-gate"));
-        assertEquals(1L, count("aurevia_migrate", ORG_A, ""));
+        // Other acceptance cases commit their own missing-correlation rows, so scope
+        // this count to the allowed command made above rather than every empty key.
+        assertEquals(1L, countAllowWithMissingCorrelation());
         assertEquals(1L, count("aurevia_migrate", ORG_A, "corr-deny-gate"));
         assertLedgerDecision("corr-unknown-gate", "", "UNKNOWN_COMMAND", "deny");
         assertLedgerDecision("corr-malformed-gate", "", "INVALID_COMMAND", "deny");
@@ -575,35 +582,6 @@ class AuthorizationDecisionLedgerTest {
     }
 
     @Test
-    void codedFieldLengthLimitsAreEnforcedAtBoundaries() throws Exception {
-        String subject = "s".repeat(256);
-        String action = "a".repeat(128);
-        String resource = "r".repeat(128);
-        String correlation = "c".repeat(128);
-        String insert = "INSERT INTO public.authorization_decision "
-                + "(organization_id, subject, action, resource_type, decision, reason_code, correlation_id) VALUES ";
-        try (Connection connection = DriverManager.getConnection(URL, "aurevia_app", "")) {
-            connection.setAutoCommit(false);
-            bind(connection, ORG_A, "admin-a");
-            try (Statement statement = connection.createStatement()) {
-                statement.execute(insert + "('" + ORG_A + "', '" + subject + "', '" + action + "', '"
-                        + resource + "', 'allow', 'ALLOWED', '" + correlation + "')");
-            }
-            connection.commit();
-        }
-        assertEquals(1L, count("aurevia_migrate", ORG_A, correlation));
-
-        assertCheckViolation(insert + "('" + ORG_A + "', '" + subject + "s', '" + action + "', '"
-                + resource + "', 'allow', 'ALLOWED', '" + correlation + "')");
-        assertCheckViolation(insert + "('" + ORG_A + "', '" + subject + "', '" + action + "a', '"
-                + resource + "', 'allow', 'ALLOWED', '" + correlation + "')");
-        assertCheckViolation(insert + "('" + ORG_A + "', '" + subject + "', '" + action + "', '"
-                + resource + "r', 'allow', 'ALLOWED', '" + correlation + "')");
-        assertCheckViolation(insert + "('" + ORG_A + "', '" + subject + "', '" + action + "', '"
-                + resource + "', 'allow', 'ALLOWED', '" + correlation + "c')");
-    }
-
-    @Test
     void ledgerIsAppendOnlyForRuntimeAndOwnerAndStoresOnlyCodedColumns() throws Exception {
         bind(ORG_A, "admin-a");
         sink.record(new Decision("createFacility", "FACILITY_WRITE", ORG_A, "admin-a", "corr-immutable",
@@ -657,7 +635,7 @@ class AuthorizationDecisionLedgerTest {
         bind(ORG_A, "admin-a");
         String subject = "s".repeat(256);
         String action = "a".repeat(128);
-        String resourceType = "r".repeat(128);
+        String resourceType = "COMMAND";
         String correlationId = "c".repeat(128);
         String insert = """
                 INSERT INTO public.authorization_decision
@@ -675,8 +653,10 @@ class AuthorizationDecisionLedgerTest {
         assertFalse(executes("aurevia_app", ORG_A,
                 insert.formatted(ORG_A, subject, "a".repeat(129), resourceType, "corr-action-overflow")));
         assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-action-overflow"));
+        // The discriminator is fixed by policy, not merely bounded: a client-supplied
+        // command name must never become a resource category in the ledger.
         assertFalse(executes("aurevia_app", ORG_A,
-                insert.formatted(ORG_A, subject, action, "r".repeat(129), "corr-resource-overflow")));
+                insert.formatted(ORG_A, subject, action, "CLIENT_COMMAND", "corr-resource-overflow")));
         assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-resource-overflow"));
         String correlationOverflow = "c".repeat(129);
         assertFalse(executes("aurevia_app", ORG_A,

@@ -195,9 +195,10 @@ public final class CommandAuthorization {
      * @param identity server-derived active identity
      * @return the allowed decision
      * @throws ApiException {@code 401} when unauthenticated, {@code 403} when membership is
-     *         inactive, the owner is unknown, no active role is permitted or the durable
-     *         ledger is unavailable ({@code AUDIT_UNAVAILABLE}), {@code 422} for a malformed
-     *         or unknown command, or {@code 500} when the decision cannot be recorded
+     *         inactive, the owner is unknown or no active role is permitted, {@code 422} for
+     *         a malformed or unknown command, {@code AUDIT_UNAVAILABLE} at the durable
+     *         ledger's own status when the audit write fails, or {@code 500 DECISION_NOT_RECORDED}
+     *         for another sink-supplied API failure; a sink-supplied message is never echoed
      */
     public Decision authorize(CommandRequest request, ServerIdentity identity) {
         if (identity == null || !token(identity.organizationId()) || !token(identity.subject())) {
@@ -263,9 +264,10 @@ public final class CommandAuthorization {
      * @param reasonCode stable reason code
      * @param roles      roles considered
      * @return the recorded decision
-     * @throws ApiException {@code 403 AUDIT_UNAVAILABLE} when the durable sink rejects the
-     *         write, {@code 500 AUDIT_UNAVAILABLE} for an unstructured sink failure, or
-     *         {@code 500 DECISION_NOT_RECORDED} for any other sink-supplied API failure
+     * @throws ApiException {@code AUDIT_UNAVAILABLE} at the sink's own status when the
+     *         ledger reports an audit failure, or {@code 500 DECISION_NOT_RECORDED}
+     *         for any other sink-supplied API failure; the caller never sees a
+     *         sink-supplied message
      */
     private Decision record(String commandId, String action, ServerIdentity identity, boolean allowed,
                             String reasonCode, List<String> roles) {
@@ -275,10 +277,12 @@ public final class CommandAuthorization {
         try {
             sink.record(decision);
         } catch (ApiException failure) {
-            // Only the durable sink's own deny signal may reach the caller unchanged,
-            // and even that signal uses a fixed message so SQL, bind or tenant details cannot leak.
-            if (failure.status() == 403 && "AUDIT_UNAVAILABLE".equals(failure.code())) {
-                throw new ApiException(403, "AUDIT_UNAVAILABLE", "authorization decision could not be recorded");
+            // Keep the sink's machine-readable audit-deny code and status so callers can
+            // distinguish a missing audit from a forbidden command, but never echo its
+            // message: a JDBC failure can name tables, binds or tenants.
+            if ("AUDIT_UNAVAILABLE".equals(failure.code())) {
+                throw new ApiException(failure.status(), "AUDIT_UNAVAILABLE",
+                        "authorization decision could not be recorded");
             }
             throw new ApiException(500, "DECISION_NOT_RECORDED", "authorization decision could not be recorded");
         } catch (RuntimeException failure) {

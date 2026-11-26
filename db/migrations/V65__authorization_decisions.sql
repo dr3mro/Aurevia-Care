@@ -19,7 +19,7 @@ CREATE TABLE public.authorization_decision (
     id              uuid NOT NULL DEFAULT gen_random_uuid(),
     subject         text NOT NULL DEFAULT '',
     action          text NOT NULL DEFAULT '',
-    resource_type   text NOT NULL DEFAULT '',
+    resource_type   text NOT NULL DEFAULT 'COMMAND' CHECK (resource_type = 'COMMAND'),
     decision        text NOT NULL CHECK (decision IN ('allow', 'deny')),
     reason_code     text NOT NULL CHECK (reason_code IN (
         'ALLOWED', 'UNAUTHENTICATED', 'INVALID_COMMAND', 'UNKNOWN_COMMAND',
@@ -29,7 +29,7 @@ CREATE TABLE public.authorization_decision (
     decided_at      timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (organization_id, id),
     CHECK (length(subject) <= 256 AND length(action) <= 128),
-    CHECK (length(resource_type) <= 128 AND length(correlation_id) <= 128)
+    CHECK (length(correlation_id) <= 128)
 );
 
 -- The schema has no command_id column: the bounded action code identifies the
