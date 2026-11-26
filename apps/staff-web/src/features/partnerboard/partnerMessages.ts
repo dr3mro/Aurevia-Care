@@ -1,4 +1,5 @@
 import type { Locale } from '../../i18n/messages';
+import { fillMessagePlaceholders } from '../duplicates/messagePlaceholders';
 import type {
   FallbackKind,
   InterfaceHealth,
@@ -208,10 +209,7 @@ export function partnerMessage(
   key: PartnerMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return partnerText(locale, key).replace(
-    /\{(\w+)\}/g,
-    (whole, name: string) => values[name] ?? whole,
-  );
+  return fillMessagePlaceholders(partnerText(locale, key), values);
 }
 
 /** Render a wait duration with Latin digits in both locales. */

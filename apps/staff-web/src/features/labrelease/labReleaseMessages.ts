@@ -1,5 +1,6 @@
 import { formatInstant } from '../../i18n/format';
 import type { Locale } from '../../i18n/messages';
+import { fillMessagePlaceholders } from '../duplicates/messagePlaceholders';
 import type { DifferenceKind, ReleaseState, ReleaseVisibility } from './domain';
 
 /**
@@ -155,10 +156,7 @@ export function releaseMessage(
   key: ReleaseMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return releaseText(locale, key).replace(
-    /\{(\w+)\}/g,
-    (whole, name: string) => values[name] ?? whole,
-  );
+  return fillMessagePlaceholders(releaseText(locale, key), values);
 }
 
 /** Difference-kind label keys, indexed by kind. */
