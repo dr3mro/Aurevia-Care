@@ -1,4 +1,5 @@
 import type { Locale } from '../../i18n/messages';
+import { fillMessagePlaceholders } from '../duplicates/messagePlaceholders';
 import type { TurnaroundStage } from './domain';
 
 /**
@@ -92,10 +93,7 @@ export function labBoardMessage(
   key: LabBoardMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return labBoardText(locale, key).replace(
-    /\{(\w+)\}/g,
-    (whole, name: string) => values[name] ?? whole,
-  );
+  return fillMessagePlaceholders(labBoardText(locale, key), values);
 }
 
 /** Render a whole number with Latin digits in both locales (UX-01, D4). */

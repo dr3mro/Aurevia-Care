@@ -1,5 +1,6 @@
 import { formatCivilDate } from '../../i18n/format';
 import type { Locale } from '../../i18n/messages';
+import { fillMessagePlaceholders } from '../duplicates/messagePlaceholders';
 import type { ReportStatus, ResultFlag } from './domain';
 
 /**
@@ -139,7 +140,7 @@ export function labMessage(
   key: LabResultMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return labText(locale, key).replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
+  return fillMessagePlaceholders(labText(locale, key), values);
 }
 
 /** Abnormal flag label keys, indexed by flag. */
