@@ -1,7 +1,9 @@
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from helpers import ROOT, load
 
@@ -150,6 +152,65 @@ class CompletionMatrixTests(unittest.TestCase):
         tmp = self.repo()
         (tmp / "README.md").write_text("| Feature | x |\n", encoding="utf-8")
         self.assertEqual(docs.completion_matrix_problems(tmp), [])
+
+
+class GitIgnoreTests(unittest.TestCase):
+    """Git-ignored scratch documents are skipped without weakening tracked records."""
+
+    def repo(self, ignore):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+        (tmp / ".gitignore").write_text(ignore, encoding="utf-8")
+        spec = tmp / docs.SPEC
+        spec.parent.mkdir(parents=True, exist_ok=True)
+        spec.write_text("| IAM-01 | x |\n", encoding="utf-8")
+        return tmp
+
+    def test_ignored_and_untracked_documents_are_skipped(self):
+        tmp = self.repo("/scratch/\nignored.md\n")
+        for rel in ("scratch/N.md", "ignored.md", "KEPT.md"):
+            path = tmp / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("IAM-01\n", encoding="utf-8")
+        names = {p.relative_to(tmp).as_posix() for p in docs.markdown_files(tmp)}
+        self.assertIn(docs.SPEC, names)
+        self.assertIn("KEPT.md", names)
+        self.assertNotIn("scratch/N.md", names)
+        self.assertNotIn("ignored.md", names)
+
+    def test_tracked_document_is_not_skipped_by_an_ignore_pattern(self):
+        tmp = self.repo("tracked.md\n")
+        path = tmp / "tracked.md"
+        path.write_text("IAM-01\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(tmp), "add", "-f", "tracked.md"], check=True)
+        names = {p.relative_to(tmp).as_posix() for p in docs.markdown_files(tmp)}
+        self.assertIn("tracked.md", names)
+
+    def test_negation_unignores_a_document(self):
+        tmp = self.repo("*.md\n!visible.md\n")
+        for rel in ("hidden.md", "visible.md"):
+            (tmp / rel).write_text("IAM-01\n", encoding="utf-8")
+        names = {p.relative_to(tmp).as_posix() for p in docs.markdown_files(tmp)}
+        self.assertNotIn("hidden.md", names)
+        self.assertIn("visible.md", names)
+
+    def test_no_paths_needs_no_git_call(self):
+        with mock.patch.object(docs.subprocess, "run") as run:
+            self.assertEqual(docs.gitignored_paths(Path("."), []), set())
+        run.assert_not_called()
+
+    def test_unavailable_git_adds_no_skips(self):
+        tmp = self.make_tmp()
+        path = tmp / "plain.md"
+        path.write_text("IAM-01\n", encoding="utf-8")
+        with mock.patch.object(docs.subprocess, "run", side_effect=OSError("git missing")):
+            self.assertEqual(docs.gitignored_paths(tmp, [path]), set())
+
+    def make_tmp(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        return tmp
 
 
 class RepositoryTests(unittest.TestCase):

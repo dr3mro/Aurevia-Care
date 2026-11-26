@@ -174,6 +174,110 @@ class JdbcDecisionSinkTest {
     }
 
     @Test
+    void nullReasonCodeIsRejectedBeforeStartingTransaction() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, false, null)));
+        verify(transactions, never()).execute(any(TransactionCallback.class));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void allowedUnauthenticatedDecisionIsRejectedBeforeTheNoRowException() {
+        TenantContext.clear();
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(null, true, "UNAUTHENTICATED")));
+        verify(transactions, never()).execute(any(TransactionCallback.class));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void deniedDecisionWithAllowedReasonIsRejectedWithoutWriting() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, false, "ALLOWED")));
+        verify(transactions, never()).execute(any(TransactionCallback.class));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void allowedDecisionWithDenyReasonIsRejectedBeforeWriting() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, true, "COMMAND_FORBIDDEN")));
+        verify(transactions, never()).execute(any(TransactionCallback.class));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void allowedAuditUnavailableDecisionIsRejectedBeforeWriting() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, true, "AUDIT_UNAVAILABLE")));
+        verify(transactions, never()).execute(any(TransactionCallback.class));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void unauthenticatedNoRowDoesNotTrustDecisionOrganization() {
+        TenantContext.clear();
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        sink.record(decision(ORG_B, false, "UNAUTHENTICATED"));
+        verify(transactions, never()).execute(any(TransactionCallback.class));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void unauthenticatedDecisionWithForeignVerifiedTenantFailsClosed() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_B, false, "UNAUTHENTICATED")));
+        verify(transactions, never()).execute(any(TransactionCallback.class));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void jdbcFailureOnDenyReturnsAuditUnavailable() {
+        bind(ORG_A);
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenThrow(
+                new DataAccessException("SECRET_SQL_TOKEN authorization_decision") { });
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, false, "COMMAND_FORBIDDEN")));
+    }
+
+    @Test
+    void zeroRowDenyReturnsAuditUnavailable() {
+        bind(ORG_A);
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(0);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, false, "COMMAND_FORBIDDEN")));
+    }
+
+    @Test
+    void unauthenticatedDecisionWithoutUsableTenantContextIsNotWritten() {
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        Decision unauthenticated = decision(null, false, "UNAUTHENTICATED");
+        TenantContext.clear();
+        sink.record(unauthenticated);
+        TenantContext.set(new TenantContext("   ", "admin-1", "FACILITY_ADMIN", "corr-1"));
+        sink.record(unauthenticated);
+        verify(transactions, never()).execute(any(TransactionCallback.class));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void unauthenticatedDecisionWithVerifiedTenantIsWrittenAsDeny() {
+        bind(ORG_A);
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(1);
+        sink(jdbc, transactions).record(decision(null, false, "UNAUTHENTICATED"));
+        SqlParameterSource params = captured(jdbc);
+        assertEquals(ORG_A, params.getValue("organizationId"));
+        assertEquals("deny", params.getValue("decision"));
+        assertEquals("UNAUTHENTICATED", params.getValue("reasonCode"));
+        assertEquals(JdbcDecisionSink.RESOURCE_TYPE, params.getValue("resourceType"));
+    }
+
+    @Test
     void missingTenantContextDeniesWithoutWriting() {
         TenantContext.clear();
         JdbcDecisionSink sink = sink(jdbc, transactions);

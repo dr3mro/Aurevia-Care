@@ -1,5 +1,5 @@
-- [-] FIX-TEST-WORKSPACE-RESET · Prevent tooling tests from resetting the real workspace
-  - agent: swarm-9
+- [x] FIX-TEST-WORKSPACE-RESET · Prevent tooling tests from resetting the real workspace
+  - pr: #1697
   - attempts: 28
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm.py, scripts/tests/test_swarm_delivery_state.py, scripts/tests/test_workspace_git_isolation.py, .opencode/config/BUGS.md, .opencode/config/MEMORY.md, .opencode/config/WORKSPACE.md, tasks/01278000-FIX-TEST-WORKSPACE-RESET.md

@@ -84,25 +84,11 @@ const e2eSpecs = (): string[] =>
   filesBelow(resolve(moduleRoot, 'e2e')).filter((path) => path.endsWith('.spec.ts'));
 
 /**
- * The exact e2e spec set committed today; a new journey must replace this pin.
- * This is refreshed as per-role journeys land on main so the tripwire keeps
- * detecting the *next* added spec rather than reporting a stale baseline.
+ * Exact inventory of committed Playwright spec files.
  *
- * Keeping the whole set (not only the recognised journeys) is what makes the
- * tripwire below notice any newly added journey spec. Six specs landed after
- * this pin was first written — five per-role journeys from sibling work and
- * the cross-cutting `reflowAndZoom.spec.ts` — so the pin is refreshed here.
- * The exact e2e spec set committed today; adding or removing a spec must
- * replace this pin. Visibility here keeps the GAP tripwire honest: a new spec
- * cannot slip past unnoticed, and the GAP itself stays active until the
- * all-role, staging-RC and light/dark evidence actually lands.
- * This is the GAP tripwire's inventory half: it pins the whole committed spec
- * set so any added or removed e2e spec forces a reviewer to re-check whether
- * WEB-10 clause 2 evidence has landed. It intentionally lists every spec, not
- * only the journeys recognised above, so a new per-role journey cannot slip
- * past unnoticed. The other half of the tripwire is asserted below: no
- * playwright workflow yet and exactly one computed-style layout check, which
- * keeps all-role, staging-RC and light/dark theme evidence pinned as absent.
+ * Adding or removing a spec must update this pin in the same change so the
+ * WEB-10 inventory tripwire forces review of the remaining all-role and
+ * staging-RC evidence gaps. Light/dark evidence is pinned separately below.
  */
 const currentSpecs: readonly string[] = [
   'adminflow/admin-journey.spec.ts',
@@ -123,8 +109,8 @@ const currentSpecs: readonly string[] = [
   // The admin, finance, bilingual-pharmacy, bilingual-radiology and therapy
   // journeys were added by commit 4698687f (BUILD-60), and the device-orientation
   // journey is pinned here as an intentional harness change. Pinning them keeps
-  // the tripwire honest: the remaining GAP assertions (no staging-RC report, no
-  // light/dark visual checks) still fail the day that evidence actually lands.
+  // the tripwire honest: the remaining GAP assertions (all-role coverage and a
+  // staging-RC report) still fail the day that evidence actually lands.
   'darkModeResponsive.spec.ts',
   'financeflow/finance-journey.spec.ts',
   'labflow/lab-bilingual-journey.spec.ts',

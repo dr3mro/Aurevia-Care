@@ -12,6 +12,14 @@ PLAN_GROUP = "swarm-plan-${{ github.repository }}"
 INTEGRATOR_GROUP = "swarm-integrator-${{ github.repository }}"
 SWARM_GROUP = "swarm-${{ github.ref }}"
 
+# Operator docs that describe Delivery's triggers must stay in step with the
+# workflow; a stale path-filter claim makes reviewers expect a check that never
+# runs for the exact SHA branch protection requires.
+DELIVERY_DOCS = (
+    ROOT / "docs" / "reference" / "testing-guide.md",
+    ROOT / "docs" / "swarm" / "EFFICIENCY.md",
+)
+
 
 def load(path):
     return yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -89,7 +97,6 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         self.assertNotIn("paths", trigger)
         self.assertNotIn("paths-ignore", trigger)
 
-<<<<<<< HEAD
     def test_delivery_documentation_matches_unfiltered_triggers(self):
         # A stale filter claim tells maintainers a check runs that GitHub never creates,
         # so the operator guide must describe the same trigger contract as the workflow.
@@ -98,6 +105,27 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         )
         self.assertNotIn("`paths-ignore` on `push`", guide)
         self.assertIn("Every push to `main` and every version tag runs it", guide)
+
+    def test_operator_docs_do_not_describe_a_filtered_delivery_trigger(self):
+        """Stale path-filter claims make operators expect a gate GitHub never reports."""
+        docs = (ROOT / "docs" / "reference" / "testing-guide.md",
+                ROOT / "docs" / "swarm" / "EFFICIENCY.md")
+        for path in docs:
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertNotIn("paths-ignore", text)
+                self.assertNotIn("paths:", text)
+                self.assertIn("delivery gate", text.lower())
+
+    def test_operator_docs_describe_the_unfiltered_delivery_trigger(self):
+        """The listed operator docs must not imply a filter suppresses the exact-SHA check."""
+        for path in DELIVERY_DOCS:
+            with self.subTest(doc=path.name):
+                text = path.read_text(encoding="utf-8").lower()
+                self.assertIn("no path filter", text)
+                self.assertNotIn("paths-ignore", text)
+                self.assertNotIn("paths:", text)
+                self.assertIn("delivery gate", text)
 
 
 # The expected job set comes from the fail-closed checker the gate step runs,
@@ -233,15 +261,3 @@ class DeliveryGateContractTest(unittest.TestCase):
                 # Exactly one label proves the mutation caused this violation
                 # rather than a guard that appends the label unconditionally.
                 self.assertEqual(gate_contract_violations(changed).count(expected), 1, label)
-=======
-    def test_operator_docs_do_not_describe_a_filtered_delivery_trigger(self):
-        """Stale path-filter claims make operators expect a gate GitHub never reports."""
-        docs = (ROOT / "docs" / "reference" / "testing-guide.md",
-                ROOT / "docs" / "swarm" / "EFFICIENCY.md")
-        for path in docs:
-            with self.subTest(path=path.name):
-                text = path.read_text(encoding="utf-8")
-                self.assertNotIn("paths-ignore", text)
-                self.assertNotIn("paths:", text)
-                self.assertIn("delivery gate", text.lower())
->>>>>>> origin/main

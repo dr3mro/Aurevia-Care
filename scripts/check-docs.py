@@ -2,6 +2,8 @@
 
 * Relative links must point at files that exist. Links into the generated
   developer reference (docs/reference/<module>/...) are exempt.
+* Files Git ignores and does not track are scratch output, so they are skipped
+  in addition to the explicit static skip list.
 * Every requirement ID mentioned outside the specification must be defined in
   .opencode/config/PROJECT_V1_SPEC.md. Ranges such as MSG-01-07 and IAM-01/02 are expanded.
 * Generated Markdown is also checked for structural faults that make a committed
@@ -11,6 +13,7 @@
 """
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -19,7 +22,7 @@ SPEC = ".opencode/config/PROJECT_V1_SPEC.md"
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
 GENERATED = ("staff-web/", "patient-mobile/")
 # "plan" is a pre-existing scratch copy of this pack and is not checked.
-SKIP = {".git", "build", "node_modules", ".opencode", "plan", ".workspaces"}
+SKIP = {".git", "build", "node_modules", ".opencode", ".workspaces"}
 
 # Structural rules for generated Markdown. The token pattern carries a
 # word-boundary guard so ordinary words such as "risk-transitions" are not
@@ -65,17 +68,44 @@ def mentioned_ids(text, prefixes):
     return found
 
 
-# Worker notes and reconciled reports are records, not specs: agent-written text
-# there must not turn main red. They live under .agents/; docs/pr/ remains
-# skipped for older checkouts that still carry notes at the former location.
+# Tracked records are records, not specs: agent-written text there must not turn
+# main red. These are committed, so Git ignore rules cannot exclude them; they
+# need an explicit skip alongside the gitignore-derived rules below.
 SKIP_PREFIXES = (".agent/", ".agents/", "docs/archive/", "docs/pr/")
+
+
+def gitignored_paths(root, paths):
+    """Return the relative posix names in ``paths`` that Git ignores and does not track.
+
+    Delegating to ``git check-ignore`` keeps the static skip list small: negation,
+    anchored roots and nested ignore files keep their Git semantics here. Tracked
+    files are never reported, so a committed document cannot be skipped by an
+    ignore pattern. A directory without a Git repository yields no extra skips.
+    """
+    names = [p.relative_to(root).as_posix() for p in paths]
+    if not names:
+        return set()
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "check-ignore", "--stdin", "-z"],
+            input="\0".join(names) + "\0",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    if result.returncode not in (0, 1):
+        return set()
+    return set(result.stdout.split("\0")) - {""}
 
 
 def markdown_files(root):
     # The specification moved under .opencode/config; it must still be
     # enumerated so its links, IDs and structure are checked, even though the
     # rest of .opencode is skipped (instruction and tracker files).
-    return [
+    candidates = [
         p
         for p in root.rglob("*.md")
         if (
@@ -86,6 +116,8 @@ def markdown_files(root):
             )
         )
     ]
+    ignored = gitignored_paths(root, candidates)
+    return [p for p in candidates if p.relative_to(root).as_posix() not in ignored]
 
 
 def generated_markdown_files(root):
