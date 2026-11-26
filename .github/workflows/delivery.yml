@@ -248,28 +248,63 @@ jobs:
           set -euo pipefail
           image="ghcr.io/${GITHUB_REPOSITORY,,}:$VERSION"
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          refs=()
+          # Version and revision labels are the stable identity of a release. A
+          # rebuild records a fresh "created" time and gets a new .Id even for
+          # the same commit, so image IDs cannot identify a published version.
+          version_label='{{index .Config.Labels "org.opencontainers.image.version"}}'
+          revision_label='{{index .Config.Labels "org.opencontainers.image.revision"}}'
+          # A published version is immutable. Refuse before any child push if a
+          # manifest or a GitHub release already exists for this version.
+          if docker buildx imagetools inspect "$image" >/dev/null 2>&1; then
+            echo "::error::$image already exists; version tags are immutable" >&2
+            exit 1
+          fi
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::release $VERSION already exists; version tags are immutable" >&2
+            exit 1
+          fi
+          children=()
           for arch in amd64 arm64; do
             docker load -i "smoke-tested-image-$arch/aurevia-image.tar"
             test "$(docker image inspect aurevia:test --format '{{.Architecture}}')" = "$arch"
-            test "$(docker image inspect aurevia:test --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
-            test "$(docker image inspect aurevia:test --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$VERSION"
+            test "$(docker image inspect aurevia:test --format "$revision_label")" = "$GITHUB_SHA"
+            test "$(docker image inspect aurevia:test --format "$version_label")" = "$VERSION"
             child="$image-$arch"
-            if docker buildx imagetools inspect "$child" >/dev/null 2>&1; then
-              docker pull --platform "linux/$arch" "$child"
-              test "$(docker image inspect "$child" --format '{{.Id}}')" = "$(docker image inspect aurevia:test --format '{{.Id}}')"
+            # docker load restores only aurevia:test; the architecture tag must
+            # exist locally before it can be pushed on a first release.
+            docker tag aurevia:test "$child"
+            if docker pull --platform "linux/$arch" "$child" >/dev/null 2>&1; then
+              # Already published: reuse it only when its provenance is this
+              # exact release. A different revision under the same version is
+              # a re-pointed tag, not a retry.
+              existing_revision=$(docker image inspect "$child" --format "$revision_label")
+              existing_version=$(docker image inspect "$child" --format "$version_label")
+              if [[ "$existing_revision" != "$GITHUB_SHA" ]]; then
+                echo "::error::version $VERSION already published for revision $existing_revision; use a new version tag" >&2
+                exit 1
+              fi
+              if [[ "$existing_version" != "$VERSION" ]]; then
+                echo "::error::$child has version $existing_version, expected $VERSION" >&2
+                exit 1
+              fi
             else
-              docker tag aurevia:test "$child"
+              # A failed pull means absent; a visible manifest contradicts that
+              # and must never be overwritten on a transient registry error.
+              if docker buildx imagetools inspect "$child" >/dev/null 2>&1; then
+                echo "::error::cannot pull existing $child; refusing to overwrite" >&2
+                exit 1
+              fi
               docker push "$child"
             fi
-            refs+=("$(docker image inspect "$child" --format '{{index .RepoDigests 0}}')")
+            children+=("$child")
           done
-          if ! docker buildx imagetools inspect "$image" >/dev/null 2>&1; then
-            docker buildx imagetools create --tag "$image" "${refs[@]}"
-          fi
+          # Use tag refs, as release-app-image.yml does, so buildx resolves them
+          # with the logged-in registry scope; digest refs are not needed.
+          docker buildx imagetools create --tag "$image" "${children[@]}"
           manifest=$(docker buildx imagetools inspect "$image" --raw)
-          for child in "${refs[@]}"; do
-            jq -e --arg digest "${child##*@}" '.manifests | any(.digest == $digest)' <<< "$manifest" >/dev/null
+          for child in "${children[@]}"; do
+            digest=$(docker buildx imagetools inspect "$child" --format '{{json .Manifest}}' | jq -er .digest)
+            jq -e --arg digest "$digest" '.manifests | any(.digest == $digest)' <<< "$manifest" >/dev/null
           done
           digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -er .digest)
           digest="${image%:*}@$digest"
