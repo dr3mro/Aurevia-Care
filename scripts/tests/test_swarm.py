@@ -962,6 +962,11 @@ class PlanTests(unittest.TestCase):
         self.assertIn("name: Swarm worker", text)
         self.assertNotIn("Worker ${{ matrix.slot }}", text)
 
+    def test_selection_prompts_name_the_current_tracker_paths(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertEqual(text.count("use tasks/ and .opencode/config/MEMORY.md"), 2)
+        self.assertEqual(text.count("never search root TODO.md or MEMORY.md"), 2)
+
     def test_workflow_agents_are_configured_agents_not_skill_ids(self):
         """The PO and SM steps must name agents OpenCode can resolve.
 
