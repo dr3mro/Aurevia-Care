@@ -117,12 +117,76 @@ describe('SchedulingPage states', () => {
     expect(await screen.findByText('patient-001')).toBeTruthy();
   });
 
-  it('shows the empty state for an empty first page', async () => {
+  it('shows the empty state with the worklist controls for an empty first page', async () => {
     sendMock.mockResolvedValueOnce({ items: [], nextCursor: null });
 
     wrap(page());
     expect(await screen.findByText(stateViewText('en', 'empty'))).toBeTruthy();
-    expect(screen.queryByRole('table')).toBeNull();
+    // The empty message is no longer a replacement for the screen: the screen
+    // owns the range controls and the first-booking form. No patient row may
+    // leak into an empty page, but the worklist shell itself is expected.
+    expect(screen.queryByRole('rowheader')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Week' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Book' })).toBeTruthy();
+  });
+
+  it('keeps the controls on an empty page, refetches the week and books from it', async () => {
+    sendMock.mockResolvedValue({ items: [], nextCursor: null });
+
+    wrap(page());
+
+    expect(await screen.findByText(stateViewText('en', 'empty'))).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Week' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Book' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+    await waitFor(() =>
+      expect(
+        sendMock.mock.calls.some((call) =>
+          call[0].url.includes('to=2026-03-16T00%3A00%3A00Z'),
+        ),
+      ).toBe(true),
+    );
+    // Changing range clears the accumulated page, so the retained loading
+    // guard briefly unmounts the screen. Wait for the form to come back before
+    // entering the first booking.
+    await screen.findByRole('button', { name: 'Book' });
+
+    fillBookingFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Book' }));
+
+    await waitFor(() =>
+      expect(
+        sendMock.mock.calls.some(
+          (call) => call[0].method === 'POST' && call[0].url === '/api/v1/appointments',
+        ),
+      ).toBe(true),
+    );
+    const booking = required(
+      sendMock.mock.calls.find(
+        (call) => call[0].method === 'POST' && call[0].url === '/api/v1/appointments',
+      ),
+    )[0];
+    expect(booking.body).toMatchObject({
+      clinicianCode: 'room-9',
+      startsAt: '2026-03-09T07:00:00Z',
+    });
+
+    // A successful command must reload the active range, not reuse the first page.
+    const postIndex = sendMock.mock.calls.findIndex(
+      (call) => call[0].method === 'POST' && call[0].url === '/api/v1/appointments',
+    );
+    await waitFor(() =>
+      expect(
+        sendMock.mock.calls
+          .slice(postIndex + 1)
+          .some(
+            (call) =>
+              call[0].method === 'GET' &&
+              call[0].url.includes('to=2026-03-16T00%3A00%3A00Z'),
+          ),
+      ).toBe(true),
+    );
   });
 
   it.each(['server', 'timeout', 'offline', 'invalid', 'rate-limited'] as const)(
@@ -199,6 +263,8 @@ describe('SchedulingPage commands', () => {
   it('books through the API and reloads after a valid booking', async () => {
     wrap(page());
     await screen.findByText('patient-001');
+    // A populated day must not also present the empty notice.
+    expect(screen.queryByText(stateViewText('en', 'empty'))).toBeNull();
 
     fillBookingFields();
     fireEvent.click(screen.getByRole('button', { name: 'Book' }));

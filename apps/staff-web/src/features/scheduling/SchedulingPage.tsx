@@ -171,10 +171,11 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
         <LoadingState />
       ) : result.status === 'error' && loaded.length === 0 ? (
         StateView.forTransportError(result.error)
-      ) : loaded.length === 0 ? (
-        <EmptyState />
       ) : (
         <>
+          {/* An empty day is a notice, not a replacement for the worklist:
+              the screen owns the range controls and the first-booking form. */}
+          {loaded.length === 0 ? <EmptyState /> : null}
           <SchedulingScreen
             appointments={loaded}
             organizationId={organizationId}
