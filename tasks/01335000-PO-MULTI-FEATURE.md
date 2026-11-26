@@ -19,6 +19,8 @@
     - github-workflow: GO (0 Critical, 0 Required, 2 Optional: reviewer could not re-run commands, and no live two-feature wave observed — output compatibility and focus parsing verified statically).
     - code-reviewer: GO (0 Critical, 0 Required, 2 Optional: stale step name and WORKER_COUNT wording — both fixed in the final tree: the step is "Select features with OpenCode" and the SM prompt treats $WORKER_COUNT as authoritative).
 
-    Concurrency note: one verification run captured `swarm.yml` mid-merge from another session (`fix/swarm-empty-allocation`) and reported transient conflict markers and stale assertions. The merge committed cleanly (`cf9be21c`); the current tree has no markers, retains the two-feature prompt and parser, and `test_swarm.py` is 377 tests OK again. No fix was needed beyond re-running on the merged tree.
+    Concurrency note: verification twice captured `swarm.yml` mid-merge from another session (`fix/swarm-empty-allocation`, committed as `519eff61`/`0299a280`/`39f920fe`) and reported transient conflict markers, stale parser assertions and a stale grep assertion from the earlier skew story. The merged tree has no markers and retains the two-feature prompt and comma-aware parser; `test_selection_steps_report_agency_failure_instead_of_hiding_it` was adjusted so it asserts the grep and `head -60` separately because the other session added a sed neutralizer to the pipeline.
+
+    Final gates (tool, on the merged tree): `/opt/homebrew/bin/python3.15 -I -m unittest discover -s scripts/tests -q` -> `Ran 2258 tests in 338.034s ... OK`; `REQUIRE_PY_COVERAGE=1 COVERAGE_BASE=origin/main bash scripts/python-coverage.sh` -> `python coverage: every changed script line is covered`.
 
     Unverified: no live swarm wave has produced a two-feature selection yet; model behavior is guided by prompt and structural tests only. No simulated-user or authorized-human feedback was used.
