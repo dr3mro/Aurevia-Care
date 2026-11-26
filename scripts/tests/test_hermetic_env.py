@@ -62,7 +62,7 @@ if [[ "${FAIL_COMMAND:-}" == "$name" ]]; then
     [[ -n "${FAIL_MATCH:-}" && "$arg" != *"$FAIL_MATCH"* ]] || exit 1
   done
 fi
-real="REAL_${name^^}"
+real="REAL_$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')"
 "${!real}" "$@" || exit 1
 if [[ "$name" == cp && "${MAKE_CONFIG_DIRECTORY_DURING_COPY:-0}" == 1 ]]; then
   for arg in "$@"; do

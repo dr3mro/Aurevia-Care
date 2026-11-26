@@ -401,6 +401,59 @@ class AuthorizationDecisionLedgerTest {
     }
 
     @Test
+    void productionSinkSanitizesUntrustedEvidence() throws Exception {
+        bind(ORG_A, "admin-a");
+        String correlation = "sanitized-" + "c".repeat(118);
+        sink.record(new Decision("ignored", "A".repeat(140) + "\nFORGED", ORG_A,
+                "s".repeat(260) + "\nFORGED", correlation + "\rFORGED",
+                true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()));
+
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT subject, action, correlation_id FROM public.authorization_decision "
+                             + "WHERE organization_id = CAST(? AS uuid) AND correlation_id = ?")) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            statement.setString(1, ORG_A);
+            statement.setString(2, correlation);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals("s".repeat(255), result.getString("subject"));
+                assertEquals("A".repeat(128), result.getString("action"));
+                assertEquals(correlation, result.getString("correlation_id"));
+            }
+        }
+    }
+
+    @Test
+    void contradictoryUnauthenticatedDecisionNeverBypassesValidation() throws Exception {
+        TenantContext.clear();
+        Decision contradictory = new Decision("createFacility", "FACILITY_WRITE", ORG_A, "admin-a",
+                "corr-contradictory-unauthenticated", true, "UNAUTHENTICATED", List.of(), CLOCK.instant());
+
+        ApiException failure = assertThrows(ApiException.class, () -> sink.record(contradictory));
+
+        assertEquals(403, failure.status());
+        assertEquals("AUDIT_UNAVAILABLE", failure.code());
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-contradictory-unauthenticated"));
+        assertEquals(0L, count("aurevia_migrate", null, "corr-contradictory-unauthenticated"));
+    }
+
+    @Test
+    void crossTenantDecisionEvidenceNeverChangesTheWriteTenant() throws Exception {
+        bind(ORG_A, "admin-a");
+        Decision crossTenant = new Decision("createFacility", "FACILITY_WRITE", ORG_B, "admin-a",
+                "corr-cross-tenant-evidence", false, "COMMAND_FORBIDDEN", List.of(), CLOCK.instant());
+
+        ApiException failure = assertThrows(ApiException.class, () -> sink.record(crossTenant));
+
+        assertEquals(403, failure.status());
+        assertEquals("AUDIT_UNAVAILABLE", failure.code());
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-cross-tenant-evidence"));
+        assertEquals(0L, count("aurevia_migrate", ORG_B, "corr-cross-tenant-evidence"));
+    }
+
+    @Test
     void codedFieldLengthLimitsAreEnforcedAtBoundaries() throws Exception {
         String subject = "s".repeat(256);
         String action = "a".repeat(128);
