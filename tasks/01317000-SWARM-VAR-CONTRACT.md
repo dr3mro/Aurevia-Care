@@ -1,6 +1,5 @@
 - [ ] SWARM-VAR-CONTRACT · Unify boolean repository-variable semantics
   - scope: scripts/swarm_flags.py, scripts/swarm.py, scripts/tests/test_swarm_flags.py, scripts/tests/test_workflow_variable_contract.py, scripts/tests/test_swarm_kill_switch.py, .github/workflows/swarm.yml, .github/workflows/swarm-worker.yml, .github/workflows/swarm-issue-monitor.yml, docs/SWARM.md, docs/reference/testing-guide.md
-  - evidence:
-    - Plan approved by aurevia-plan-reviewer (VERDICT: GO after re-review); no repository variables changed.
   - details:
+    Plan approved by aurevia-plan-reviewer (VERDICT: GO after re-review); no repository variables changed.
     Canonical lowercase value tokens: enable {1,true,yes,on}, disable {0,false,no,off}, absent/unknown/empty uses the documented default. Workflow `if:`/`run:` checks and the four scripts/swarm.py helpers must accept the same sets. Rename the select job to `Select task (PO)`; no scrum-master agent is added. Remove dead SWARM_TASK_FILES doc line and document REQUIRE_PY_COVERAGE as env-only. Write failing tests first, then implement; prove 100% changed-line coverage. Protected-file change: human-reviewed PR or maintainer-applied workflow edits, exact-SHA CI, no SWARM_ALLOW_PROTECTED change.
