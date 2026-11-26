@@ -34,6 +34,11 @@ def scrub_ambient_environment():
 
 scrub_ambient_environment()
 
+# The production default is the bounded single-worker wave. Planner-mechanics
+# tests written before that default describe parallel waves, so the harness opts
+# them into max-task mode explicitly; tests of the default remove or override it.
+os.environ.setdefault("SWARM_MAX_TASK", "true")
+
 
 def load(name):
     spec = importlib.util.spec_from_file_location(

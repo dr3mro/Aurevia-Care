@@ -163,6 +163,7 @@ class CommandTests(Work):
     def test_plan_workers_reads_the_task_files_and_plans_nothing_when_nothing_is_ready(self):
         with mock.patch.object(swarm, "gh_json", return_value=[]), \
              mock.patch.object(swarm, "live_workers", return_value=[]), \
+             mock.patch.object(swarm, "active_waves", return_value=(True, 0, "")), \
              mock.patch.object(swarm, "load_slots", return_value=[{"slot": 1}]), \
              mock.patch.object(swarm, "plan_workers", return_value=[]) as planned, \
              mock.patch.object(swarm, "update_todo"), mock.patch.object(swarm, "note_claims"), \

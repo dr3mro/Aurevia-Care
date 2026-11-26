@@ -13,7 +13,7 @@ DELIVERY_GROUP = ("${{ github.event_name == 'workflow_dispatch' && "
 DELIVERY_CANCEL = "${{ github.event_name == 'push' && github.ref_type == 'branch' }}"
 PLAN_GROUP = "swarm-plan-${{ github.repository }}"
 INTEGRATOR_GROUP = "swarm-integrator-${{ github.repository }}"
-SWARM_GROUP = "swarm-${{ github.ref }}"
+SWARM_GROUP = "swarm-${{ github.repository }}-${{ github.run_id }}"
 
 # Operator docs that describe Delivery's triggers must stay in step with the
 # workflow; a stale path-filter claim makes reviewers expect a check that never
@@ -99,8 +99,11 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         self.assertIn("github.run_id", group)
         self.assertIn("inputs.slot", group)
 
-    def test_swarm_allows_one_wave_per_branch(self):
-        self.assert_queue(load(WORKFLOWS / "swarm.yml")["concurrency"], SWARM_GROUP)
+    def test_swarm_admits_concurrent_waves_per_run(self):
+        concurrency = load(WORKFLOWS / "swarm.yml")["concurrency"]
+        self.assertEqual(concurrency["group"], SWARM_GROUP)
+        self.assertIs(concurrency["cancel-in-progress"], False)
+        self.assertNotIn("queue", concurrency)
 
     def test_swarm_plan_serializes_all_waves_in_the_repository(self):
         plan = load(WORKFLOWS / "swarm.yml")["jobs"]["plan"]["concurrency"]

@@ -25,14 +25,32 @@ class KillSwitchTests(unittest.TestCase):
                     os.environ.pop("SWARM_ENABLED", None)
                 self.assertTrue(swarm.swarm_enabled(), msg=value)
 
-    def test_single_task_mode_defaults_to_false(self):
-        os.environ.pop("SWARM_SINGLE_TASK", None)
-        self.assertFalse(swarm.single_task_mode())
+    def test_max_task_mode_defaults_to_false(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("SWARM_MAX_TASK", None)
+            self.assertFalse(swarm.max_task_mode())
+            self.assertEqual(swarm.wave_workers(), 1)
+            self.assertEqual(swarm.concurrent_wave_limit(), 1)
 
-    def test_single_task_mode_true_values(self):
+    def test_max_task_mode_true_values(self):
         for value in ("1", "true", "yes", "on"):
-            with mock.patch.dict(os.environ, {"SWARM_SINGLE_TASK": value}):
-                self.assertTrue(swarm.single_task_mode(), msg=value)
+            with mock.patch.dict(os.environ, {"SWARM_MAX_TASK": value}):
+                self.assertTrue(swarm.max_task_mode(), msg=value)
+
+    def test_legacy_single_task_variable_is_ignored(self):
+        with mock.patch.dict(os.environ, {"SWARM_SINGLE_TASK": "true"}, clear=False):
+            os.environ.pop("SWARM_MAX_TASK", None)
+            self.assertFalse(swarm.max_task_mode())
+
+    def test_configured_wave_limits(self):
+        env = {"SWARM_MAX_TASK": "true", "SWARM_MAX_WORKERS_PER_WAVE": "3",
+               "SWARM_MAX_WAVE_COUNT": "2"}
+        with mock.patch.dict(os.environ, env):
+            self.assertEqual(swarm.wave_workers(), 3)
+            self.assertEqual(swarm.concurrent_wave_limit(), 2)
+        with mock.patch.dict(os.environ, {"SWARM_MAX_TASK": "true",
+                                          "SWARM_MAX_WORKERS_PER_WAVE": "bad"}):
+            self.assertEqual(swarm.wave_workers(), 1)
 
     def test_plan_workers_returns_empty_when_disabled(self):
         with mock.patch.dict(os.environ, {"SWARM_ENABLED": "false"}):
@@ -49,8 +67,8 @@ class KillSwitchTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"SWARM_ENABLED": "false"}):
             self.assertFalse(swarm.top_up("CW-001"))
 
-    def test_top_up_returns_false_in_single_mode(self):
-        with mock.patch.dict(os.environ, {"SWARM_SINGLE_TASK": "true"}):
+    def test_top_up_returns_false_in_bounded_mode(self):
+        with mock.patch.dict(os.environ, {"SWARM_MAX_TASK": "false"}):
             self.assertFalse(swarm.top_up("CW-001"))
 
     def test_swarm_enabled_accepts_uppercase_and_padded_disable_values(self):
@@ -58,10 +76,10 @@ class KillSwitchTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {"SWARM_ENABLED": value}):
                 self.assertFalse(swarm.swarm_enabled(), msg=value)
 
-    def test_single_task_mode_accepts_uppercase_and_padded_enable_values(self):
+    def test_max_task_mode_accepts_uppercase_and_padded_enable_values(self):
         for value in ("TRUE", " On ", "YES"):
-            with mock.patch.dict(os.environ, {"SWARM_SINGLE_TASK": value}):
-                self.assertTrue(swarm.single_task_mode(), msg=value)
+            with mock.patch.dict(os.environ, {"SWARM_MAX_TASK": value}):
+                self.assertTrue(swarm.max_task_mode(), msg=value)
 
     def test_issues_enabled_accepts_uppercase_disable_values(self):
         with mock.patch.dict(os.environ, {"SWARM_ISSUES": "FALSE"}):

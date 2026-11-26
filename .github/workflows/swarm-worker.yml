@@ -17,10 +17,22 @@ on:
         description: 'Carry the wave-level red-main override into slot refill'
         type: boolean
         default: false
-      single_task:
-        description: 'Canonical SWARM_SINGLE_TASK from the flags job ("true" or "false")'
+      max_task:
+        description: 'Canonical SWARM_MAX_TASK from the flags job ("true" or "false")'
         type: string
         default: 'false'
+      max_workers_per_wave:
+        description: 'Canonical worker cap for top-up admission'
+        type: string
+        default: '20'
+      max_wave_count:
+        description: 'Canonical concurrent-wave cap for top-up admission'
+        type: string
+        default: '3'
+      feature:
+        description: 'Feature prefix selected by the Product Owner for this wave'
+        type: string
+        default: ''
     secrets:
       # GITHUB_TOKEN is system-reserved: a workflow_call that declares it fails
       # GitHub validation. It is supplied automatically to the called workflow.
@@ -58,7 +70,9 @@ concurrency:
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
-  SWARM_SINGLE_TASK: ${{ inputs.single_task }}
+  SWARM_MAX_TASK: ${{ inputs.max_task }}
+  SWARM_MAX_WORKERS_PER_WAVE: ${{ inputs.max_workers_per_wave }}
+  SWARM_MAX_WAVE_COUNT: ${{ inputs.max_wave_count }}
 
 jobs:
   work:
@@ -90,6 +104,7 @@ jobs:
       STORY_ID: ${{ fromJSON(inputs.task).id }}
       STORY_TITLE: ${{ fromJSON(inputs.task).title }}
       STORY_BODY: ${{ fromJSON(inputs.task).body }}
+      FEATURE: ${{ inputs.feature }}
       FIX_COMMENT: ${{ fromJSON(inputs.task).fix }}
       PR_NUMBER: ${{ fromJSON(inputs.task).number }}
       CHECK_SCRIPT: scripts/worker-check.sh
@@ -104,6 +119,11 @@ jobs:
       # The read-only token is used here, before the agent has touched the
       # workspace. The main branch can move during the run, so the merge step
       # later fetches nothing; a newer main is picked up by the integrator.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: trail-allocation
+          path: .agent
+          if-no-files-found: ignore
       - name: Fetch main
         env:
           # This job is read-only; the job token is enough. Never expose the
@@ -324,6 +344,7 @@ jobs:
             .agent/merge
             .agent/check.log
             .agent/publish-notes.md
+            .agent/work-trail.jsonl
             .agent/result.bundle
           if-no-files-found: ignore
           # Kept for a week so a blocked or failed publish never loses the work.
@@ -489,7 +510,7 @@ jobs:
       # This worker's slot is free: start the next wave now instead of waiting for the slowest
       # worker of this wave. The planner still applies the worker cap, scopes and the budget.
       - name: Fill the free slot
-        if: always() && inputs.single_task == 'false'
+        if: always() && inputs.max_task == 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

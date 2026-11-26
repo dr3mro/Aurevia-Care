@@ -1,32 +1,46 @@
-"""Canonical boolean repository-variable tokens shared by the swarm kill switches.
+"""Canonical repository-variable resolution shared by the swarm kill switches.
 
 Repository variables and GitHub expression values arrive as strings. Live values are
 written in lowercase by convention, but an operator may type them in another case or
 with padding; normalising here keeps that behaviour identical for the Python CLI and
-for workflows, which cannot trim or case-fold in an expression. Only the four enable
-and four disable tokens override a caller's default; anything else is treated as
-unset. These helpers are pure: no environment reads, no Git or GitHub calls, so every
+for workflows, which cannot trim or case-fold in an expression. Boolean flags use the
+four enable and four disable tokens; numeric limits accept padded or leading-zero
+digits. These helpers are pure: no environment reads, no Git or GitHub calls, so every
 consumer shares one rule.
 
-``python3 -I scripts/swarm_flags.py`` writes canonical true/false values for every
-flag to the file named by GITHUB_OUTPUT. The reusable ``swarm-flags.yml`` workflow
-runs it once and all boolean gates consume its outputs.
+``python3 -I scripts/swarm_flags.py`` writes canonical values for every flag and limit
+to the file named by GITHUB_OUTPUT. The reusable ``swarm-flags.yml`` workflow runs it
+once and every gate consumes its outputs rather than a raw variable.
 """
 
 import os
+import re
 
 ENABLE_TOKENS = ("1", "true", "yes", "on")
 DISABLE_TOKENS = ("0", "false", "no", "off")
+DIGITS = re.compile(r"[0-9]+")
+WAVE_WORKERS_CAP = 20
+MAX_ACTIVE_WORKERS_CAP = 20
 
 # Output name, repository variable and the meaning of an unset value. The defaults
 # preserve the behaviour each switch had before this helper existed: a kill switch
-# is on unless told otherwise, while opt-in modes stay off.
+# is on unless told otherwise, while opt-in modes stay off. max_task=false restores
+# the serialized single-wave, single-worker lifecycle.
 FLAG_SPECS = (
     ("enabled", "SWARM_ENABLED", True),
-    ("single_task", "SWARM_SINGLE_TASK", False),
+    ("max_task", "SWARM_MAX_TASK", False),
     ("llm_selection", "SWARM_LLM_SELECTION", False),
     ("issues", "SWARM_ISSUES", True),
     ("notes", "SWARM_NOTES", True),
+)
+
+# Output name, repository variable, unset default, invalid default, lower and upper
+# bound. An unset value means the operator wants the documented capacity; a value that
+# is not a plain integer fails closed to the smallest safe wave instead of widening
+# it. Both numeric values stay inside the existing hard worker limits.
+NUMBER_SPECS = (
+    ("max_workers_per_wave", "SWARM_MAX_WORKERS_PER_WAVE", 20, 1, 1, WAVE_WORKERS_CAP),
+    ("max_wave_count", "SWARM_MAX_WAVE_COUNT", 3, 1, 1, MAX_ACTIVE_WORKERS_CAP),
 )
 
 
@@ -71,17 +85,37 @@ def disabled(value, default):
     return default
 
 
+def number(value, unset_default, invalid_default, minimum, maximum):
+    """Resolve a bounded integer capacity from a raw repository-variable string.
+
+    Args: value is the raw string; unset_default applies to an empty value,
+    invalid_default to a non-integer value; minimum and maximum bound the result.
+    Returns: an integer inside those bounds. Errors: none; unparseable input is
+    deliberately mapped to invalid_default so an operator typo cannot launch more
+    workers than the configured safety limit.
+    """
+    token = _token(value)
+    if not token:
+        return unset_default
+    if not DIGITS.fullmatch(token):
+        return invalid_default
+    return max(minimum, min(int(token), maximum))
+
+
 def github_outputs(environ, stream):
-    """Write one canonical ``name=true|false`` line per flag to a text stream.
+    """Write one canonical ``name=value`` line per flag and limit to a text stream.
 
     Args: environ maps repository-variable names to raw strings; stream is a
     text sink such as the file named by GITHUB_OUTPUT. Returns: none. A missing
-    or unknown value uses that flag's documented default, so a switch never
-    fails open when an operator sets a value this contract does not recognise.
+    or unrecognised value uses that setting's documented default, so a switch
+    never fails open when an operator sets a value this contract does not accept.
     """
     for name, variable, default in FLAG_SPECS:
         value = enabled(environ.get(variable, ""), default)
         stream.write(f"{name}={str(value).lower()}\n")
+    for name, variable, unset, invalid, minimum, maximum in NUMBER_SPECS:
+        value = number(environ.get(variable, ""), unset, invalid, minimum, maximum)
+        stream.write(f"{name}={value}\n")
 
 
 def main():

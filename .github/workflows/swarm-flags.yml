@@ -10,9 +10,15 @@ on:
       enabled:
         description: 'Canonical SWARM_ENABLED; on when unset or unknown'
         value: ${{ jobs.resolve.outputs.enabled }}
-      single_task:
-        description: 'Canonical SWARM_SINGLE_TASK; off when unset or unknown'
-        value: ${{ jobs.resolve.outputs.single_task }}
+      max_task:
+        description: 'Canonical SWARM_MAX_TASK; off when unset or unknown'
+        value: ${{ jobs.resolve.outputs.max_task }}
+      max_workers_per_wave:
+        description: 'Canonical SWARM_MAX_WORKERS_PER_WAVE, clamped to 1..20'
+        value: ${{ jobs.resolve.outputs.max_workers_per_wave }}
+      max_wave_count:
+        description: 'Canonical SWARM_MAX_WAVE_COUNT, clamped to 1..20'
+        value: ${{ jobs.resolve.outputs.max_wave_count }}
       llm_selection:
         description: 'Canonical SWARM_LLM_SELECTION; off when unset or unknown'
         value: ${{ jobs.resolve.outputs.llm_selection }}
@@ -37,7 +43,9 @@ jobs:
     timeout-minutes: 5
     outputs:
       enabled: ${{ steps.canonical.outputs.enabled }}
-      single_task: ${{ steps.canonical.outputs.single_task }}
+      max_task: ${{ steps.canonical.outputs.max_task }}
+      max_workers_per_wave: ${{ steps.canonical.outputs.max_workers_per_wave }}
+      max_wave_count: ${{ steps.canonical.outputs.max_wave_count }}
       llm_selection: ${{ steps.canonical.outputs.llm_selection }}
       issues: ${{ steps.canonical.outputs.issues }}
       notes: ${{ steps.canonical.outputs.notes }}
@@ -52,7 +60,9 @@ jobs:
         # Python commands use. No token or credential is read here.
         env:
           SWARM_ENABLED: ${{ vars.SWARM_ENABLED }}
-          SWARM_SINGLE_TASK: ${{ vars.SWARM_SINGLE_TASK }}
+          SWARM_MAX_TASK: ${{ vars.SWARM_MAX_TASK }}
+          SWARM_MAX_WORKERS_PER_WAVE: ${{ vars.SWARM_MAX_WORKERS_PER_WAVE }}
+          SWARM_MAX_WAVE_COUNT: ${{ vars.SWARM_MAX_WAVE_COUNT }}
           SWARM_LLM_SELECTION: ${{ vars.SWARM_LLM_SELECTION }}
           SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
           SWARM_NOTES: ${{ vars.SWARM_NOTES }}

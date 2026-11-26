@@ -135,11 +135,56 @@ jobs:
           QUEUE: ${{ needs.pick.outputs.queue }}
           GATE: scripts/integrator-gate.sh
         run: python3 -I scripts/swarm.py integrate-validate --queue "$QUEUE" --gate "$GATE" --out validated
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        if: always()
+        with:
+          pattern: worker-*
+          path: trails
+          merge-multiple: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        if: always()
+        with:
+          name: trail-allocation
+          path: trails/trail-allocation
+      - name: Merge worker trails for the integrator
+        if: always()
+        run: |
+          mkdir -p .agent
+          : > .agent/work-trail.jsonl
+          while IFS= read -r file; do
+            cat "$file" >> .agent/work-trail.jsonl
+          done < <(find trails -name work-trail.jsonl -type f | sort)
+      - name: Build and gate stacked branches
+        env:
+          ACCEPTED: ${{ steps.candidate.outputs.accepted }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          CHECK_SCRIPT: scripts/integrator-gate.sh
+        run: |
+          branches=$(python3 -I -c 'import json, os; q = json.loads(os.environ["ACCEPTED"] or "[]"); print("\n".join("pr-" + str(n) for n in q if isinstance(n, int)))')
+          BRANCHES="$branches" scripts/agent-run.sh integrate-stack
+      - name: Plan stacked pull requests from the validated batch
+        if: always()
+        env:
+          ACCEPTED: ${{ steps.candidate.outputs.accepted }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          python3 -I - "${BASE_BRANCH:-main}" <<'PY' > validated/stack-plan.json || true
+          import json, os, sys
+          from scripts.integration_stack import stack_plan
+          accepted = json.loads(os.environ.get("ACCEPTED", "") or "[]")
+          branches = ["pr-" + str(n) for n in accepted if isinstance(n, int)]
+          json.dump(stack_plan(branches, sys.argv[1]), sys.stdout)
+          PY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: validated-batch
-          path: validated
+          path: |
+            validated
+            .agent/stack-plan.json
+            .agent/stack-branches
+            .agent/stack-checks
+            .agent/stack-check.log
           if-no-files-found: error
           retention-days: 1
 
@@ -233,7 +278,7 @@ jobs:
       # One repository variable supplies the model name; the runner passes it through unchanged.
       SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
       SWARM: '1'
-      CHECK_SCRIPT: scripts/quick-check.sh
+      CHECK_SCRIPT: scripts/integrator-gate.sh
       MERGE_ATTEMPTS: '5'
       AGENT_TIMEOUT: 20m
     steps:

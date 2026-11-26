@@ -27,7 +27,7 @@ from typing import NamedTuple
 # ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from process_env import child_environment
-from swarm_flags import disabled, enabled
+from swarm_flags import MAX_ACTIVE_WORKERS_CAP, WAVE_WORKERS_CAP, disabled, enabled, number
 
 MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
@@ -3227,6 +3227,7 @@ def plan_workers(
     focus="",
     red=False,
     force=False,
+    task_count=0,
 ):
     """Main repairs, then fixes, then ready tasks whose scope is free.
 
@@ -3241,11 +3242,12 @@ def plan_workers(
     waiting-wave limits so a wave can start, but never weakens a verification or merge gate."""
     if not swarm_enabled():
         return []
-    if single_task_mode():
+    focus_ids = {item.strip() for item in str(focus).split(",") if item.strip()}
+    if not max_task_mode():
         max_workers = 1
         slots = list(slots)[:1]
     tasks = parse_tasks(text)
-    if single_task_mode() and not force and repair is None:
+    if not max_task_mode() and not force and repair is None:
         # One active task at a time: do not pick another task while one is taken
         # or has an open pull request. The task must be merged and Delivery green
         # before anything else is planned.
@@ -3341,14 +3343,14 @@ def plan_workers(
     for task in sorted(
         tasks,
         key=lambda t: (
-            focus not in (t["id"], *t["aliases"]),
+            not any(item in (t["id"], *t["aliases"]) for item in focus_ids),
             not is_repair_task(t),
             PRIORITY_RANK[priority_of(t)],
         ),
     ):
         if red and not main_repair_id(task["id"], task["task"]):
             continue
-        wanted = bool(focus) and focus in (task["id"], *task["aliases"])
+        wanted = bool(focus_ids) and any(item in (task["id"], *task["aliases"]) for item in focus_ids)
         if (
             task["status"] not in (("todo", "taken") if force else ("todo",))
             or not task["scope"]
@@ -3376,7 +3378,7 @@ def plan_workers(
 
     def first(t):
         return (
-            t["kind"] == "fix" or is_repair_task(t) or bool(focus) and t["id"] == focus
+            t["kind"] == "fix" or is_repair_task(t) or bool(focus_ids) and t["id"] in focus_ids
         )
 
     urgent = [t for t in plan if first(t)][:slots_left]
@@ -3393,8 +3395,8 @@ def plan_workers(
             )
         ]
     )
-    if single_task_mode():
-        chosen = chosen[:1]
+    if task_count > 0:
+        chosen = chosen[:task_count]
     # The matrix carries only slot identity; SWARM_MODEL is supplied by the
     # workflow at run time, not baked into the image or planner output.
     return [{**t, "slot": s["slot"]} for t, s in zip(chosen, slots)]
@@ -4846,31 +4848,35 @@ def add_latest_repair_task(path=""):
     return False
 
 
-MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
-# One branch runs one wave at a time; each wave offers at most seven story
-# workers. The global ledger still caps overlapping waves across branches.
-WAVE_WORKERS = 7
+MAX_ACTIVE_WORKERS = MAX_ACTIVE_WORKERS_CAP  # workers running at once across every wave
+# The flags resolver owns the hard limits. max_task=false forces one worker in
+# one wave; max_task=true uses these caps as ceilings, never as lower bounds.
+WAVE_WORKERS = WAVE_WORKERS_CAP
 # Repairs, fixes and the debugger are planned first; stories (high, normal, then low) fill every other slot.
 STORY_WAVE_WORKERS = WAVE_WORKERS
 
 
 def clamp_wave_workers(requested):
-    """Bound a requested story-worker count to the supported 1–7 wave range.
+    """Bound a requested worker count to the configured wave ceiling.
 
-    Input is the workflow's ``workers`` value; output is an integer. A request
-    above the cap is reduced rather than rejected, so a stale dispatch with 20
-    can never launch more than seven workers. No scheduling side effect occurs.
+    Input is the workflow's ``workers`` value; output is an integer. The ceiling
+    is one in the default bounded mode and the configured value (1..20) in
+    max-task mode, so a stale dispatch can never over-launch. No side effect.
     """
-    return max(1, min(int(requested), WAVE_WORKERS))
+    return max(1, min(int(requested), wave_workers()))
 
 
-def scheduler_room(capacity, busy, force=False):
-    """Slots the wave may offer after the per-wave and global worker caps.
+def scheduler_room(capacity, busy, force=False, waves=0):
+    """Slots the wave may offer after wave, per-wave and global worker caps.
 
-    ``force`` is the workflow's safety override: it bypasses the global cap so
-    an operator can start a wave even when other waves still have workers. The
-    per-wave ``--max`` and capacity remain the explicit operator choice.
+    ``force`` is the workflow's safety override for the global ledger only; the
+    per-wave ``--max`` and capacity remain the explicit operator choice. ``waves``
+    is the trusted count of currently running waves, excluding this one.
     """
+    # The wave cap is a hard admission rule; the safety override only relaxes
+    # the global worker ledger, never the number of concurrent waves.
+    if waves >= concurrent_wave_limit():
+        return 0
     return max(
         0, min(capacity, MAX_ACTIVE_WORKERS if force else MAX_ACTIVE_WORKERS - busy)
     )
@@ -4973,13 +4979,14 @@ def top_up(finished_id):
     A wave ends only when its slowest worker does, so the slots of the quick ones stayed idle for
     hours. The planner still decides what runs: the combined worker cap, scopes, dependencies and
     the budget gate all apply to the wave this starts. Returns True when a wave was started."""
-    if not swarm_enabled() or single_task_mode():
+    if not swarm_enabled() or not max_task_mode():
         return False
     try:
         live = [name for name in live_workers() if name != finished_id]
+        admit, waves, _ = active_waves()
     except CapacityUnavailable:
         return False
-    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves():
+    if not admit or len(live) >= MAX_ACTIVE_WORKERS or waiting_waves():
         return False
     prs = (
         gh_json(
@@ -5273,9 +5280,76 @@ def swarm_enabled():
     return not disabled(os.environ.get("SWARM_ENABLED", ""), False)
 
 
-def single_task_mode():
-    """True when SWARM_SINGLE_TASK holds a canonical enable token (1/true/yes/on)."""
-    return enabled(os.environ.get("SWARM_SINGLE_TASK", ""), False)
+def max_task_mode():
+    """True when SWARM_MAX_TASK holds a canonical enable token.
+
+    Off (the default) restores the serialized single-wave, single-worker lifecycle;
+    on admits more workers and waves under the configured limits.
+    """
+    return enabled(os.environ.get("SWARM_MAX_TASK", ""), False)
+
+
+def wave_workers():
+    """Worker ceiling for one wave; one while max_task is off.
+
+    Unset means all available workers per wave; an unparseable value fails closed
+    to one. The hard ceiling remains WAVE_WORKERS regardless of the raw value.
+    """
+    if not max_task_mode():
+        return 1
+    return number(os.environ.get("SWARM_MAX_WORKERS_PER_WAVE", ""), WAVE_WORKERS, 1, 1,
+                  WAVE_WORKERS)
+
+
+def concurrent_wave_limit():
+    """Ceiling on simultaneously running waves; one while max_task is off.
+
+    Unset leaves the global 20-worker ledger as the binding constraint; an
+    unparseable value fails closed to one wave.
+    """
+    if not max_task_mode():
+        return 1
+    return number(os.environ.get("SWARM_MAX_WAVE_COUNT", ""), 3, 1, 1, MAX_ACTIVE_WORKERS)
+
+
+def wave_admission(runs, exclude_run_id="", max_waves=None):
+    """Pure decision for one wave from a trusted snapshot of swarm.yml runs.
+
+    ``runs`` is the JSON list from ``gh run list``; ``exclude_run_id`` is the
+    calling run, which must not count itself against the cap. Unknown or missing
+    statuses count as active. Returns ``(admit, active, reason)``; a malformed
+    snapshot raises CapacityUnavailable so the caller fails closed.
+    """
+    limit = concurrent_wave_limit() if max_waves is None else max_waves
+    active = 0
+    for item in runs or ():
+        if not isinstance(item, dict) or "databaseId" not in item or "status" not in item:
+            raise CapacityUnavailable("malformed wave snapshot")
+        if exclude_run_id and str(item["databaseId"]) == str(exclude_run_id):
+            continue
+        if item["status"] != "completed":
+            active += 1
+    if active >= limit:
+        return False, active, "wave_cap"
+    return True, active, ""
+
+
+def active_waves(exclude_run_id=""):
+    """Read the wave count from one checked Actions snapshot and apply the cap.
+
+    Any CLI, JSON or shape failure raises CapacityUnavailable. Branch state is
+    never used here: a queued wave has no claims yet and a finishing wave may
+    already have released them.
+    """
+    try:
+        out = gh("run", "list", "--workflow", "swarm.yml", "--limit", "100",
+                 "--json", "databaseId,status", check=True)
+        runs = json.loads(out or "[]")
+        if not isinstance(runs, list):
+            raise ValueError("wave snapshot is not a list")
+    except (OSError, subprocess.CalledProcessError, ValueError) as exc:
+        raise CapacityUnavailable("wave count unavailable") from exc
+    return wave_admission(runs, exclude_run_id)
 
 
 def debug_rounds(names):
@@ -6030,7 +6104,9 @@ def continue_swarm(text, prs, red=False, force=False):
     """Keep eligible workers busy while the independent integrator runs."""
     if not swarm_enabled():
         return False
-    return bool(plan_workers(1, [{"slot": 1}], text, prs, red=red, force=force))
+    count = clamp_wave_workers(wave_workers())
+    slots = [{"slot": number} for number in range(1, count + 1)]
+    return bool(plan_workers(count, slots, text, prs, red=red, force=force))
 
 
 def pending_note_days():
@@ -6960,6 +7036,20 @@ def main(argv=None):
             emit("count", 0)
             emit("reason", "capacity_unavailable")
             return 0
+        try:
+            admit, waves, wave_reason = active_waves(os.environ.get("GITHUB_RUN_ID", ""))
+        except CapacityUnavailable:
+            print("Wave count unavailable; skipping this wave.")
+            emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
+            emit("count", 0)
+            emit("reason", "capacity_unavailable")
+            return 0
+        if not admit:
+            print(f"Wave cap reached: {wave_reason}.")
+            emit("matrix", json.dumps({"include": []}, separators=(",", ":")))
+            emit("count", 0)
+            emit("reason", wave_reason)
+            return 0
         # Do not plan a new wave while another wave is already queued or waiting:
         # each queued wave would otherwise plan its own full matrix and over-launch.
         if not (a.ignore_red_main or scheduling_override()) and waiting_waves() > 0:
@@ -6971,7 +7061,7 @@ def main(argv=None):
         text = reclaim(todo_read(a.file), everything, live)
         busy = len(live)
         override = a.ignore_red_main or scheduling_override()
-        room = scheduler_room(a.capacity, busy, override)
+        room = scheduler_room(a.capacity, busy, override, waves)
         print(
             f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}."
         )
@@ -6991,6 +7081,7 @@ def main(argv=None):
             focus=a.task,
             red=red,
             force=override,
+            task_count=clamp_wave_workers(a.max),
         )
         if not include:
             # An empty wave is a normal outcome, but the old log gave no reason:
