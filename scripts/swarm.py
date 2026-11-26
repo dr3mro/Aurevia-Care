@@ -17,6 +17,7 @@ import math
 import os
 import random
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -6244,6 +6245,9 @@ def task_id_of_title(title):
 # needs it to analyse dependencies (it grants no GitHub access).
 GATE_SECRET_WORDS = ("TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "_KEY")
 GATE_KEY_ALLOWLIST = frozenset({"NVD_API_KEY"})
+GATE_WORKFLOW_ENV = frozenset({
+    "GITHUB_ENV", "GITHUB_OUTPUT", "GITHUB_PATH", "GITHUB_STATE",
+})
 
 
 def gate_environment(extra_env=None):
@@ -6252,24 +6256,56 @@ def gate_environment(extra_env=None):
     The shared child helper removes repository overrides and installs its safe
     Git configuration before credentials are filtered. Only those helper-owned
     config keys bypass the credential-name filter. ``NVD_API_KEY`` remains
-    available for the dependency scan.
+    available for the dependency scan. GitHub workflow-control files are removed
+    so candidate code cannot poison later steps or forge trusted step outputs.
     """
     env = child_environment(extra_env)
     return {
         name: value
         for name, value in env.items()
-        if name.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))
-        or name in GATE_KEY_ALLOWLIST
-        or not any(word in name.upper() for word in GATE_SECRET_WORDS)
+        if name not in GATE_WORKFLOW_ENV
+        and (
+            name.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))
+            or name in GATE_KEY_ALLOWLIST
+            or not any(word in name.upper() for word in GATE_SECRET_WORDS)
+        )
     }
 
 
+def terminate_gate_process_group(pid):
+    """Terminate a candidate gate's session after its main process exits.
+
+    Candidate tests can leave background descendants behind. The gate runs in a
+    new session, so signalling its process group removes those descendants before
+    the trusted integrator uploads artifacts. An already-reaped group is success.
+    """
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(pid, sig)
+        except ProcessLookupError:
+            pass
+
+
 def run_gate(gate, extra_env=None):
-    """Run the fast gate on the current merge. Returns (ok, log tail)."""
-    done = subprocess.run(
-        ["bash", gate], capture_output=True, text=True, env=gate_environment(extra_env)
+    """Run an isolated candidate gate and return ``(ok, combined log)``.
+
+    The gate receives :func:`gate_environment`, starts in a new session, and its
+    process group is terminated after the main process exits so untrusted
+    descendants cannot outlive validation. Output is captured for diagnostics.
+    """
+    done = subprocess.Popen(
+        ["bash", gate],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=gate_environment(extra_env),
+        start_new_session=True,
     )
-    log = (done.stdout + "\n" + done.stderr).strip()
+    try:
+        stdout, stderr = done.communicate()
+    finally:
+        terminate_gate_process_group(done.pid)
+    log = (stdout + "\n" + stderr).strip()
     return done.returncode == 0, log
 
 

@@ -183,11 +183,15 @@ class ProductionBoundaryTest(unittest.TestCase):
     def test_gate_environment_sanitizes_after_extras(self):
         contaminated = {**self.contaminated(ROUTING), "GH_TOKEN": "synthetic-secret",
                         "NVD_API_KEY": "synthetic-nvd", "SWARM_GIT_NAME": "kept",
-                        "GIT_CONFIG_KEY_3": "core.sshCommand", "GIT_CONFIG_VALUE_3": "evil"}
-        extra = {"GIT_INDEX_FILE": "/synthetic/extra-index", "PUSH_TOKEN": "synthetic-token"}
+                        "GIT_CONFIG_KEY_3": "core.sshCommand", "GIT_CONFIG_VALUE_3": "evil",
+                        "GITHUB_ENV": "/runner/env", "GITHUB_OUTPUT": "/runner/output",
+                        "GITHUB_PATH": "/runner/path", "GITHUB_STATE": "/runner/state"}
+        extra = {"GIT_INDEX_FILE": "/synthetic/extra-index", "PUSH_TOKEN": "synthetic-token",
+                 "GITHUB_ENV": "/synthetic/extra-env"}
         with mock.patch.dict(os.environ, contaminated):
             env = swarm.gate_environment(extra)
-        for name in (*ROUTING, "GH_TOKEN", "PUSH_TOKEN"):
+        for name in (*ROUTING, "GH_TOKEN", "PUSH_TOKEN", "GITHUB_ENV", "GITHUB_OUTPUT",
+                     "GITHUB_PATH", "GITHUB_STATE"):
             self.assertNotIn(name, env)
         self.assertEqual(env["NVD_API_KEY"], "synthetic-nvd")
         self.assertEqual(env["SWARM_GIT_NAME"], "kept")
@@ -199,17 +203,55 @@ class ProductionBoundaryTest(unittest.TestCase):
         self.assert_safe_git_config(env)
 
     def test_run_gate_passes_sanitized_environment(self):
-        done = subprocess.CompletedProcess([], 0, "ok", "")
+        done = mock.Mock(returncode=0, pid=4242)
+        done.communicate.return_value = ("ok", "")
         contaminated = {**self.contaminated(ROUTING), "GH_TOKEN": "synthetic-secret"}
         with mock.patch.dict(os.environ, contaminated), \
-                mock.patch.object(swarm.subprocess, "run", return_value=done) as run:
+                mock.patch.object(swarm.subprocess, "Popen", return_value=done) as popen, \
+                mock.patch.object(swarm.os, "killpg") as killpg:
             ok, log = swarm.run_gate("synthetic-gate.sh", {"GIT_DIR": "/synthetic/extra"})
         self.assertTrue(ok)
         self.assertEqual(log, "ok")
-        env = run.call_args.kwargs["env"]
+        self.assertIs(popen.call_args.kwargs["start_new_session"], True)
+        env = popen.call_args.kwargs["env"]
         self.assertNotIn("GIT_DIR", env)
         self.assertNotIn("GH_TOKEN", env)
         self.assert_safe_git_config(env)
+        self.assertEqual(
+            killpg.call_args_list,
+            [mock.call(4242, swarm.signal.SIGTERM), mock.call(4242, swarm.signal.SIGKILL)],
+        )
+
+    def test_run_gate_tolerates_an_already_reaped_process_group(self):
+        done = mock.Mock(returncode=0, pid=4242)
+        done.communicate.return_value = ("ok", "")
+        with mock.patch.object(swarm.subprocess, "Popen", return_value=done), \
+                mock.patch.object(swarm.os, "killpg", side_effect=ProcessLookupError) as killpg:
+            ok, log = swarm.run_gate("synthetic-gate.sh")
+        self.assertTrue(ok)
+        self.assertEqual(log, "ok")
+        self.assertEqual(killpg.call_count, 2)
+
+    def test_run_gate_cleans_up_when_communicate_fails(self):
+        done = mock.Mock(pid=4242)
+        done.communicate.side_effect = OSError("synthetic communicate failure")
+        with mock.patch.object(swarm.subprocess, "Popen", return_value=done), \
+                mock.patch.object(swarm.os, "killpg") as killpg:
+            with self.assertRaisesRegex(OSError, "synthetic communicate failure"):
+                swarm.run_gate("synthetic-gate.sh")
+        self.assertEqual(
+            killpg.call_args_list,
+            [mock.call(4242, swarm.signal.SIGTERM), mock.call(4242, swarm.signal.SIGKILL)],
+        )
+
+    def test_run_gate_returns_combined_failure_output(self):
+        done = mock.Mock(returncode=1, pid=4242)
+        done.communicate.return_value = ("stdout", "stderr")
+        with mock.patch.object(swarm.subprocess, "Popen", return_value=done), \
+                mock.patch.object(swarm.os, "killpg"):
+            ok, log = swarm.run_gate("synthetic-gate.sh")
+        self.assertFalse(ok)
+        self.assertEqual(log, "stdout\nstderr")
 
     def test_production_subprocesses_use_sanitized_helper(self):
         allowed = {"child_environment", "gate_environment"}

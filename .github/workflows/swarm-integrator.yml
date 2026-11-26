@@ -72,8 +72,9 @@ jobs:
     needs: pick
     if: needs.pick.outputs.count != '0'
     runs-on: ubuntu-24.04
-    # Up to ten PRs, each with the full gate, so 45 minutes cut batches short.
-    timeout-minutes: 120
+    # Up to ten PRs, each with the full gate. Reserve the candidate budget plus
+    # 45m stack + 5m plan diagnostics and setup/upload overhead inside the job.
+    timeout-minutes: 180
     outputs:
       conflicted: ${{ steps.candidate.outputs.conflicted }}
       accepted: ${{ steps.candidate.outputs.accepted }}
@@ -93,9 +94,6 @@ jobs:
           --health-cmd "pg_isready -U postgres"
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
-      # Read-only token for listing PR heads only. No SWARM_TOKEN and no NVD key:
-      # OWASP scans the restored cache and still fails on CVSS >= 7.
-      GH_TOKEN: ${{ github.token }}
       AUREVIA_PG_ADMIN: postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -131,10 +129,24 @@ jobs:
       - uses: ./.github/actions/setup-tooling-python
       - name: Merge each PR locally and gate it without credentials
         id: candidate
+        timeout-minutes: 120
         env:
+          # Read-only token for listing PR heads only. No SWARM_TOKEN and no NVD key:
+          # OWASP scans the restored cache and still fails on CVSS >= 7.
+          GH_TOKEN: ${{ github.token }}
           QUEUE: ${{ needs.pick.outputs.queue }}
           GATE: scripts/integrator-gate.sh
         run: python3 -I scripts/swarm.py integrate-validate --queue "$QUEUE" --gate "$GATE" --out validated
+      # Seal the trusted validation result before any candidate-derived stack or
+      # planner code runs. Keep the manifest and bundle flat: upload-artifact
+      # nests paths under their common ancestor when more than one is uploaded.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: validated-batch
+          path: validated
+          if-no-files-found: error
+          retention-days: 1
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         if: always()
@@ -159,7 +171,13 @@ jobs:
           while IFS= read -r file; do
             cat "$file" >> .agent/work-trail.jsonl
           done < <(find trails -name work-trail.jsonl -type f | sort)
+      # Stacking is diagnostic: the batch was already gated by integrate-validate.
+      # A stack or plan failure must not block publication of that good batch,
+      # but outcomes and annotations stay visible, so tolerate only these steps.
       - name: Build and gate stacked branches
+        id: stack
+        continue-on-error: true
+        timeout-minutes: 45
         env:
           ACCEPTED: ${{ steps.candidate.outputs.accepted }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
@@ -167,7 +185,14 @@ jobs:
         run: |
           branches=$(python3 -I -c 'import json, os; q = json.loads(os.environ["ACCEPTED"] or "[]"); print("\n".join("pr-" + str(n) for n in q if isinstance(n, int)))')
           BRANCHES="$branches" scripts/agent-run.sh integrate-stack
+      - name: Report stacked-branch failure
+        if: always() && steps.stack.outcome == 'failure'
+        run: |
+          printf '::error::integrate-stack: stacked branches failed; see the stack-plan artifact\n'
       - name: Plan stacked pull requests from the validated batch
+        id: stack-plan
+        continue-on-error: true
+        timeout-minutes: 5
         if: always()
         env:
           ACCEPTED: ${{ steps.candidate.outputs.accepted }}
@@ -175,16 +200,11 @@ jobs:
         run: |
           python3 -I scripts/integration_stack.py plan \
             --accepted "$ACCEPTED" --base "${BASE_BRANCH:-main}" \
-            --trail .agent/work-trail.jsonl > .agent/stack-plan.json
-      # Keep the manifest and bundle flat: with several paths upload-artifact
-      # uses the repo root as the common ancestor and nests validated/ again.
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: always()
-        with:
-          name: validated-batch
-          path: validated
-          if-no-files-found: error
-          retention-days: 1
+            --trail .agent/work-trail.jsonl > .agent/stack-plan.json 2>> .agent/stack-check.log
+      - name: Report stacked-plan failure
+        if: always() && steps.stack-plan.outcome == 'failure'
+        run: |
+          printf '::error::integrate-stack: stacked plan failed; see the stack-plan artifact\n'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:

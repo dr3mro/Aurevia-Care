@@ -264,15 +264,20 @@ quote_command_lines() {
 # Story text is not carried through the workflow matrix (GitHub drops a matrix that
 # might contain a secret); the worker reads its task from the tracked task files.
 
-# Running this on every invocation would flood the Actions log with unquoted task
-# text, so keep a copy in the ignored scratch directory for agents that need it
-# and echo a quoted copy. The dump is best effort: a broken tracker must not stop
-# the command. The sentinel keeps trailing blank lines intact through the capture.
+# Keep a tracker copy in the ignored scratch directory on every invocation, but
+# echo a quoted copy only for subcommands that build an agent prompt from it.
+# Orchestration steps such as integrate-stack have no use for it and the dump
+# would flood their Actions log; this dump is best effort and never stops a
+# command. The sentinel keeps trailing blank lines intact through the capture.
 
 if [[ -f scripts/taskstore.py ]]; then
   python3 -I scripts/taskstore.py view > .agent/tasks.txt || true
-  tracker_dump=$(cat .agent/tasks.txt; printf X)
-  quote_command_lines "${tracker_dump%X}"
+  case "${1:-}" in
+    implement|review|debug|triage|reconcile|merge-main|resolve|audit|strategy|daily-qa|daily-devsecops)
+      tracker_dump=$(cat .agent/tasks.txt; printf X)
+      quote_command_lines "${tracker_dump%X}"
+      ;;
+  esac
 fi
 if [[ "${MODE:-story}" != fix && -n "${STORY_ID:-}" && -d tasks && -f scripts/swarm.py ]]; then
   if [[ -z "${STORY_TITLE:-}" ]]; then
@@ -301,6 +306,53 @@ trail_record() { # STAGE AGENT INSTRUCTION OUTPUTS
 }
 
 strip_ansi() { sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
+
+# Escape data interpolated into one GitHub workflow command. Command reasons are
+# built by this script, but branch and base names still cross an untrusted input
+# boundary; percent, CR and LF must not alter the annotation or create a new one.
+escape_workflow_command() {
+  local value=$1
+  value=${value//'%'/'%25'}
+  value=${value//$'\r'/'%0D'}
+  value=${value//$'\n'/'%0A'}
+  printf '%s' "$value"
+}
+
+# Gate and Git output is untrusted. Normalise carriage returns before quoting
+# command markers so a runner cannot treat the text after a CR as a new command.
+neutralise_log_lines() {
+  strip_ansi | tr '\r' '\n' | neutralise_commands
+}
+
+# The stacked gate executes candidate-derived code. Mirror swarm.py's gate
+# environment rule in this shell boundary: remove every credential-shaped
+# variable except the NVD scan key and the helper-owned safe Git config. Run in
+# a subshell so the automation process keeps its own identity and configuration.
+scrub_gate_credentials() {
+  local name upper
+  while IFS= read -r name; do
+    case "$name" in
+      GIT_CONFIG_KEY_*|GIT_CONFIG_VALUE_*|NVD_API_KEY) continue ;;
+    esac
+    upper=$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]') || return 1
+    case "$upper" in
+      *TOKEN*|*SECRET*|*PASSWORD*|*CREDENTIAL*|*_KEY*)
+        unset "$name" 2>/dev/null || return 1
+        ;;
+    esac
+  done < <(compgen -A variable)
+}
+
+# Report one integrate-stack failure without swallowing the caller's status.
+# The reason is built by this script and is safe to emit as an Actions command;
+# the tailed log is untrusted, so strip ANSI escapes and quote command markers
+# before writing it. Always returns zero so set -e cannot exit before the
+# caller records its own nonzero result.
+integrate_stack_failure() {
+  printf '::error::integrate-stack: %s\n' "$(escape_workflow_command "$1")" >&2 || true
+  tail -n 80 "$out/stack-check.log" | neutralise_log_lines >&2 || true
+  return 0
+}
 
 github_git() { # git with token auth, for fetch and push only
   # PUSH_TOKEN can be a PAT with workflow scope (SWARM_TOKEN). GH_TOKEN stays
@@ -1117,9 +1169,10 @@ cmd_resolve() {
   fi
 }
 
-# integrate-stack: plan one stacked pull request per worker bundle.
-# The agent side has no write token; it prepares branches and runs the full
-# gate. A trusted publish job pushes only the exact branches recorded here.
+# integrate-stack: diagnose one stacked branch per validated worker bundle.
+# The agent side has no write token; it prepares diagnostic branches and runs
+# the full gate. Publication still consumes the independently validated batch;
+# these stack refs are evidence, not the trusted push input.
 cmd_integrate_stack() {
   mkdir -p "$out"
   : > "$out/stack-plan.json"
@@ -1135,35 +1188,63 @@ cmd_integrate_stack() {
   # stacked branch must start from the pristine protected ref, not that tree.
   local base_ref="origin/${BASE_BRANCH:-main}"
   if ! git show-ref --verify --quiet "refs/remotes/$base_ref"; then
-    printf 'warning: %s absent; using local base for stacking\n' "$base_ref" >&2
+    printf 'warning: %s absent; using local base for stacking\n' "$base_ref" \
+      | neutralise_log_lines >&2 || true
     base_ref="${BASE_BRANCH:-main}"
   fi
-  python3 -I scripts/integration_stack.py \
-    --base "$base_ref" --trail .agent/work-trail.jsonl \
-    --branches "${branches[@]+"${branches[@]}"}" > "$out/stack-plan.json" || return 1
-  local current previous="$base_ref" position=1
+  if ! python3 -I scripts/integration_stack.py \
+      --base "$base_ref" --trail .agent/work-trail.jsonl \
+      --branches "${branches[@]+"${branches[@]}"}" \
+      > "$out/stack-plan.json" 2>> "$out/stack-check.log"; then
+    printf 'integration_stack.py failed for base %s\n' "$base_ref" \
+      | neutralise_log_lines >> "$out/stack-check.log"
+    integrate_stack_failure "integration_stack.py failed"
+    return 1
+  fi
+  local current previous="$base_ref" position=1 gate
   while IFS= read -r branch; do
     [[ -n "$branch" ]] || continue
     if ! git show-ref --verify --quiet "refs/heads/$branch"; then
+      printf 'missing ref: %s\n' "$branch" | neutralise_log_lines >> "$out/stack-check.log"
       printf 'missing-ref %s\n' "$branch" >> "$out/stack-checks"
+      integrate_stack_failure "missing-ref $branch"
       return 1
     fi
     current="stack-$position-${branch//[^A-Za-z0-9_-]/-}"
-    if ! git switch -q -C "$current" "$previous"; then
+    if ! git switch -q -C "$current" "$previous" >> "$out/stack-check.log" 2>&1; then
+      printf 'switch failed: %s from %s\n' "$current" "$previous" \
+        | neutralise_log_lines >> "$out/stack-check.log"
       printf '%s\n' "failed" >> "$out/stack-checks"
+      integrate_stack_failure "switch failed"
       return 1
     fi
-    if ! git merge -q --no-edit "$branch"; then
+    if ! git merge -q --no-edit "$branch" >> "$out/stack-check.log" 2>&1; then
+      printf 'conflict: %s at position %s\n' "$branch" "$position" \
+        | neutralise_log_lines >> "$out/stack-check.log"
       printf '%s\n' "conflict" >> "$out/stack-checks"
-      git merge --abort 2>/dev/null || git reset -q --hard HEAD
+      integrate_stack_failure "merge conflict $branch"
+      # A conflicted merge and a refusal to merge over local edits leave
+      # different state, so use one deterministic cleanup for both. This is a
+      # disposable validation checkout; discarding its uncommitted state is safe.
+      git merge --abort >/dev/null 2>&1 || true
+      git reset -q --hard HEAD || true
       return 1
     fi
-    if [[ ! -f "${CHECK_SCRIPT:-scripts/integrator-gate.sh}" ]]; then
+    gate=${CHECK_SCRIPT:-scripts/integrator-gate.sh}
+    if [[ ! -f "$gate" ]]; then
+      printf 'gate script missing: %s\n' "$gate" | neutralise_log_lines >> "$out/stack-check.log"
       printf '%s\n' "failed" >> "$out/stack-checks"
+      integrate_stack_failure "gate script missing"
       return 1
     fi
-    if ! bash "${CHECK_SCRIPT:-scripts/integrator-gate.sh}" >> "$out/stack-check.log" 2>&1; then
+    if ! (
+      scrub_gate_credentials || exit 1
+      bash "$gate"
+    ) >> "$out/stack-check.log" 2>&1; then
+      printf 'gate failed: %s at position %s\n' "$branch" "$position" \
+        | neutralise_log_lines >> "$out/stack-check.log"
       printf '%s\n' "failed" >> "$out/stack-checks"
+      integrate_stack_failure "gate failed $branch at position $position"
       return 1
     fi
     printf '%s\n' "$current" >> "$out/stack-branches"

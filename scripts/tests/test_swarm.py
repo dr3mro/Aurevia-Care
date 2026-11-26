@@ -3126,11 +3126,13 @@ class RepairTests(unittest.TestCase):
                 os.chdir(cwd)
 
     def test_run_gate_passes_the_story_to_the_gate_but_no_token(self):
+        done = mock.Mock(returncode=0, pid=7)
+        done.communicate.return_value = ("ok", "")
         with mock.patch.dict(os.environ, {"GH_TOKEN": "secret"}), \
-             mock.patch.object(swarm.subprocess, "run") as run:
-            run.return_value = subprocess.CompletedProcess([], 0, "ok", "")
+             mock.patch.object(swarm.subprocess, "Popen", return_value=done) as popen, \
+             mock.patch.object(swarm.os, "killpg"):
             swarm.run_gate("scripts/repair-gate.sh", {"STORY_ID": "DLV-02", "STORY_BODY": "b"})
-        env = run.call_args.kwargs["env"]
+        env = popen.call_args.kwargs["env"]
         self.assertEqual((env["STORY_ID"], env["STORY_BODY"]), ("DLV-02", "b"))
         self.assertNotIn("GH_TOKEN", env)
 
@@ -3685,13 +3687,15 @@ class ProtectedBranchTests(unittest.TestCase):
 
 class TwoTierTests(unittest.TestCase):
     def test_run_gate_uses_a_token_free_environment(self):
+        done = mock.Mock(returncode=0, pid=7)
+        done.communicate.return_value = ("ok", "")
         with mock.patch.dict(os.environ, {"GH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}), \
-             mock.patch.object(swarm.subprocess, "run") as run:
-            run.return_value = subprocess.CompletedProcess([], 0, "ok", "")
+             mock.patch.object(swarm.subprocess, "Popen", return_value=done) as popen, \
+             mock.patch.object(swarm.os, "killpg"):
             ok, log = swarm.run_gate("scripts/quick-check.sh")
         self.assertTrue(ok)
         self.assertEqual(log, "ok")
-        env = run.call_args.kwargs["env"]
+        env = popen.call_args.kwargs["env"]
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("GITHUB_TOKEN", env)
 
