@@ -1,0 +1,16 @@
+# Test-only opt-in for the fail-closed synthetic-auth guard.
+#
+# SecurityConfiguration fails startup under the synthetic-auth profile unless
+# AUREVIA_ALLOW_SYNTHETIC_AUTH=true is explicitly supplied. Every @SpringBootTest
+# suite that activates synthetic-auth needs that opt-in so its context can start
+# and exercise the real header-identity filter chain.
+#
+# This file lives on the TEST classpath only. It is deliberately absent from
+# src/main/resources and from every image/entrypoint default: shipping the
+# opt-in in a deployed image would re-open the permit-all header identity
+# chain that the guard exists to prevent (IAM-01). Plain
+# WebApplicationContextRunner tests do not load application*.yml, so the tests
+# that assert startup fails without the opt-in keep their explicit
+# withPropertyValues("spring.profiles.active=synthetic-auth") setup and remain
+# a true deny-case proof.
+AUREVIA_ALLOW_SYNTHETIC_AUTH: true
