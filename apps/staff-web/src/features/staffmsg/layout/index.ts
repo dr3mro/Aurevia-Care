@@ -1,8 +1,8 @@
-/** Public entry point for the staff messenger and mail responsive layout. */
+/** Public surface of the shared responsive messenger and mail layout. */
 
-export { MessagePaneLayout } from './MessagePaneLayout';
-export type { MessagePaneLayoutProps } from './MessagePaneLayout';
-export { layoutFor } from './panes';
-export type { PaneLayout, PaneName } from './panes';
-export { layoutKeys, layoutMessages, layoutText, PANE_LABEL_KEYS } from './labels';
-export type { LayoutMessageKey } from './labels';
+export { MessagingLayout, useMessagingNavigation } from './MessagingLayout';
+export type { MessagingLayoutProps, MessagingNavigation, MessagingPane } from './MessagingLayout';
+export { layoutMessages, layoutText } from './layoutText';
+export type { LayoutMessageKey } from './layoutText';
+export { columnsFor, paneVisibility } from './layoutModel';
+export type { MessagingStage, PaneId, PaneVisibility } from './layoutModel';

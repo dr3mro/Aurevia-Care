@@ -10,7 +10,7 @@ import com.aurevia.api.authorization.CommandAuthorization.Decision;
  * Synthetic, process-local decision ledger used by unit tests and local rehearsal.
  *
  * <p>This is a reference sink only. Durable OPS-02 audit of authorization
- * decisions remains with the owning services' transactional audit appender;
+ * decisions is written by {@link com.aurevia.api.authorization.JdbcDecisionSink};
  * this class never holds clinical data or credentials.</p>
  */
 public final class InMemoryDecisionSink implements CommandAuthorization.DecisionSink {
