@@ -89,6 +89,7 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         self.assertNotIn("paths", trigger)
         self.assertNotIn("paths-ignore", trigger)
 
+<<<<<<< HEAD
     def test_delivery_documentation_matches_unfiltered_triggers(self):
         # A stale filter claim tells maintainers a check runs that GitHub never creates,
         # so the operator guide must describe the same trigger contract as the workflow.
@@ -232,3 +233,15 @@ class DeliveryGateContractTest(unittest.TestCase):
                 # Exactly one label proves the mutation caused this violation
                 # rather than a guard that appends the label unconditionally.
                 self.assertEqual(gate_contract_violations(changed).count(expected), 1, label)
+=======
+    def test_operator_docs_do_not_describe_a_filtered_delivery_trigger(self):
+        """Stale path-filter claims make operators expect a gate GitHub never reports."""
+        docs = (ROOT / "docs" / "reference" / "testing-guide.md",
+                ROOT / "docs" / "swarm" / "EFFICIENCY.md")
+        for path in docs:
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertNotIn("paths-ignore", text)
+                self.assertNotIn("paths:", text)
+                self.assertIn("delivery gate", text.lower())
+>>>>>>> origin/main
