@@ -1,0 +1,6 @@
+- [-] SWARM-PO-AGENT-ID · Fix silent PO/SM selection caused by skill IDs used as OpenCode agent IDs
+  - agent: orca
+  - scope: .github/workflows/swarm.yml, scripts/tests/test_swarm.py
+  - details:
+    In Agent swarm, `Select feature (PO)` and `Allocate tasks (SM)` invoke `opencode run --agent aurevia-product-owner` / `--agent aurevia-scrum-master`. Those are skill IDs; OpenCode agent IDs are `product-owner` and `scrum-master` (see `.opencode/agents/` and `opencode debug agents`). OpenCode exits immediately with `Agent not found`, stderr goes to `/tmp/select.log` inside a `--rm` container and `|| true` hides the exit code, so the step writes empty `feature=`/`task_ids=` outputs and the run reports success with no worker. Fix the agent IDs, preserve and print the OpenCode stdout/stderr and exit code, fail the step when OpenCode fails or its required output cannot be parsed, and add a guard test that every `--agent` in the workflow resolves to a configured agent and that the silent-failure pattern is gone.
+    Evidence source: Actions logs for run 45818273607 and the attached 12:41Z wave logs; local reproduction `opencode run --agent aurevia-product-owner --model opencode-go/hy4-flash-free 'Reply with OK'` -> `Error: Agent not found: "aurevia-product-owner"`.

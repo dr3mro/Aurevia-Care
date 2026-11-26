@@ -87,18 +87,41 @@ jobs:
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
             -e SWARM_MODEL -e OPENCODE_API_KEY \
             "$image" bash -lc '
-              opencode run --auto --agent aurevia-product-owner --model "$SWARM_MODEL" \
+              opencode run --auto --agent product-owner --model "$SWARM_MODEL" \
                 "Use the aurevia-context-optimizer skill. Before deciding, read the code base and evidence: .opencode/config/PROJECT_V1_SPEC.md for the requirement IDs, tasks/ for [x] done, [-] taken and [ ] open, .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, docs/decisions/ and targeted entry points under apps/, db/ and contracts/. Separate implemented, partial, planned and unknown work. A feature is a range of related tasks sharing a task-id prefix, for example SMSG or PRINT. Pick the feature where the remaining gap is real and the open eligible tasks (depends done, attempts below 5) should be directed next. Reply with exactly two lines on stdout, the last two: feature=<PREFIX> then tasks=<comma-separated task ids of that feature>. Ids only; no prose on those lines." \
-                > .agent/selected-feature.txt 2>/tmp/select.log || true
+                > .agent/selected-feature.txt 2>.agent/select.log
+              rc=$?
+              if [[ -f .agent/select.log ]]; then
+                echo "--- OpenCode select log ---" >&2
+                cat .agent/select.log >&2
+              fi
+              echo "opencode rc=$rc" >&2
+              exit "$rc"
             '
           rc=$?
           echo "docker rc=$rc" >&2
+          if [[ -f .agent/selected-feature.txt ]]; then
+            echo "--- selected feature output ---" >&2
+            cat .agent/selected-feature.txt >&2
+          fi
+          if (( rc != 0 )); then
+            echo "OpenCode feature selection failed; no task was selected" >&2
+            exit "$rc"
+          fi
+          if [[ ! -f .agent/selected-feature.txt ]]; then
+            echo "OpenCode produced no feature selection output" >&2
+            exit 1
+          fi
           feature=$(/usr/bin/grep -oE '^feature=[A-Za-z0-9_-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2 || true)
           tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2 || true)
+          if [[ -z "$feature" || -z "$tasks" ]]; then
+            echo "OpenCode feature selection was not parseable" >&2
+            exit 1
+          fi
           echo "Selected feature: ${feature:-none}; candidates: ${tasks:-none}" >&2
           echo "feature=${feature:-}" >> "$GITHUB_OUTPUT"
           echo "task_ids=${tasks:-}" >> "$GITHUB_OUTPUT"
-          python3 -I scripts/work_trail.py --stage feature --agent aurevia-product-owner \
+          python3 -I scripts/work_trail.py --stage feature --agent product-owner \
             --instruction "select one feature prefix and its candidate task ids" \
             --outputs "feature=${feature:-} tasks=${tasks:-}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -144,16 +167,35 @@ jobs:
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
             -e SWARM_MODEL -e OPENCODE_API_KEY -e FEATURE -e CANDIDATES -e WORKER_COUNT \
             "$image" bash -lc '
-              opencode run --auto --agent aurevia-scrum-master --model "$SWARM_MODEL" \
+              opencode run --auto --agent scrum-master --model "$SWARM_MODEL" \
                 "Use the aurevia-context-optimizer skill. Before deciding, read the code base and evidence: the requirement IDs in .opencode/config/PROJECT_V1_SPEC.md, the [x] done, [-] taken and [ ] open entries in tasks/, .opencode/config/BUGS.md, docs/decisions/ and the targeted source under apps/, db/ and contracts/ for each candidate. From candidates $CANDIDATES pick at most $WORKER_COUNT open tasks that are still needed, whose dependencies are met and whose scope paths do not overlap each other or any [-] task. Reply with one line only: tasks=<comma-separated task ids>. Ids only." \
-                > .agent/allocated-tasks.txt 2>/tmp/allocate.log || true
+                > .agent/allocated-tasks.txt 2>.agent/allocate.log
+              rc=$?
+              if [[ -f .agent/allocate.log ]]; then
+                echo "--- OpenCode allocate log ---" >&2
+                cat .agent/allocate.log >&2
+              fi
+              echo "opencode rc=$rc" >&2
+              exit "$rc"
             '
           rc=$?
           echo "docker rc=$rc" >&2
+          if [[ -f .agent/allocated-tasks.txt ]]; then
+            echo "--- allocated tasks output ---" >&2
+            cat .agent/allocated-tasks.txt >&2
+          fi
+          if (( rc != 0 )); then
+            echo "OpenCode task allocation failed; no task was allocated" >&2
+            exit "$rc"
+          fi
+          if [[ ! -f .agent/allocated-tasks.txt ]]; then
+            echo "OpenCode produced no task allocation output" >&2
+            exit 1
+          fi
           tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/allocated-tasks.txt | tail -n 1 | cut -d= -f2 || true)
           echo "Allocated tasks: ${tasks:-none}" >&2
           echo "task_ids=${tasks:-}" >> "$GITHUB_OUTPUT"
-          python3 -I scripts/work_trail.py --stage allocation --agent aurevia-scrum-master \
+          python3 -I scripts/work_trail.py --stage allocation --agent scrum-master \
             --instruction "pick at most ${WORKER_COUNT:-1} non-overlapping tasks from ${CANDIDATES:-}" \
             --outputs "feature=${FEATURE:-} tasks=${tasks:-}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

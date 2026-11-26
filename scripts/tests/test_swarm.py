@@ -962,6 +962,42 @@ class PlanTests(unittest.TestCase):
         self.assertIn("name: Swarm worker", text)
         self.assertNotIn("Worker ${{ matrix.slot }}", text)
 
+    def test_workflow_agents_are_configured_agents_not_skill_ids(self):
+        """The PO and SM steps must name agents OpenCode can resolve.
+
+        A skill id such as ``aurevia-product-owner`` makes ``opencode run`` exit
+        immediately with ``Agent not found``. With stderr in a removed container
+        and ``|| true`` that failure looked like a feature-free wave.
+        """
+        workflow = (ROOT / ".github/workflows/swarm.yml").read_text()
+        configured = {path.stem for path in (ROOT / ".opencode/agents").glob("*.md")}
+        agents = re.findall(r"--agent\s+([A-Za-z0-9_-]+)", workflow)
+        self.assertTrue(agents)
+        for agent in agents:
+            with self.subTest(agent=agent):
+                self.assertIn(agent, configured)
+        self.assertIn("--agent product-owner", workflow)
+        self.assertIn("--agent scrum-master", workflow)
+        self.assertNotIn("--agent aurevia-product-owner", workflow)
+        self.assertNotIn("--agent aurevia-scrum-master", workflow)
+
+    def test_selection_steps_report_agency_failure_instead_of_hiding_it(self):
+        """Both LLM steps keep stdout, stderr and the exit code visible."""
+        workflow = (ROOT / ".github/workflows/swarm.yml").read_text()
+        select = workflow.split("name: Select one feature with OpenCode", 1)[1].split("  allocate:", 1)[0]
+        allocate = workflow.split("name: Allocate non-overlapping tasks with OpenCode", 1)[1]
+        for step in (select, allocate):
+            with self.subTest(step=step[:60]):
+                self.assertNotIn("|| true", step.split("rc=$?", 1)[0])
+                self.assertIn("rc=$?", step)
+                self.assertIn('echo "opencode rc=$rc" >&2', step)
+                self.assertIn('exit "$rc"', step)
+                self.assertIn("> .agent/", step)
+                self.assertIn("2>.agent/", step)
+                self.assertIn("cat .agent/", step)
+        self.assertIn("not parseable", select)
+        self.assertIn("no feature selection output", select)
+
     def test_repair_watches_fix_prs_only(self):
         workflows = ROOT / ".github/workflows"
         self.assertFalse((workflows / "main-watchdog.yml").exists())
