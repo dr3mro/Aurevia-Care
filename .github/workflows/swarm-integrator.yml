@@ -142,11 +142,14 @@ jobs:
           pattern: worker-*
           path: trails
           merge-multiple: false
+      # Optional: allocation may have been skipped, so this artifact can be
+      # absent. A no-match pattern downloads nothing and keeps the job green
+      # without the red artifact-not-found annotation.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         if: always()
         with:
-          name: trail-allocation
+          pattern: trail-allocation
           path: trails/trail-allocation
       - name: Merge worker trails for the integrator
         if: always()
@@ -215,10 +218,12 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
+      # The validate job may be skipped when there is no queue, so there is no
+      # batch to publish. Pattern matching keeps that absence a clean no-op.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         with:
-          name: validated-batch
+          pattern: validated-batch
           path: validated
       - uses: ./.github/actions/setup-tooling-python
       - name: Push only the exact validated commit SHAs
