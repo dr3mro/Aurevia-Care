@@ -93,7 +93,6 @@ class JdbcSubstitutionDecisionStoreTest {
         assertNull(store.findReplayProposalId(SubstitutionFixtures.ORG, "approve", "key"));
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     void replayProposalIdIsMappedFromTheDecisionRow() throws Exception {
         // The store reads the winning proposal by column position; a canned list would
