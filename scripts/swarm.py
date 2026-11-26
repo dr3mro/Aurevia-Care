@@ -6247,6 +6247,7 @@ GATE_SECRET_WORDS = ("TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "_KEY")
 GATE_KEY_ALLOWLIST = frozenset({"NVD_API_KEY"})
 GATE_WORKFLOW_ENV = frozenset({
     "GITHUB_ENV", "GITHUB_OUTPUT", "GITHUB_PATH", "GITHUB_STATE",
+    "GITHUB_STEP_SUMMARY",
 })
 
 
@@ -6291,20 +6292,28 @@ def run_gate(gate, extra_env=None):
 
     The gate receives :func:`gate_environment`, starts in a new session, and its
     process group is terminated after the main process exits so untrusted
-    descendants cannot outlive validation. Output is captured for diagnostics.
+    descendants cannot outlive validation. Output goes to private temporary files
+    rather than pipes: a descendant holding an inherited pipe cannot block the
+    trusted integrator before cleanup runs.
     """
-    done = subprocess.Popen(
-        ["bash", gate],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=gate_environment(extra_env),
-        start_new_session=True,
-    )
-    try:
-        stdout, stderr = done.communicate()
-    finally:
-        terminate_gate_process_group(done.pid)
+    with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as stdout_file, \
+            tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as stderr_file:
+        done = subprocess.Popen(
+            ["bash", gate],
+            stdout=stdout_file,
+            stderr=stderr_file,
+            text=True,
+            env=gate_environment(extra_env),
+            start_new_session=True,
+        )
+        try:
+            done.wait()
+        finally:
+            terminate_gate_process_group(done.pid)
+        stdout_file.seek(0)
+        stderr_file.seek(0)
+        stdout = stdout_file.read()
+        stderr = stderr_file.read()
     log = (stdout + "\n" + stderr).strip()
     return done.returncode == 0, log
 
@@ -6493,6 +6502,8 @@ def integrate_prepare(
             git("reset", "--hard", base)
             continue
         pr_gate, pr_env = gate_for(pr, gate)
+        merge_head = git("rev-parse", "HEAD").strip()
+        merge_tree = git("rev-parse", "HEAD^{tree}").strip()
         ok, log = run_gate(pr_gate, pr_env)
         if not ok:
             result["rejected"].append(
@@ -6505,9 +6516,17 @@ def integrate_prepare(
             )
             git("reset", "--hard", base)
             continue
+        if (git("rev-parse", "HEAD").strip() != merge_head
+                or git("rev-parse", "HEAD^{tree}").strip() != merge_tree):
+            result["rejected"].append(
+                {"pr": pr, "kind": "mutated", "reason": "candidate gate changed the gated tree"}
+            )
+            git("reset", "--hard", base)
+            continue
         result["gates"][str(pr)] = [pr_gate, pr_env]
         result["accepted"].append(
-            {"pr": pr, "task_id": task_id, "head_sha": head, "merge_sha": sha}
+            {"pr": pr, "task_id": task_id, "head_sha": head, "merge_sha": sha,
+             "tree_sha": merge_tree}
         )
     return result
 
@@ -6588,7 +6607,103 @@ def integrate_validate(
     emit("conflicted", json.dumps(result["conflicted"]))
     report = result["rejected"] + result["already"] + result["conflict_details"]
     emit("report", json.dumps(report))
+    # The fresh seal job rebuilds the artifact from these exact, independently
+    # re-verified PR heads. Candidate-produced files and reporting text never
+    # cross the trust boundary.
+    emit("seal", json.dumps({
+        "accepted": [
+            {"pr": item["pr"], "head_sha": item["head_sha"], "tree_sha": item["tree_sha"]}
+            for item in result["accepted"]
+        ]
+    }, separators=(",", ":")))
     return result
+
+
+def integrate_seal(base, payload_file, out="validated"):
+    """Rebuild and bundle a validated batch in a fresh trusted job.
+
+    ``base`` is the workflow's trusted commit SHA. ``payload_file`` carries the
+    tokenless validation decisions; every accepted PR head is re-checked against
+    GitHub policy/Delivery evidence and merged by exact SHA without running
+    candidate code. The resulting manifest and bundle are safe for the write-token
+    publication job. Malformed or changed inputs fail closed before any bundle is
+    written.
+    """
+    if not re.fullmatch(r"[0-9a-f]{40}", base):
+        raise SystemExit("integrate-seal: base must be a 40-character lowercase SHA")
+    payload = json.loads(Path(payload_file).read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or not isinstance(payload.get("accepted"), list):
+        raise SystemExit("integrate-seal: payload must contain an accepted list")
+    git("checkout", "-q", "--detach", base)
+    accepted = []
+    gates = {}
+    seen = set()
+    wiring_checker = _checker("check-wiring")
+    for item in payload["accepted"]:
+        if not isinstance(item, dict):
+            raise SystemExit("integrate-seal: accepted entries must be objects")
+        pr = item.get("pr")
+        head = item.get("head_sha")
+        if isinstance(pr, bool) or not isinstance(pr, int) or pr <= 0:
+            raise SystemExit("integrate-seal: accepted PR number is invalid")
+        if pr in seen:
+            raise SystemExit(f"integrate-seal: duplicate PR #{pr}")
+        if not isinstance(head, str) or not re.fullmatch(r"[0-9a-f]{40}", head):
+            raise SystemExit(f"integrate-seal: PR #{pr} head SHA is invalid")
+        tree = item.get("tree_sha")
+        if not isinstance(tree, str) or not re.fullmatch(r"[0-9a-f]{40}", tree):
+            raise SystemExit(f"integrate-seal: PR #{pr} tree SHA is invalid")
+        seen.add(pr)
+        blocked = guard(pr, is_repair(pr), report=False)
+        if isinstance(blocked, tuple):
+            kind, _, _ = blocked
+        else:
+            kind = "override" if blocked == "override" else ("" if not blocked else "blocked")
+        if kind and kind != "override":
+            raise SystemExit(f"integrate-seal: PR #{pr} is no longer eligible")
+        if delivery_gate(pr, head, report=False) != "merge":
+            raise SystemExit(f"integrate-seal: PR #{pr} no longer has merge evidence")
+        before = git("rev-parse", "HEAD").strip()
+        sha, task_id, conflicts = merge_local(pr)
+        if sha is None:
+            raise SystemExit(
+                f"integrate-seal: PR #{pr} conflicts in {', '.join(conflicts) or 'unknown files'}"
+            )
+        if sha != head:
+            raise SystemExit(f"integrate-seal: PR #{pr} head moved after validation")
+        wiring_error = refresh_wiring_baseline(wiring_checker, before)
+        if wiring_error is None:
+            raise SystemExit(f"integrate-seal: PR #{pr} was already integrated")
+        if wiring_error:
+            raise SystemExit(f"integrate-seal: PR #{pr} wiring check failed: {wiring_error}")
+        if git("rev-parse", "HEAD^{tree}").strip() != tree:
+            raise SystemExit(f"integrate-seal: PR #{pr} gated tree changed during sealing")
+        pr_gate, pr_env = gate_for(pr, "scripts/integrator-gate.sh")
+        accepted.append(
+            {"pr": pr, "task_id": task_id, "head_sha": head, "merge_sha": sha}
+        )
+        gates[str(pr)] = [pr_gate, pr_env]
+    # Candidate-runner reporting is not an authorization source. The trusted
+    # publisher may write labels/comments/close PRs, so only independently
+    # verified accepted heads cross this boundary; other decisions stay in the
+    # tokenless validation log for a separate trusted reporting path.
+    manifest = {
+        key: []
+        for key in ("rejected", "already", "conflicted", "conflict_details")
+    }
+    manifest.update(
+        base=base,
+        tip=git("rev-parse", "HEAD").strip(),
+        accepted=accepted,
+        gates=gates,
+    )
+    target = Path(out)
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    )
+    git("bundle", "create", str(target / "main.bundle"), "--all")
+    return manifest
 
 
 def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
@@ -6741,23 +6856,12 @@ def integrate_finalize(merged, gates, gate):
                     "Integrate swarm PRs (reconciled)",
                     "--allow-empty",
                 )
-                # Re-gate with the strictest gate the batch used: the full one if any PR needed it.
-                regate = (
-                    gate if any(g == gate for g, _ in gates.values()) else REPAIR_GATE
+                # Candidate code must never run in the write-token publication
+                # job. A changed trusted base requires a fresh tokenless
+                # validate/seal cycle so the new merge tree is gated first.
+                raise RuntimeError(
+                    "main advanced with non-tracker changes; retry batch from the new base"
                 )
-                renv = next((e for g, e in gates.values() if g == regate), {})
-                ok, log = run_gate(regate, renv)
-                if not ok:
-                    # Nothing was pushed. Restore completion records before sending the batch back.
-                    restore_records(before_tasks, before_notes)
-                    for pr, _, _ in merged:
-                        fail(
-                            pr,
-                            f"Merge gate ({regate}) failed on the merge of the newest main and this batch",
-                            log,
-                        )
-                    emit("merged", 0)
-                    return INTEGRATION_FAILED
     except Exception:
         restore_records(before_tasks, before_notes)
         raise
@@ -6927,6 +7031,12 @@ def main(argv=None):
     p = sub.add_parser("integrate-validate")
     p.add_argument("--queue", required=True, help="JSON array of pull request numbers")
     p.add_argument("--gate", default="scripts/integrator-gate.sh")
+    p.add_argument(
+        "--out", default="validated", help="directory for manifest.json and main.bundle"
+    )
+    p = sub.add_parser("integrate-seal")
+    p.add_argument("--base", required=True, help="trusted workflow head SHA")
+    p.add_argument("--payload", required=True, help="validation decisions JSON file")
     p.add_argument(
         "--out", default="validated", help="directory for manifest.json and main.bundle"
     )
@@ -7404,6 +7514,9 @@ def main(argv=None):
         return integration_exit_code(integrate_batch(json.loads(a.queue), a.gate))
     elif a.cmd == "integrate-validate":
         integrate_validate(json.loads(a.queue), a.gate, a.out)
+    elif a.cmd == "integrate-seal":
+        manifest = integrate_seal(a.base, a.payload, a.out)
+        emit("conflicted", json.dumps(manifest["conflicted"]))
     elif a.cmd == "integrate-publish":
         return integration_exit_code(integrate_publish(a.manifest, a.bundle, a.gate))
     elif a.cmd == "resolve-publish":

@@ -394,7 +394,10 @@ if [[ -n "${GH_TOKEN:-}" || -n "${GITHUB_TOKEN:-}" || \
       -n "${FAKE_SECRET:-}" || -n "${FAKE_CREDENTIAL:-}" || \
       -n "${AWS_ACCESS_KEY_ID:-}" || -n "${GPG_KEY_ID:-}" || \
       -n "${NVD_API_KEY_EXTRA:-}" || -n "${nvd_api_key:-}" || \
-      -n "${Nvd_Api_Key:-}" || -n "${git_config_key_extra:-}" ]]; then
+      -n "${Nvd_Api_Key:-}" || -n "${git_config_key_extra:-}" || \
+      -n "${GITHUB_ENV:-}" || -n "${GITHUB_OUTPUT:-}" || \
+      -n "${GITHUB_PATH:-}" || -n "${GITHUB_STATE:-}" || \
+      -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   echo 'credential leaked to candidate gate'
   exit 23
 fi
@@ -422,6 +425,11 @@ printf 'scrubbed\\n' >> "$GATE_LOG"
             nvd_api_key="lower-nvd-key",
             Nvd_Api_Key="mixed-nvd-key",
             git_config_key_extra="mixed-git-key",
+            GITHUB_ENV=str(self.tmp / "github-env"),
+            GITHUB_OUTPUT=str(self.tmp / "github-output"),
+            GITHUB_PATH=str(self.tmp / "github-path"),
+            GITHUB_STATE=str(self.tmp / "github-state"),
+            GITHUB_STEP_SUMMARY=str(self.tmp / "github-summary"),
             NVD_API_KEY="allowed",
         )
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -469,6 +477,24 @@ exec /usr/bin/tr "$@"
         self.assertEqual(self.gate_log.read_text().splitlines(), [])
         self.assertEqual((self.repo / ".agent/stack-checks").read_text().splitlines(), ["failed"])
 
+    def test_readonly_workflow_control_variable_fails_closed(self):
+        self.add_branch("pr-1768", file_name="first.txt")
+        bash_env = self.tmp / "bash-env"
+        bash_env.write_text(
+            "readonly GITHUB_ENV=/synthetic/env\n"
+            "readonly GITHUB_OUTPUT=/synthetic/output\n"
+            "export GITHUB_ENV GITHUB_OUTPUT\n",
+            encoding="utf-8",
+        )
+        result = self.run_stack("pr-1768", BASH_ENV=str(bash_env))
+        self.assert_diagnosed(
+            result,
+            "gate failed pr-1768 at position 1",
+            "gate failed: pr-1768 at position 1",
+        )
+        self.assertEqual(self.gate_log.read_text().splitlines(), [])
+        self.assertEqual((self.repo / ".agent/stack-checks").read_text().splitlines(), ["failed"])
+
     def test_credential_scrub_conversion_failure_fails_closed(self):
         self.add_branch("pr-1768", file_name="first.txt")
         tr = self.bin_dir / "tr"
@@ -486,6 +512,21 @@ exec /usr/bin/tr "$@"
         )
         tr.chmod(0o755)
         result = self.run_stack("pr-1768", TR_COUNT_FILE=str(count_file))
+        self.assert_diagnosed(
+            result,
+            "gate failed pr-1768 at position 1",
+            "gate failed: pr-1768 at position 1",
+        )
+        self.assertEqual(self.gate_log.read_text().splitlines(), [])
+        self.assertEqual((self.repo / ".agent/stack-checks").read_text().splitlines(), ["failed"])
+
+    def test_credential_scrub_enumeration_failure_fails_closed(self):
+        self.add_branch("pr-1768", file_name="first.txt")
+        bash_env = self.tmp / "bash-env"
+        bash_env.write_text(
+            "GH_TOKEN=synthetic-secret\ncompgen() { return 42; }\n", encoding="utf-8"
+        )
+        result = self.run_stack("pr-1768", BASH_ENV=str(bash_env))
         self.assert_diagnosed(
             result,
             "gate failed pr-1768 at position 1",
@@ -584,7 +625,7 @@ class StackWorkflowTests(unittest.TestCase):
                      "Report stacked-plan failure"):
             self.assertNotIn("continue-on-error", self.step(name))
         publish = self.workflow["jobs"]["publish"]
-        self.assertEqual(publish["needs"], ["pick", "validate"])
+        self.assertEqual(publish["needs"], ["pick", "validate", "seal"])
         condition = " ".join(publish["if"].split())
         self.assertEqual(
             condition,
@@ -635,21 +676,61 @@ class StackWorkflowTests(unittest.TestCase):
         self.assertLess(steps.index(step), steps.index(report))
         self.assertLess(steps.index(report), steps.index(self.step_upload("stack-plan")))
 
-    def test_validated_batch_is_sealed_before_candidate_stack_code_runs(self):
-        steps = self.workflow["jobs"]["validate"]["steps"]
-        uploads = [step for step in steps
+    def test_validated_batch_is_built_and_uploaded_in_a_fresh_trusted_job(self):
+        validate_steps = self.workflow["jobs"]["validate"]["steps"]
+        self.assertFalse(any(
+            (step.get("with") or {}).get("name") == "validated-batch"
+            for step in validate_steps
+        ))
+        seal = self.workflow["jobs"]["seal"]
+        self.assertEqual(seal["needs"], ["validate"])
+        self.assertEqual(seal["outputs"]["conflicted"],
+                         "${{ steps.rebuild.outputs.conflicted }}")
+        self.assertNotIn("continue-on-error", seal)
+        self.assertEqual(seal["permissions"], {
+            "contents": "read", "pull-requests": "read", "actions": "read",
+        })
+        self.assertEqual(seal["env"]["GH_TOKEN"], "${{ github.token }}")
+        self.assertEqual(seal["env"]["SEAL"], "${{ needs.validate.outputs.seal }}")
+        self.assertEqual(seal["env"]["BASE_SHA"], "${{ github.sha }}")
+        self.assertEqual(
+            self.workflow["jobs"]["validate"]["outputs"]["seal"],
+            "${{ steps.candidate.outputs.seal }}",
+        )
+        checkout = next(step for step in seal["steps"]
+                        if str(step.get("uses", "")).startswith("actions/checkout@"))
+        self.assertEqual(checkout["with"]["ref"], "${{ github.sha }}")
+        self.assertIs(checkout["with"]["persist-credentials"], False)
+        self.assertFalse(any(
+            str(step.get("uses", "")).startswith("actions/download-artifact@")
+            for step in seal["steps"]
+        ))
+        rebuild = self.step_job("seal", "Rebuild and bundle exact validated heads")
+        self.assertEqual(rebuild["id"], "rebuild")
+        self.assertIn("scripts/swarm.py integrate-seal", rebuild["run"])
+        self.assertIn('--base "$BASE_SHA"', rebuild["run"])
+        self.assertIn('--payload "$RUNNER_TEMP/validated-seal.json"', rebuild["run"])
+        self.assertIn('--out validated', rebuild["run"])
+        uploads = [step for step in seal["steps"]
                    if (step.get("with") or {}).get("name") == "validated-batch"]
         self.assertEqual(len(uploads), 1)
-        upload = uploads[0]
-        self.assertEqual(upload["with"]["path"], "validated")
-        self.assertLess(
-            steps.index(upload),
-            steps.index(self.step("Build and gate stacked branches")),
+        self.assertEqual(uploads[0]["with"]["path"], "validated")
+        self.assertEqual(uploads[0]["with"]["if-no-files-found"], "error")
+        self.assertNotIn("if", uploads[0])
+        self.assertEqual(self.workflow["jobs"]["publish"]["needs"],
+                         ["pick", "validate", "seal"])
+
+    def test_pick_validate_and_seal_share_the_trusted_dispatch_sha(self):
+        pick = self.workflow["jobs"]["pick"]
+        self.assertEqual(
+            pick["if"],
+            "github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'",
         )
-        self.assertLess(
-            steps.index(upload),
-            steps.index(self.step("Plan stacked pull requests from the validated batch")),
-        )
+        for job in ("pick", "validate", "seal"):
+            checkout = next(step for step in self.workflow["jobs"][job]["steps"]
+                            if str(step.get("uses", "")).startswith("actions/checkout@"))
+            self.assertEqual(checkout["with"]["ref"], "${{ github.sha }}")
+            self.assertIs(checkout["with"]["persist-credentials"], False)
 
     def test_github_token_is_scoped_to_the_candidate_step(self):
         validate = self.workflow["jobs"]["validate"]
@@ -657,6 +738,11 @@ class StackWorkflowTests(unittest.TestCase):
         candidate = self.step("Merge each PR locally and gate it without credentials")
         self.assertEqual(candidate["env"]["GH_TOKEN"], "${{ github.token }}")
         self.assertNotIn("GH_TOKEN", self.step("Build and gate stacked branches").get("env", {}))
+
+    def test_seal_job_is_skipped_for_an_empty_wave(self):
+        seal = self.workflow["jobs"]["seal"]
+        self.assertIn("needs.validate.result == 'success'", seal["if"])
+        self.assertIn("needs.validate.outputs.seal != ''", seal["if"])
 
     def test_stack_diagnostics_upload_on_failure(self):
         uploads = [step for step in self.workflow["jobs"]["validate"]["steps"]
@@ -668,9 +754,13 @@ class StackWorkflowTests(unittest.TestCase):
         for path in (".agent/stack-plan.json", ".agent/stack-branches",
                      ".agent/stack-check.log", ".agent/stack-checks"):
             self.assertIn(path, upload["with"]["path"])
-        batch = self.step_upload("validated-batch")
-        self.assertEqual(batch["if"], "always()")
+        batch = next(step for step in self.workflow["jobs"]["seal"]["steps"]
+                     if (step.get("with") or {}).get("name") == "validated-batch")
         self.assertEqual(batch["with"]["if-no-files-found"], "error")
+
+    def step_job(self, job, name):
+        return next(step for step in self.workflow["jobs"][job]["steps"]
+                    if step.get("name") == name)
 
     def step_publish(self, name):
         return next(step for step in self.workflow["jobs"]["publish"]["steps"]

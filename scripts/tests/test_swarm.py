@@ -3127,7 +3127,6 @@ class RepairTests(unittest.TestCase):
 
     def test_run_gate_passes_the_story_to_the_gate_but_no_token(self):
         done = mock.Mock(returncode=0, pid=7)
-        done.communicate.return_value = ("ok", "")
         with mock.patch.dict(os.environ, {"GH_TOKEN": "secret"}), \
              mock.patch.object(swarm.subprocess, "Popen", return_value=done) as popen, \
              mock.patch.object(swarm.os, "killpg"):
@@ -3688,13 +3687,12 @@ class ProtectedBranchTests(unittest.TestCase):
 class TwoTierTests(unittest.TestCase):
     def test_run_gate_uses_a_token_free_environment(self):
         done = mock.Mock(returncode=0, pid=7)
-        done.communicate.return_value = ("ok", "")
         with mock.patch.dict(os.environ, {"GH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}), \
              mock.patch.object(swarm.subprocess, "Popen", return_value=done) as popen, \
              mock.patch.object(swarm.os, "killpg"):
             ok, log = swarm.run_gate("scripts/quick-check.sh")
         self.assertTrue(ok)
-        self.assertEqual(log, "ok")
+        self.assertEqual(log, "")
         env = popen.call_args.kwargs["env"]
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("GITHUB_TOKEN", env)
@@ -3899,11 +3897,11 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")) as gate, \
              mock.patch.object(swarm, "git") as gitmock, \
              mock.patch.object(swarm, "authed_git", side_effect=authed) as authedmock:
-            count = swarm.integrate_batch([1], "scripts/quick-check.sh")
-        self.assertEqual(count, 1)
-        self.assertEqual(push_attempts["n"], 2)
+            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
+                swarm.integrate_batch([1], "scripts/quick-check.sh")
+        self.assertEqual(push_attempts["n"], 1)
         self.assertTrue(any(c.args[:2] == ("fetch", "origin") for c in authedmock.call_args_list))
-        self.assertGreaterEqual(gate.call_count, 2)
+        self.assertEqual(gate.call_count, 1)
         self.assertTrue(any(c.args[:3] == ("reset", "--soft", "origin/main")
                             for c in gitmock.call_args_list))
 
@@ -3955,7 +3953,7 @@ class TwoTierTests(unittest.TestCase):
             try:
                 swarm.integrate_batch([1], "scripts/quick-check.sh")
                 raised = False
-            except subprocess.CalledProcessError:
+            except (subprocess.CalledProcessError, RuntimeError):
                 raised = True
         return raised, gitmock
 
@@ -3968,7 +3966,7 @@ class TwoTierTests(unittest.TestCase):
         raised, gitmock = self.retry_after_main_moved("tasks/0001-A.md\0docs/swarm/CW-002.md\0")
         self.assertTrue(any(c.args[:2] == ("reset", "--soft") for c in gitmock.call_args_list))
 
-    def test_integrate_batch_sends_prs_back_when_the_regate_fails(self):
+    def test_integrate_batch_retries_without_regating_after_main_drift(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / ".opencode/config").mkdir(parents=True, exist_ok=True)
         tasks = self.repo / "tasks"
@@ -3998,20 +3996,18 @@ class TwoTierTests(unittest.TestCase):
                 raise subprocess.CalledProcessError(1, args, "", "fetch first")
             return ""
 
-        results = iter([(True, "ok"), (False, "FAIL tests/app/AppShell.test.tsx")])
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
-             mock.patch.object(swarm, "run_gate", side_effect=lambda *a, **k: next(results)), \
+             mock.patch.object(swarm, "run_gate", return_value=(True, "ok")) as gate, \
              mock.patch.object(swarm, "git"), \
              mock.patch.object(swarm, "fail") as failed, \
              mock.patch.object(swarm, "authed_git", side_effect=authed):
-            count = swarm.integrate_batch([1], "scripts/quick-check.sh")
-        self.assertEqual(count, swarm.INTEGRATION_FAILED)
-        failed.assert_called_once()
-        self.assertEqual(failed.call_args.args[0], 1)
-        self.assertIn("AppShell", failed.call_args.args[2])
+            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
+                swarm.integrate_batch([1], "scripts/quick-check.sh")
+        gate.assert_called_once()
+        failed.assert_not_called()
 
     def test_integrate_batch_restores_trackers_on_retry(self):
         self.repo = Path(tempfile.mkdtemp())
@@ -4059,7 +4055,7 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "git", side_effect=gitmock) as gitcalls, \
              mock.patch.object(swarm, "authed_git", side_effect=authed):
-            with self.assertRaises(subprocess.CalledProcessError):
+            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
                 swarm.integrate_batch([1], "scripts/quick-check.sh")
         # Reconciliation adopts the fresh trackers rather than rebasing.
         self.assertTrue(any(c.args[:3] == ("checkout", "origin/main", "--")
@@ -4515,6 +4511,14 @@ class IntegratorTwoTierDispatchTest(unittest.TestCase):
         with mock.patch.object(swarm, "integrate_validate") as validate:
             swarm.main(["integrate-validate", "--queue", "[7]", "--gate", "gate.sh", "--out", "validated"])
         validate.assert_called_once_with([7], "gate.sh", "validated")
+
+    def test_integrate_seal_dispatches_to_the_trusted_rebuilder(self):
+        with mock.patch.object(swarm, "integrate_seal", return_value={"conflicted": []}) as seal, \
+                mock.patch.object(swarm, "emit") as emit:
+            swarm.main(["integrate-seal", "--base", "a" * 40, "--payload", "payload.json",
+                        "--out", "validated"])
+        seal.assert_called_once_with("a" * 40, "payload.json", "validated")
+        emit.assert_called_once_with("conflicted", "[]")
 
     def test_integrate_publish_dispatches_to_the_publisher(self):
         with mock.patch.object(swarm, "integrate_publish", return_value=0) as publish:

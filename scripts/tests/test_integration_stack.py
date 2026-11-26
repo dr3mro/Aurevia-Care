@@ -51,8 +51,11 @@ class StackWiringTests(unittest.TestCase):
         self.assertNotIn("|| true", plan["run"])
         self.assertIn(".agent/stack-plan.json", plan["run"])
         artifacts = {step["with"]["name"]: step["with"]["path"] for step in steps
-                     if (step.get("with") or {}).get("name") in ("validated-batch", "stack-plan")}
-        self.assertEqual(artifacts["validated-batch"], "validated")
+                     if (step.get("with") or {}).get("name") == "stack-plan"}
+        seal_steps = workflow["jobs"]["seal"]["steps"]
+        batch = next(step for step in seal_steps
+                     if (step.get("with") or {}).get("name") == "validated-batch")
+        self.assertEqual(batch["with"]["path"], "validated")
         for suffix in ("stack-plan.json", "stack-branches", "stack-checks", "stack-check.log"):
             self.assertIn(f".agent/{suffix}", artifacts["stack-plan"])
 

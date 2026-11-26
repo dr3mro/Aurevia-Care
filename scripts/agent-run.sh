@@ -329,10 +329,15 @@ neutralise_log_lines() {
 # variable except the NVD scan key and the helper-owned safe Git config. Run in
 # a subshell so the automation process keeps its own identity and configuration.
 scrub_gate_credentials() {
-  local name upper
+  local name upper names
+  names=$(compgen -A variable) || return 1
   while IFS= read -r name; do
     case "$name" in
       GIT_CONFIG_KEY_*|GIT_CONFIG_VALUE_*|NVD_API_KEY) continue ;;
+      GITHUB_ENV|GITHUB_OUTPUT|GITHUB_PATH|GITHUB_STATE|GITHUB_STEP_SUMMARY)
+        unset "$name" 2>/dev/null || return 1
+        continue
+        ;;
     esac
     upper=$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]') || return 1
     case "$upper" in
@@ -340,7 +345,7 @@ scrub_gate_credentials() {
         unset "$name" 2>/dev/null || return 1
         ;;
     esac
-  done < <(compgen -A variable)
+  done <<< "$names"
 }
 
 # Report one integrate-stack failure without swallowing the caller's status.

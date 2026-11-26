@@ -7,6 +7,8 @@ import ast
 import os
 import subprocess
 import sys
+import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -152,6 +154,14 @@ class ProductionBoundaryTest(unittest.TestCase):
     def contaminated(self, names):
         return {name: f"/synthetic/{name.lower()}" for name in names}
 
+    def popen_writing(self, done, stdout="", stderr=""):
+        """Return a Popen fake that writes captured gate output to temp files."""
+        def popen(*args, **kwargs):
+            kwargs["stdout"].write(stdout)
+            kwargs["stderr"].write(stderr)
+            return done
+        return popen
+
     def assert_safe_git_config(self, env):
         self.assertEqual(env["GIT_CONFIG_COUNT"], "3")
         self.assertEqual(env["GIT_CONFIG_KEY_0"], "safe.directory")
@@ -185,13 +195,14 @@ class ProductionBoundaryTest(unittest.TestCase):
                         "NVD_API_KEY": "synthetic-nvd", "SWARM_GIT_NAME": "kept",
                         "GIT_CONFIG_KEY_3": "core.sshCommand", "GIT_CONFIG_VALUE_3": "evil",
                         "GITHUB_ENV": "/runner/env", "GITHUB_OUTPUT": "/runner/output",
-                        "GITHUB_PATH": "/runner/path", "GITHUB_STATE": "/runner/state"}
+                        "GITHUB_PATH": "/runner/path", "GITHUB_STATE": "/runner/state",
+                        "GITHUB_STEP_SUMMARY": "/runner/summary"}
         extra = {"GIT_INDEX_FILE": "/synthetic/extra-index", "PUSH_TOKEN": "synthetic-token",
                  "GITHUB_ENV": "/synthetic/extra-env"}
         with mock.patch.dict(os.environ, contaminated):
             env = swarm.gate_environment(extra)
         for name in (*ROUTING, "GH_TOKEN", "PUSH_TOKEN", "GITHUB_ENV", "GITHUB_OUTPUT",
-                     "GITHUB_PATH", "GITHUB_STATE"):
+                     "GITHUB_PATH", "GITHUB_STATE", "GITHUB_STEP_SUMMARY"):
             self.assertNotIn(name, env)
         self.assertEqual(env["NVD_API_KEY"], "synthetic-nvd")
         self.assertEqual(env["SWARM_GIT_NAME"], "kept")
@@ -204,15 +215,21 @@ class ProductionBoundaryTest(unittest.TestCase):
 
     def test_run_gate_passes_sanitized_environment(self):
         done = mock.Mock(returncode=0, pid=4242)
-        done.communicate.return_value = ("ok", "")
         contaminated = {**self.contaminated(ROUTING), "GH_TOKEN": "synthetic-secret"}
         with mock.patch.dict(os.environ, contaminated), \
-                mock.patch.object(swarm.subprocess, "Popen", return_value=done) as popen, \
+                mock.patch.object(swarm.subprocess, "Popen",
+                                  side_effect=self.popen_writing(done, "ok")) as popen, \
                 mock.patch.object(swarm.os, "killpg") as killpg:
             ok, log = swarm.run_gate("synthetic-gate.sh", {"GIT_DIR": "/synthetic/extra"})
         self.assertTrue(ok)
         self.assertEqual(log, "ok")
+        self.assertEqual(popen.call_args.args[0], ["bash", "synthetic-gate.sh"])
         self.assertIs(popen.call_args.kwargs["start_new_session"], True)
+        self.assertIs(popen.call_args.kwargs["text"], True)
+        self.assertTrue(hasattr(popen.call_args.kwargs["stdout"], "write"))
+        self.assertTrue(hasattr(popen.call_args.kwargs["stderr"], "write"))
+        done.wait.assert_called_once_with()
+        done.communicate.assert_not_called()
         env = popen.call_args.kwargs["env"]
         self.assertNotIn("GIT_DIR", env)
         self.assertNotIn("GH_TOKEN", env)
@@ -224,20 +241,21 @@ class ProductionBoundaryTest(unittest.TestCase):
 
     def test_run_gate_tolerates_an_already_reaped_process_group(self):
         done = mock.Mock(returncode=0, pid=4242)
-        done.communicate.return_value = ("ok", "")
-        with mock.patch.object(swarm.subprocess, "Popen", return_value=done), \
+        with mock.patch.object(swarm.subprocess, "Popen",
+                               side_effect=self.popen_writing(done, "ok")), \
                 mock.patch.object(swarm.os, "killpg", side_effect=ProcessLookupError) as killpg:
             ok, log = swarm.run_gate("synthetic-gate.sh")
         self.assertTrue(ok)
         self.assertEqual(log, "ok")
         self.assertEqual(killpg.call_count, 2)
 
-    def test_run_gate_cleans_up_when_communicate_fails(self):
+    def test_run_gate_cleans_up_when_wait_fails(self):
         done = mock.Mock(pid=4242)
-        done.communicate.side_effect = OSError("synthetic communicate failure")
-        with mock.patch.object(swarm.subprocess, "Popen", return_value=done), \
+        done.wait.side_effect = OSError("synthetic wait failure")
+        with mock.patch.object(swarm.subprocess, "Popen",
+                               side_effect=self.popen_writing(done)), \
                 mock.patch.object(swarm.os, "killpg") as killpg:
-            with self.assertRaisesRegex(OSError, "synthetic communicate failure"):
+            with self.assertRaisesRegex(OSError, "synthetic wait failure"):
                 swarm.run_gate("synthetic-gate.sh")
         self.assertEqual(
             killpg.call_args_list,
@@ -246,12 +264,37 @@ class ProductionBoundaryTest(unittest.TestCase):
 
     def test_run_gate_returns_combined_failure_output(self):
         done = mock.Mock(returncode=1, pid=4242)
-        done.communicate.return_value = ("stdout", "stderr")
-        with mock.patch.object(swarm.subprocess, "Popen", return_value=done), \
+        with mock.patch.object(swarm.subprocess, "Popen",
+                               side_effect=self.popen_writing(done, "stdout", "stderr")), \
                 mock.patch.object(swarm.os, "killpg"):
             ok, log = swarm.run_gate("synthetic-gate.sh")
         self.assertFalse(ok)
         self.assertEqual(log, "stdout\nstderr")
+
+    def test_run_gate_reaps_a_started_background_descendant(self):
+        with tempfile.TemporaryDirectory() as directory:
+            gate = Path(directory) / "gate.sh"
+            pid_file = Path(directory) / "descendant.pid"
+            gate.write_text(
+                "#!/usr/bin/env bash\n"
+                "( sleep 30 ) &\n"
+                f"printf '%s' \"$!\" > {pid_file}\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            gate.chmod(0o755)
+            ok, log = swarm.run_gate(str(gate))
+            self.assertTrue(ok, log)
+            pid = int(pid_file.read_text())
+            for _ in range(50):
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.02)
+            else:
+                os.kill(pid, swarm.signal.SIGKILL)
+                self.fail(f"background descendant {pid} survived gate cleanup")
 
     def test_production_subprocesses_use_sanitized_helper(self):
         allowed = {"child_environment", "gate_environment"}

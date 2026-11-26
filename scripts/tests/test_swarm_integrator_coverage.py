@@ -748,8 +748,9 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "report_pr_stuck"), \
                 mock.patch.object(swarm, "dispatch_delivery"), \
                 mock.patch.object(swarm, "emit"):
-            self.assertEqual(swarm.integrate_finalize(
-                merged, {7: ("gate.sh", {})}, "gate.sh"), swarm.INTEGRATION_FAILED)
+            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
+                swarm.integrate_finalize(
+                    merged, {7: ("gate.sh", {})}, "gate.sh")
         self.assertEqual(original.read_text(), "original untracked note\n")
 
     def test_reconciled_commit_failure_restores_records_and_stops(self):
@@ -821,7 +822,7 @@ class IntegratorBatchTest(unittest.TestCase):
         self.assertEqual(original.read_text(), "original note\n")
         push.assert_not_called()
 
-    def test_failed_regate_returns_failure_without_dispatch(self):
+    def test_reconciled_base_change_retries_without_running_candidate_gate(self):
         root = self.repo()
         merged = [(7, "CW-001", "abc")]
 
@@ -846,12 +847,11 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "git", side_effect=git), \
                 mock.patch.object(swarm, "restore_trackers"), \
                 mock.patch.object(swarm, "authed_git", side_effect=authed), \
-                mock.patch.object(swarm, "run_gate", return_value=(False, "failed")), \
-                mock.patch.object(swarm, "fail"), \
-                mock.patch.object(swarm, "dispatch_delivery") as dispatch, \
-                mock.patch.object(swarm, "emit"):
-            self.assertEqual(swarm.integrate_finalize(
-                merged, {7: ("gate.sh", {})}, "gate.sh"), swarm.INTEGRATION_FAILED)
+                mock.patch.object(swarm, "run_gate") as gate, \
+                mock.patch.object(swarm, "dispatch_delivery") as dispatch:
+            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
+                swarm.integrate_finalize(merged, {7: ("gate.sh", {})}, "gate.sh")
+        gate.assert_not_called()
         dispatch.assert_not_called()
 
     def test_initial_add_failure_restores_records(self):
@@ -946,12 +946,13 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "fail"), \
                 mock.patch.object(swarm, "dispatch_delivery"), \
                 mock.patch.object(swarm, "emit"):
-            self.assertEqual(swarm.integrate_finalize(
-                [(7, "CW-001", "abc")], {7: ("scripts/quick-check.sh", {"STORY_ID": "CW-001"})},
-                "scripts/quick-check.sh"), swarm.INTEGRATION_FAILED)
+            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
+                swarm.integrate_finalize(
+                    [(7, "CW-001", "abc")], {7: ("scripts/quick-check.sh", {"STORY_ID": "CW-001"})},
+                    "scripts/quick-check.sh")
         self.assertEqual(records, [1, 2])
         self.assertIn("fresh-main\n", writes)
-        gate.assert_called_once_with("scripts/quick-check.sh", {"STORY_ID": "CW-001"})
+        gate.assert_not_called()
 
     def test_rejection_removes_needs_fix_and_never_reports_merge(self):
         self.repo()
@@ -983,7 +984,7 @@ class IntegratorBatchTest(unittest.TestCase):
         self.assertFalse(any("merged comment" in str(a)
                              for c in gh.call_args_list for a in c.args))
 
-    def test_a_reconciled_regate_uses_the_repair_gate_when_no_full_gate_was_used(self):
+    def test_reconciled_base_change_retries_instead_of_regating_candidate_code(self):
         self.repo()
         pushes = []
 
@@ -1018,9 +1019,10 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "close_merged_issues"), \
                 mock.patch.object(swarm, "dispatch_delivery"), \
                 mock.patch.object(swarm, "emit"):
-            self.assertEqual(swarm.integrate_batch([7], check_delivery=False), 1)
-        self.assertEqual(len(pushes), 2)
-        gate.assert_any_call(swarm.REPAIR_GATE, {})
+            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
+                swarm.integrate_batch([7], check_delivery=False)
+        self.assertEqual(len(pushes), 1)
+        gate.assert_called_once_with("custom-gate", {})
 
 
 class IntegratorConflictPublishTest(unittest.TestCase):
@@ -1083,6 +1085,253 @@ class IntegratorIssueCloseTest(unittest.TestCase):
         self.assertEqual(fake.calls, [])
 
 
+class IntegratorTreeBindingTest(unittest.TestCase):
+    """A candidate gate cannot substitute a different tree after validation."""
+
+    def prepare(self, tree_after):
+        self.repo = tempfile.TemporaryDirectory()
+        self.addCleanup(self.repo.cleanup)
+        old = os.getcwd()
+        os.chdir(self.repo.name)
+        self.addCleanup(os.chdir, old)
+        Path("tasks").mkdir()
+        Path("tasks/CW-001.md").write_text("- [ ] CW-001 · synthetic\n")
+        tree_calls = iter([("tree\n"), (tree_after)])
+
+        def git(*args, **kwargs):
+            if args[:2] == ("rev-parse", "HEAD^{tree}"):
+                return next(tree_calls)
+            if args[:2] == ("rev-parse", "HEAD"):
+                return "merge\n"
+            return ""
+
+        with mock.patch.object(swarm, "guard", return_value=[]), \
+                mock.patch.object(swarm, "gh_json", return_value={
+                    "headRefOid": "abc", "headRefName": "swarm/CW-001-1"}), \
+                mock.patch.object(swarm, "git", side_effect=git), \
+                mock.patch.object(swarm, "pr_already_in_main", return_value=False), \
+                mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+                mock.patch.object(swarm, "_checker", return_value=object()), \
+                mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
+                mock.patch.object(swarm, "gate_for", return_value=("gate.sh", {})), \
+                mock.patch.object(swarm, "run_gate", return_value=(True, "ok")):
+            return swarm.integrate_prepare([7], check_delivery=False)
+
+    def test_accepted_head_is_bound_to_the_gated_tree(self):
+        result = self.prepare("tree\n")
+        self.assertEqual(result["accepted"][0]["tree_sha"], "tree")
+
+    def test_gate_tree_mutation_rejects_the_head(self):
+        result = self.prepare("changed\n")
+        self.assertEqual(result["accepted"], [])
+        self.assertEqual(result["rejected"][0]["kind"], "mutated")
+
+
+class IntegrateSealTest(unittest.TestCase):
+    """A fresh trusted job rebuilds only independently eligible exact PR heads."""
+
+    BASE = "a" * 40
+    HEAD = "b" * 40
+    TIP = "c" * 40
+    TREE = "d" * 40
+
+    def payload(self, accepted=None, **extra):
+        return {"accepted": accepted or [], "rejected": [], "already": [],
+                "conflicted": [], "conflict_details": [], **extra}
+
+    def item(self, pr=7, head=None, tree=None):
+        return {"pr": pr, "head_sha": head or self.HEAD,
+                "tree_sha": tree or self.TREE, "task_id": "forged"}
+
+    def run_seal(self, payload, base=None, raw=None, **overrides):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "payload.json"
+            source.write_text(raw if raw is not None else json.dumps(payload), encoding="utf-8")
+            out = Path(directory) / "validated"
+            self.git_calls = []
+
+            def git(*args, **kwargs):
+                self.git_calls.append(args)
+                if args[:2] == ("rev-parse", "HEAD"):
+                    return self.TIP + "\n"
+                if args[:2] == ("rev-parse", "HEAD^{tree}"):
+                    return self.TREE + "\n"
+                if args[:2] == ("bundle", "create"):
+                    Path(args[2]).write_bytes(b"synthetic bundle")
+                return ""
+
+            patches = {
+                "git": mock.patch.object(swarm, "git", side_effect=git),
+                "merge_local": mock.patch.object(
+                    swarm, "merge_local", return_value=(self.HEAD, "CW-001", [])
+                ),
+                "guard": mock.patch.object(swarm, "guard", return_value=("", [], 0)),
+                "is_repair": mock.patch.object(swarm, "is_repair", return_value=False),
+                "delivery_gate": mock.patch.object(
+                    swarm, "delivery_gate", return_value="merge"
+                ),
+                "checker": mock.patch.object(swarm, "_checker", return_value=object()),
+                "wiring": mock.patch.object(
+                    swarm, "refresh_wiring_baseline", return_value=""
+                ),
+                "gate_for": mock.patch.object(
+                    swarm, "gate_for",
+                    return_value=("scripts/integrator-gate.sh", {"STORY_ID": "CW-001"}),
+                ),
+            }
+            for name, patch in patches.items():
+                if name in overrides:
+                    patches[name] = overrides[name]
+            try:
+                with patches["git"], patches["merge_local"], patches["guard"], \
+                        patches["is_repair"], patches["delivery_gate"], patches["checker"], \
+                        patches["wiring"], patches["gate_for"]:
+                    manifest = swarm.integrate_seal(self.BASE if base is None else base,
+                                                    str(source), str(out))
+            except Exception:
+                self.failure_artifacts = (
+                    (out / "manifest.json").exists(), (out / "main.bundle").exists()
+                )
+                raise
+            return manifest, json.loads((out / "manifest.json").read_text()), \
+                (out / "main.bundle").exists()
+
+    def test_seal_rebuilds_exact_heads_and_bundles_the_trusted_tip(self):
+        guard = mock.Mock(return_value=("", [], 0))
+        delivery = mock.Mock(return_value="merge")
+        merge = mock.Mock(return_value=(self.HEAD, "CW-001", []))
+        manifest, written, bundled = self.run_seal(
+            self.payload([self.item()]),
+            guard=mock.patch.object(swarm, "guard", guard),
+            delivery_gate=mock.patch.object(swarm, "delivery_gate", delivery),
+            merge_local=mock.patch.object(swarm, "merge_local", merge),
+        )
+        self.assertEqual(self.git_calls[0], ("checkout", "-q", "--detach", self.BASE))
+        guard.assert_called_once_with(7, False, report=False)
+        delivery.assert_called_once_with(7, self.HEAD, report=False)
+        merge.assert_called_once_with(7)
+        self.assertEqual(manifest["base"], self.BASE)
+        self.assertEqual(manifest["tip"], self.TIP)
+        self.assertEqual(manifest["accepted"], [
+            {"pr": 7, "task_id": "CW-001", "head_sha": self.HEAD, "merge_sha": self.HEAD}
+        ])
+        self.assertEqual(manifest["gates"]["7"], [
+            "scripts/integrator-gate.sh", {"STORY_ID": "CW-001"}
+        ])
+        self.assertEqual(written, manifest)
+        self.assertTrue(bundled)
+
+    def test_seal_accepts_an_empty_batch(self):
+        manifest, _, bundled = self.run_seal(self.payload())
+        self.assertEqual(manifest["accepted"], [])
+        self.assertEqual(manifest["tip"], self.TIP)
+        self.assertTrue(bundled)
+
+    def test_seal_rejects_invalid_base_and_payload_shapes(self):
+        for base in ("", "ABC", "a" * 39):
+            with self.subTest(base=base), self.assertRaisesRegex(SystemExit, "base must"):
+                self.run_seal(self.payload(), base=base)
+        for payload in ([], {}, {"accepted": {}}, {"accepted": ["bad"]}):
+            with self.subTest(payload=payload), self.assertRaises(SystemExit):
+                self.run_seal(payload)
+
+    def test_seal_rejects_invalid_and_duplicate_pr_numbers(self):
+        invalid = (True, 0, -1, "7")
+        for pr in invalid:
+            with self.subTest(pr=pr), self.assertRaisesRegex(SystemExit, "PR number"):
+                self.run_seal(self.payload([self.item(pr=pr)]))
+        with self.assertRaisesRegex(SystemExit, "duplicate PR"):
+            self.run_seal(self.payload([self.item(), self.item()]))
+
+    def test_seal_rejects_invalid_head_shas(self):
+        for head in (None, 7, "", "b" * 39, "B" * 40):
+            with self.subTest(head=head), self.assertRaisesRegex(SystemExit, "head SHA"):
+                self.run_seal(self.payload([{"pr": 7, "head_sha": head}]))
+
+    def test_seal_rechecks_policy_override_and_delivery_evidence(self):
+        for blocked in (None, "override", ("", [], 0)):
+            with self.subTest(blocked=blocked):
+                self.run_seal(
+                    self.payload([self.item()]),
+                    guard=mock.patch.object(swarm, "guard", return_value=blocked),
+                )
+        for blocked in ("protected", ("protected", ["x"], 1)):
+            with self.subTest(blocked=blocked), \
+                    self.assertRaisesRegex(SystemExit, "no longer eligible"):
+                self.run_seal(
+                    self.payload([self.item()]),
+                    guard=mock.patch.object(swarm, "guard", return_value=blocked),
+                )
+        with self.assertRaisesRegex(SystemExit, "no longer has merge evidence"):
+            self.run_seal(
+                self.payload([self.item()]),
+                delivery_gate=mock.patch.object(swarm, "delivery_gate", return_value="wait"),
+            )
+
+    def test_seal_rejects_invalid_or_changed_tree_shas(self):
+        for tree in (None, 7, "", "d" * 39, "D" * 40):
+            item = self.item()
+            item["tree_sha"] = tree
+            with self.subTest(tree=tree), self.assertRaisesRegex(SystemExit, "tree SHA"):
+                self.run_seal(self.payload([item]))
+        with self.assertRaisesRegex(SystemExit, "gated tree changed"):
+            self.run_seal(self.payload([self.item(tree="e" * 40)]))
+
+    def test_seal_drops_candidate_reporting_decisions(self):
+        payload = self.payload(
+            [self.item()],
+            rejected=[{"pr": 99, "kind": "forged"}],
+            already=[{"pr": 98, "task_id": "forged"}],
+            conflicted=[97],
+            conflict_details=[{"pr": 96, "reason": "forged", "tries": 0}],
+        )
+        manifest, _, _ = self.run_seal(payload)
+        for key in ("rejected", "already", "conflicted", "conflict_details"):
+            self.assertEqual(manifest[key], [])
+
+    def test_seal_rejects_malformed_json_without_artifacts(self):
+        with self.assertRaises(json.JSONDecodeError):
+            self.run_seal(None, raw="{bad")
+        self.assertEqual(self.failure_artifacts, (False, False))
+
+    def test_seal_handles_multiple_exact_heads_in_order(self):
+        second = "e" * 40
+        merge = mock.Mock(side_effect=[(self.HEAD, "CW-001", []), (second, "CW-002", [])])
+        manifest, _, bundled = self.run_seal(
+            self.payload([self.item(), self.item(pr=8, head=second)]),
+            merge_local=mock.patch.object(swarm, "merge_local", merge),
+        )
+        self.assertTrue(bundled)
+        self.assertEqual([item["pr"] for item in manifest["accepted"]], [7, 8])
+        self.assertEqual([item["head_sha"] for item in manifest["accepted"]],
+                         [self.HEAD, second])
+        self.assertEqual(merge.call_args_list, [mock.call(7), mock.call(8)])
+
+    def test_seal_rejects_conflicts_moved_heads_and_wiring_failures(self):
+        self.failure_artifacts = (False, False)
+        cases = (
+            ("conflicts in x", {"merge_local": (None, "CW-001", ["x"])}),
+            ("conflicts in unknown files", {"merge_local": (None, "CW-001", [])}),
+            ("head moved", {"merge_local": ("f" * 40, "CW-001", [])}),
+            ("already integrated", {"wiring": None}),
+            ("wiring check failed", {"wiring": "new finding"}),
+        )
+        for message, values in cases:
+            overrides = {}
+            if "merge_local" in values:
+                overrides["merge_local"] = mock.patch.object(
+                    swarm, "merge_local", return_value=values["merge_local"]
+                )
+            if "wiring" in values:
+                overrides["wiring"] = mock.patch.object(
+                    swarm, "refresh_wiring_baseline", return_value=values["wiring"]
+                )
+            with self.subTest(message=message), \
+                    self.assertRaisesRegex(SystemExit, message):
+                self.run_seal(self.payload([self.item()]), **overrides)
+            self.assertEqual(self.failure_artifacts, (False, False))
+
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -1105,3 +1354,6 @@ class ValidatorReportTest(unittest.TestCase):
         self.assertEqual(len(reports), 1)
         self.assertEqual(len(reports[0]), 3)
         self.assertEqual({item["pr"] for item in reports[0]}, {7, 8, 9})
+        seals = [json.loads(call.args[1]) for call in emitted.call_args_list
+                 if call.args[0] == "seal"]
+        self.assertEqual(seals, [{"accepted": []}])

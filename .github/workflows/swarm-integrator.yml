@@ -41,6 +41,7 @@ env:
 jobs:
   pick:
     name: Pick the queue
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
@@ -54,6 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
           sparse-checkout: scripts
       - id: image
@@ -79,6 +81,7 @@ jobs:
       conflicted: ${{ steps.candidate.outputs.conflicted }}
       accepted: ${{ steps.candidate.outputs.accepted }}
       report: ${{ steps.candidate.outputs.report }}
+      seal: ${{ steps.candidate.outputs.seal }}
     permissions:
       contents: read
       pull-requests: read
@@ -98,7 +101,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Java once for the whole batch
@@ -137,16 +140,6 @@ jobs:
           QUEUE: ${{ needs.pick.outputs.queue }}
           GATE: scripts/integrator-gate.sh
         run: python3 -I scripts/swarm.py integrate-validate --queue "$QUEUE" --gate "$GATE" --out validated
-      # Seal the trusted validation result before any candidate-derived stack or
-      # planner code runs. Keep the manifest and bundle flat: upload-artifact
-      # nests paths under their common ancestor when more than one is uploaded.
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: always()
-        with:
-          name: validated-batch
-          path: validated
-          if-no-files-found: error
-          retention-days: 1
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         if: always()
@@ -217,9 +210,50 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
+  seal:
+    name: Seal the validated batch (trusted)
+    needs: [validate]
+    # An empty wave skips validation and has no seal to rebuild. Running the
+    # trusted job on an empty payload would fail the whole integration run.
+    if: needs.validate.result == 'success' && needs.validate.outputs.seal != ''
+    outputs:
+      conflicted: ${{ steps.rebuild.outputs.conflicted }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SEAL: ${{ needs.validate.outputs.seal }}
+      BASE_SHA: ${{ github.sha }}
+    steps:
+      # This runner never executes candidate code. It rebuilds the gated merge
+      # from exact PR head SHAs after the candidate runner has been destroyed.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tooling-python
+      - name: Rebuild and bundle exact validated heads
+        id: rebuild
+        run: |
+          printf '%s' "$SEAL" > "$RUNNER_TEMP/validated-seal.json"
+          python3 -I scripts/swarm.py integrate-seal \
+            --base "$BASE_SHA" --payload "$RUNNER_TEMP/validated-seal.json" \
+            --out validated
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: validated-batch
+          path: validated
+          if-no-files-found: error
+          retention-days: 1
+
   publish:
     name: Publish the validated batch
-    needs: [pick, validate]
+    needs: [pick, validate, seal]
     if: >-
       (needs.validate.outputs.accepted != '' && needs.validate.outputs.accepted != '[]')
       || (needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]')
@@ -292,14 +326,13 @@ jobs:
       - name: Reconcile tasks whose PRs merged
         run: python3 -I scripts/swarm.py reconcile-tasks --dir tasks
 
-  # A PR that conflicts with main is not failed right away: the agent merges main
-  # into its branch and fixes the conflicts, then a separate trusted job pushes
-  # the result and the integrator runs again. After three tries the PR goes back
-  # to the workers. The agent and the push token never share a runner.
+  # Automatic conflict resolution is disabled until a trusted seal job can
+  # attest conflict decisions. Candidate-runner output must never authorize an
+  # agent with credentials or a later write-token branch push.
   resolve:
     name: Resolve merge conflicts
-    needs: [pick, validate, publish]
-    if: always() && needs.publish.result == 'success' && needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]'
+    needs: [pick, validate, seal, publish]
+    if: always() && needs.publish.result == 'success' && needs.seal.outputs.conflicted != '' && needs.seal.outputs.conflicted != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     container:
@@ -314,7 +347,6 @@ jobs:
       run:
         shell: bash
     env:
-      CONFLICTED: ${{ needs.validate.outputs.conflicted }}
       BASE_BRANCH: ${{ github.event.repository.default_branch }}
       # One repository variable supplies the model name; the runner passes it through unchanged.
       SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
