@@ -432,7 +432,7 @@ jobs:
           (cd candidate-tree && bash scripts/worker-check.sh) > validate.log 2>&1
           code=$?
           set -e
-          tail -80 validate.log
+          tail -80 validate.log | sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' -e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}/***/g'
           # Emit both sides: publish uses this as the authoritative check state.
           if [[ "$code" -eq 0 ]]; then echo "passed=true" >> "$GITHUB_OUTPUT"; else echo "passed=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
