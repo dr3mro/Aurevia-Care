@@ -136,12 +136,14 @@ jobs:
           GATE: scripts/integrator-gate.sh
         run: python3 -I scripts/swarm.py integrate-validate --queue "$QUEUE" --gate "$GATE" --out validated
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        continue-on-error: true
         if: always()
         with:
           pattern: worker-*
           path: trails
           merge-multiple: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        continue-on-error: true
         if: always()
         with:
           name: trail-allocation
@@ -214,6 +216,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        continue-on-error: true
         with:
           name: validated-batch
           path: validated

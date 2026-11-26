@@ -104,3 +104,17 @@ class AgentRunBranchTests(unittest.TestCase):
         source = (ROOT / "scripts/agent-run.sh").read_text()
         for token in ("missing-ref %s", "conflict", "failed", "green", "BRANCHES:-"):
             self.assertIn(token, source)
+
+
+class OptionalArtifactTests(unittest.TestCase):
+    def test_every_trail_download_tolerates_a_missing_artifact(self):
+        import yaml
+        from helpers import ROOT
+        for name in ("swarm.yml", "swarm-worker.yml", "swarm-integrator.yml"):
+            doc = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
+            for job in doc["jobs"].values():
+                for step in job.get("steps", []):
+                    uses = str(step.get("uses", ""))
+                    if uses.startswith("actions/download-artifact@"):
+                        with self.subTest(workflow=name, step=step.get("name", uses)):
+                            self.assertIs(step.get("continue-on-error"), True)
