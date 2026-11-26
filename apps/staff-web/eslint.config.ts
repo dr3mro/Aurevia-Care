@@ -11,7 +11,7 @@
  *   eslint 9.x (flat config, `defineConfig` from "eslint/config")
  *   typescript-eslint 8.x (peer: typescript >=4.8.4 <6.1.0)
  *   eslint-plugin-react 7.37.x, eslint-plugin-jsx-a11y 6.10.x,
- *   eslint-plugin-react-hooks 7.x, @eslint-community/eslint-plugin-eslint-comments 4.5.x
+ *   eslint-plugin-react-hooks 7.x, @eslint-community/eslint-plugin-eslint-comments 4.8.x
  */
 import js from '@eslint/js';
 import eslintComments from '@eslint-community/eslint-plugin-eslint-comments/configs';
