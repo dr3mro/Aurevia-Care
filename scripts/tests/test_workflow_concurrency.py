@@ -7,7 +7,10 @@ import yaml
 from helpers import ROOT, load as load_script
 
 WORKFLOWS = ROOT / ".github" / "workflows"
-DELIVERY_GROUP = "${{ github.event.pull_request.head.sha || github.ref }}"
+DELIVERY_GROUP = ("${{ github.event_name == 'workflow_dispatch' && "
+                  "format('delivery-dispatch-{0}-{1}', github.ref, github.run_id) "
+                  "|| github.event.pull_request.head.sha || github.ref }}")
+DELIVERY_CANCEL = "${{ github.event_name == 'push' && github.ref_type == 'branch' }}"
 PLAN_GROUP = "swarm-plan-${{ github.repository }}"
 INTEGRATOR_GROUP = "swarm-integrator-${{ github.repository }}"
 SWARM_GROUP = "swarm-${{ github.ref }}"
@@ -39,12 +42,47 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         self.assertIs(concurrency["cancel-in-progress"], False)
         self.assertEqual(concurrency["queue"], "max")
 
-    def test_delivery_queues_each_pr_head_and_ref_without_cancelling(self):
-        self.assert_queue(load(WORKFLOWS / "delivery.yml")["concurrency"], DELIVERY_GROUP)
+    def assert_delivery_concurrency(self, concurrency):
+        """Branch pushes cancel their superseded peers; every other event is exact-SHA."""
+        self.assertEqual(concurrency["group"], DELIVERY_GROUP)
+        self.assertEqual(concurrency["cancel-in-progress"], DELIVERY_CANCEL)
+        self.assertNotIn("queue", concurrency)
+
+    def test_delivery_cancels_only_superseded_branch_pushes(self):
+        self.assert_delivery_concurrency(load(WORKFLOWS / "delivery.yml")["concurrency"])
         self.assertEqual(revision_group("head-a", "refs/heads/main"), "head-a")
         self.assertEqual(revision_group("", "refs/heads/main"), "refs/heads/main")
         self.assertNotEqual(revision_group("head-a", "refs/heads/main"),
                             revision_group("head-b", "refs/heads/main"))
+
+    def test_delivery_dispatch_on_a_branch_has_its_own_group(self):
+        group = load(WORKFLOWS / "delivery.yml")["concurrency"]["group"]
+        self.assertEqual(group, DELIVERY_GROUP)
+        self.assertIn("github.event_name == 'workflow_dispatch'", group)
+        self.assertIn("github.run_id", group)
+
+    def test_delivery_cancellation_expression_is_scoped_to_push_events(self):
+        concurrency = load(WORKFLOWS / "delivery.yml")["concurrency"]
+        self.assertEqual(concurrency["cancel-in-progress"], DELIVERY_CANCEL)
+        # The matrix mirrors the pinned expression: only push to a branch may cancel.
+        def cancels(event, ref_type):
+            return event == "push" and ref_type == "branch"
+
+        cases = (("push", "branch", True), ("push", "tag", False),
+                 ("pull_request", "branch", False), ("merge_group", "branch", False),
+                 ("workflow_dispatch", "branch", False))
+        for event, ref_type, expected in cases:
+            with self.subTest(event=event, ref_type=ref_type):
+                self.assertEqual(cancels(event, ref_type), expected)
+
+    def test_delivery_guard_rejects_blanket_cancellation_and_restored_queue(self):
+        with self.assertRaises(AssertionError):
+            self.assert_delivery_concurrency({"group": DELIVERY_GROUP,
+                                              "cancel-in-progress": True})
+        with self.assertRaises(AssertionError):
+            self.assert_delivery_concurrency({"group": DELIVERY_GROUP,
+                                              "cancel-in-progress": DELIVERY_CANCEL,
+                                              "queue": "max"})
 
     def test_other_workflows_run_concurrently_per_run(self):
         for path in self.workflows():
@@ -76,7 +114,6 @@ class WorkflowConcurrencyTest(unittest.TestCase):
 
     def test_serialized_groups_reject_legacy_keys_and_invalid_queue(self):
         blocks = {
-            "delivery": load(WORKFLOWS / "delivery.yml")["concurrency"],
             "plan": load(WORKFLOWS / "swarm.yml")["jobs"]["plan"]["concurrency"],
             "integrator": load(WORKFLOWS / "swarm-integrator.yml")["concurrency"],
         }
@@ -126,6 +163,15 @@ class WorkflowConcurrencyTest(unittest.TestCase):
                 self.assertNotIn("paths-ignore", text)
                 self.assertNotIn("paths:", text)
                 self.assertIn("delivery gate", text)
+
+
+    def test_operator_docs_describe_scoped_superseded_run_cancellation(self):
+        """Docs must not promise that no run is ever cancelled on a branch push."""
+        for path in DELIVERY_DOCS:
+            with self.subTest(doc=path.name):
+                text = path.read_text(encoding="utf-8").lower()
+                self.assertIn("superseded branch pushes", text)
+                self.assertIn("pull request", text)
 
 
 # The expected job set comes from the fail-closed checker the gate step runs,

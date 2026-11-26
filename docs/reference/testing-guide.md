@@ -85,9 +85,12 @@ too, including documentation-only commits; the tag trigger is `v*`. Dispatch and
 merge-group runs report the same check on their exact SHA. A path-filtered run would
 leave the required exact-SHA `Delivery gate` check unreported and block the protected
 branch. Pull requests use the head SHA as their concurrency group, so a new head is
-verified without waiting behind an older one; every other trigger queues per ref with
-`cancel-in-progress: false` and `queue: max`, so no exact-SHA verdict is dropped
-(`.github/workflows/delivery.yml`).
+verified without waiting behind an older one. Superseded branch pushes are cancelled
+so a burst of commits does not queue behind older gate runs; pull request heads, tags,
+dispatches and merge groups keep their exact-SHA verdicts
+(`.github/workflows/delivery.yml`). Tag only an already-green main commit: cancelling
+its branch-push run removes the exact-SHA success that the release job requires, so
+release fails closed for a superseded commit.
 
 **Integrator (before merge and on tags).** The integrator runs
 `bash scripts/integrator-gate.sh` — full `check.sh` plus `docs.sh` — on each merge

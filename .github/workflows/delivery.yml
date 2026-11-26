@@ -14,14 +14,14 @@ on:
   merge_group:
 permissions:
   contents: read
-# Every pull-request head reports its own exact-SHA verdict immediately; a new
-# head never waits behind an older head on the same branch. Pushes, tags,
-# dispatches and merge groups queue per ref so no exact-SHA verdict is dropped.
-# GitHub rejects queue:max together with cancellation.
+# Every pull-request head, tag and merge group keeps its own exact-SHA verdict.
+# A workflow_dispatch on a branch gets a run-id group, so a later push cannot cancel
+# it. Only superseded branch pushes are cancelled: a newer commit replaces the older
+# run instead of waiting behind the full gate. GitHub rejects queue:max together with
+# cancellation, so Delivery has no queue key; the swarm queues keep queue:max.
 concurrency:
-  group: ${{ github.event.pull_request.head.sha || github.ref }}
-  cancel-in-progress: false
-  queue: max
+  group: ${{ github.event_name == 'workflow_dispatch' && format('delivery-dispatch-{0}-{1}', github.ref, github.run_id) || github.event.pull_request.head.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref_type == 'branch' }}
 
 jobs:
   policy:
