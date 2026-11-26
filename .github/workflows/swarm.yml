@@ -59,8 +59,8 @@ env:
 
 jobs:
   select:
-    name: Select task (PO + scrum master)
-    if: vars.SWARM_SINGLE_TASK == 'true' && vars.SWARM_ENABLED != 'false' && vars.SWARM_LLM_SELECTION == 'true'
+    name: Select task (PO)
+    if: contains(fromJSON('["1","true","yes","on"]'), vars.SWARM_SINGLE_TASK) && !contains(fromJSON('["0","false","no","off"]'), vars.SWARM_ENABLED) && contains(fromJSON('["1","true","yes","on"]'), vars.SWARM_LLM_SELECTION)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -147,15 +147,18 @@ jobs:
       # the cap. No wave, no worker containers, and an issue for a person.
       - id: kill
         run: |
-          if [[ "${SWARM_ENABLED:-true}" == "false" || "${SWARM_ENABLED:-true}" == "0" || "${SWARM_ENABLED:-true}" == "off" || "${SWARM_ENABLED:-true}" == "no" ]]; then
-            echo "Swarm kill switch SWARM_ENABLED is off; skipping this wave." >&2
-            {
-              echo 'enabled=false'
-              echo 'matrix={"include":[]}'
-              echo 'count=0'
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          flag="${SWARM_ENABLED:-true}"
+          case "${flag,,}" in
+            0|false|no|off)
+              echo "Swarm kill switch SWARM_ENABLED is off; skipping this wave." >&2
+              {
+                echo 'enabled=false'
+                echo 'matrix={"include":[]}'
+                echo 'count=0'
+              } >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
           echo 'enabled=true' >> "$GITHUB_OUTPUT"
       - id: budget
         if: steps.kill.outputs.enabled == 'true'
@@ -211,10 +214,13 @@ jobs:
           # Repairs and fixes are queued before offering spare workers to backlog tasks.
           # Ready merges use the independent serialized integrator instead of waiting for this wave.
           python3 -I scripts/swarm.py pr-flow --no-wave
-          if [[ "${SWARM_SINGLE_TASK:-false}" == "true" ]]; then
-            WORKERS=1
-            echo "Single-task mode: planning at most one worker." >&2
-          fi
+          flag="${SWARM_SINGLE_TASK:-false}"
+          case "${flag,,}" in
+            1|true|yes|on)
+              WORKERS=1
+              echo "Single-task mode: planning at most one worker." >&2
+              ;;
+          esac
           plan_args=(--max "$WORKERS" --capacity "$capacity" --repair-run "$REPAIR_RUN" --task "$LAUNCH_TASK")
           if [[ "${IGNORE_RED_MAIN:-false}" == true ]]; then
             plan_args+=(--ignore-red-main)
@@ -305,7 +311,7 @@ jobs:
             tasks/
             tasks
       - name: Wait for Delivery on main before advancing
-        if: vars.SWARM_SINGLE_TASK == 'true'
+        if: contains(fromJSON('["1","true","yes","on"]'), vars.SWARM_SINGLE_TASK)
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: |

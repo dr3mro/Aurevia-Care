@@ -1,5 +1,4 @@
-- [-] ORCA-SKILL-PREFIX-REMOVAL · Atomic removal of the `aurevia-` skill prefix
-  - agent: orca
+- [ ] ORCA-SKILL-PREFIX-REMOVAL · Atomic removal of the `aurevia-` skill prefix
   - parent: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
   - requirements: ORCA-081, AG-31
   - scope: .opencode/skills, .opencode/agents, .opencode/setup/AGENTS.md, .opencode/config/MEMORY.md, .opencode/config/README-SETUP.md, tasks/_head.md, docs/orca-refactor/01-inventory.md, docs/orca-refactor/05-instruction-skill-design.md, docs/SWARM.md, docs/WORKFLOW.md, README.md, orca-refactor.md, scripts/agent-run.sh, scripts/check-pack.py, scripts/check-verdicts.py, scripts/route-task.py, scripts/gen-opencode.py, scripts/tests, tasks/01315000-ORCA-SKILL-PREFIX-REMOVAL.md, .opencode/config/WORKSPACE.md

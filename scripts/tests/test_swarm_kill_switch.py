@@ -52,3 +52,21 @@ class KillSwitchTests(unittest.TestCase):
     def test_top_up_returns_false_in_single_mode(self):
         with mock.patch.dict(os.environ, {"SWARM_SINGLE_TASK": "true"}):
             self.assertFalse(swarm.top_up("CW-001"))
+
+    def test_swarm_enabled_accepts_uppercase_and_padded_disable_values(self):
+        for value in ("False", "FALSE", "  Off  "):
+            with mock.patch.dict(os.environ, {"SWARM_ENABLED": value}):
+                self.assertFalse(swarm.swarm_enabled(), msg=value)
+
+    def test_single_task_mode_accepts_uppercase_and_padded_enable_values(self):
+        for value in ("TRUE", " On ", "YES"):
+            with mock.patch.dict(os.environ, {"SWARM_SINGLE_TASK": value}):
+                self.assertTrue(swarm.single_task_mode(), msg=value)
+
+    def test_issues_enabled_accepts_uppercase_disable_values(self):
+        with mock.patch.dict(os.environ, {"SWARM_ISSUES": "FALSE"}):
+            self.assertFalse(swarm.issues_enabled())
+
+    def test_protected_override_accepts_uppercase_enable_values(self):
+        with mock.patch.dict(os.environ, {"SWARM_ALLOW_PROTECTED": "TRUE"}):
+            self.assertTrue(swarm.protected_override())

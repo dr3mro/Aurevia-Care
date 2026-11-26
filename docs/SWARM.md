@@ -186,7 +186,7 @@ Two separate native checks report on every revision; neither substitutes for the
 2. For each slot you use, save the repository secret `OPENCODE_API_KEY_<n>` from that slot's own OpenCode account. If a slot-specific secret is absent, the worker falls back to `OPENCODE_API_KEY`; if neither secret exists, the task goes back to `[ ]`.
 3. Settings, Actions, General: allow Actions to create pull requests.
 4. `main` must allow the orchestrator and the integrator to push (the orchestrator pushes the `[-]` marks to `tasks/` files). Either exempt the integrator from the branch rule, or save a fine-grained token with contents, pull requests, actions and workflows write as the secret `SWARM_TOKEN`. A `SWARM_TOKEN` also lets pull requests and merges trigger the Delivery workflow and the next wave. Issues, comments and labels always use each job's built-in token (`GH_ISSUES_TOKEN`), and the issue monitor and daily notes jobs use only the built-in token, so `SWARM_TOKEN` needs no issues scope. When it expires, pushes fail and the watchdog opens a `needs-human` issue with the built-in token.
-5. Optional repository variables: `SWARM_ISSUES=off` stops all issue writing and the issue monitor; `SWARM_NOTES=off` stops the daily notes job; `SWARM_ALLOW_PROTECTED=1` lets protected-file pull requests merge automatically after the full gate, with an oversight issue — see [Kill switch](#kill-switch).
+5. Optional repository variables: `SWARM_ISSUES=off` stops all issue writing and the issue monitor; `SWARM_NOTES=off` stops the daily notes job; `SWARM_ALLOW_PROTECTED=1` lets protected-file pull requests merge automatically after the full gate, with an oversight issue — see [Kill switch](#kill-switch). Boolean variables use canonical lowercase tokens: `1/true/yes/on` enable and `0/false/no/off` disable; case and padding are normalised, and any other value falls back to the documented default.
 6. Edit a task file under `tasks/` and push to `main`, or run **Agent swarm** manually.
 
 ## Rules the swarm enforces
@@ -207,14 +207,14 @@ Two separate native checks report on every revision; neither substitutes for the
 When `SWARM_SINGLE_TASK=true`, the swarm runs one task at a time:
 
 1. `select` job: OpenCode with `aurevia-product-owner` picks one eligible task (LLM); falls back to deterministic planning if it produces nothing.
-2. `plan` job: claims the task `[-]`, emits a one-worker matrix. LLM selection runs only when `SWARM_LLM_SELECTION=true`.
+2. `plan` job: claims the task `[-]`, emits a one-worker matrix. LLM selection runs only when `SWARM_LLM_SELECTION` holds an enable token (`1/true/yes/on`); the canonical value is `true`.
 3. Worker: decomposes the task into ordered steps, runs `aurevia-plan-reviewer` before coding, implements step by step, then runs code-reviewer, coverage-auditor, devsecops and qa-reviewer, recording each `VERDICT: GO` under `## Review verdicts`.
 4. Integrator merges; loop job waits for Delivery green on the merged SHA before planning the next task.
 5. If the task is not done (taken or open PR), no next task is planned; the task stays active through debug/fix loops until green or `needs-human`.
 
 ## Kill switch
 
-`SWARM_ENABLED` is a repository **variable** (not a secret) that pauses the swarm: when set to `0`, `false`, `no` or `off` (case-insensitive), the plan job exits with an empty matrix, `continue_swarm`, `top_up`, `pr_flow` and the issue monitor do nothing, and no new wave starts. Workers that are already running finish and publish. Delete the variable or set it to `1`/`true`/`yes`/`on` to resume. It never weakens a gate.
+`SWARM_ENABLED` is a repository **variable** (not a secret) that pauses the swarm: when set to the canonical disable token `0`, `false`, `no` or `off`, the plan job exits with an empty matrix, `continue_swarm`, `top_up`, `pr_flow` and the issue monitor do nothing, and no new wave starts. Case and padding are normalised, so `False` pauses too. Workers that are already running finish and publish. Delete the variable or set it to `1`/`true`/`yes`/`on` to resume. It never weakens a gate.
 
 `SWARM_SINGLE_TASK` is a repository **variable** (default off) that enables the single-task-per-wave mode: at most one task worker per wave, no slot refill, and no next task is planned while a task is taken or has an open pull request. Turn it on to validate the serialized lifecycle; turn it off to restore the parallel wave.
 
@@ -242,7 +242,6 @@ The waves, slot images, integrator and repair loop have run on GitHub. Written a
 Tasks live one per file in `tasks/<sequence>-<ID>.md`, so two writers only conflict when they touch the same task. `tasks/` is no longer stored in git: it is a local copy that git ignores, rebuilt from `tasks/` whenever the swarm reads or writes the tasks, or by `python3 scripts/taskstore.py view`. Workers, `scripts/check.sh` readers and people get it that way; the GitHub monitor reads the files directly. The sequence number keeps the old order; a new task gets a number between its neighbours and nothing else is renamed. Finished tasks are archived under `tasks/done/` and still satisfy `depends`.
 
 - **Adding or editing a task by hand.** Edit or add the file in `tasks/` (keep the `- [ ] ID · title` line first). Edits to the local `tasks/` are lost the next time it is rebuilt.
-- **The move was automatic.** The first integrator run after `scripts/taskstore.py` reached `main` split the old `tasks/` into task files in one commit and checked that it rebuilds byte for byte. Set the repository variable `SWARM_TASK_FILES` to `off` to stop it in a fresh copy of the template.
 - **Conflicts.** A pull request that touches `tasks/` or `tasks/` is not the source of truth: the integrator keeps main's version of those files and goes on merging.
 - **Waves.** `swarm.yml` starts on a push that changes `tasks/**`.
 - **Code.** `scripts/taskstore.py` (split, join, write, view, archive) and the `todo_read`, `todo_write`, `todo_paths` helpers in `scripts/swarm.py`. Without `tasks/.sharded` everything still works on a plain `tasks/`.

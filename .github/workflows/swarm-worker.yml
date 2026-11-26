@@ -485,7 +485,7 @@ jobs:
       # This worker's slot is free: start the next wave now instead of waiting for the slowest
       # worker of this wave. The planner still applies the worker cap, scopes and the budget.
       - name: Fill the free slot
-        if: always() && env.SWARM_SINGLE_TASK != 'true'
+        if: always() && !contains(fromJSON('["1","true","yes","on"]'), env.SWARM_SINGLE_TASK)
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

@@ -37,7 +37,7 @@ env:
 jobs:
   select:
     name: Select issues
-    if: vars.SWARM_ISSUES != 'off'
+    if: ${{ !contains(fromJSON('["0","false","no","off"]'), vars.SWARM_ISSUES) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

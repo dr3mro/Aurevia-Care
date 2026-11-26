@@ -27,6 +27,7 @@ from typing import NamedTuple
 # ``python3 -I scripts/<tool>.py`` omits the repository root from sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from process_env import child_environment
+from swarm_flags import disabled, enabled
 
 MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
@@ -408,12 +409,13 @@ LABELS.update(ISSUE_LABELS)
 
 
 def issues_enabled():
-    return os.environ.get("SWARM_ISSUES", "on").strip().lower() not in (
-        "off",
-        "0",
-        "false",
-        "no",
-    )
+    """Whether issue integration is active; unset defaults to on.
+
+    SWARM_ISSUES accepts the shared canonical tokens: off/0/false/no stop every
+    issue write, on/1/true/yes keep it running. Values are normalised for case
+    and padding so the Python and workflow decisions stay identical.
+    """
+    return not disabled(os.environ.get("SWARM_ISSUES", "on"), False)
 
 
 def mask(text):
@@ -5254,36 +5256,26 @@ def protected_override():
 
     The switch only lifts the "never merge protected files automatically" rule. The
     full gate, the tracker rule and the file-count limit still apply. Turn it off by
-    deleting the variable or setting it to 0; nothing else changes."""
-    return os.environ.get("SWARM_ALLOW_PROTECTED", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    deleting the variable or setting it to 0; nothing else changes. Values use the
+    shared canonical token set, normalised for case and padding like the workflows.
+    """
+    return enabled(os.environ.get("SWARM_ALLOW_PROTECTED", ""), False)
 
 
 def swarm_enabled():
-    """True unless the kill switch SWARM_ENABLED is set to a false value.
+    """True unless the kill switch SWARM_ENABLED is set to a disable token.
 
     The switch pauses picking the next task and halts wave advancement. It does
     not stop workers that are already running; they finish and publish. Turn it
-    off by setting SWARM_ENABLED to 0/false/no/off (case-insensitive); delete or
-    leave it unset to keep the swarm running."""
-    value = os.environ.get("SWARM_ENABLED", "").strip().lower()
-    if value == "":
-        return True
-    return value not in {"0", "false", "no", "off"}
+    off by setting SWARM_ENABLED to 0/false/no/off; delete or leave it unset to
+    keep the swarm running. Values use the shared canonical token set.
+    """
+    return not disabled(os.environ.get("SWARM_ENABLED", ""), False)
 
 
 def single_task_mode():
-    """True when the single-task-per-wave redesign is enabled (SWARM_SINGLE_TASK=1)."""
-    return os.environ.get("SWARM_SINGLE_TASK", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    """True when SWARM_SINGLE_TASK holds a canonical enable token (1/true/yes/on)."""
+    return enabled(os.environ.get("SWARM_SINGLE_TASK", ""), False)
 
 
 def debug_rounds(names):

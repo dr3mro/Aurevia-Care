@@ -1,5 +1,4 @@
-- [-] WORKFLOW-AUDIT · Comprehensive swarm, workflow, Git-safety and delivery audit
-  - agent: orca
+- [ ] WORKFLOW-AUDIT · Comprehensive swarm, workflow, Git-safety and delivery audit
   - requirements: OPS-06
   - scope: .github/workflows, .github/actions, .github/agent-image, scripts, scripts/tests, docs/SWARM.md, docs/reference, docs/operations/workflow-changes, .opencode/config, swarm-bugs.md, tasks/01279000-WORKFLOW-AUDIT.md
   - details: Audit and repair WF-01 through WF-35 plus newly confirmed defects. Prioritize Git safety and repository integrity before full-suite execution. Use disposable repositories for destructive Git tests, preserve the primary worktree, make small atomic commits on fix/workflow-audit, and never push main or bypass protections.
@@ -207,7 +206,6 @@
 ## Why this is not finished
 Audit has started; no checklist item is considered fixed without source evidence, reproduction where applicable, regression coverage and independent verification. The standing owner directive prohibits Git-using scripts/tests, so disposable-repository and full-suite evidence remain explicitly unrun.
 - [!] ORCA-INFRASTRUCTURE-REFACTOR · Coordinated ORCA infrastructure audit, refactoring and verification
-  - agent: orca
   - blocked: all 16 eligible child stories are `[x]`; remaining units need trusted Git/GitHub execution, an owner prefix-rename ruling, staff-web/Java/CI authority, or a non-competing ORCA-080 replacement. See `## Queue blocker`.
   - evidence: full suite `Ran 1920 tests in 126.800s`, `OK`; `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; all six policy checks exit 0; four verdicts GO per child story. Evidence source: tool commands and read-only reviewers. No commit, push or PR in this session.
   - requirements: ORCA-001..ORCA-150, AG-01..AG-35, WF-01..WF-35 (source: `orca-refactor.md`)
@@ -250,10 +248,10 @@ Both checklists are updated after each stage: this `## Stage status` list and th
 - [x] Stage C baseline benchmarking — reproducible commands and final lines recorded under `## Evidence log` and `docs/orca-refactor/01-inventory.md`; character/line proxies only, with token metrics explicitly unavailable (no tokeniser in this session).
 - [x] Offline ORCA core analysis module (01303000) — `scripts/orca_core.py` green with 24 tests and 100% module coverage; four reviewer verdicts GO; changed-line gate now green.
 - [x] Stage D validator slice (01304000) — `scripts/check-ownership.py` with declared manifest, 34 tests and 100% module coverage; four reviewer verdicts GO; changed-line gate now green. No scripts were moved.
-- [-] Stage E instructions and skills — canonical hierarchy, skill registry and atomic rename designs are available (`docs/orca-refactor/05-instruction-skill-design.md`); no registry or rename was implemented.
+- [ ] Stage E instructions and skills — canonical hierarchy, skill registry and atomic rename designs are available (`docs/orca-refactor/05-instruction-skill-design.md`); no registry or rename was implemented.
 - [x] Stage F source index and impact analysis (01309000, 01311000) — passive `index_sources`/`stale_entries`/`impact` helpers in `scripts/orca_core.py`, 100% module coverage, four verdicts each.
 - [x] Stage F/K passive analysis completion (01309000, 01310000, 01311000, 01312000, 01313000, 01314000) — source index, one-wave-per-branch limits, impact analysis, completion-matrix rule, memory provenance/selection and documented manifest schema. Full suite `Ran 1920 tests in 126.800s`, `OK`; changed-line coverage gate green; four verdicts GO per story. No `apps/` file changed in this push.
-- [-] Stages G/I/J design — native-only supervisor, task-state and fault-injection designs are available (`docs/orca-refactor/06-supervisor-design.md`); runtime capabilities stay blocked without trusted runner evidence.
+- [ ] Stages G/I/J design — native-only supervisor, task-state and fault-injection designs are available (`docs/orca-refactor/06-supervisor-design.md`); runtime capabilities stay blocked without trusted runner evidence.
 - [x] WF-01..35 final source disposition — 35-item table with exact citations and missing live evidence in `docs/orca-refactor/08-workflow-disposition.md`; source-level defect SWARM-DELIVERY-COMMENT recorded in BUGS.md.
 - [ ] Stage E instructions and skills.
 - [ ] Stage F task intelligence.

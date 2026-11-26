@@ -64,6 +64,7 @@
     "scripts/route-task.py": "project",
     "scripts/smoke-image.sh": "project",
     "scripts/swarm.py": "project",
+    "scripts/swarm_flags.py": "project",
     "scripts/swarm_gate.py": "project",
     "scripts/taskstore.py": "project",
     "scripts/verify.sh": "project",
