@@ -3449,9 +3449,18 @@ def read(path, default=""):
         return default
 
 
-def publish(task, directory):
-    """Push the worker's bundle and open the pull request or update the fix."""
+def publish(task, directory, validated_checks=""):
+    """Push the worker's bundle and open the pull request or update the fix.
+
+    ``validated_checks`` is the trusted validator verdict (``true``/``false``) or
+    empty for legacy callers. It overrides the worker's local check artifact so a
+    measurement artifact in the worker image cannot mark a validated change as
+    unfinished; the local value is still recorded as diagnostic evidence.
+    """
     directory = Path(directory)
+    # Derive once so early-return paths can still report an authoritative state.
+    local_checks = read(directory / "checks", "skipped")
+    checks = {"true": "passed", "false": "failed"}.get(validated_checks, local_checks)
     result = read(directory / "result", "failed")
     commits = int(read(directory / "commits", "0") or 0)
     bundle = directory / "result.bundle"
@@ -3523,7 +3532,6 @@ def publish(task, directory):
                 emit("blocked", "branch-moved")
                 return
             raise
-        checks = read(directory / "checks", "skipped")
         merged = read(directory / "merge", "skipped")
         # Work is always published, even when the worker did not finish: a
         # draft pull request keeps it reviewable and lets a fix worker continue.
@@ -3532,7 +3540,9 @@ def publish(task, directory):
             notes = read(directory / "publish-notes.md", "No notes were written.")
             status = ""
             if incomplete:
-                why = [f"agent result: {result}", f"local checks: {checks}"]
+                why = [f"agent result: {result}", f"checks: {checks}"]
+                if validated_checks:
+                    why.append(f"local checks: {local_checks}")
                 if merged == "conflict":
                     why.append("merge with main left unresolved conflicts")
                 status = (
@@ -3544,8 +3554,8 @@ def publish(task, directory):
             if incomplete:
                 status += failure_report(directory)
             body = (
-                f"{status}Task: {task['id']}\n\nSwarm worker {task['slot']}. Local checks: {checks}. "
-                f"Agent result: {result}.\n\n{clip(notes)}"
+                f"{status}Task: {task['id']}\n\nSwarm worker {task['slot']}. Checks: {checks}. "
+                f"Local checks: {local_checks}. Agent result: {result}.\n\n{clip(notes)}"
             )
             repair = task["id"].startswith("FIX-")
             if repair:
@@ -3590,7 +3600,8 @@ def publish(task, directory):
                 "comment",
                 pr,
                 "--body",
-                f"Worker {task['slot']} pushed a fix (local checks: {checks}). The integrator will retest.",
+                f"Worker {task['slot']} pushed a fix (checks: {checks}; local checks: {local_checks}). "
+                "The integrator will retest.",
             )
             # A story that ended as a draft stays a draft after its fix: the integrator never takes
             # a draft, so a clean fix must hand the pull request back by marking it ready.
@@ -3605,8 +3616,8 @@ def publish(task, directory):
                 # person) instead of another blind fix on the same label.
                 fail(
                     pr,
-                    f"Fix worker {task['slot']} pushed a change whose local checks did not pass "
-                    f"(result: {result}, checks: {checks}, merge: {merged})",
+                    f"Fix worker {task['slot']} pushed a change whose checks did not pass "
+                    f"(result: {result}, checks: {checks}, local checks: {local_checks}, merge: {merged})",
                 )
     elif commits > 0:
         # The bundle step failed (it runs with `|| true`): the commits exist only in the
@@ -3617,19 +3628,22 @@ def publish(task, directory):
             f"was pushed. Check the worker artifact and its log. {run_url()}",
         )
     release(task, result, 1 if pr else 0, pr)
-    note_worker_outcome(task, result, directory, pr)
+    note_worker_outcome(task, result, directory, pr, checks)
     if task["kind"] == "story" and (result != "ok" or not pr):
         # A failed worker, or one that published nothing, must not keep a claim.
         release_claim(task["id"], f"result={result}, pr={pr or 'none'}")
     emit("pr", pr)
 
 
-def note_worker_outcome(task, result, directory, pr):
+def note_worker_outcome(task, result, directory, pr, checks=None):
     """Record a handoff issue when a worker stopped early, close it when the task finished.
 
-    Never raises: an issue that cannot be written must not fail the publish step."""
+    ``checks`` is the authoritative value supplied by publish; legacy callers
+    without it read the worker artifact. Never raises: an issue that cannot be
+    written must not fail the publish step."""
     try:
-        checks = read(Path(directory) / "checks", "skipped")
+        if checks is None:
+            checks = read(Path(directory) / "checks", "skipped")
         merged = read(Path(directory) / "merge", "skipped")
         if result != "ok" or checks != "passed" or merged == "conflict" or not pr:
             report_worker_handoff(task, result, checks, merged, directory, pr)
@@ -6884,6 +6898,10 @@ def main(argv=None):
             p.add_argument("--commits", type=int, default=0)
         if name == "publish":
             p.add_argument("--dir", required=True)
+            # The trusted validate job supplies "true"/"false"; an absent value
+            # keeps legacy callers on the worker's local check artifact. Any
+            # other value is rejected here rather than read as a pass.
+            p.add_argument("--validated-checks", default="", choices=("", "true", "false"))
     for name in ("guard", "merge-local", "finalize", "fail"):
         p = sub.add_parser(name)
         p.add_argument("--pr", type=int, required=True)
@@ -7143,7 +7161,7 @@ def main(argv=None):
     elif a.cmd == "release":
         release(json.loads(a.task), a.result, a.commits)
     elif a.cmd == "publish":
-        publish(json.loads(a.task), a.dir)
+        publish(json.loads(a.task), a.dir, a.validated_checks)
     elif a.cmd == "monitor-select":
         if (
             a.mode == "daily"

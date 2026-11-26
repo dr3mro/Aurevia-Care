@@ -525,7 +525,7 @@ class MainDispatchCoverageTests(CliTestCase):
         with mock.patch.object(swarm, "publish") as publish:
             self.assertEqual(
                 swarm.main(["publish", "--task", '{"id": "A"}', "--dir", str(self.dir)]), 0)
-        publish.assert_called_once_with({"id": "A"}, str(self.dir))
+        publish.assert_called_once_with({"id": "A"}, str(self.dir), "")
 
     def test_main_monitor_select_skips_an_off_season_daily_cron(self):
         # An unrecognised SCHEDULE can never equal the New York UTC offset, so the

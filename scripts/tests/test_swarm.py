@@ -3134,6 +3134,38 @@ class GitTests(unittest.TestCase):
         self.assertNotIn("--draft", create)
         self.assertFalse(fake.said("issue", "create", "worker-handoff"))
 
+    def test_trusted_pass_overrides_a_local_check_artifact(self):
+        out, fake = self.worker_dir(checks="failed"), FakeGh()
+        with mock.patch.object(swarm, "gh", fake):
+            swarm.publish(self.TASK, out, "true")
+        create = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
+        body = create[create.index("--body") + 1]
+        self.assertNotIn("--draft", create)
+        self.assertFalse(fake.said("issue", "create", "worker-handoff"))
+        self.assertIn("Checks: passed", body)
+        self.assertIn("Local checks: failed", body)
+
+    def test_trusted_failure_keeps_the_draft_and_handoff(self):
+        out, fake = self.worker_dir(checks="passed"), FakeGh()
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "release_claim"):
+            swarm.publish(self.TASK, out, "false")
+        create = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
+        body = create[create.index("--body") + 1]
+        self.assertIn("--draft", create)
+        self.assertTrue(fake.said("issue", "create", "worker-handoff"))
+        self.assertIn("checks: failed", body)
+        self.assertIn("local checks: passed", body)
+
+    def test_main_dispatch_forwards_the_trusted_check_value(self):
+        out = self.worker_dir()
+        with mock.patch.object(swarm, "publish") as publish:
+            swarm.main(["publish", "--task", json.dumps(self.TASK), "--dir", str(out),
+                        "--validated-checks", "true"])
+        publish.assert_called_once_with(self.TASK, str(out), "true")
+        with self.assertRaises(SystemExit):
+            swarm.main(["publish", "--task", json.dumps(self.TASK), "--dir", str(out),
+                        "--validated-checks", "bogus"])
+
     def test_failed_worker_still_publishes_its_work_as_a_draft(self):
         out, fake = self.worker_dir(result="timeout", checks="failed"), FakeGh()
         with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "release_claim"):
@@ -3144,6 +3176,7 @@ class GitTests(unittest.TestCase):
         body = create[create.index("--body") + 1]
         self.assertIn("did not finish cleanly", body)
         self.assertIn("agent result: timeout", body)
+        self.assertNotIn("local checks: failed", body)  # no trusted value supplied
 
     def test_failed_checks_put_the_end_of_the_check_log_in_the_pr_body(self):
         out, fake = self.worker_dir(checks="failed"), FakeGh()
@@ -3252,7 +3285,7 @@ class GitTests(unittest.TestCase):
             fake = self.publish_fix("failed")
         failed.assert_called_once()
         self.assertEqual(failed.call_args.args[0], "193")
-        self.assertIn("local checks did not pass", failed.call_args.args[1])
+        self.assertIn("checks did not pass", failed.call_args.args[1])
         self.assertFalse(any(call[:3] == ("api", "--method", "DELETE") for call in fake.calls))
 
     def test_a_story_push_failure_is_still_an_error(self):
