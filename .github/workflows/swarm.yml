@@ -133,8 +133,10 @@ jobs:
       # permission the pause was silent.
       issues: write
     outputs:
-      matrix: ${{ steps.plan.outputs.matrix }}
-      count: ${{ steps.plan.outputs.count }}
+      # The kill step skips the planner, so its empty matrix and zero count are
+      # the fail-closed values the downstream gates must see.
+      matrix: ${{ steps.plan.outputs.matrix || steps.kill.outputs.matrix || '{"include":[]}' }}
+      count: ${{ steps.plan.outputs.count || steps.kill.outputs.count || '0' }}
       image_prefix: ${{ steps.image.outputs.prefix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

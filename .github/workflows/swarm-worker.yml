@@ -489,7 +489,7 @@ jobs:
       # This worker's slot is free: start the next wave now instead of waiting for the slowest
       # worker of this wave. The planner still applies the worker cap, scopes and the budget.
       - name: Fill the free slot
-        if: always() && inputs.single_task != 'true'
+        if: always() && inputs.single_task == 'false'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

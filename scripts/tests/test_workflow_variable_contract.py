@@ -80,6 +80,17 @@ class WorkflowVariableContractTest(unittest.TestCase):
                         self.assertNotRegex(text, rf"(?:vars|env)\.{name}\b")
                         self.assertNotIn(f"${{{name}", text)
 
+    def test_no_run_block_compares_a_raw_boolean_variable(self):
+        for path in sorted(WORKFLOWS.glob("*.yml")):
+            for label, text in sites(read(path.name)):
+                if not label.endswith(".run"):
+                    continue
+                for name in BOOLEAN_VARS:
+                    with self.subTest(workflow=path.name, site=label, variable=name):
+                        self.assertNotRegex(
+                            text, rf"contains\(fromJSON\([^)]*\),\s*(?:vars|env)\.{name}\b")
+                        self.assertNotRegex(text, rf'case "\${{{name}')
+
     def test_select_job_name_does_not_claim_a_scrum_master(self):
         for name in CONSUMERS:
             for job_id, job in read(name)["jobs"].items():
@@ -121,7 +132,7 @@ class WorkflowVariableContractTest(unittest.TestCase):
         worker = read("swarm-worker.yml")
         fill = next(s for s in worker["jobs"]["publish"]["steps"]
                     if s.get("name") == "Fill the free slot")
-        self.assertEqual(fill["if"], "always() && inputs.single_task != 'true'")
+        self.assertEqual(fill["if"], "always() && inputs.single_task == 'false'")
 
     def test_worker_receives_the_canonical_single_task_input(self):
         swarm = read("swarm.yml")
