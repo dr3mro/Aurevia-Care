@@ -235,7 +235,7 @@ async function measureVisualState(page: Page): Promise<VisualMeasurement> {
     let bodyTextSample = 'no text element';
     let bodyTextColors = 'unmeasured';
     if (textElement !== null) {
-      const text = (textElement.textContent ?? '').trim();
+      const text = textElement.textContent.trim();
       const backdrop = backgroundOf(textElement);
       const foreground = over(getComputedStyle(textElement).color, backdrop);
       bodyTextContrast = contrast(foreground, backdrop);

@@ -552,7 +552,7 @@ describe('NoteEditor required-field and stale recovery', () => {
     expect(header.textContent).toContain('soap-v2');
     const saved = must(header.querySelector('time'));
     expect(saved.getAttribute('datetime')).toBe('2026-03-09T09:41:00Z');
-    expect(saved.textContent ?? '').not.toBe('2026-03-09T09:41:00Z');
+    expect(saved.textContent).not.toBe('2026-03-09T09:41:00Z');
   });
 
   it('omits saved time when the revision has no savedAt', () => {

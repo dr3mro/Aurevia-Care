@@ -126,7 +126,7 @@ async function openDrawer(page: Page, locale: Locale, context: string): Promise<
 async function linkInventory(scope: Locator): Promise<readonly ExpectedLink[]> {
   return scope.getByRole('link').evaluateAll((nodes) =>
     nodes.map((node) => ({
-      name: (node.getAttribute('aria-label') ?? node.textContent ?? '').trim(),
+      name: (node.getAttribute('aria-label') ?? node.textContent).trim(),
       route: node.getAttribute('href') ?? '',
     })),
   );

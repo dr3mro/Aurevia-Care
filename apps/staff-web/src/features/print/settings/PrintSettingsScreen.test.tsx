@@ -105,7 +105,7 @@ describe('print profile settings for an administrator', () => {
   it('names every missing field without sending a command', () => {
     const { onPropose } = renderSettings();
     fireEvent.click(screen.getByRole('button', { name: 'Propose version' }));
-    const summary = screen.getByTestId('settings-error-summary').textContent ?? '';
+    const summary = screen.getByTestId('settings-error-summary').textContent;
     for (const message of [
       'Facility name is required.',
       'Facility address is required.',

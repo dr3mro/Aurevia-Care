@@ -143,7 +143,7 @@ describe('responsive StateViews (WEB-07, UX-01)', () => {
         expect(region.getAttribute('data-breakpoint')).toBe(layout);
         expect(region.className).toContain('page');
         expect(region.getAttribute('style') ?? '').not.toContain('display: none');
-        expect(region.textContent?.trim().length).toBeGreaterThan(0);
+        expect(region.textContent.trim().length).toBeGreaterThan(0);
         if (label === 'timeout') {
           expect(region.textContent).toContain('Something went wrong');
           expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();

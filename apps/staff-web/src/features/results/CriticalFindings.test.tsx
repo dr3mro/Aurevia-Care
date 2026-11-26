@@ -144,7 +144,7 @@ describe('CriticalFindings presentation', () => {
         </I18nProvider>
       </ThemeProvider>,
     );
-    const events = screen.getAllByTestId('finding-event').map((item) => item.textContent ?? '');
+    const events = screen.getAllByTestId('finding-event').map((item) => item.textContent);
     expect(events).toHaveLength(4);
     expect(events[0]).toContain('Deadline passed');
     expect(events[1]).toContain('Verified by lab');

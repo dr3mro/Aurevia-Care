@@ -294,7 +294,7 @@ async function isolatedRuns(page: Page): Promise<IsolatedRun[]> {
   return page.evaluate(() =>
     Array.from(document.querySelectorAll('bdi[dir="auto"][lang]')).map((run) => ({
       lang: run.getAttribute('lang') ?? '',
-      text: run.textContent ?? '',
+      text: run.textContent,
     })),
   );
 }

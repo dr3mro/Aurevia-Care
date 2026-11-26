@@ -170,7 +170,7 @@ describe('responsive SessionExpiredPage (WEB-07, UX-01)', () => {
       expect(style).not.toContain('white-space: nowrap');
       expect(style).not.toContain('text-overflow');
       expect(style).not.toContain('display: none');
-      expect(screen.getByRole('heading', { level: 2 }).textContent?.length).toBeGreaterThan(0);
+      expect(screen.getByRole('heading', { level: 2 }).textContent.length).toBeGreaterThan(0);
       unmount();
     }
   });

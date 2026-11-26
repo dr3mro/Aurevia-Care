@@ -372,7 +372,7 @@ describe('AppointmentWorklist reception contract', () => {
     const noShow = required(syntheticAlphaAppointments.find((item) => item.id === 'apt-006'));
     wrap(<AppointmentWorklist {...props} appointments={[...dayAppointments, completed, noShow]} />);
     const note = (name: string): string =>
-      required(required(screen.getByRole('rowheader', { name }).closest('tr')).textContent ?? '');
+      required(screen.getByRole('rowheader', { name }).closest('tr')).textContent;
     expect(note('Synthetic Sara')).toContain(schedulingText('en', 'noteSince').replace('{value}', ''));
     expect(note('Synthetic Omar')).toContain(schedulingTextWithValue('en', 'noteWaiting', 30));
     expect(note('Synthetic Layla')).toContain(schedulingTextWithValue('en', 'noteArrivesIn', 60));

@@ -240,10 +240,10 @@ describe('responsive AuditEventList (WEB-07, UX-01)', () => {
     const card = within(must(within(list('en')).getAllByRole('listitem')[0]));
     const time = card.getByRole('time');
     fireEvent.focus(time);
-    expect(card.getByText(`UTC: ${time.textContent ?? ''}`)).toBeTruthy();
+    expect(card.getByText(`UTC: ${time.textContent}`)).toBeTruthy();
     expect(time.getAttribute('aria-describedby')).toBe('audit-utc-1');
     fireEvent.blur(time);
-    expect(card.queryByText(`UTC: ${time.textContent ?? ''}`)).toBeNull();
+    expect(card.queryByText(`UTC: ${time.textContent}`)).toBeNull();
   });
 
   it.each(['medium', 'expanded'] as const)('keeps the full, unhidden table on %s', (layout) => {

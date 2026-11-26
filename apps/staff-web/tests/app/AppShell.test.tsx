@@ -94,7 +94,7 @@ describe('staff web application shell', () => {
     renderShell();
     expect(await screen.findByRole('heading', { name: 'Welcome' })).toBeTruthy();
     expect(
-      screen.getAllByRole('status').some((node) => node.textContent?.includes('Nothing') === true),
+      screen.getAllByRole('status').some((node) => node.textContent.includes('Nothing')),
     ).toBe(true);
   });
 
