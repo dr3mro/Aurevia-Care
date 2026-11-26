@@ -54,13 +54,14 @@ concurrency:
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
-  SWARM_ENABLED: ${{ vars.SWARM_ENABLED || 'true' }}
-  SWARM_SINGLE_TASK: ${{ vars.SWARM_SINGLE_TASK || 'false' }}
 
 jobs:
+  flags:
+    uses: ./.github/workflows/swarm-flags.yml
   select:
     name: Select task (PO)
-    if: contains(fromJSON('["1","true","yes","on"]'), vars.SWARM_SINGLE_TASK) && !contains(fromJSON('["0","false","no","off"]'), vars.SWARM_ENABLED) && contains(fromJSON('["1","true","yes","on"]'), vars.SWARM_LLM_SELECTION)
+    needs: flags
+    if: needs.flags.outputs.single_task == 'true' && needs.flags.outputs.enabled == 'true' && needs.flags.outputs.llm_selection == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -106,8 +107,13 @@ jobs:
           fi
   plan:
     name: Plan the wave
-    needs: select
+    needs: [flags, select]
     if: always() && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    # Canonical values reach both the shell gates below and the Python commands,
+    # which read the same flag names from the environment.
+    env:
+      SWARM_ENABLED: ${{ needs.flags.outputs.enabled }}
+      SWARM_SINGLE_TASK: ${{ needs.flags.outputs.single_task }}
     # Planning reads tasks/ and claims tasks, so it never overlaps another
     # plan, whichever wave it belongs to.
     concurrency:
@@ -146,19 +152,17 @@ jobs:
       # Safety net: refuse a wave when estimated monthly runner minutes are near
       # the cap. No wave, no worker containers, and an issue for a person.
       - id: kill
+        # An empty or non-canonical output fails closed: no wave is planned.
         run: |
-          flag="${SWARM_ENABLED:-true}"
-          case "${flag,,}" in
-            0|false|no|off)
-              echo "Swarm kill switch SWARM_ENABLED is off; skipping this wave." >&2
-              {
-                echo 'enabled=false'
-                echo 'matrix={"include":[]}'
-                echo 'count=0'
-              } >> "$GITHUB_OUTPUT"
-              exit 0
-              ;;
-          esac
+          if [[ "${SWARM_ENABLED:-false}" != "true" ]]; then
+            echo "Swarm kill switch is off; skipping this wave." >&2
+            {
+              echo 'enabled=false'
+              echo 'matrix={"include":[]}'
+              echo 'count=0'
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo 'enabled=true' >> "$GITHUB_OUTPUT"
       - id: budget
         if: steps.kill.outputs.enabled == 'true'
@@ -214,13 +218,10 @@ jobs:
           # Repairs and fixes are queued before offering spare workers to backlog tasks.
           # Ready merges use the independent serialized integrator instead of waiting for this wave.
           python3 -I scripts/swarm.py pr-flow --no-wave
-          flag="${SWARM_SINGLE_TASK:-false}"
-          case "${flag,,}" in
-            1|true|yes|on)
-              WORKERS=1
-              echo "Single-task mode: planning at most one worker." >&2
-              ;;
-          esac
+          if [[ "${SWARM_SINGLE_TASK:-false}" == "true" ]]; then
+            WORKERS=1
+            echo "Single-task mode: planning at most one worker." >&2
+          fi
           plan_args=(--max "$WORKERS" --capacity "$capacity" --repair-run "$REPAIR_RUN" --task "$LAUNCH_TASK")
           if [[ "${IGNORE_RED_MAIN:-false}" == true ]]; then
             plan_args+=(--ignore-red-main)
@@ -231,7 +232,7 @@ jobs:
     # Static name: GitHub renders matrix values in a job name only when the
     # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.
     name: Swarm worker
-    needs: plan
+    needs: [plan, flags]
     # count is empty when the budget gate skipped the plan step; fromJSON('')
     # on the matrix would then fail the whole run and trigger a false repair.
     if: needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
@@ -267,6 +268,7 @@ jobs:
       slot: ${{ format('{0}', matrix.slot) }}
       task: ${{ toJSON(matrix) }}
       ignore_red_main: ${{ inputs.ignore_red_main == true }}
+      single_task: ${{ needs.flags.outputs.single_task }}
   # Integration runs inside the wave, after its workers: no workflow_run chain.
   # The integrator serializes itself (group swarm-integrator), so overlapping
   # waves queue their batches instead of racing to push main. It also runs when
@@ -293,7 +295,7 @@ jobs:
   # worker fails three times waits for a person, so this cannot spin forever.
   loop:
     name: Start the next wave
-    needs: [plan, worker, integrate]
+    needs: [plan, worker, integrate, flags]
     if: always() && needs.plan.result == 'success' && needs.integrate.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -311,7 +313,7 @@ jobs:
             tasks/
             tasks
       - name: Wait for Delivery on main before advancing
-        if: contains(fromJSON('["1","true","yes","on"]'), vars.SWARM_SINGLE_TASK)
+        if: needs.flags.outputs.single_task == 'true'
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: |

@@ -1,0 +1,54 @@
+name: Swarm boolean flags
+# Resolve every boolean repository variable once through scripts/swarm_flags.py.
+# GitHub expressions cannot trim or case-fold, so gates consume these canonical
+# true/false outputs instead of comparing raw vars.* values. Without this job a
+# padded value such as " true " could satisfy the Python helper but bypass a
+# workflow gate, desynchronising a kill switch from the agent that reads it.
+on:
+  workflow_call:
+    outputs:
+      enabled:
+        description: 'Canonical SWARM_ENABLED; on when unset or unknown'
+        value: ${{ jobs.resolve.outputs.enabled }}
+      single_task:
+        description: 'Canonical SWARM_SINGLE_TASK; off when unset or unknown'
+        value: ${{ jobs.resolve.outputs.single_task }}
+      llm_selection:
+        description: 'Canonical SWARM_LLM_SELECTION; off when unset or unknown'
+        value: ${{ jobs.resolve.outputs.llm_selection }}
+      issues:
+        description: 'Canonical SWARM_ISSUES; on when unset or unknown'
+        value: ${{ jobs.resolve.outputs.issues }}
+      notes:
+        description: 'Canonical SWARM_NOTES; on when unset or unknown'
+        value: ${{ jobs.resolve.outputs.notes }}
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: Resolve canonical flags
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.canonical.outputs.enabled }}
+      single_task: ${{ steps.canonical.outputs.single_task }}
+      llm_selection: ${{ steps.canonical.outputs.llm_selection }}
+      issues: ${{ steps.canonical.outputs.issues }}
+      notes: ${{ steps.canonical.outputs.notes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+      - id: canonical
+        # Raw values only; the helper applies the same tokens and defaults the
+        # Python commands use. No token or credential is read here.
+        env:
+          SWARM_ENABLED: ${{ vars.SWARM_ENABLED }}
+          SWARM_SINGLE_TASK: ${{ vars.SWARM_SINGLE_TASK }}
+          SWARM_LLM_SELECTION: ${{ vars.SWARM_LLM_SELECTION }}
+          SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
+          SWARM_NOTES: ${{ vars.SWARM_NOTES }}
+        run: python3 -I scripts/swarm_flags.py

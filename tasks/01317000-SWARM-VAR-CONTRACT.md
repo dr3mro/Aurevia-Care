@@ -1,4 +1,5 @@
-- [ ] SWARM-VAR-CONTRACT · Unify boolean repository-variable semantics
+- [-] SWARM-VAR-CONTRACT · Unify boolean repository-variable semantics
+  - agent: orca
   - scope: scripts/swarm_flags.py, scripts/swarm.py, scripts/tests/test_swarm_flags.py, scripts/tests/test_workflow_variable_contract.py, scripts/tests/test_swarm_kill_switch.py, .github/workflows/swarm.yml, .github/workflows/swarm-worker.yml, .github/workflows/swarm-issue-monitor.yml, docs/SWARM.md, docs/reference/testing-guide.md
   - details:
     Plan approved by aurevia-plan-reviewer (VERDICT: GO after re-review); no repository variables changed.

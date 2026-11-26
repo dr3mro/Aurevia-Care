@@ -23,9 +23,9 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.m2/repository/org/owasp/dependency-check-data
-        # Stable per-dependency key: the run id made every cache unique, so
-        # no run could restore the NVD data saved by a previous one.
-        key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/api/pom.xml') }}
+        # Unique per run: a miss restores the previous snapshot via restore-keys,
+        # and a keyed push refreshes it and saves fresh NVD data for later runs.
+        key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}
         restore-keys: |
           owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
 

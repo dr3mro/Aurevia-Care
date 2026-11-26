@@ -23,6 +23,8 @@ env:
   SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
 
 jobs:
+  flags:
+    uses: ./.github/workflows/swarm-flags.yml
   admission:
     uses: ./.github/workflows/swarm-daily-admission.yml
     permissions:
@@ -30,9 +32,9 @@ jobs:
       actions: read
       pull-requests: read
   collect:
-    needs: admission
+    needs: [admission, flags]
     name: Collect the notes
-    if: vars.SWARM_NOTES != 'off' && needs.admission.outputs.ready == 'true'
+    if: needs.flags.outputs.notes == 'true' && needs.admission.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:

@@ -30,10 +30,6 @@ The owning script is cited in the **Check** column.
 | Python tooling tests — `python3 -I -m unittest` | `python3 -I -m unittest discover -s scripts/tests -q` | The checking scripts themselves behave correctly on synthetic fixtures | Fast, seconds | A check script regressed or a fixture changed | Run the failing `scripts/tests/test_*.py` directly and fix the checker |
 | Python coverage — `scripts/python-coverage.sh` | `bash scripts/python-coverage.sh` | Every script line and branch added by a change is covered by a test; a missing `coverage` package only warns locally but fails Delivery | Fast, seconds | An added line or branch has no test, or `coverage` is missing in CI | Add the named test for the uncovered branch; install `coverage` and re-run |
 
-`REQUIRE_PY_COVERAGE` is an **environment variable** set by Delivery
-(`.github/workflows/delivery.yml`), not a repository variable. When it is set,
-`scripts/python-coverage.sh` fails instead of falling back to plain unittest if the
-`coverage` package is unavailable. It never changes a threshold or excludes a file.
 | Java compile + unit tests — `scripts/quick-check.sh` | `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | Main and test sources compile and unit tests pass; `fast` excludes `@Tag("integration")` suites and `no-security` skips OWASP and SpotBugs | Minutes; unit tier only (`scripts/quick-check.sh`) | Compile error, failing unit test, or a DB test that forgot the integration tag | Run the named test class; tag DB suites `@Tag("integration")` |
 | Java full verify — `apps/api/check.sh` | `mvn -q -B verify` (the API module runs `cd apps/api && bash check.sh`) | Unit **and** integration tests pass; JaCoCo enforces 100% instruction/line/branch/method/class (`minimum 1.00` in `apps/api/pom.xml`); OWASP Dependency-Check fails at CVSS ≥ 7; SpotBugs 4.10.5.0 runs | Slowest; this is the full gate (`apps/api/check.sh`, `.github/actions/java-verify/action.yml`) | Failing test, missed branch/line, a high-severity CVE, or a SpotBugs finding | Read the Surefire/JaCoCo/OWASP/SpotBugs reports in `apps/api/target`; add the missing test or fix the finding |
 | SpotBugs (standalone) — `scripts/worker-check.sh` | `mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check` | Static defect detection without OWASP or a key; compile first so the scan is not vacuous | "about a minute" (`scripts/worker-check.sh`) | A bug pattern such as a constructor that throws before Delivery | Fix the code; keep the compile step ahead of `spotbugs:check` |
@@ -50,6 +46,11 @@ The owning script is cited in the **Check** column.
 | Worker gate — `scripts/worker-check.sh` | `bash scripts/worker-check.sh` | Quick gate + frontend standards + standalone SpotBugs + integration tier + `db/check.sh`; if PostgreSQL is unavailable it warns and exits 0 unless `REQUIRE_POSTGRES` is set | Minutes (`scripts/worker-check.sh`) | Related integration failure, SpotBugs finding, or `REQUIRE_POSTGRES` with no PostgreSQL | Start PostgreSQL; read the `worker_gate.py` message; fix the named class |
 | Integrator pre-merge gate — `scripts/integrator-gate.sh` | `bash scripts/integrator-gate.sh` | Full `scripts/check.sh` plus `scripts/docs.sh` on the merge result, so Javadoc/TypeDoc breakage is rejected before merge | Long; full check + docs (`scripts/integrator-gate.sh`) | Any full-check or docs failure on the merged tree | Re-run the failing row on the merge result; fix before merging |
 | Repair merge gate — `scripts/repair-gate.sh` | `bash scripts/repair-gate.sh` | For `FIX-`/`DLV-` PRs: `REQUIRE_POSTGRES=1`, `scripts/worker-check.sh` (quick + integration through `worker_gate.py` + DB) then `scripts/docs.sh`; OWASP, SpotBugs and JaCoCo are left to Delivery after merge | Minutes (`scripts/repair-gate.sh`) | The repair's named classes still fail, or docs break | Fix the named test class; ensure the integrator has PostgreSQL |
+
+`REQUIRE_PY_COVERAGE` is an **environment variable** set by Delivery
+(`.github/workflows/delivery.yml`), not a repository variable. When it is set,
+`scripts/python-coverage.sh` fails instead of falling back to plain unittest if the
+`coverage` package is unavailable. It never changes a threshold or excludes a file.
 
 ## Which checks run where
 

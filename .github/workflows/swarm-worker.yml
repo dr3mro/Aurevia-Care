@@ -17,6 +17,10 @@ on:
         description: 'Carry the wave-level red-main override into slot refill'
         type: boolean
         default: false
+      single_task:
+        description: 'Canonical SWARM_SINGLE_TASK from the flags job ("true" or "false")'
+        type: string
+        default: 'false'
     secrets:
       # GITHUB_TOKEN is system-reserved: a workflow_call that declares it fails
       # GitHub validation. It is supplied automatically to the called workflow.
@@ -54,7 +58,7 @@ concurrency:
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
-  SWARM_SINGLE_TASK: ${{ vars.SWARM_SINGLE_TASK || 'false' }}
+  SWARM_SINGLE_TASK: ${{ inputs.single_task }}
 
 jobs:
   work:
@@ -485,7 +489,7 @@ jobs:
       # This worker's slot is free: start the next wave now instead of waiting for the slowest
       # worker of this wave. The planner still applies the worker cap, scopes and the budget.
       - name: Fill the free slot
-        if: always() && !contains(fromJSON('["1","true","yes","on"]'), env.SWARM_SINGLE_TASK)
+        if: always() && inputs.single_task != 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

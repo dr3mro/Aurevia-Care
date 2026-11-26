@@ -35,9 +35,12 @@ env:
   SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
 
 jobs:
+  flags:
+    uses: ./.github/workflows/swarm-flags.yml
   select:
     name: Select issues
-    if: ${{ !contains(fromJSON('["0","false","no","off"]'), vars.SWARM_ISSUES) }}
+    needs: flags
+    if: needs.flags.outputs.issues == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
