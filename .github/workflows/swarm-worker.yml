@@ -54,6 +54,7 @@ concurrency:
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+  SWARM_SINGLE_TASK: ${{ vars.SWARM_SINGLE_TASK || 'false' }}
 
 jobs:
   work:
@@ -484,7 +485,7 @@ jobs:
       # This worker's slot is free: start the next wave now instead of waiting for the slowest
       # worker of this wave. The planner still applies the worker cap, scopes and the budget.
       - name: Fill the free slot
-        if: always()
+        if: always() && env.SWARM_SINGLE_TASK != 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

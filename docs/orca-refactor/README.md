@@ -59,9 +59,9 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 32 | Architecture enforcement mechanism | Partial: `scripts/check-wiring.py` | tool + reviewer |
 | 33 | Contract synchronization checks | Partial: OpenAPI generation checks | tool |
 | 34 | Script ownership migration table | Design available | `07-script-ownership-design.md`; reviewer |
-| 35 | Updated repository directory structure | Pending Stage D | no evidence |
-| 36 | Subsystem dependency diagram | Pending Stage D | no evidence |
-| 37 | Canonical script entry point documentation | Pending Stage D | no evidence |
+| 35 | Updated repository directory structure | Current source structure recorded (migration not done) | `14-script-ownership-structure.md`; tool (`find`/`rg`) |
+| 36 | Subsystem dependency diagram | Current source boundaries recorded | `14-script-ownership-structure.md`; tool + reviewer |
+| 37 | Canonical script entry point documentation | Available: all `check.sh` owners and Python `main()` entry points | `14-script-ownership-structure.md`; tool (`find`/`rg`) |
 | 38 | Script ownership and path validator | Implemented locally; 100% module coverage; full gate red on stale base | `scripts/check-ownership.py`, `scripts/ownership.json`, task 01304000 |
 | 39 | Updated test discovery configuration | Pending Stage D | no evidence |
 | 40 | Complete regression test suite | Partial: ~75 Python modules, targeted run green | tool |
@@ -73,8 +73,8 @@ The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA
 | 46 | Agent canary validation | Pending Stage N | no evidence |
 | 47 | Migration and rollback documentation | Pending Stage M | no evidence |
 | 48 | Updated project documentation | In progress: this directory | tool |
-| 49 | Technical debt and remaining risks report | Pending Stage N | no evidence |
-| 50 | Final independent audit report | Pending Stage N | no evidence |
+| 49 | Technical debt and remaining risks report | Available: owner rulings, debt table, retest status | `15-technical-debt.md`; tool + reviewer + human |
+| 50 | Final independent audit report | Draft with honest blockers; cannot be GO while mandatory requirements remain unresolved | `16-final-audit.md`; tool + reviewer |
 
 ## Blocker summary
 

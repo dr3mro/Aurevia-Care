@@ -148,6 +148,33 @@ def record(task_id, metric, value, source, kind="measurement"):
             "source": source, "kind": kind}
 
 
+SENSITIVE_FIELD_KEYS = frozenset(("token", "secret", "password", "credential",
+                                  "phi", "patient", "key", "api_key"))
+
+
+def telemetry_event(task_id, event, source, fields=None):
+    """Build a telemetry row with validated provenance and redacted fields.
+
+    Inputs are a task id, a non-blank event name, a source in ``SOURCES`` and an
+    optional mapping of extra fields. The output is the ``record()`` row extended
+    with ``event``; sensitive field keys are dropped. A blank event, a non-mapping
+    field value, or an unknown source raises ValueError (the last via
+    ``record``). The invariant is that telemetry never invents a measurement and
+    never carries a synthetic secret or patient-shaped field into a note.
+    """
+    if not event.strip():
+        raise ValueError("blank event")
+    if fields is None:
+        fields = {}
+    elif not isinstance(fields, dict):
+        raise ValueError("telemetry fields must be a mapping")
+    safe = {name: value for name, value in fields.items()
+            if str(name).lower() not in SENSITIVE_FIELD_KEYS}
+    row = record(task_id, "telemetry", safe, source)
+    row["event"] = event
+    return row
+
+
 def first_attempt(row):
     """Whether a row proves first-attempt success, failing closed on missing data."""
     acceptance = row.get("acceptance_passed")

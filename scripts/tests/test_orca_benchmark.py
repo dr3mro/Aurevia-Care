@@ -201,5 +201,40 @@ class BoundaryTests(unittest.TestCase):
                 self.assertNotIn(forbidden, names)
 
 
+class TelemetryTests(unittest.TestCase):
+    """Telemetry rows carry validated provenance and never invent a metric."""
+
+    def setUp(self):
+        self.module = load_module()
+
+    def test_event_rejects_blank(self):
+        with self.assertRaisesRegex(ValueError, "blank event"):
+            self.module.telemetry_event("T", "  ", self.module.EvidenceSource.TOOL)
+
+    def test_event_default_fields(self):
+        row = self.module.telemetry_event(
+            "T", "check", self.module.EvidenceSource.REVIEWER)
+        self.assertEqual((row["value"], row["source"], row["event"]),
+                         ({}, self.module.EvidenceSource.REVIEWER, "check"))
+
+    def test_event_uses_record(self):
+        row = self.module.telemetry_event(
+            "T", "check", self.module.EvidenceSource.TOOL, {"n": 1})
+        self.assertEqual(row["value"], {"n": 1})
+
+    def test_event_rejects_unknown_source(self):
+        with self.assertRaisesRegex(ValueError, "unknown source"):
+            self.module.telemetry_event("T", "check", "guess")
+
+    def test_event_rejects_non_mapping_fields(self):
+        with self.assertRaisesRegex(ValueError, "must be a mapping"):
+            self.module.telemetry_event("T", "check", "tool", 3)
+
+    def test_event_redacts_sensitive_fields(self):
+        row = self.module.telemetry_event(
+            "T", "check", "tool", {"count": 2, "token": "synth", "patient": "synth"})
+        self.assertEqual(row["value"], {"count": 2})
+
+
 if __name__ == "__main__":
     unittest.main()
