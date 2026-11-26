@@ -895,6 +895,47 @@ class IntegratorBatchTest(unittest.TestCase):
         write.assert_any_call("", "before\n")
         dispatch.assert_not_called()
 
+    def test_retry_uses_latest_tasks_and_full_gate_environment(self):
+        self.repo()
+        reads = iter(["before\n", "fresh-main\n"])
+        writes, records = [], []
+
+        def record(items, gates):
+            records.append(len(records) + 1)
+            swarm.todo_write("", f"after-{len(records)}\n")
+            return items, ["comment"], []
+
+        def git(*args, **kwargs):
+            if args[:1] == ("merge-base",):
+                return "base\n"
+            if args[:1] == ("diff",):
+                return ""
+            return "main-sha\n"
+
+        pushes = iter([subprocess.CalledProcessError(1, ("push",), stderr="fetch first")])
+
+        def authed(*args, **kwargs):
+            if args[:2] == ("push", "origin"):
+                raise next(pushes)
+            return ""
+
+        with mock.patch.object(swarm, "record_merges", side_effect=record), \
+                mock.patch.object(swarm, "todo_read", side_effect=lambda: next(reads)), \
+                mock.patch.object(swarm, "todo_write", side_effect=lambda path, text: writes.append(text)), \
+                mock.patch.object(swarm, "git", side_effect=git), \
+                mock.patch.object(swarm, "restore_trackers"), \
+                mock.patch.object(swarm, "authed_git", side_effect=authed), \
+                mock.patch.object(swarm, "run_gate", return_value=(False, "failed")) as gate, \
+                mock.patch.object(swarm, "fail"), \
+                mock.patch.object(swarm, "dispatch_delivery"), \
+                mock.patch.object(swarm, "emit"):
+            self.assertEqual(swarm.integrate_finalize(
+                [(7, "CW-001", "abc")], {7: ("scripts/quick-check.sh", {"STORY_ID": "CW-001"})},
+                "scripts/quick-check.sh"), swarm.INTEGRATION_FAILED)
+        self.assertEqual(records, [1, 2])
+        self.assertIn("fresh-main\n", writes)
+        gate.assert_called_once_with("scripts/quick-check.sh", {"STORY_ID": "CW-001"})
+
     def test_rejection_removes_needs_fix_and_never_reports_merge(self):
         self.repo()
         error = subprocess.CalledProcessError(

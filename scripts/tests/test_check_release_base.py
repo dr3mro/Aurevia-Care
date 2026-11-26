@@ -1,8 +1,8 @@
-"""Regression tests for the release precondition's exact-SHA green-run check.
+"""Regression tests for the release precondition's exact-SHA green-gate check.
 
-The release job must accept a green default-branch run from a trusted event even
-when a newer push cancelled an older run at run level. A pull request, a wrong
-commit, a wrong branch or a cancelled run must never satisfy it.
+A newer push cancels a Delivery run at run level while its required gate job
+stays green. The release check must accept that job-level evidence, and must
+never accept a pull request, a wrong commit, a wrong branch or a failed gate.
 """
 import contextlib
 import io
@@ -20,14 +20,15 @@ checker = load("check-release-base")
 SHA = "a" * 40
 OTHER_SHA = "b" * 40
 REPO = "owner/repo"
-# Fields observed on Delivery dispatch run 45784861813, which was dispatched
-# on an exact commit SHA and reported the default branch as its head branch.
+# Fields observed on Delivery dispatch run 45784861813: GitHub reports the
+# default branch as its head branch. A bare SHA ref cannot be dispatched.
 OBSERVED_DISPATCH_SHA = "f5aa25e5ae81cd19c13d0daec03567a83960a1a9"
 
 
 def record(**overrides):
     """A green push run on the exact commit unless a field is overridden."""
     base = {
+        "id": 1,
         "head_sha": SHA,
         "head_branch": "main",
         "event": "push",
@@ -39,12 +40,28 @@ def record(**overrides):
     return base
 
 
-def check(runs, sha=SHA, branch="main", repo=REPO):
-    """Call main with a runs payload and capture both output streams."""
+def gate(run_id, conclusion="success", name="Delivery gate"):
+    """A synthetic required-check job for one run."""
+    return {"name": name, "conclusion": conclusion}
+
+
+def check(runs, sha=SHA, branch="main", repo=REPO, jobs=None):
+    """Call main with an envelope and capture both output streams.
+
+    By default every run whose run-level conclusion is ``success`` carries a
+    green gate, so the identity tests stay focused. The bug cases pass jobs
+    explicitly to control the gate verdict independently of the run verdict.
+    """
+    if jobs is None:
+        jobs = {}
+        for item in runs.get("workflow_runs", []):
+            if isinstance(item, dict) and item.get("conclusion") == "success":
+                jobs[str(item.get("id"))] = [gate(item.get("id"))]
+    envelope = {"runs": runs, "jobs": jobs}
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         code = checker.main(["--sha", sha, "--branch", branch, "--repo", repo],
-                            stream=io.StringIO(json.dumps(runs)))
+                            stream=io.StringIO(json.dumps(envelope)))
     return code, out.getvalue(), err.getvalue()
 
 
@@ -61,35 +78,41 @@ class ReleaseBaseTests(unittest.TestCase):
 
     def test_an_observed_exact_head_dispatch_payload_is_accepted(self):
         # Every field except the repository name is from real Delivery dispatch
-        # run 45784861813: GitHub reports head_branch=main for an exact-SHA ref.
-        observed = {
-            "event": "workflow_dispatch",
-            "head_branch": "main",
-            "head_sha": OBSERVED_DISPATCH_SHA,
-            "status": "completed",
-            "conclusion": "success",
-            "head_repository": {"full_name": REPO},
-        }
+        # run 45784861813; that run was dispatched on main, not on a SHA ref.
+        observed = record(id=7, event="workflow_dispatch",
+                          head_sha=OBSERVED_DISPATCH_SHA)
         code, out, err = check({"workflow_runs": [observed]}, sha=OBSERVED_DISPATCH_SHA)
         self.assertEqual(code, 0, err)
         self.assertIn(OBSERVED_DISPATCH_SHA, out)
 
-    def test_a_superseded_cancelled_push_with_a_green_dispatch_is_accepted(self):
-        # The observed bug: the push run ended `cancelled` at run level while its
-        # jobs were green, and the documented recovery is an exact-head dispatch.
-        runs = {"workflow_runs": [record(conclusion="cancelled"),
-                                  record(event="workflow_dispatch")]}
-        code, out, err = check(runs)
+    def test_a_cancelled_push_with_a_green_gate_job_is_accepted(self):
+        # The observed bug: run 45799087845 ended `cancelled` at run level while
+        # every job, including Delivery gate, reported success.
+        runs = {"workflow_runs": [record(id=1, conclusion="cancelled")]}
+        jobs = {"1": [gate(1)]}
+        code, out, err = check(runs, jobs=jobs)
         self.assertEqual(code, 0, err)
-        self.assertIn("1 green", out)
+        self.assertIn("1 green gate(s)", out)
 
-    def test_a_qualifier_at_either_end_of_a_mixed_list_is_found(self):
+    def test_a_cancelled_push_without_a_green_gate_is_rejected(self):
+        runs = {"workflow_runs": [record(conclusion="cancelled")]}
+        code, _, err = check(runs, jobs={"1": [gate(1, conclusion="cancelled")]})
+        self.assertEqual(code, 1)
+        self.assertIn("no green gate", err)
+
+    def test_a_successful_run_with_a_failed_gate_job_is_rejected(self):
+        runs = {"workflow_runs": [record()]}
+        code, _, err = check(runs, jobs={"1": [gate(1, conclusion="failure")]})
+        self.assertEqual(code, 1)
+        self.assertIn("no green gate", err)
+
+    def test_a_dispatch_with_a_green_gate_at_either_end_of_a_list_is_found(self):
         for qualifier_first in (True, False):
             with self.subTest(qualifier_first=qualifier_first):
-                bad = record(event="pull_request")
-                good = record(event="workflow_dispatch")
-                runs = [good, bad] if qualifier_first else [bad, good]
-                self.assertEqual(check({"workflow_runs": runs})[0], 0)
+                bad = record(id=1, event="pull_request")
+                good = record(id=2, event="workflow_dispatch")
+                runs = {"workflow_runs": [good, bad] if qualifier_first else [bad, good]}
+                self.assertEqual(check(runs)[0], 0)
 
     def test_a_pull_request_run_even_when_green_is_rejected(self):
         code, _, err = check({"workflow_runs": [record(event="pull_request")]})
@@ -109,10 +132,10 @@ class ReleaseBaseTests(unittest.TestCase):
             with self.subTest(run=run):
                 code, _, err = check({"workflow_runs": [run]})
                 self.assertEqual(code, 1)
-                self.assertIn("no green main run for " + SHA, err)
+                self.assertIn("no green gate for " + SHA, err)
 
-    def test_cancelled_failure_queued_and_skipped_runs_are_rejected(self):
-        for conclusion in ("cancelled", "failure", "queued", "skipped"):
+    def test_failure_queued_and_skipped_runs_are_rejected(self):
+        for conclusion in ("failure", "queued", "skipped"):
             with self.subTest(conclusion=conclusion):
                 code, _, err = check({"workflow_runs": [record(conclusion=conclusion)]})
                 self.assertEqual(code, 1)
@@ -127,7 +150,7 @@ class ReleaseBaseTests(unittest.TestCase):
         code, _, err = check({"workflow_runs": [record(
             head_repository={"full_name": "other/repo"})]})
         self.assertEqual(code, 1)
-        self.assertIn("no green main run", err)
+        self.assertIn("no green gate", err)
 
     def test_a_malformed_head_repository_is_rejected(self):
         for source in (None, "owner/repo", 42):
@@ -135,14 +158,24 @@ class ReleaseBaseTests(unittest.TestCase):
                 self.assertEqual(check({"workflow_runs": [record(
                     head_repository=source)]})[0], 1)
 
+    def test_gate_jobs_must_belong_to_the_matching_run_id(self):
+        runs = {"workflow_runs": [record(id=1)]}
+        self.assertEqual(check(runs, jobs={"2": [gate(2)]})[0], 1)
+
+    def test_malformed_gate_job_entries_are_rejected(self):
+        runs = {"workflow_runs": [record()]}
+        for entries in ([], "not a list", [None], [gate(1, name="Other")]):
+            with self.subTest(entries=entries):
+                self.assertEqual(check(runs, jobs={"1": entries})[0], 1)
+
     def test_malformed_records_are_ignored_not_crashed_on(self):
         runs = {"workflow_runs": ["not a run", None, 42, record(event="workflow_dispatch")]}
         code, out, err = check(runs)
         self.assertEqual(code, 0, err)
-        self.assertIn("1 green", out)
+        self.assertIn("1 green gate(s)", out)
 
     def test_malformed_records_are_ignored_in_the_failure_diagnostic(self):
-        # No green run: the diagnostic comprehensions must skip the bad entries.
+        # No green gate: both diagnostic comprehensions must skip bad entries.
         runs = {"workflow_runs": [record(event="pull_request"), "not a run", None, 42]}
         code, _, err = check(runs)
         self.assertEqual(code, 1)
@@ -166,46 +199,55 @@ class ReleaseBaseTests(unittest.TestCase):
         code, _, err = check({"total_count": 99, "workflow_runs": [record()]})
         self.assertEqual(code, 0, err)
 
-    def test_invalid_json_and_wrong_shape_exit_two_with_distinct_messages(self):
+    def test_invalid_json_and_wrong_envelopes_exit_two_with_distinct_messages(self):
+        argv = ["--sha", SHA, "--branch", "main", "--repo", REPO]
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = checker.main(["--sha", SHA, "--branch", "main", "--repo", REPO],
-                                stream=io.StringIO("{broken"))
+            code = checker.main(argv, stream=io.StringIO("{broken"))
         self.assertEqual(code, 2)
         self.assertIn("invalid runs JSON", err.getvalue())
 
-        for payload in ([], None, {"workflow_runs": "not a list"}):
+        for payload, expected in (
+                ([], "expected runs and jobs objects"),
+                (None, "expected runs and jobs objects"),
+                ({"runs": [], "jobs": {}}, "expected runs and jobs objects"),
+                ({"jobs": {}}, "expected runs and jobs objects"),
+                ({"runs": {"workflow_runs": []}, "jobs": []},
+                 "expected runs and jobs objects"),
+                ({"runs": {"workflow_runs": "not a list"}, "jobs": {}},
+                 "expected a workflow_runs list")):
             with self.subTest(payload=payload):
                 out, err = io.StringIO(), io.StringIO()
                 with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-                    code = checker.main(["--sha", SHA, "--branch", "main", "--repo", REPO],
-                                        stream=io.StringIO(json.dumps(payload)))
+                    code = checker.main(argv, stream=io.StringIO(json.dumps(payload)))
                 self.assertEqual(code, 2)
-                self.assertIn("expected a runs object", err.getvalue())
+                self.assertIn(expected, err.getvalue())
 
 
 class CommandLineTests(unittest.TestCase):
     """Exercise the executable entry point so its branch is covered."""
 
-    def run_script(self, payload):
+    def run_script(self, envelope):
         """Run check-release-base.py as __main__ and return its exit code."""
         script = Path(__file__).resolve().parents[1] / "check-release-base.py"
         argv = [str(script), "--sha", SHA, "--branch", "main", "--repo", REPO]
         with mock.patch.object(sys, "argv", argv), \
-                mock.patch.object(sys, "stdin", io.StringIO(json.dumps(payload))), \
+                mock.patch.object(sys, "stdin", io.StringIO(json.dumps(envelope))), \
                 contextlib.redirect_stdout(io.StringIO()), \
                 contextlib.redirect_stderr(io.StringIO()), \
                 self.assertRaises(SystemExit) as raised:
             runpy.run_path(str(script), run_name="__main__")
         return raised.exception.code
 
-    def test_the_entry_point_accepts_a_dispatch_success(self):
-        self.assertEqual(self.run_script(
-            {"workflow_runs": [record(event="workflow_dispatch")]}), 0)
+    def test_the_entry_point_accepts_a_green_gate(self):
+        envelope = {"runs": {"workflow_runs": [record()]},
+                    "jobs": {"1": [gate(1)]}}
+        self.assertEqual(self.run_script(envelope), 0)
 
-    def test_the_entry_point_rejects_a_pull_request_success(self):
-        self.assertEqual(self.run_script(
-            {"workflow_runs": [record(event="pull_request")]}), 1)
+    def test_the_entry_point_rejects_a_pull_request(self):
+        envelope = {"runs": {"workflow_runs": [record(event="pull_request")]},
+                    "jobs": {"1": [gate(1)]}}
+        self.assertEqual(self.run_script(envelope), 1)
 
 
 if __name__ == "__main__":

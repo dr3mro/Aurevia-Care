@@ -224,9 +224,21 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
-            -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" \
-            --jq '.' | python3 -I scripts/check-release-base.py \
+          runs_json=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
+            -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" --jq '.')
+          jobs_json='{}'
+          for run_id in $(jq -r --arg sha "$GITHUB_SHA" \
+              '.workflow_runs[] | select(.head_sha == $sha) | .id' <<< "$runs_json"); do
+            if [[ ! "$run_id" =~ ^[0-9]+$ ]]; then
+              echo "release base: invalid run id from GitHub" >&2
+              exit 1
+            fi
+            job=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs" \
+              --jq "{\"$run_id\": .jobs}")
+            jobs_json=$(jq -c --argjson job "$job" '. + $job' <<< "$jobs_json")
+          done
+          jq -n --argjson runs "$runs_json" --argjson jobs "$jobs_json" \
+            '{runs: $runs, jobs: $jobs}' | python3 -I scripts/check-release-base.py \
             --sha "$GITHUB_SHA" --branch "$DEFAULT_BRANCH" --repo "$GITHUB_REPOSITORY"
       - name: Publish exact tested image and release
         env:

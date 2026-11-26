@@ -332,6 +332,10 @@ def release_violations(step):
         violations.append("helper")
     if "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" not in run:
         violations.append("workflow url")
+    if "repos/$GITHUB_REPOSITORY/actions/runs/" not in run:
+        violations.append("jobs api")
+    if r'--jq "{\"$run_id\": .jobs}"' not in run:
+        violations.append("jobs map")
     for token, label in (("-f event=", "event filter"), ("-f status=", "status filter"),
                          (".total_count", "count")):
         if token in run:
@@ -441,6 +445,13 @@ class ReleaseGreenRunWiringTest(unittest.TestCase):
             ("wrong workflow", lambda s: s.update(
                 run=s["run"].replace("workflows/delivery.yml/runs", "workflows/other.yml/runs")),
              "workflow url"),
+            ("no job evidence", lambda s: s.update(
+                run=s["run"].replace("repos/$GITHUB_REPOSITORY/actions/runs/",
+                                     "repos/$GITHUB_REPOSITORY/actions/workflow_runs/")),
+             "jobs api"),
+            ("flat jobs object", lambda s: s.update(run=s["run"].replace(
+                r'--jq "{\"$run_id\": .jobs}"',
+                r'--jq "{key: \"$run_id\", value: .jobs}"')), "jobs map"),
             ("missing sha", lambda s: s.update(
                 run=s["run"].replace('--sha "$GITHUB_SHA"', "")), "sha"),
             ("missing branch", lambda s: s.update(
