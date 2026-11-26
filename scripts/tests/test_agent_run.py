@@ -13,7 +13,7 @@ FAKE_OPENCODE = """#!/usr/bin/env bash
 cp .opencode/opencode.json "$SEEN"
 printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
 if [[ -n "${ARGV_LOG:-}" ]]; then printf '%s\\0' "$@" >> "$ARGV_LOG"; fi
-case "$*" in *aurevia-task-advisor*)
+case "$*" in *"--agent task-advisor"*)
   case "${BRIEF_MODE:-none}" in
     good) printf 'chatter\\n<<<BRIEF\\nGoal: advised goal\\nBRIEF>>>\\n' ;;
     rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
@@ -267,7 +267,7 @@ class AgentRunTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 text = prompts.read_text()
                 if label == "briefed":
-                    self.assertIn("--agent aurevia-task-advisor", text)
+                    self.assertIn("--agent task-advisor", text)
                 self.assertIn("> ##[error]bad title", text)
                 self.assertIn("> ::error::bad body", text)
                 self.assertIn("  > ##[warning]indented", text)
@@ -384,7 +384,7 @@ class AgentRunTests(unittest.TestCase):
         self.assertIn("<<<BRIEF-FOR-WORKER", text)
         self.assertIn("Goal: advised goal", text)
         self.assertIn("## Routing", text)
-        self.assertIn("aurevia-task-advisor", text)
+        self.assertIn("--agent task-advisor", text)
         self.assertNotIn("load the full project context", text)
 
     def test_a_failed_advisor_falls_back_to_the_routing_block(self):
@@ -396,7 +396,7 @@ class AgentRunTests(unittest.TestCase):
 
     def test_brief_off_skips_the_advisor(self):
         text = self.brief_prompts(BRIEF="off")
-        self.assertNotIn("--agent aurevia-task-advisor", text)
+        self.assertNotIn("--agent task-advisor", text)
         self.assertIn("## Routing", text)
 
     def test_a_non_swarm_run_keeps_the_full_context_prompt(self):
@@ -409,8 +409,8 @@ class AgentRunTests(unittest.TestCase):
         prompts = self.repo.parent / "prompts.log"
         self.run_cmd("implement", FAKE_MODE="commit", SWARM="1", PROMPT_LOG=str(prompts))
         text = prompts.read_text()
-        for name in ("aurevia-plan-reviewer", "aurevia-code-reviewer",
-                     "aurevia-coverage-auditor", "aurevia-devsecops"):
+        for name in ("plan-reviewer", "code-reviewer",
+                     "coverage-auditor", "devsecops"):
             self.assertIn(name, text)
         self.assertIn("Quality loop (mandatory)", text)
 

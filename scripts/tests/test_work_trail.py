@@ -14,13 +14,13 @@ class WorkTrailTests(unittest.TestCase):
     def test_record_is_one_json_line_with_every_stage_field(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "nested" / "work-trail.jsonl"
-            trail.append("brief", "aurevia-task-advisor", "design the fix", "TASK-01", path)
+            trail.append("brief", "task-advisor", "design the fix", "TASK-01", path)
             trail.append("review", "code-reviewer", "review the fix", "GO", path)
             lines = path.read_text(encoding="utf-8").splitlines()
         self.assertEqual(len(lines), 2)
         first, second = (json.loads(line) for line in lines)
         self.assertEqual(first["step"], "brief")
-        self.assertEqual(first["agent"], "aurevia-task-advisor")
+        self.assertEqual(first["agent"], "task-advisor")
         self.assertEqual(first["outputs"], "TASK-01")
         self.assertEqual(second["step"], "review")
         self.assertTrue(first["at"])

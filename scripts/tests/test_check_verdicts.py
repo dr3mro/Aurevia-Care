@@ -38,7 +38,7 @@ class ParsingTests(unittest.TestCase):
                    "Critical: injection in Foo\nRequired: add a test (resolved in abc)\n"
                    "Optional: style\nplain line\n")
         found, findings = verdicts.verdicts_and_findings(section)
-        self.assertEqual(found, {"aurevia-code-reviewer": "GO", "aurevia-x": "NO-GO"})
+        self.assertEqual(found, {"code-reviewer": "GO", "x": "NO-GO"})
         self.assertEqual(findings, ["Critical: injection in Foo"])
 
     def test_the_word_unresolved_does_not_count_as_resolved(self):
@@ -73,12 +73,19 @@ class ProblemTests(unittest.TestCase):
         self.assertEqual(verdicts.problems("nothing", verdicts.REQUIRED),
                          ['the notes have no "## Review verdicts" section'])
 
+    def test_agent_file_ids_and_older_skill_ids_are_equivalent(self):
+        canonical = ("## Review verdicts\n- code-reviewer: GO\n- coverage-auditor: GO\n"
+                     "- devsecops: GO\n")
+        self.assertEqual(verdicts.problems(canonical, verdicts.REQUIRED), [])
+        mixed = GOOD.replace("- aurevia-code-reviewer: GO", "- code-reviewer: GO")
+        self.assertEqual(verdicts.problems(mixed, verdicts.REQUIRED), [])
+
     def test_a_missing_reviewer_a_no_go_and_an_open_finding_each_fail(self):
         text = ("## Review verdicts\n- aurevia-code-reviewer: NO-GO\n"
                 "- aurevia-coverage-auditor: GO\nRequired: the false side has no test\n")
         found = verdicts.problems(text, verdicts.REQUIRED)
         self.assertEqual(len(found), 3)
-        self.assertIn("aurevia-code-reviewer answered NO-GO", found[0])
+        self.assertIn("code-reviewer answered NO-GO", found[0])
         self.assertIn("no verdict from aurevia-devsecops", found[1])
         self.assertIn("unresolved finding: Required: the false side", found[2])
 

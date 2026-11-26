@@ -59,6 +59,31 @@ class PackTests(unittest.TestCase):
         self.assertTrue(any("debugger" in e and "no file" in e
                             for e in errors), errors)
 
+    def test_unknown_agent_in_a_workflow_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        workflows = tmp / ".github/workflows"
+        workflows.mkdir(exist_ok=True)
+        (workflows / "swarm.yml").write_text(
+            "jobs:\n  select:\n    run: opencode run --agent aurevia-product-owner\n",
+            encoding="utf-8")
+        errors = pack.check(tmp)
+        self.assertTrue(any("aurevia-product-owner" in e and "no file" in e
+                            for e in errors), errors)
+
+    def test_unknown_run_agent_and_skill_delegation_are_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        script = tmp / "scripts/agent-run.sh"
+        script.write_text(script.read_text(encoding="utf-8") +
+                          '\nrun_agent ghost-agent "work" /tmp/log\n'
+                          "ask aurevia-code-reviewer to review\n", encoding="utf-8")
+        errors = pack.check(tmp)
+        self.assertTrue(any("ghost-agent" in e and "no file" in e
+                            for e in errors), errors)
+        self.assertTrue(any("ask aurevia-code-reviewer" in e and "skill" in e
+                            for e in errors), errors)
+
     def test_missing_skill_reference_names_agent_file(self):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)

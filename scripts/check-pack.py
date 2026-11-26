@@ -158,6 +158,29 @@ def check(root=ROOT):
         if extra:
             errors.append(f"agent {name}: specialists are read-only, found {sorted(extra)}")
 
+    # Invocations name agents by their file ID. A skill id such as
+    # ``aurevia-product-owner`` makes ``opencode run --agent`` fail instantly, and
+    # an ask that uses an aurevia- name tells a worker to delegate to a skill.
+    invocation = re.compile(r"(?:--agent|run_agent)\s+([a-z][a-z0-9-]*)")
+    skill_delegation = re.compile(r"\bask\s+`?(aurevia-[a-z0-9-]+)`?", re.I)
+    sources = []
+    for folder, patterns in ((".github/workflows", ("*.yml",)),
+                             ("scripts", ("*.sh", "*.py"))):
+        for pattern in patterns:
+            sources.extend(sorted((root / folder).glob(pattern)))
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        for match in invocation.finditer(text):
+            name = match.group(1)
+            if name not in definitions:
+                line = text.count("\n", 0, match.start()) + 1
+                errors.append(f"{path.relative_to(root)}:{line}: agent {name!r} has no "
+                              f"file .opencode/agents/{name}.md")
+        for match in skill_delegation.finditer(text):
+            line = text.count("\n", 0, match.start()) + 1
+            errors.append(f"{path.relative_to(root)}:{line}: ask {match.group(1)} "
+                          "names a skill; use the agent file ID")
+
     for skill_dir in sorted((root / ".opencode/skills").iterdir()):
         if skill_dir.is_dir() and not (skill_dir / "SKILL.md").exists():
             errors.append(f"skill .opencode/skills/{skill_dir.name}/SKILL.md is missing")

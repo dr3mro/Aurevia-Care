@@ -48,6 +48,11 @@ serialize agents whose scopes do not overlap. Use the specialist whose advertise
 description matches the slice, give it only the story contract, paths, acceptance
 criteria and relevant evidence, and ask for a bounded structured result.
 
+Address a specialist by its agent file ID in `.opencode/agents/` (for example
+`plan-reviewer` or `code-reviewer`). The `aurevia-` prefixed names are skill IDs for
+the `skill` tool; `opencode run --agent aurevia-...` fails immediately with
+`Agent not found`. When you record verdicts, use the agent file IDs as labels.
+
 The primary agent still owns every workspace edit, command and tracker update. A
 subagent returns findings and proposals; it never edits another agent's files or invokes
 ORCA recursively. Keep delegation depth at one unless a

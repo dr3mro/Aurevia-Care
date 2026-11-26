@@ -33,7 +33,9 @@ REQUIRED = ("aurevia-code-reviewer", "aurevia-coverage-auditor", "aurevia-devsec
 
 SECTION = re.compile(r"(?mi)^##\s+Review verdicts\s*$")
 NEXT_SECTION = re.compile(r"(?m)^##\s")
-VERDICT = re.compile(r"^\s*[-*]?\s*`?(aurevia-[a-z0-9-]+)`?\s*[:—-]\s*(GO|NO-GO)\b", re.I)
+# Reviewers are agents, so their file IDs are canonical. Older notes used the
+# skill ID with an aurevia- prefix; accept both but store the canonical ID.
+VERDICT = re.compile(r"^\s*[-*]?\s*`?(?:aurevia-)?([a-z0-9-]+)`?\s*[:—-]\s*(GO|NO-GO)\b", re.I)
 FINDING = re.compile(r"^\s*[-*]?\s*(Critical|Required)\s*[:—-]\s*(.+)$", re.I)
 # A finding is resolved only when it says so without a nearby negation. Workers
 # author these lines, so "not resolved" must never be mistaken for a fix; fail
@@ -102,7 +104,9 @@ def problems(text, required):
     verdicts, findings = verdicts_and_findings(section)
     found = []
     for reviewer in required:
-        answer = verdicts.get(reviewer)
+        # Canonical agent IDs have no skill prefix; older notes may still use it.
+        canonical = reviewer[len("aurevia-"):] if reviewer.startswith("aurevia-") else reviewer
+        answer = verdicts.get(canonical)
         if answer is None:
             found.append(f"no verdict from {reviewer}: run it and copy its last line")
         elif answer != "GO":

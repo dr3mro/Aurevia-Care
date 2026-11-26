@@ -988,15 +988,19 @@ class PlanTests(unittest.TestCase):
         allocate = workflow.split("name: Allocate non-overlapping tasks with OpenCode", 1)[1]
         for step in (select, allocate):
             with self.subTest(step=step[:60]):
-                self.assertNotIn("|| true", step.split("rc=$?", 1)[0])
+                self.assertNotIn("|| true", step)
                 self.assertIn("rc=$?", step)
                 self.assertIn('echo "opencode rc=$rc" >&2', step)
                 self.assertIn('exit "$rc"', step)
                 self.assertIn("> .agent/", step)
                 self.assertIn("2>.agent/", step)
                 self.assertIn("cat .agent/", step)
-        self.assertIn("not parseable", select)
-        self.assertIn("no feature selection output", select)
+                self.assertIn("::error::", step)
+                self.assertIn("OPENCODE_API_KEY_ALT", step)
+                self.assertIn("keys+=(", step)
+                self.assertIn(r"^- \[ \]", step)
+        self.assertIn("no feature=/tasks=", select)
+        self.assertIn("no tasks=", allocate)
 
     def test_repair_watches_fix_prs_only(self):
         workflows = ROOT / ".github/workflows"

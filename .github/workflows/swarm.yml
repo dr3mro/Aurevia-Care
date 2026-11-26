@@ -78,6 +78,9 @@ jobs:
         env:
           SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_1 || secrets.OPENCODE_API_KEY }}
+          # The expression above only falls back when _1 is empty; keep the base
+          # key as a one-shot retry when _1 is present but rate-limited or rejected.
+          OPENCODE_API_KEY_ALT: ${{ secrets.OPENCODE_API_KEY_1 && secrets.OPENCODE_API_KEY || '' }}
         run: |
           set +e
           image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')-agent-1:latest"
@@ -85,17 +88,25 @@ jobs:
           mkdir -p .agent
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
-            -e SWARM_MODEL -e OPENCODE_API_KEY \
+            -e SWARM_MODEL -e OPENCODE_API_KEY -e OPENCODE_API_KEY_ALT \
             "$image" bash -lc '
-              opencode run --auto --agent product-owner --model "$SWARM_MODEL" \
-                "Use the aurevia-context-optimizer skill. Before deciding, read the code base and evidence: .opencode/config/PROJECT_V1_SPEC.md for the requirement IDs, tasks/ for [x] done, [-] taken and [ ] open, .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, docs/decisions/ and targeted entry points under apps/, db/ and contracts/. Separate implemented, partial, planned and unknown work. A feature is a range of related tasks sharing a task-id prefix, for example SMSG or PRINT. Pick the feature where the remaining gap is real and the open eligible tasks (depends done, attempts below 5) should be directed next. Reply with exactly two lines on stdout, the last two: feature=<PREFIX> then tasks=<comma-separated task ids of that feature>. Ids only; no prose on those lines." \
-                > .agent/selected-feature.txt 2>.agent/select.log
-              rc=$?
-              if [[ -f .agent/select.log ]]; then
-                echo "--- OpenCode select log ---" >&2
-                cat .agent/select.log >&2
+              prompt="Use the aurevia-context-optimizer skill. Before deciding, read the code base and evidence: .opencode/config/PROJECT_V1_SPEC.md for the requirement IDs, tasks/ for [x] done, [-] taken and [ ] open, .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, docs/decisions/ and targeted entry points under apps/, db/ and contracts/. Separate implemented, partial, planned and unknown work. A feature is a range of related tasks sharing a task-id prefix, for example SMSG or PRINT. Pick the feature where the remaining gap is real and the open eligible tasks (depends done, attempts below 5) should be directed next. Reply with exactly two lines on stdout, the last two: feature=<PREFIX> then tasks=<comma-separated task ids of that feature>. Ids only; no prose on those lines."
+              keys=("$OPENCODE_API_KEY")
+              if [[ -n "${OPENCODE_API_KEY_ALT:-}" && "$OPENCODE_API_KEY_ALT" != "$OPENCODE_API_KEY" ]]; then
+                keys+=("$OPENCODE_API_KEY_ALT")
               fi
-              echo "opencode rc=$rc" >&2
+              for key in "${keys[@]}"; do
+                OPENCODE_API_KEY="$key"
+                export OPENCODE_API_KEY
+                opencode run --auto --agent product-owner --model "$SWARM_MODEL" "$prompt" \
+                  > .agent/selected-feature.txt 2>.agent/select.log
+                rc=$?
+                echo "--- OpenCode select log ---" >&2
+                if [[ -f .agent/select.log ]]; then cat .agent/select.log >&2; fi
+                echo "opencode rc=$rc" >&2
+                if (( rc == 0 )); then break; fi
+                if ! /usr/bin/grep -qiE "rate.?limit|too many requests|quota|429|unauthor|401|403|invalid api key|authentication" .agent/select.log; then break; fi
+              done
               exit "$rc"
             '
           rc=$?
@@ -105,18 +116,21 @@ jobs:
             cat .agent/selected-feature.txt >&2
           fi
           if (( rc != 0 )); then
-            echo "OpenCode feature selection failed; no task was selected" >&2
+            echo "::error::OpenCode feature selection failed with rc=$rc; see the select log above" >&2
             exit "$rc"
           fi
           if [[ ! -f .agent/selected-feature.txt ]]; then
-            echo "OpenCode produced no feature selection output" >&2
+            echo "::error::OpenCode produced no feature selection output" >&2
             exit 1
           fi
-          feature=$(/usr/bin/grep -oE '^feature=[A-Za-z0-9_-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2 || true)
-          tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2 || true)
+          feature=$(/usr/bin/grep -oE '^feature=[A-Za-z0-9_-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2)
+          tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2)
           if [[ -z "$feature" || -z "$tasks" ]]; then
-            echo "OpenCode feature selection was not parseable" >&2
-            exit 1
+            if /usr/bin/grep -RqsE '^- \[ \]' tasks; then
+              echo "::error::OpenCode returned no feature=/tasks= while open [ ] tasks exist" >&2
+              exit 1
+            fi
+            echo "No open tasks; empty feature selection is expected" >&2
           fi
           echo "Selected feature: ${feature:-none}; candidates: ${tasks:-none}" >&2
           echo "feature=${feature:-}" >> "$GITHUB_OUTPUT"
@@ -159,6 +173,7 @@ jobs:
         env:
           SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_1 || secrets.OPENCODE_API_KEY }}
+          OPENCODE_API_KEY_ALT: ${{ secrets.OPENCODE_API_KEY_1 && secrets.OPENCODE_API_KEY || '' }}
           FEATURE: ${{ needs.select.outputs.feature }}
           CANDIDATES: ${{ needs.select.outputs.task_ids }}
           WORKER_COUNT: ${{ needs.flags.outputs.max_task == 'true' && needs.flags.outputs.max_workers_per_wave || '1' }}
@@ -168,17 +183,25 @@ jobs:
           mkdir -p .agent
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
-            -e SWARM_MODEL -e OPENCODE_API_KEY -e FEATURE -e CANDIDATES -e WORKER_COUNT \
+            -e SWARM_MODEL -e OPENCODE_API_KEY -e OPENCODE_API_KEY_ALT -e FEATURE -e CANDIDATES -e WORKER_COUNT \
             "$image" bash -lc '
-              opencode run --auto --agent scrum-master --model "$SWARM_MODEL" \
-                "Use the aurevia-context-optimizer skill. Before deciding, read the code base and evidence: the requirement IDs in .opencode/config/PROJECT_V1_SPEC.md, the [x] done, [-] taken and [ ] open entries in tasks/, .opencode/config/BUGS.md, docs/decisions/ and the targeted source under apps/, db/ and contracts/ for each candidate. From candidates $CANDIDATES pick at most $WORKER_COUNT open tasks that are still needed, whose dependencies are met and whose scope paths do not overlap each other or any [-] task. Reply with one line only: tasks=<comma-separated task ids>. Ids only." \
-                > .agent/allocated-tasks.txt 2>.agent/allocate.log
-              rc=$?
-              if [[ -f .agent/allocate.log ]]; then
-                echo "--- OpenCode allocate log ---" >&2
-                cat .agent/allocate.log >&2
+              prompt="Use the aurevia-context-optimizer skill. Before deciding, read the code base and evidence: the requirement IDs in .opencode/config/PROJECT_V1_SPEC.md, the [x] done, [-] taken and [ ] open entries in tasks/, .opencode/config/BUGS.md, docs/decisions/ and the targeted source under apps/, db/ and contracts/ for each candidate. From candidates $CANDIDATES pick at most $WORKER_COUNT open tasks that are still needed, whose dependencies are met and whose scope paths do not overlap each other or any [-] task. Reply with one line only: tasks=<comma-separated task ids>. Ids only."
+              keys=("$OPENCODE_API_KEY")
+              if [[ -n "${OPENCODE_API_KEY_ALT:-}" && "$OPENCODE_API_KEY_ALT" != "$OPENCODE_API_KEY" ]]; then
+                keys+=("$OPENCODE_API_KEY_ALT")
               fi
-              echo "opencode rc=$rc" >&2
+              for key in "${keys[@]}"; do
+                OPENCODE_API_KEY="$key"
+                export OPENCODE_API_KEY
+                opencode run --auto --agent scrum-master --model "$SWARM_MODEL" "$prompt" \
+                  > .agent/allocated-tasks.txt 2>.agent/allocate.log
+                rc=$?
+                echo "--- OpenCode allocate log ---" >&2
+                if [[ -f .agent/allocate.log ]]; then cat .agent/allocate.log >&2; fi
+                echo "opencode rc=$rc" >&2
+                if (( rc == 0 )); then break; fi
+                if ! /usr/bin/grep -qiE "rate.?limit|too many requests|quota|429|unauthor|401|403|invalid api key|authentication" .agent/allocate.log; then break; fi
+              done
               exit "$rc"
             '
           rc=$?
@@ -188,14 +211,18 @@ jobs:
             cat .agent/allocated-tasks.txt >&2
           fi
           if (( rc != 0 )); then
-            echo "OpenCode task allocation failed; no task was allocated" >&2
+            echo "::error::OpenCode task allocation failed with rc=$rc; see the allocate log above" >&2
             exit "$rc"
           fi
           if [[ ! -f .agent/allocated-tasks.txt ]]; then
-            echo "OpenCode produced no task allocation output" >&2
+            echo "::error::OpenCode produced no task allocation output" >&2
             exit 1
           fi
-          tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/allocated-tasks.txt | tail -n 1 | cut -d= -f2 || true)
+          tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/allocated-tasks.txt | tail -n 1 | cut -d= -f2)
+          if [[ -z "$tasks" ]] && /usr/bin/grep -RqsE '^- \[ \]' tasks; then
+            echo "::error::OpenCode returned no tasks= while open [ ] tasks exist" >&2
+            exit 1
+          fi
           echo "Allocated tasks: ${tasks:-none}" >&2
           echo "task_ids=${tasks:-}" >> "$GITHUB_OUTPUT"
           python3 -I scripts/work_trail.py --stage allocation --agent scrum-master \
