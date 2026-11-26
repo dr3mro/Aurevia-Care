@@ -70,6 +70,8 @@
     "scripts/taskstore.py": "project",
     "scripts/verify.sh": "project",
     "scripts/worker-check.sh": "project",
-    "scripts/worker_gate.py": "project"
+    "scripts/worker_gate.py": "project",
+    "scripts/work_trail.py": "project",
+    "scripts/integration_stack.py": "project"
   }
 }

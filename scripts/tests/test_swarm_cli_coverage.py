@@ -185,6 +185,12 @@ class RepairTaskCoverageTests(CliTestCase):
 class MainDispatchCoverageTests(CliTestCase):
     """Route each uncovered subcommand and assert its output, never its callee's logic."""
 
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(swarm, "active_waves", return_value=(True, 0, ""))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_main_ensure_labels_routes_to_ensure_labels(self):
         with mock.patch.object(swarm, "ensure_labels") as ensure:
             self.assertEqual(swarm.main(["ensure-labels"]), 0)

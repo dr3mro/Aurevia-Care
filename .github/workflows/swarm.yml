@@ -1,7 +1,7 @@
 name: Agent swarm
-# The one scheduler. It reads tasks/, splits the open tasks across up to seven
-# story worker jobs per wave, and allows one wave at a time per branch. A global
-# ledger still caps workers running across branches at 20. Each worker runs the
+# The one scheduler. It reads tasks/, splits them across up to twenty story
+# worker jobs per wave, and admits multiple concurrent waves bounded by
+# SWARM_MAX_WAVE_COUNT and the global 20-worker ledger. Each worker runs the
 # agent with no GitHub token
 # on its own branch, uploads its commits, and exits (the container is
 # discarded, nothing idles). A separate trusted job pushes the branch and opens
@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: 'Story workers per wave; requests above seven are clamped to seven, and fewer are used when fewer tasks are ready (1 to 7, default 7). Fix, debug and repair workers are not limited by it.'
-        default: '7'
+        description: 'Story workers per wave; requests above twenty are clamped to twenty, and fewer are used when fewer tasks are ready (1 to 20, default 20). All planned workers, including fixes and repairs, are bounded by the configured cap.'
+        default: '20'
       repair_run:
         description: Failed run id on main to repair (optional; the plan job finds failing runs itself)
         default: ''
@@ -43,14 +43,13 @@ on:
     branches: [main]
 permissions:
   contents: read
-# One wave per branch: the group is ref-scoped, so a second dispatch waits
-# instead of overlapping. The short plan job is additionally serialized per
-# repository so two waves can never claim the same task. The global ledger caps
-# workers across branches at 20, while each wave offers at most seven stories.
+# A wave's concurrency group is per run, so SWARM_MAX_WAVE_COUNT can admit more
+# than one wave. The short plan job is serialized per repository so two waves can
+# never claim the same task; the planner also checks the live wave count and the
+# global 20-worker ledger before offering slots.
 concurrency:
-  group: swarm-${{ github.ref }}
+  group: swarm-${{ github.repository }}-${{ github.run_id }}
   cancel-in-progress: false
-  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -59,25 +58,22 @@ jobs:
   flags:
     uses: ./.github/workflows/swarm-flags.yml
   select:
-    name: Select task (PO)
+    name: Select feature (PO)
     needs: flags
-    if: needs.flags.outputs.single_task == 'true' && needs.flags.outputs.enabled == 'true' && needs.flags.outputs.llm_selection == 'true'
+    if: needs.flags.outputs.enabled == 'true' && needs.flags.outputs.llm_selection == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
       packages: read
     outputs:
-      task_id: ${{ steps.run.outputs.task_id }}
+      feature: ${{ steps.run.outputs.feature }}
+      task_ids: ${{ steps.run.outputs.task_ids }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          sparse-checkout: |
-            scripts
-            tasks/
-            tasks
-      - name: Select one task with OpenCode
+      - name: Select one feature with OpenCode
         id: run
         env:
           SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
@@ -92,28 +88,91 @@ jobs:
             -e SWARM_MODEL -e OPENCODE_API_KEY \
             "$image" bash -lc '
               opencode run --auto --agent aurevia-product-owner --model "$SWARM_MODEL" \
-                "Read tasks/. Pick exactly one open eligible task (depends done, attempts below 5, free scope). Reply with only the task id on the last line." \
-                > .agent/selected-task.txt 2>/tmp/select.log || true
+                "Use the aurevia-context-optimizer skill. Before deciding, read the code base and evidence: .opencode/config/PROJECT_V1_SPEC.md for the requirement IDs, tasks/ for [x] done, [-] taken and [ ] open, .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, docs/decisions/ and targeted entry points under apps/, db/ and contracts/. Separate implemented, partial, planned and unknown work. A feature is a range of related tasks sharing a task-id prefix, for example SMSG or PRINT. Pick the feature where the remaining gap is real and the open eligible tasks (depends done, attempts below 5) should be directed next. Reply with exactly two lines on stdout, the last two: feature=<PREFIX> then tasks=<comma-separated task ids of that feature>. Ids only; no prose on those lines." \
+                > .agent/selected-feature.txt 2>/tmp/select.log || true
             '
           rc=$?
           echo "docker rc=$rc" >&2
-          if [[ -s .agent/selected-task.txt ]]; then
-            tid=$(tail -n 1 .agent/selected-task.txt | tr -d "[:space:]")
-            echo "Selected task: $tid" >&2
-            echo "task_id=$tid" >> "$GITHUB_OUTPUT"
-          else
-            echo "No selection produced; falling back to deterministic plan." >&2
-            echo "task_id=" >> "$GITHUB_OUTPUT"
-          fi
+          feature=$(/usr/bin/grep -oE '^feature=[A-Za-z0-9_-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2 || true)
+          tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2 || true)
+          echo "Selected feature: ${feature:-none}; candidates: ${tasks:-none}" >&2
+          echo "feature=${feature:-}" >> "$GITHUB_OUTPUT"
+          echo "task_ids=${tasks:-}" >> "$GITHUB_OUTPUT"
+          python3 -I scripts/work_trail.py --stage feature --agent aurevia-product-owner \
+            --instruction "select one feature prefix and its candidate task ids" \
+            --outputs "feature=${feature:-} tasks=${tasks:-}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: trail-feature
+          path: .agent/work-trail.jsonl
+          if-no-files-found: ignore
+          retention-days: 1
+  allocate:
+    name: Allocate tasks (SM)
+    needs: [flags, select]
+    if: needs.flags.outputs.enabled == 'true' && needs.flags.outputs.llm_selection == 'true' && needs.select.outputs.feature != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      task_ids: ${{ steps.run.outputs.task_ids }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: trail-feature
+          path: .agent
+      - name: Allocate non-overlapping tasks with OpenCode
+        id: run
+        env:
+          SWARM_MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_1 || secrets.OPENCODE_API_KEY }}
+          FEATURE: ${{ needs.select.outputs.feature }}
+          CANDIDATES: ${{ needs.select.outputs.task_ids }}
+          WORKER_COUNT: ${{ needs.flags.outputs.max_task == 'true' && needs.flags.outputs.max_workers_per_wave || '1' }}
+        run: |
+          set +e
+          image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')-agent-1:latest"
+          mkdir -p .agent
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+            -e SWARM_MODEL -e OPENCODE_API_KEY -e FEATURE -e CANDIDATES -e WORKER_COUNT \
+            "$image" bash -lc '
+              opencode run --auto --agent aurevia-scrum-master --model "$SWARM_MODEL" \
+                "Use the aurevia-context-optimizer skill. Before deciding, read the code base and evidence: the requirement IDs in .opencode/config/PROJECT_V1_SPEC.md, the [x] done, [-] taken and [ ] open entries in tasks/, .opencode/config/BUGS.md, docs/decisions/ and the targeted source under apps/, db/ and contracts/ for each candidate. From candidates $CANDIDATES pick at most $WORKER_COUNT open tasks that are still needed, whose dependencies are met and whose scope paths do not overlap each other or any [-] task. Reply with one line only: tasks=<comma-separated task ids>. Ids only." \
+                > .agent/allocated-tasks.txt 2>/tmp/allocate.log || true
+            '
+          rc=$?
+          echo "docker rc=$rc" >&2
+          tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/allocated-tasks.txt | tail -n 1 | cut -d= -f2 || true)
+          echo "Allocated tasks: ${tasks:-none}" >&2
+          echo "task_ids=${tasks:-}" >> "$GITHUB_OUTPUT"
+          python3 -I scripts/work_trail.py --stage allocation --agent aurevia-scrum-master \
+            --instruction "pick at most ${WORKER_COUNT:-1} non-overlapping tasks from ${CANDIDATES:-}" \
+            --outputs "feature=${FEATURE:-} tasks=${tasks:-}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: trail-allocation
+          path: .agent/work-trail.jsonl
+          if-no-files-found: ignore
+          retention-days: 1
   plan:
     name: Plan the wave
-    needs: [flags, select]
+    needs: [flags, select, allocate]
     if: always() && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     # Canonical values reach both the shell gates below and the Python commands,
     # which read the same flag names from the environment.
     env:
       SWARM_ENABLED: ${{ needs.flags.outputs.enabled }}
-      SWARM_SINGLE_TASK: ${{ needs.flags.outputs.single_task }}
+      SWARM_MAX_TASK: ${{ needs.flags.outputs.max_task }}
+      SWARM_MAX_WORKERS_PER_WAVE: ${{ needs.flags.outputs.max_workers_per_wave }}
+      SWARM_MAX_WAVE_COUNT: ${{ needs.flags.outputs.max_wave_count }}
     # Planning reads tasks/ and claims tasks, so it never overlaps another
     # plan, whichever wave it belongs to.
     concurrency:
@@ -141,7 +200,10 @@ jobs:
       image_prefix: ${{ steps.image.outputs.prefix }}
       # Downstream jobs already depend on plan; forwarding the resolved flag here
       # keeps the job graph unchanged while every gate reads one canonical value.
-      single_task: ${{ needs.flags.outputs.single_task }}
+      max_task: ${{ needs.flags.outputs.max_task }}
+      max_workers_per_wave: ${{ needs.flags.outputs.max_workers_per_wave }}
+      max_wave_count: ${{ needs.flags.outputs.max_wave_count }}
+      feature: ${{ needs.select.outputs.feature }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -201,10 +263,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
-          WORKERS: ${{ inputs.workers || '7' }}
+          WORKERS: ${{ inputs.workers || '20' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
-          LAUNCH_TASK: ${{ needs.select.outputs.task_id || inputs.task }}
+          LAUNCH_TASK: ${{ needs.allocate.outputs.task_ids || needs.select.outputs.task_ids || inputs.task }}
+          FEATURE: ${{ needs.select.outputs.feature }}
           IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}
           IMAGES_REASON: ${{ steps.images.outputs.reason }}
@@ -227,9 +290,18 @@ jobs:
           # Repairs and fixes are queued before offering spare workers to backlog tasks.
           # Ready merges use the independent serialized integrator instead of waiting for this wave.
           python3 -I scripts/swarm.py pr-flow --no-wave
-          if [[ "${SWARM_SINGLE_TASK:-false}" == "true" ]]; then
+          if [[ "${SWARM_MAX_TASK:-false}" != "true" ]]; then
             WORKERS=1
-            echo "Single-task mode: planning at most one worker." >&2
+            echo "Bounded mode: planning one worker in one wave." >&2
+          else
+            cap="${SWARM_MAX_WORKERS_PER_WAVE:-20}"
+            # An explicit dispatch request is honoured only below the canonical
+            # cap; a missing or malformed request uses the cap itself.
+            workers_number=0
+          if [[ "$WORKERS" =~ ^[0-9]+$ ]]; then workers_number=$((10#$WORKERS)); fi
+            if (( workers_number < 1 || workers_number > cap )); then
+              WORKERS="$cap"
+            fi
           fi
           plan_args=(--max "$WORKERS" --capacity "$capacity" --repair-run "$REPAIR_RUN" --task "$LAUNCH_TASK")
           if [[ "${IGNORE_RED_MAIN:-false}" == true ]]; then
@@ -256,8 +328,8 @@ jobs:
     # on the matrix would then fail the whole run and trigger a false repair.
     if: needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     strategy:
-      # Seven story workers per wave; the global cap across branches stays 20.
-      max-parallel: 7
+      # Up to twenty story workers per wave; the global cap across all waves stays 20.
+      max-parallel: 20
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix || '{"include":[]}') }}
     # A called workflow gets at most the permissions its caller grants.
@@ -287,7 +359,10 @@ jobs:
       slot: ${{ format('{0}', matrix.slot) }}
       task: ${{ toJSON(matrix) }}
       ignore_red_main: ${{ inputs.ignore_red_main == true }}
-      single_task: ${{ needs.plan.outputs.single_task }}
+      max_task: ${{ needs.plan.outputs.max_task }}
+      max_workers_per_wave: ${{ needs.plan.outputs.max_workers_per_wave }}
+      max_wave_count: ${{ needs.plan.outputs.max_wave_count }}
+      feature: ${{ needs.plan.outputs.feature }}
   # Integration runs inside the wave, after its workers: no workflow_run chain.
   # The integrator serializes itself (group swarm-integrator), so overlapping
   # waves queue their batches instead of racing to push main. It also runs when
@@ -331,8 +406,12 @@ jobs:
             scripts
             tasks/
             tasks
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: trail-allocation
+          path: .agent
       - name: Wait for Delivery on main before advancing
-        if: needs.plan.outputs.single_task == 'true'
+        if: needs.plan.outputs.max_task == 'false'
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: |
@@ -349,4 +428,7 @@ jobs:
       - env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
+          SWARM_MAX_TASK: ${{ needs.plan.outputs.max_task }}
+          SWARM_MAX_WORKERS_PER_WAVE: ${{ needs.plan.outputs.max_workers_per_wave }}
+          SWARM_MAX_WAVE_COUNT: ${{ needs.plan.outputs.max_wave_count }}
         run: python3 -I scripts/swarm.py continue

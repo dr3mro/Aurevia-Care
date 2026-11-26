@@ -7,8 +7,11 @@ from helpers import ROOT, load as load_script
 
 WORKFLOWS = ROOT / ".github" / "workflows"
 flags = load_script("swarm_flags")
-FLAG_NAMES = tuple(name for name, _, _ in flags.FLAG_SPECS)
+FLAG_NAMES = tuple(spec[0] for spec in flags.NUMBER_SPECS) + tuple(
+    name for name, _, _ in flags.FLAG_SPECS
+)
 BOOLEAN_VARS = tuple(variable for _, variable, _ in flags.FLAG_SPECS)
+NUMBER_VARS = tuple(spec[1] for spec in flags.NUMBER_SPECS)
 CONSUMERS = ("swarm.yml", "swarm-worker.yml", "swarm-issue-monitor.yml", "daily-notes.yml")
 FLAGS_CALLERS = ("swarm.yml", "swarm-issue-monitor.yml", "daily-notes.yml")
 
@@ -43,9 +46,10 @@ def step(doc, job_id, step_id):
 
 class WorkflowVariableContractTest(unittest.TestCase):
     def test_shared_flag_specs_are_complete_and_canonical(self):
-        self.assertEqual(FLAG_NAMES, ("enabled", "single_task", "llm_selection", "issues", "notes"))
+        self.assertEqual(FLAG_NAMES, ("max_workers_per_wave", "max_wave_count", "enabled",
+                                  "max_task", "llm_selection", "issues", "notes"))
         self.assertEqual(BOOLEAN_VARS,
-                         ("SWARM_ENABLED", "SWARM_SINGLE_TASK", "SWARM_LLM_SELECTION",
+                         ("SWARM_ENABLED", "SWARM_MAX_TASK", "SWARM_LLM_SELECTION",
                           "SWARM_ISSUES", "SWARM_NOTES"))
         self.assertEqual(tuple(flags.ENABLE_TOKENS), ("1", "true", "yes", "on"))
         self.assertEqual(tuple(flags.DISABLE_TOKENS), ("0", "false", "no", "off"))
@@ -59,7 +63,7 @@ class WorkflowVariableContractTest(unittest.TestCase):
                          {name: "${{ steps.canonical.outputs." + name + " }}" for name in FLAG_NAMES})
         canonical = step(doc, "resolve", "canonical")
         self.assertIn("scripts/swarm_flags.py", canonical["run"])
-        self.assertEqual(set(canonical["env"]), set(BOOLEAN_VARS))
+        self.assertEqual(set(canonical["env"]), set(BOOLEAN_VARS) | set(NUMBER_VARS))
         for name, value in canonical["env"].items():
             self.assertEqual(value, "${{ vars." + name + " }}")
 
@@ -98,16 +102,16 @@ class WorkflowVariableContractTest(unittest.TestCase):
                     with self.subTest(workflow=name, job=job_id):
                         self.assertNotIn("scrum", str(job.get("name", "")).lower())
 
-    def test_select_gate_uses_canonical_flags_with_the_right_polarity(self):
+    def test_select_and_allocate_gates_use_canonical_flags_with_the_right_polarity(self):
         swarm = read("swarm.yml")
-        self.assertEqual(swarm["jobs"]["select"]["name"], "Select task (PO)")
+        self.assertEqual(swarm["jobs"]["select"]["name"], "Select feature (PO)")
         self.assertEqual(swarm["jobs"]["select"]["needs"], "flags")
         self.assertEqual(
             swarm["jobs"]["select"]["if"],
-            "needs.flags.outputs.single_task == 'true' && "
-            "needs.flags.outputs.enabled == 'true' && "
-            "needs.flags.outputs.llm_selection == 'true'",
+            "needs.flags.outputs.enabled == 'true' && needs.flags.outputs.llm_selection == 'true'",
         )
+        self.assertEqual(swarm["jobs"]["allocate"]["needs"], ["flags", "select"])
+        self.assertEqual(swarm["jobs"]["plan"]["needs"], ["flags", "select", "allocate"])
 
     def test_kill_step_fails_closed_on_the_canonical_flag(self):
         kill = step(read("swarm.yml"), "plan", "kill")["run"]
@@ -117,32 +121,42 @@ class WorkflowVariableContractTest(unittest.TestCase):
             self.assertIn(line, kill)
         self.assertNotIn("case ", kill)
 
-    def test_planner_uses_the_canonical_single_task_flag(self):
+    def test_planner_uses_the_canonical_max_task_flag(self):
         plan = step(read("swarm.yml"), "plan", "plan")["run"]
-        self.assertIn('if [[ "${SWARM_SINGLE_TASK:-false}" == "true" ]]; then', plan)
-        self.assertIn("WORKERS=1", plan)
+        self.assertIn('if [[ "${SWARM_MAX_TASK:-false}" != "true" ]]; then', plan)
+        self.assertIn('cap="${SWARM_MAX_WORKERS_PER_WAVE:-20}"', plan)
         self.assertNotIn("case ", plan)
+
+    def test_numeric_limits_are_bound_through_env_not_raw_variables(self):
+        plan = read("swarm.yml")["jobs"]["plan"]
+        self.assertEqual(plan["env"]["SWARM_MAX_WORKERS_PER_WAVE"],
+                         "${{ needs.flags.outputs.max_workers_per_wave }}")
+        self.assertEqual(plan["env"]["SWARM_MAX_WAVE_COUNT"],
+                         "${{ needs.flags.outputs.max_wave_count }}")
+        for label, text in sites(read("swarm.yml")):
+            for name in NUMBER_VARS:
+                self.assertNotIn("vars." + name, text)
 
     def test_wait_and_slot_fill_gates_keep_their_polarity(self):
         swarm = read("swarm.yml")
         wait = next(s for s in swarm["jobs"]["loop"]["steps"]
                     if s.get("name") == "Wait for Delivery on main before advancing")
-        self.assertEqual(wait["if"], "needs.plan.outputs.single_task == 'true'")
-        self.assertEqual(swarm["jobs"]["plan"]["outputs"]["single_task"],
-                         "${{ needs.flags.outputs.single_task }}")
+        self.assertEqual(wait["if"], "needs.plan.outputs.max_task == 'false'")
+        self.assertEqual(swarm["jobs"]["plan"]["outputs"]["max_task"],
+                         "${{ needs.flags.outputs.max_task }}")
         worker = read("swarm-worker.yml")
         fill = next(s for s in worker["jobs"]["publish"]["steps"]
                     if s.get("name") == "Fill the free slot")
-        self.assertEqual(fill["if"], "always() && inputs.single_task == 'false'")
+        self.assertEqual(fill["if"], "always() && inputs.max_task == 'true'")
 
-    def test_worker_receives_the_canonical_single_task_input(self):
+    def test_worker_receives_the_canonical_max_task_input(self):
         swarm = read("swarm.yml")
-        self.assertEqual(swarm["jobs"]["worker"]["with"]["single_task"],
-                         "${{ needs.plan.outputs.single_task }}")
+        self.assertEqual(swarm["jobs"]["worker"]["with"]["max_task"],
+                         "${{ needs.plan.outputs.max_task }}")
         worker = read("swarm-worker.yml")
         inputs = trigger(worker)["workflow_call"]["inputs"]
-        self.assertEqual(inputs["single_task"]["type"], "string")
-        self.assertEqual(inputs["single_task"]["default"], "false")
+        self.assertEqual(inputs["max_task"]["type"], "string")
+        self.assertEqual(inputs["max_task"]["default"], "false")
 
     def test_issue_monitor_and_daily_notes_gate_on_canonical_flags(self):
         monitor = read("swarm-issue-monitor.yml")

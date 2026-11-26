@@ -53,7 +53,8 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / "scripts").mkdir()
         (self.repo / ".github").mkdir()
         shutil.copy(ROOT / "scripts/agent-run.sh", self.repo / "scripts/agent-run.sh")
-        shutil.copy(ROOT / "scripts/route-task.py", self.repo / "scripts/route-task.py")
+        for helper in ("route-task.py", "work_trail.py", "integration_stack.py"):
+            shutil.copy(ROOT / "scripts" / helper, self.repo / "scripts" / helper)
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
         (self.repo / "scripts/coverage-check.sh").write_text(
             "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
@@ -429,6 +430,17 @@ class AgentRunTests(unittest.TestCase):
                      FRONTEND_TYPECHECK_LOG=str(self.repo.parent / "ft2.log"),
                      PROMPT_LOG=str(prompt_log))
         self.assertIn("frontend typecheck", prompt_log.read_text().lower())
+
+    def test_expert_brief_sentence_only_when_a_brief_exists(self):
+        plain = self.tmp / "plain.log"
+        self.run_cmd("implement", FAKE_MODE="commit", PROMPT_LOG=str(plain))
+        self.assertNotIn("Follow the expert brief", plain.read_text())
+        self.git("checkout", "-q", "main")
+        self.git("branch", "-D", "opencode/issue-5-9")
+        briefed = self.tmp / "briefed.log"
+        self.run_cmd("implement", FAKE_MODE="commit", SWARM="1", PROMPT_LOG=str(briefed))
+        text = briefed.read_text()
+        self.assertEqual(text.count("Follow the expert brief"), 1)
 
     def test_uncommitted_work_is_committed(self):
         self.run_cmd("implement", FAKE_MODE="dirty")
