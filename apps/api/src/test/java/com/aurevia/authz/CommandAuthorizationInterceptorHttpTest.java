@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,6 +24,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -156,19 +159,25 @@ class CommandAuthorizationInterceptorHttpTest {
     }
 
     @Test
-    void forbiddenRoleReturnsTheProblemDetailsShapeAndRecordsADeny() throws Exception {
+    void forbiddenRoleRecordsADenyAndLeavesEnforcementToTheOwningService() throws Exception {
         InMemoryDecisionSink sink = new InMemoryDecisionSink();
         MockMvc mvc = mvc(interceptor(new Resolver("reception"), sink), true);
 
+        // The gate's durable deny is recorded, but the probe (standing in for the owning
+        // service) answers with its own contract. An early gate error here would break the
+        // service's error body, application audit and ARC-04 concealment semantics. The
+        // real 403 and application audit are proven by
+        // CommandAuthorizationWiringHttpTest.forbiddenRoleIsDeniedAndAppendsADenyRow;
+        // this harness only isolates the interceptor's decision-ledger contract.
         mvc.perform(postCommand("/api/v1/facilities", ORG_A, "reception-a", "corr-deny"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"))
-                .andExpect(jsonPath("$.correlationId").value("corr-deny"));
+                .andExpect(status().isCreated());
 
+        assertEquals(1, sink.decisions().size());
         Decision decision = sink.decisions().get(0);
         assertFalse(decision.allowed());
         assertEquals("COMMAND_FORBIDDEN", decision.reasonCode());
         assertEquals(List.of("reception"), decision.rolesUsed());
+        assertEquals("corr-deny", decision.correlationId());
     }
 
     @Test
@@ -193,7 +202,8 @@ class CommandAuthorizationInterceptorHttpTest {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/facilities");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        ApiException denial = assertThrows(ApiException.class, () -> gate.preHandle(request, response, new Object()));
+        ApiException denial = assertThrows(ApiException.class,
+                () -> gate.preHandle(request, response, mock(HandlerMethod.class)));
 
         assertEquals(422, denial.status());
         assertEquals("UNKNOWN_COMMAND", denial.code());
@@ -262,15 +272,33 @@ class CommandAuthorizationInterceptorHttpTest {
     }
 
     @Test
-    void inactiveMembershipIsDeniedBeforeAnyPolicyIsEvaluated() throws Exception {
+    void inactiveMembershipIsRecordedWithoutEvaluatingAnyPolicy() throws Exception {
         InMemoryDecisionSink sink = new InMemoryDecisionSink();
         MockMvc mvc = mvc(interceptor(new Resolver(List.of("tenant_admin"), false), sink), true);
 
+        // A durable MEMBERSHIP_INACTIVE deny is written before the owning service decides.
         mvc.perform(postCommand("/api/v1/facilities", ORG_A, SUBJECT, "corr-inactive"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+                .andExpect(status().isCreated());
 
+        assertEquals(1, sink.decisions().size());
         assertEquals("MEMBERSHIP_INACTIVE", sink.decisions().get(0).reasonCode());
+        assertFalse(sink.decisions().get(0).allowed());
+    }
+
+    @Test
+    void nonControllerHandlersOnCatalogPathsAreNotGated() {
+        InMemoryDecisionSink sink = new InMemoryDecisionSink();
+        CommandAuthorizationInterceptor gate = interceptor(new Resolver("reception"), sink);
+        TenantContext.set(new TenantContext(ORG_A, SUBJECT, TenantContext.PURPOSE, "corr-resource"));
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/facilities");
+        request.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/v1/facilities");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // A static-resource fallback handler shares the catalog path pattern but is not a
+        // command; gating it would turn a native 404 into a spurious 422.
+        assertTrue(gate.preHandle(request, response, new Object()));
+
+        assertTrue(sink.decisions().isEmpty());
     }
 
     @Test

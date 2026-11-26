@@ -3,6 +3,7 @@ package com.aurevia.web;
 import java.util.Objects;
 
 import org.springframework.stereotype.Component;
+import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -26,8 +27,16 @@ import jakarta.servlet.http.HttpServletResponse;
  * Spring route template, never the raw request URI, selects the catalog command; a request
  * that cannot be resolved to a registered command is denied with the gate's bounded
  * {@code UNKNOWN_COMMAND} decision. Identity and correlation come only from the request
- * tenant context. This interceptor is stateless: a denial thrown from {@code preHandle}
- * skips its own completion callbacks, so it keeps no per-request state.</p>
+ * tenant context.</p>
+ *
+ * <p>The gate is the durable decision ledger, not the enforcing policy point: the owning
+ * service re-checks membership, role, object and preconditions and produces its own error
+ * contract and application audit. A recorded {@code FORBIDDEN} decision therefore does not
+ * short-circuit that service, which preserves ARC-04 concealment and idempotent replay
+ * semantics. Only unresolvable commands, unauthenticated callers and audit failures fail
+ * closed here, because no owning service can enforce those cases. Static resources and
+ * other non-controller handlers are not commands and are never gated. The interceptor is
+ * stateless: a denial thrown from {@code preHandle} skips its own completion callbacks.</p>
  */
 @Component
 public final class CommandAuthorizationInterceptor implements HandlerInterceptor, WebMvcConfigurer {
@@ -57,13 +66,19 @@ public final class CommandAuthorizationInterceptor implements HandlerInterceptor
      *
      * @param request  current HTTP request
      * @param response current HTTP response, unused; failures use the shared error handler
-     * @param handler  selected handler, unused; the matched route is read from the request
-     * @return {@code true} only when the gate returned an allow decision
-     * @throws com.aurevia.api.ApiException with the gate's machine-readable status and code
+     * @param handler  selected handler; only controller methods are gated, fallbacks are left alone
+     * @return {@code true} when the request may continue; a recorded policy deny still
+     *         reaches the owning service, which enforces its own error and audit contract
+     * @throws com.aurevia.api.ApiException when the command is unresolvable, unauthenticated
+     *         or its decision could not be recorded; the gate's machine-readable status and
+     *         code propagate to the shared error handler unchanged
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        if (!"POST".equals(request.getMethod())) {
+        // Interceptors are registered on path patterns shared by every HandlerMapping, including
+        // the static-resource fallback. Only a controller method is a command; a resource or
+        // view handler on a catalog-shaped path must keep its native 404 instead of a deny.
+        if (!"POST".equals(request.getMethod()) || !(handler instanceof HandlerMethod)) {
             return true;
         }
         Object matched = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
@@ -78,10 +93,24 @@ public final class CommandAuthorizationInterceptor implements HandlerInterceptor
                 context == null ? null : context.organizationId(),
                 context == null ? null : context.subject(),
                 context == null ? null : context.correlationId());
-        String commandId = definition == null ? UNKNOWN_COMMAND : definition.id();
-        // The gate records the decision before throwing, and a sink failure denies rather than
-        // allowing the handler to run. ApiException propagates to ApiErrorHandler unchanged.
-        authorization.authorize(new CommandRequest(commandId, null, null), identity);
+        CommandRequest command = definition == null
+                ? new CommandRequest(UNKNOWN_COMMAND, null, null)
+                : new CommandRequest(definition.id(), null, null);
+        try {
+            // The gate always records before answering, so a deny is durable even when
+            // the owning service performs the user-facing enforcement below.
+            authorization.authorize(command, identity);
+        } catch (com.aurevia.api.ApiException denial) {
+            // A recorded FORBIDDEN decision for a known command stays with its owning
+            // service: it re-checks role, object and revision and writes its own audit, so
+            // an early gate error would corrupt that contract (ARC-04) and idempotent
+            // replay concealment. Audit failures and unresolvable commands carry other
+            // codes and still fail closed here because no service can enforce them.
+            if (definition != null && "FORBIDDEN".equals(denial.code())) {
+                return true;
+            }
+            throw denial;
+        }
         return true;
     }
 
