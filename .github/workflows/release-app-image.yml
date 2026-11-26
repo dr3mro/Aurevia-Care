@@ -64,7 +64,10 @@ jobs:
     name: Publish the multi-architecture image
     if: github.ref_type == 'tag'
     needs: build
-    timeout-minutes: 10
+    # The gate step waits for an in-progress Delivery run on main; a full gate
+    # can take well over ten minutes, so allow the bounded wait to finish with
+    # time left for checkout, version resolution and manifest creation.
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -84,8 +87,26 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          runs_json=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
-            -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" --jq '.')
+          runs_url="repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs"
+          # A version tag can be pushed while Delivery on main is still running.
+          # The gate check below runs only once no trusted run for this commit
+          # is pending. If the bounded wait expires, fail without a verdict
+          # instead of calling an unfinished run red.
+          max_attempts=45
+          for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+            runs_json=$(gh api --method GET "$runs_url" \
+              -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" --jq '.')
+            state=$(jq -n --argjson runs "$runs_json" '{runs: $runs, jobs: {}}' \
+              | python3 -I scripts/check-release-base.py --state \
+                  --sha "$GITHUB_SHA" --branch "$DEFAULT_BRANCH" --repo "$GITHUB_REPOSITORY")
+            if [[ "$state" == ready ]]; then break; fi
+            echo "release base: Delivery on $DEFAULT_BRANCH for $GITHUB_SHA still running (poll $attempt/$max_attempts)." >&2
+            if (( attempt < max_attempts )); then sleep 60; fi
+          done
+          if [[ "$state" == pending ]]; then
+            echo "release base: Delivery on $DEFAULT_BRANCH for $GITHUB_SHA did not finish after $max_attempts attempts; refusing to decide red or green from an unfinished run" >&2
+            exit 1
+          fi
           jobs_json='{}'
           for run_id in $(jq -r --arg sha "$GITHUB_SHA" \
               '.workflow_runs[] | select(.head_sha == $sha) | .id' <<< "$runs_json"); do
