@@ -1,20 +1,98 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import * as layout from './index';
+import { MessageLayout } from './MessageLayout';
+import { MessagingLayout, useMessagingNavigation } from './MessagingLayout';
+import {
+  layoutKeys,
+  layoutMessages as sourceMessageLayoutMessages,
+  layoutText as sourceMessageLayoutText,
+} from './layoutMessages';
+import { columnsFor, paneVisibility } from './layoutModel';
+import { paneLayout } from './layoutStyles';
+import {
+  layoutMessages as sourceLayoutMessages,
+  layoutText as sourceLayoutText,
+} from './layoutText';
+import type * as MessageLayoutTypes from './MessageLayout';
+import type * as MessagingLayoutTypes from './MessagingLayout';
+import type * as LayoutMessagesTypes from './layoutMessages';
+import type * as LayoutModelTypes from './layoutModel';
+import type * as LayoutStylesTypes from './layoutStyles';
+import type * as LayoutTextTypes from './layoutText';
 
-describe('staff message layout exports', () => {
-  it('exports only the public wrapper, pane geometry and message bundle', () => {
+describe('messaging layout public surface', () => {
+  it('exports both wrappers, navigation, labels and pure layout helpers', () => {
     expect(Object.keys(layout).sort()).toEqual(
       [
         'MessageLayout',
+        'MessagingLayout',
+        'columnsFor',
         'layoutKeys',
         'layoutMessages',
         'layoutText',
+        'messageLayoutMessages',
+        'messageLayoutText',
         'paneLayout',
+        'paneVisibility',
+        'useMessagingNavigation',
       ].sort(),
     );
+  });
+
+  it('re-exports each runtime value from its owning module', () => {
+    expect(layout.MessageLayout).toBe(MessageLayout);
+    expect(layout.MessagingLayout).toBe(MessagingLayout);
+    expect(layout.useMessagingNavigation).toBe(useMessagingNavigation);
+    expect(layout.layoutKeys).toBe(layoutKeys);
+    expect(layout.layoutMessages).toBe(sourceLayoutMessages);
+    expect(layout.layoutText).toBe(sourceLayoutText);
+    expect(layout.messageLayoutMessages).toBe(sourceMessageLayoutMessages);
+    expect(layout.messageLayoutText).toBe(sourceMessageLayoutText);
+    expect(layout.paneLayout).toBe(paneLayout);
+    expect(layout.columnsFor).toBe(columnsFor);
+    expect(layout.paneVisibility).toBe(paneVisibility);
+  });
+
+  it('preserves every public type from its owning module', () => {
+    expectTypeOf<layout.LayoutShape>().toEqualTypeOf<LayoutStylesTypes.LayoutShape>();
+    expectTypeOf<layout.MessageLayoutMessageKey>().toEqualTypeOf<
+      LayoutMessagesTypes.LayoutMessageKey
+    >();
+    expectTypeOf<layout.MessageLayoutProps>().toEqualTypeOf<
+      MessageLayoutTypes.MessageLayoutProps
+    >();
+    expectTypeOf<layout.LayoutMessageKey>().toEqualTypeOf<LayoutTextTypes.LayoutMessageKey>();
+    expectTypeOf<layout.MessagingLayoutProps>().toEqualTypeOf<
+      MessagingLayoutTypes.MessagingLayoutProps
+    >();
+    expectTypeOf<layout.MessagingNavigation>().toEqualTypeOf<
+      MessagingLayoutTypes.MessagingNavigation
+    >();
+    expectTypeOf<layout.MessagingPane>().toEqualTypeOf<MessagingLayoutTypes.MessagingPane>();
+    expectTypeOf<layout.MessagingStage>().toEqualTypeOf<LayoutModelTypes.MessagingStage>();
+    expectTypeOf<layout.PaneId>().toEqualTypeOf<LayoutModelTypes.PaneId>();
+    expectTypeOf<layout.PaneLayout>().toEqualTypeOf<LayoutStylesTypes.PaneLayout>();
+    expectTypeOf<layout.PanePlacement>().toEqualTypeOf<LayoutStylesTypes.PanePlacement>();
+    expectTypeOf<layout.PaneVisibility>().toEqualTypeOf<LayoutModelTypes.PaneVisibility>();
+  });
+
+  it('preserves the responsive messaging layout behavior', () => {
+    expect(typeof layout.MessagingLayout).toBe('function');
+    expect(typeof layout.useMessagingNavigation).toBe('function');
+    expect(layout.layoutText('en', 'back')).toBe('Back to list');
+    expect(layout.columnsFor('medium', true)).toBe('minmax(0, 1fr) minmax(0, 1fr)');
+    expect(layout.paneVisibility('expanded', 'list').auxiliary).toBe(true);
+  });
+
+  it('preserves the message wrapper labels and pane geometry', () => {
+    expect(typeof layout.MessageLayout).toBe('function');
+    expect(layout.layoutKeys).toContain('composerPane');
+    expect(layout.messageLayoutMessages.en.layout).toBe('Messages and mail layout');
+    expect(layout.messageLayoutText('en', 'backToList')).toBe('Back to conversations');
+    expect(layout.paneLayout('medium').shape).toBe('paired');
   });
 });
 
