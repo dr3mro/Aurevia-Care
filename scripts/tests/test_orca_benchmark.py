@@ -204,31 +204,34 @@ class BoundaryTests(unittest.TestCase):
 class TelemetryTests(unittest.TestCase):
     """Telemetry rows carry validated provenance and never invent a metric."""
 
+    def setUp(self):
+        self.module = load_module()
+
     def test_event_rejects_blank(self):
         with self.assertRaisesRegex(ValueError, "blank event"):
-            orca_benchmark.telemetry_event("T", "  ", orca_benchmark.EvidenceSource.TOOL)
+            self.module.telemetry_event("T", "  ", self.module.EvidenceSource.TOOL)
 
     def test_event_default_fields(self):
-        row = orca_benchmark.telemetry_event(
-            "T", "check", orca_benchmark.EvidenceSource.REVIEWER)
+        row = self.module.telemetry_event(
+            "T", "check", self.module.EvidenceSource.REVIEWER)
         self.assertEqual((row["value"], row["source"], row["event"]),
-                         ({}, orca_benchmark.EvidenceSource.REVIEWER, "check"))
+                         ({}, self.module.EvidenceSource.REVIEWER, "check"))
 
     def test_event_uses_record(self):
-        row = orca_benchmark.telemetry_event(
-            "T", "check", orca_benchmark.EvidenceSource.TOOL, {"n": 1})
+        row = self.module.telemetry_event(
+            "T", "check", self.module.EvidenceSource.TOOL, {"n": 1})
         self.assertEqual(row["value"], {"n": 1})
 
     def test_event_rejects_unknown_source(self):
         with self.assertRaisesRegex(ValueError, "unknown source"):
-            orca_benchmark.telemetry_event("T", "check", "guess")
+            self.module.telemetry_event("T", "check", "guess")
 
     def test_event_rejects_non_mapping_fields(self):
         with self.assertRaisesRegex(ValueError, "must be a mapping"):
-            orca_benchmark.telemetry_event("T", "check", "tool", 3)
+            self.module.telemetry_event("T", "check", "tool", 3)
 
     def test_event_redacts_sensitive_fields(self):
-        row = orca_benchmark.telemetry_event(
+        row = self.module.telemetry_event(
             "T", "check", "tool", {"count": 2, "token": "synth", "patient": "synth"})
         self.assertEqual(row["value"], {"count": 2})
 
