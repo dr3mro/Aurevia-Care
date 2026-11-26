@@ -208,6 +208,11 @@ describe('ApiPage recovery actions', () => {
     );
 
     await waitFor(() => expect(screen.getByText('Your session has expired')).toBeTruthy());
+<<<<<<< HEAD
+    // ApiPage reports expiry from a passive effect: under parallel load the
+    // view can be painted before that effect calls the session owner.
+=======
+>>>>>>> origin/main
     await waitFor(() => expect(onSessionExpired).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(onSignIn).toHaveBeenCalledTimes(1);
