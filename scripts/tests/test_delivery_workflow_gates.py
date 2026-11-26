@@ -164,7 +164,11 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertIn('if [[ "$commits" == "0" || -z "$commits" ]]', body)
         self.assertIn('echo "skip=true" >> "$GITHUB_OUTPUT"', body)
         self.assertIn("exit 1", body)  # commits reported but no bundle stays a hard failure
-        self.assertEqual(gate["if"], "steps.candidate.outputs.skip != 'true'")
+        # Behavior changed on purpose: a stale candidate skips the gate too,
+        # and is retried by the trusted publish job without consuming an attempt.
+        self.assertEqual(
+            gate["if"],
+            "steps.candidate.outputs.skip != 'true' && steps.candidate.outputs.stale != 'true'")
 
     def test_trusted_check_state_is_emitted_and_consumed_by_publication(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-worker.yml").read_text(encoding="utf-8"))
