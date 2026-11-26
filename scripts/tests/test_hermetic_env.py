@@ -30,9 +30,11 @@ case "$*" in
     printf '%s' "$count" > "$STATUS_COUNT"
     [[ "${FAIL_STATUS_AT:-0}" != "$count" ]] || exit 1
     if [[ "${SIGNAL_AT_STATUS:-0}" == "$count" ]]; then
-      parent=$(ps -o ppid= -p "$PPID" | tr -d ' ')
-      kill -"${SIGNAL_STATUS:-TERM}" "$parent" 2>/dev/null || true
-      kill -"${SIGNAL_STATUS:-TERM}" -"$parent" 2>/dev/null || true
+      pid=$PPID
+      while [[ -n "$pid" && "$pid" != "1" ]]; do
+        kill -"${SIGNAL_STATUS:-TERM}" "$pid" 2>/dev/null || true
+        pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+      done
       exit 0
     fi
     [[ -f "$DIRTY_MARKER" ]] && printf ' M feature.txt\\n'
