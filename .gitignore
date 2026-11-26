@@ -46,3 +46,9 @@ apps/*/reports/mutation/
 
 # Local PR worktrees created by gh_pr_workspace / gh_pr_fix_conflict
 /.workspaces/
+
+# Generated scratch files must live under build/, never the repo root
+/_*.txt
+/_*.log
+/_out*
+/_final*

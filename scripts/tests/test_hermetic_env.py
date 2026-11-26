@@ -30,8 +30,13 @@ case "$*" in
     printf '%s' "$count" > "$STATUS_COUNT"
     [[ "${FAIL_STATUS_AT:-0}" != "$count" ]] || exit 1
     if [[ "${SIGNAL_AT_STATUS:-0}" == "$count" ]]; then
-      parent=$(ps -o ppid= -p "$PPID" | tr -d ' ')
-      kill -"${SIGNAL_STATUS:-TERM}" "$parent"
+      target=""
+      if [[ -n "${AUREVIA_SIGNAL_TARGET_FILE:-}" && -f "${AUREVIA_SIGNAL_TARGET_FILE}" ]]; then
+        target=$(tr -d '[:space:]' < "${AUREVIA_SIGNAL_TARGET_FILE}")
+      fi
+      if [[ -n "$target" ]]; then
+        kill -"${SIGNAL_STATUS:-TERM}" "$target" 2>/dev/null || true
+      fi
       exit 0
     fi
     [[ -f "$DIRTY_MARKER" ]] && printf ' M feature.txt\\n'
@@ -705,7 +710,9 @@ class HermeticEnvironmentTest(unittest.TestCase):
                 auth.parent.mkdir(parents=True)
                 auth.write_text("original auth\n")
                 auth.chmod(0o644)
-                env.update({"SIGNAL_AT_STATUS": "2", "SIGNAL_STATUS": signal})
+                signal_target = root / "agent-run.pid"
+                env.update({"SIGNAL_AT_STATUS": "2", "SIGNAL_STATUS": signal,
+                            "AUREVIA_SIGNAL_TARGET_FILE": str(signal_target)})
                 result = subprocess.run(["bash", str(RUNNER), "review"], cwd=root, env=env,
                                         capture_output=True, text=True, check=False)
                 self.assertEqual(result.returncode, code, result.stderr)

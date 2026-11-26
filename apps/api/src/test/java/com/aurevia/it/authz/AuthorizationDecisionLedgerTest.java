@@ -2,6 +2,7 @@ package com.aurevia.it.authz;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -232,8 +233,128 @@ class AuthorizationDecisionLedgerTest {
         }
     }
 
+    private static String literal(String value) {
+        return value == null ? "NULL" : "'" + value + "'";
+    }
+
+    private static String insertDecision(String organization, String subject, String action,
+                                         String resourceType, String outcome, String reason,
+                                         String correlation) {
+        return "INSERT INTO public.authorization_decision "
+                + "(organization_id, subject, action, resource_type, decision, reason_code, correlation_id) "
+                + "VALUES (" + literal(organization) + ", " + literal(subject) + ", " + literal(action)
+                + ", " + literal(resourceType) + ", " + literal(outcome) + ", " + literal(reason)
+                + ", " + literal(correlation) + ")";
+    }
+
+    private static String insertDecisionWithId(String id, String organization, String correlation) {
+        return "INSERT INTO public.authorization_decision "
+                + "(id, organization_id, decision, reason_code, correlation_id) "
+                + "VALUES (" + literal(id) + ", " + literal(organization) + ", 'allow', 'ALLOWED', "
+                + literal(correlation) + ")";
+    }
+
+    @Test
+    void codeColumnsEnforceDeclaredLengths() throws Exception {
+        assertTrue(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "s".repeat(256),
+                "a".repeat(128), "COMMAND", "allow", "ALLOWED", "c".repeat(128))));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "s".repeat(257),
+                "a".repeat(128), "COMMAND", "allow", "ALLOWED", "corr-subject-too-long")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "svc-a", "a".repeat(129),
+                "COMMAND", "allow", "ALLOWED", "corr-action-too-long")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "svc-a", "FACILITY_WRITE",
+                "COMMAND", "allow", "ALLOWED", "c".repeat(129))));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-subject-too-long"));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-action-too-long"));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "c".repeat(129)));
+    }
+
+    @Test
+    void ledgerRowIntegrityAndDefaultsAreDatabaseEnforced() throws Exception {
+        assertTrue(executes("aurevia_migrate", ORG_A,
+                "INSERT INTO public.authorization_decision "
+                        + "(organization_id, decision, reason_code, correlation_id) "
+                        + "VALUES ('" + ORG_A + "', 'allow', 'ALLOWED', 'corr-defaults')"));
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT id, subject, action, resource_type, decided_at "
+                            + "FROM public.authorization_decision WHERE correlation_id = 'corr-defaults'")) {
+                try (ResultSet result = statement.executeQuery()) {
+                    assertTrue(result.next());
+                    assertNotNull(result.getObject("id"));
+                    assertEquals("", result.getString("subject"));
+                    assertEquals("", result.getString("action"));
+                    assertEquals("COMMAND", result.getString("resource_type"));
+                    assertNotNull(result.getObject("decided_at"));
+                }
+            } finally {
+                connection.rollback();
+            }
+        }
+
+        Instant beforeDefault = Instant.now();
+        assertTrue(executes("aurevia_migrate", ORG_A,
+                "INSERT INTO public.authorization_decision "
+                        + "(organization_id, action, decision, reason_code) "
+                        + "VALUES ('" + ORG_A + "', 'DEFAULT_TIME_PROBE', 'allow', 'ALLOWED')"));
+        Instant afterDefault = Instant.now();
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT correlation_id, decided_at FROM public.authorization_decision "
+                            + "WHERE action = 'DEFAULT_TIME_PROBE'")) {
+                try (ResultSet result = statement.executeQuery()) {
+                    assertTrue(result.next());
+                    assertEquals("", result.getString("correlation_id"));
+                    OffsetDateTime decidedAt = result.getObject("decided_at", OffsetDateTime.class);
+                    assertFalse(decidedAt.toInstant().isBefore(beforeDefault));
+                    assertFalse(decidedAt.toInstant().isAfter(afterDefault));
+                }
+            } finally {
+                connection.rollback();
+            }
+        }
+
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(null, "svc-a", "FACILITY_WRITE",
+                "COMMAND", "allow", "ALLOWED", "corr-null-org")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, null, "FACILITY_WRITE",
+                "COMMAND", "allow", "ALLOWED", "corr-null-subject")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "svc-a", null,
+                "COMMAND", "allow", "ALLOWED", "corr-null-action")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "svc-a", "FACILITY_WRITE",
+                null, "allow", "ALLOWED", "corr-null-resource")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "svc-a", "FACILITY_WRITE",
+                "COMMAND", null, "ALLOWED", "corr-null-decision")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "svc-a", "FACILITY_WRITE",
+                "COMMAND", "allow", null, "corr-null-reason")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(ORG_A, "svc-a", "FACILITY_WRITE",
+                "COMMAND", "allow", "ALLOWED", null)));
+        assertFalse(executes("aurevia_migrate", ORG_A,
+                "INSERT INTO public.authorization_decision "
+                        + "(id, organization_id, decision, reason_code) "
+                        + "VALUES (NULL, '" + ORG_A + "', 'allow', 'ALLOWED')"));
+        assertFalse(executes("aurevia_migrate", ORG_A,
+                "INSERT INTO public.authorization_decision "
+                        + "(organization_id, decision, reason_code, decided_at) "
+                        + "VALUES ('" + ORG_A + "', 'allow', 'ALLOWED', NULL)"));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecision(
+                "33333333-3333-3333-3333-333333333333", "svc-a", "FACILITY_WRITE",
+                "COMMAND", "allow", "ALLOWED", "corr-unknown-org")));
+
+        String id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+        assertTrue(executes("aurevia_migrate", ORG_A, insertDecisionWithId(id, ORG_A, "corr-pk-a")));
+        assertTrue(executes("aurevia_migrate", ORG_B, insertDecisionWithId(id, ORG_B, "corr-pk-b")));
+        assertFalse(executes("aurevia_migrate", ORG_A, insertDecisionWithId(id, ORG_A, "corr-pk-duplicate")));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-pk-duplicate"));
+    }
+
     @Test
     void productionBeanRecordsAllowAndDenyWithTheInjectedClock() throws Exception {
+        assertEquals(1, applicationContext.getBeansOfType(CommandAuthorization.DecisionSink.class).size(),
+                "production must expose exactly one durable decision sink");
         assertTrue(applicationContext.getBean(CommandAuthorization.DecisionSink.class)
                 instanceof JdbcDecisionSink, "the production bean must be the durable sink");
         CommandCatalog catalog = CommandCatalog.synthetic();
@@ -506,6 +627,9 @@ class AuthorizationDecisionLedgerTest {
                 + "(organization_id, decision, reason_code) VALUES ('" + ORG_A + "', 'maybe', 'ALLOWED')"));
         assertFalse(executes("aurevia_migrate", ORG_A, "INSERT INTO public.authorization_decision "
                 + "(organization_id, decision, reason_code) VALUES ('" + ORG_A + "', 'allow', 'FREE_TEXT')"));
+        assertFalse(executes("aurevia_migrate", ORG_A, "INSERT INTO public.authorization_decision "
+                + "(organization_id, resource_type, decision, reason_code) "
+                + "VALUES ('" + ORG_A + "', 'CLIENT_COMMAND', 'allow', 'ALLOWED')"));
         assertEquals(1L, count("aurevia_migrate", ORG_A, "corr-immutable"));
 
         try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
@@ -525,6 +649,76 @@ class AuthorizationDecisionLedgerTest {
                 actual.add(result.getString(1));
             }
             assertEquals(COLUMNS, actual, "no patient, request-body or role-list column exists");
+        }
+    }
+
+    @Test
+    void codedFieldLengthLimitsAreEnforcedAtBoundaries() throws Exception {
+        bind(ORG_A, "admin-a");
+        String subject = "s".repeat(256);
+        String action = "a".repeat(128);
+        String resourceType = "r".repeat(128);
+        String correlationId = "c".repeat(128);
+        String insert = """
+                INSERT INTO public.authorization_decision
+                    (organization_id, subject, action, resource_type, decision, reason_code, correlation_id)
+                VALUES ('%s', '%s', '%s', '%s', 'allow', 'ALLOWED', '%s')
+                """;
+
+        assertTrue(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, subject, action, resourceType, correlationId)));
+        assertEquals(1L, count("aurevia_migrate", ORG_A, correlationId));
+
+        assertFalse(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, "s".repeat(257), action, resourceType, "corr-subject-overflow")));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-subject-overflow"));
+        assertFalse(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, subject, "a".repeat(129), resourceType, "corr-action-overflow")));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-action-overflow"));
+        assertFalse(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, subject, action, "r".repeat(129), "corr-resource-overflow")));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-resource-overflow"));
+        String correlationOverflow = "c".repeat(129);
+        assertFalse(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, subject, action, resourceType, correlationOverflow)));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, correlationOverflow));
+
+        // The production sink bounds untrusted fields before insertion; the
+        // database checks above remain the backstop for direct SQL callers.
+        List<Decision> oversizedDecisions = List.of(
+                new Decision("createFacility", action, ORG_A, "s".repeat(257),
+                        "corr-sink-subject-overflow", true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()),
+                new Decision("createFacility", "a".repeat(129), ORG_A, subject,
+                        "corr-sink-action-overflow", true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()),
+                new Decision("createFacility", action, ORG_A, subject,
+                        correlationOverflow, true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()));
+        for (Decision oversized : oversizedDecisions) {
+            String storedCorrelation = oversized.correlationId().substring(
+                    0, Math.min(128, oversized.correlationId().length()));
+            long before = count("aurevia_migrate", ORG_A, storedCorrelation);
+
+            sink.record(oversized);
+
+            assertEquals(before + 1, count("aurevia_migrate", ORG_A, storedCorrelation));
+            try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+                connection.setAutoCommit(false);
+                bind(connection, ORG_A, "admin-a");
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "SELECT subject, action, correlation_id FROM public.authorization_decision "
+                                + "WHERE correlation_id = ? AND decided_at = CAST(? AS timestamptz)")) {
+                    statement.setString(1, storedCorrelation);
+                    statement.setObject(2, OffsetDateTime.ofInstant(CLOCK.instant(), ZoneOffset.UTC));
+                    try (ResultSet result = statement.executeQuery()) {
+                        assertTrue(result.next());
+                        assertEquals(oversized.subject().substring(0, 255), result.getString("subject"));
+                        assertEquals(oversized.action().substring(0, 128), result.getString("action"));
+                        assertEquals(storedCorrelation, result.getString("correlation_id"));
+                        assertFalse(result.next());
+                    }
+                } finally {
+                    connection.rollback();
+                }
+            }
         }
     }
 }
