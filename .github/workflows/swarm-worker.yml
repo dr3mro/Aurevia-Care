@@ -429,7 +429,13 @@ jobs:
           # Only trusted scripts and main's history are read here; no candidate
           # script or workflow file is executed.
           git fetch -q origin main:refs/remotes/origin/main
-          if ! git -C candidate-tree merge --no-edit origin/main; then
+          # A true merge creates a commit; the validate job has no configured
+          # identity, so supply one explicitly. Without it an identity failure
+          # would be misreported as a stale candidate and retried forever.
+          if ! git -C candidate-tree \
+               -c user.name="${SWARM_GIT_NAME:-github-actions[bot]}" \
+               -c user.email="${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}" \
+               merge --no-edit origin/main; then
             git -C candidate-tree merge --abort || true
             echo "::notice::Candidate is stale; merge main into the worker branch and retry without consuming an attempt"
             echo "stale=true" >> "$GITHUB_OUTPUT"

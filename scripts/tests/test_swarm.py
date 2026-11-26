@@ -258,16 +258,19 @@ class WorkerValidationSkewTests(unittest.TestCase):
         text = self.workflow()
         candidate = text.split("name: Resolve the candidate commit", 1)[1].split(
             "name: Run the trusted gate", 1)[0]
-        merge = candidate.index("git -C candidate-tree merge --no-edit origin/main")
+        merge = candidate.index("merge --no-edit origin/main")
         overlay = candidate.index("cp -R scripts/. candidate-tree/scripts/")
         self.assertLess(merge, overlay)
         self.assertIn("git fetch -q origin", candidate)
+        self.assertIn("-c user.name=", candidate)
+        self.assertIn("-c user.email=", candidate)
 
     def test_merge_conflict_is_reported_as_stale_not_as_a_code_defect(self):
         text = self.workflow()
         candidate = text.split("name: Resolve the candidate commit", 1)[1].split(
             "name: Run the trusted gate", 1)[0]
-        self.assertIn("if ! git -C candidate-tree merge --no-edit origin/main", candidate)
+        self.assertIn("if ! git -C candidate-tree \\", candidate)
+        self.assertIn("-c user.name=", candidate)
         self.assertIn("::notice::", candidate)
         self.assertIn('echo "stale=true" >> "$GITHUB_OUTPUT"', candidate)
         self.assertIn('echo "passed=false" >> "$GITHUB_OUTPUT"', candidate)
