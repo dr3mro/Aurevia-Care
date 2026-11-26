@@ -18,19 +18,10 @@ updates:
       actions-patch-minor:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
+        update-types: [minor, patch]
     ignore:
-      - dependency-name: actions/configure-pages
-        update-types:
-          - version-update:semver-major
-      - dependency-name: actions/deploy-pages
-        update-types:
-          - version-update:semver-major
-      - dependency-name: actions/upload-pages-artifact
-        update-types:
-          - version-update:semver-major
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: docker
     directory: /
@@ -40,19 +31,10 @@ updates:
       base-images-patch-minor:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
+        update-types: [minor, patch]
     ignore:
-      - dependency-name: node
-        update-types:
-          - version-update:semver-major
-      - dependency-name: postgres
-        update-types:
-          - version-update:semver-major
-      - dependency-name: maven
-        update-types:
-          - version-update:semver-major
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: maven
     directory: /apps/api
@@ -63,9 +45,10 @@ updates:
       maven-patch-minor:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /
@@ -76,21 +59,9 @@ updates:
       root-npm-patch-minor:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
+        update-types: [minor, patch]
     ignore:
-      - dependency-name: typescript
-        update-types: [version-update:semver-major]
-      - dependency-name: eslint
-        update-types: [version-update:semver-major]
-      - dependency-name: typedoc
-        update-types: [version-update:semver-major]
-      - dependency-name: jsdom
-        update-types: [version-update:semver-major]
-      - dependency-name: globals
-        update-types: [version-update:semver-major]
-      - dependency-name: "@eslint-community/eslint-plugin-eslint-comments"
+      - dependency-name: "*"
         update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
@@ -102,21 +73,9 @@ updates:
       staff-web-npm-patch-minor:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
+        update-types: [minor, patch]
     ignore:
-      - dependency-name: typescript
-        update-types: [version-update:semver-major]
-      - dependency-name: eslint
-        update-types: [version-update:semver-major]
-      - dependency-name: typedoc
-        update-types: [version-update:semver-major]
-      - dependency-name: jsdom
-        update-types: [version-update:semver-major]
-      - dependency-name: globals
-        update-types: [version-update:semver-major]
-      - dependency-name: "@eslint-community/eslint-plugin-eslint-comments"
+      - dependency-name: "*"
         update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
@@ -128,19 +87,7 @@ updates:
       patient-mobile-npm-patch-minor:
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
+        update-types: [minor, patch]
     ignore:
-      - dependency-name: typescript
-        update-types: [version-update:semver-major]
-      - dependency-name: eslint
-        update-types: [version-update:semver-major]
-      - dependency-name: typedoc
-        update-types: [version-update:semver-major]
-      - dependency-name: jsdom
-        update-types: [version-update:semver-major]
-      - dependency-name: globals
-        update-types: [version-update:semver-major]
-      - dependency-name: "@eslint-community/eslint-plugin-eslint-comments"
+      - dependency-name: "*"
         update-types: [version-update:semver-major]
