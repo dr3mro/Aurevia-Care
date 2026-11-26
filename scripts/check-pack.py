@@ -203,8 +203,10 @@ def check(root=ROOT):
 
     generator = load_generator(root)
     for name, ci in generator.OUTPUTS.items():
-        path = root / name
-        if not path.exists() or path.read_text() != generator.render(root, ci):
+        # An unattended worker overlays the CI profile on a skip-worktree config,
+        # so the committed blob is authoritative there; both profiles are still
+        # generated from the same inventory and neither check is skipped.
+        if generator.read_generated(root, name) != generator.render(root, ci):
             errors.append(f"{name} is stale: run scripts/gen-opencode.py")
     return errors
 

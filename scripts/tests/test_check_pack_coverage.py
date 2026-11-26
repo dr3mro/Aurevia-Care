@@ -1,11 +1,11 @@
 """Line and branch coverage for the uncovered paths of ``scripts/check-pack.py``.
 
 The repository-wide suite exercises the pack validation helpers, but it drives
-``check()`` against the real worktree. In a cloud worker the worktree
-``opencode.json`` is the CI profile placed under skip-worktree, so ``check()``
-reports it stale and ``main()`` always returns early at its ``if errors``
-guard. That leaves the success path (agent count, validation message and
-``return 0``) and its false branch arc unobserved.
+``check()`` against the real worktree. Since task 01323000, a skip-worktree
+config is compared against its committed blob, so the cloud-worker CI profile
+no longer short-circuits ``main()`` at its ``if errors`` guard. These tests pin
+the success path (agent count, validation message and ``return 0``) and its
+false branch arc with a mocked ``check`` result.
 
 These tests close that gap through the script's public functions only. They
 use temporary synthetic config files and a mocked ``check`` result, so no

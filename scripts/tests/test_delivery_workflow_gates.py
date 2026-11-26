@@ -157,6 +157,31 @@ class WorkflowGateWiringTest(unittest.TestCase):
         self.assertIn("exit 1", body)  # commits reported but no bundle stays a hard failure
         self.assertEqual(gate["if"], "steps.candidate.outputs.skip != 'true'")
 
+    def test_trusted_check_state_is_emitted_and_consumed_by_publication(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-worker.yml").read_text(encoding="utf-8"))
+        jobs = workflow["jobs"]
+        validate = jobs["validate"]
+        self.assertIn("passed", validate["outputs"])
+        self.assertIn("skip", validate["outputs"])
+        gate = next(s for s in validate["steps"] if s.get("id") == "gate")
+        gate_body = run_text(gate)
+        self.assertIn('echo "passed=true"', gate_body)
+        self.assertIn('echo "passed=false"', gate_body)
+        self.assertNotIn("continue-on-error", gate)
+        publish = jobs["publish"]
+        refuse = next(s for s in publish["steps"] if "Refuse to publish" in s.get("name", ""))
+        self.assertEqual(refuse["env"]["SKIP"], "${{ needs.validate.outputs.skip }}")
+        self.assertIn('if [[ "$SKIP" == "true" ]]', run_text(refuse))
+        self.assertIn('[[ "$PASSED" != "true" || -z "$SHA" ]]', run_text(refuse))
+        push = next(s for s in publish["steps"] if "Push the branch" in s.get("name", ""))
+        self.assertEqual(push["env"]["VALIDATED_CHECKS"],
+                         "${{ needs.validate.outputs.passed }}")
+        self.assertIn('--validated-checks "$VALIDATED_CHECKS"', run_text(push))
+        self.assertEqual(publish["permissions"], {
+            "contents": "write", "pull-requests": "write", "issues": "write",
+            "actions": "write",
+        })
+
     def test_integrator_validate_job_has_no_nvd_consumer_key(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         job = workflow["jobs"]["validate"]
