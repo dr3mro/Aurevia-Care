@@ -10,8 +10,14 @@ import argparse
 import fnmatch
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
+
+# ``python3 -I`` omits the script directory from sys.path, so import the sibling
+# environment helper explicitly (the same shim scripts/swarm.py uses).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from process_env import child_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 PRIMARY = "orca"
@@ -110,6 +116,51 @@ def build(names, ci=False):
 
 OUTPUTS = {".opencode/opencode.json": False, ".opencode/opencode.ci.json": True}
 
+
+def git_output(root, args):
+    """Return stdout of a read-only Git command, or raise on failure.
+
+    The sanitized environment prevents inherited ``GIT_*`` routing variables from
+    redirecting the read to a different repository or index. No output is logged:
+    config bytes and Git stderr can carry credentials.
+    """
+    return subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, text=True, check=True,
+        env=child_environment(read_only=True),
+    ).stdout
+
+
+def read_generated(root=ROOT, name=""):
+    """Return the authoritative text of one generated config file.
+
+    Worktree bytes are authoritative in the normal developer loop, so local
+    regeneration before commit is not reported as drift. When Git marks the file
+    skip-worktree, an unattended worker has overlaid the CI runtime profile over
+    it and the committed blob is authoritative instead. A scratch tree without a
+    Git repository falls back to worktree bytes; a trusted read that cannot be
+    completed returns ``None`` so callers fail closed.
+    """
+    path = Path(root) / name
+    try:
+        flags = git_output(root, ["ls-files", "-v", "-z", "--", name])
+    except subprocess.CalledProcessError as error:
+        # Only a tree with no Git metadata may fall back to worktree bytes. A
+        # corrupt index or other fatal Git failure in a real repository must
+        # fail closed instead of validating an overlaid CI profile as truth.
+        if error.returncode != 128 or (Path(root) / ".git").exists():
+            return None
+        flags = ""  # Synthetic fixtures are copied without a repository.
+    except OSError:
+        flags = ""  # Git binary unavailable outside a worker image.
+    for entry in flags.split("\0"):
+        if entry.startswith("S "):
+            try:
+                return git_output(root, ["show", f"HEAD:{name}"])
+            except (OSError, subprocess.CalledProcessError):
+                return None
+    return path.read_text() if path.exists() else None
+
+
 # The CI profile is copied over opencode.json in unattended workers, so its policy
 # needs its own gate. check-pack validates the generated local config for drift;
 # check-runtime validates the profile the workers actually load (OPS-06).
@@ -207,7 +258,8 @@ def main(argv=None):
         target = ROOT / name
         text = render(ROOT, ci)
         if args.check:
-            if not target.exists() or target.read_text() != text:
+            authoritative = read_generated(ROOT, name)
+            if authoritative is None or authoritative != text:
                 print(f"{name} is out of date: run scripts/gen-opencode.py",
                       file=sys.stderr)
                 status = 1
