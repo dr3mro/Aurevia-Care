@@ -1,6 +1,7 @@
 package com.aurevia.api.authorization;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -66,8 +67,10 @@ class CommandCatalogRouteTest {
     void routesAreImmutableAndCoverEveryCommand() {
         CommandCatalog catalog = CommandCatalog.synthetic();
 
-        assertEquals(catalog.commands().size(), catalog.paths().size());
+        assertEquals(34, catalog.commands().size());
+        assertEquals(24, catalog.paths().size());
         assertTrue(catalog.paths().contains("/api/v1/facilities"));
+        assertFalse(catalog.paths().contains("/api/v1/xch03/orders/{id}/accept"));
         assertThrows(UnsupportedOperationException.class, () -> catalog.paths().add("/api/v1/extra"));
     }
 }

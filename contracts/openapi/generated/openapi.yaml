@@ -561,6 +561,236 @@ paths:
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
         '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/clinic/verifications:
+    post:
+      operationId: verifyClinicIdentity
+      summary: verifyClinicIdentity command
+      description: >-
+        Authorized by action IDENTITY_VERIFY in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: IDENTITY_VERIFY
+      x-aurevia-policy: WorklistPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/clinic/appointments/{id}/check-in:
+    post:
+      operationId: checkInClinicAppointment
+      summary: checkInClinicAppointment command
+      description: >-
+        Authorized by action APPOINTMENT_CHECK_IN in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: APPOINTMENT_CHECK_IN
+      x-aurevia-policy: WorklistPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/clinic/worklist/{id}/assign:
+    post:
+      operationId: assignClinicWorkItem
+      summary: assignClinicWorkItem command
+      description: >-
+        Authorized by action WORKLIST_ASSIGN in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: WORKLIST_ASSIGN
+      x-aurevia-policy: WorklistPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/therapy/episodes:
+    post:
+      operationId: acceptTherapyEpisode
+      summary: acceptTherapyEpisode command
+      description: >-
+        Authorized by action SPECIALTY_PT_ACCEPT_REFERRAL in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: SPECIALTY_PT_ACCEPT_REFERRAL
+      x-aurevia-policy: SpecialtyActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/xch03/orders/{id}/accept:
+    post:
+      operationId: acceptExchangeResponse
+      summary: acceptExchangeResponse command
+      description: >-
+        Authorized by action EXCHANGE_ACCEPT in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: EXCHANGE_ACCEPT
+      x-aurevia-policy: Xch03ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/xch03/orders/{id}/reject:
+    post:
+      operationId: rejectExchangeResponse
+      summary: rejectExchangeResponse command
+      description: >-
+        Authorized by action EXCHANGE_REJECT in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: EXCHANGE_REJECT
+      x-aurevia-policy: Xch03ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/releases:
+    post:
+      operationId: authorizePatientRelease
+      summary: authorizePatientRelease command
+      description: >-
+        Authorized by action RELEASE_AUTHORIZE in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: RELEASE_AUTHORIZE
+      x-aurevia-policy: ReleaseActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/critical-results/{id}/acknowledge:
+    post:
+      operationId: acknowledgeReportedCriticalResult
+      summary: acknowledgeReportedCriticalResult command
+      description: >-
+        Authorized by action CRITICAL_ACKNOWLEDGE in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: CRITICAL_ACKNOWLEDGE
+      x-aurevia-policy: CriticalActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/finance/invoices:
+    post:
+      operationId: createFinanceInvoice
+      summary: createFinanceInvoice command
+      description: >-
+        Authorized by action FINANCE_INVOICE_CREATE in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: FINANCE_INVOICE_CREATE
+      x-aurevia-policy: FinanceActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
+  /api/v1/instructions/acknowledge:
+    post:
+      operationId: acknowledgePublishedInstruction
+      summary: acknowledgePublishedInstruction command
+      description: >-
+        Authorized by action ACKNOWLEDGE in the active organization.
+        Client-supplied authority is never consulted.
+      x-aurevia-action: ACKNOWLEDGE
+      x-aurevia-policy: InstructionFactActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
 components:
   parameters:
     ActiveOrganization:

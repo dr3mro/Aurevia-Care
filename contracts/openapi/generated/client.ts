@@ -630,3 +630,248 @@ export function acknowledgeInstruction(
     body,
   });
 }
+
+/** verifyClinicIdentity: server action IDENTITY_VERIFY. */
+export function verifyClinicIdentity(
+  ctx: CommandClientContext,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/clinic/verifications',
+    command: 'verifyClinicIdentity',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** checkInClinicAppointment: server action APPOINTMENT_CHECK_IN. */
+export function checkInClinicAppointment(
+  ctx: CommandClientContext,
+  id: string,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/clinic/appointments/' + encodeURIComponent(id) + '/check-in',
+    command: 'checkInClinicAppointment',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** assignClinicWorkItem: server action WORKLIST_ASSIGN. */
+export function assignClinicWorkItem(
+  ctx: CommandClientContext,
+  id: string,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/clinic/worklist/' + encodeURIComponent(id) + '/assign',
+    command: 'assignClinicWorkItem',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** acceptTherapyEpisode: server action SPECIALTY_PT_ACCEPT_REFERRAL. */
+export function acceptTherapyEpisode(
+  ctx: CommandClientContext,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/therapy/episodes',
+    command: 'acceptTherapyEpisode',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** acceptExchangeResponse: server action EXCHANGE_ACCEPT. */
+export function acceptExchangeResponse(
+  ctx: CommandClientContext,
+  id: string,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/xch03/orders/' + encodeURIComponent(id) + '/accept',
+    command: 'acceptExchangeResponse',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** rejectExchangeResponse: server action EXCHANGE_REJECT. */
+export function rejectExchangeResponse(
+  ctx: CommandClientContext,
+  id: string,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/xch03/orders/' + encodeURIComponent(id) + '/reject',
+    command: 'rejectExchangeResponse',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** authorizePatientRelease: server action RELEASE_AUTHORIZE. */
+export function authorizePatientRelease(
+  ctx: CommandClientContext,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/releases',
+    command: 'authorizePatientRelease',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** acknowledgeReportedCriticalResult: server action CRITICAL_ACKNOWLEDGE. */
+export function acknowledgeReportedCriticalResult(
+  ctx: CommandClientContext,
+  id: string,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/critical-results/' + encodeURIComponent(id) + '/acknowledge',
+    command: 'acknowledgeReportedCriticalResult',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** createFinanceInvoice: server action FINANCE_INVOICE_CREATE. */
+export function createFinanceInvoice(
+  ctx: CommandClientContext,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/finance/invoices',
+    command: 'createFinanceInvoice',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}
+
+/** acknowledgePublishedInstruction: server action ACKNOWLEDGE. */
+export function acknowledgePublishedInstruction(
+  ctx: CommandClientContext,
+  idempotencyKey: string,
+  ifMatch: string,
+  body: unknown,
+  transport: CommandTransport,
+): Promise<CommandHttpResponse> {
+  return transport.send({
+    method: 'POST',
+    path: '/api/v1/instructions/acknowledge',
+    command: 'acknowledgePublishedInstruction',
+    headers: {
+      'X-Active-Organization': ctx.organizationId,
+      'X-Synthetic-Subject': ctx.subject,
+      'X-Correlation-Id': ctx.correlationId,
+      'X-Api-Version': 'v1',
+      'Idempotency-Key': idempotencyKey,
+      'If-Match': ifMatch,
+    },
+    body,
+  });
+}

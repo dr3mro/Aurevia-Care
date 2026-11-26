@@ -20,7 +20,7 @@ version `V57` is intentionally unused (gaps are allowed by the migration gate).
 |---|---|---|---|
 | Clinical users decide and attest; the platform makes no autonomous clinical decision | PRD-06 | Generated client has no authority argument; server gate delegates to the owning domain policy | Coarse gate only — it does not replace the owning service's attestation, revision or signer checks |
 | Deny access without active membership, required permission and domain authorization | IAM-01, IAM-02 | `CommandAuthorization.authorize`: fresh `MembershipResolver` per call, single owning policy per command | Explicit allow or deny; unknown commands, owners and roles fail closed |
-| Explicit POST commands with preconditions and machine-readable errors | ARC-03, ARC-04 | Catalog of 24 commands, generated `If-Match` and `Idempotency-Key` arguments, 401/403/422/428 contract responses | Compare-and-set remains with the owning service |
+| Explicit POST commands with preconditions and machine-readable errors | ARC-03, ARC-04 | Catalog of 34 commands (24 registered baseline plus 10 delivered handler bindings), generated `If-Match` and `Idempotency-Key` arguments, 401/403/422/428 contract responses | Compare-and-set remains with the owning service |
 | Auditable outcomes for sensitive actions | OPS-02 | `Decision` carries tenant, subject, correlation, action, reason, roles and clock instant; every path records before answering | Durable sink must be supplied by the owning service's transaction |
 
 ## What the generated client cannot do
@@ -76,12 +76,24 @@ catalog-generated `generated/openapi.yaml` is distinct from the staff-API
 `contracts/openapi.yaml` (X-01), which `apps/staff-web/scripts/gen-api-types.sh`
 consumes; neither file is edited by hand. The
 `--check` gate, the `check.py` gate and the Java-tier drift test together prove
-client ↔ catalog ↔ manifest consistency. They do **not** prove that every
+client ↔ catalog ↔ manifest consistency. The 24 published baseline paths remain
+the live interceptor registration set. The ten appended entries bind delivered
+Spring handler templates (for example `POST /api/v1/xch03/orders/{id}/accept`
+and `POST /api/v1/finance/invoices`) to a command id so an interceptor can
+resolve them; they are deliberately **mapping-only** until the owning services
+are reviewed for decision-ledger enforcement. They do **not** prove that every
 running `@PostMapping` in `apps/api` calls this gate, nor that the documented
-paths match every deployed route: the 80+ command routes are owned by their
-feature stories and cannot be rewired inside this scoped slice. Wiring the gate
-into each owning service, and a POST-mapping ↔ catalog parity test, are
-follow-on cross-boundary work with a named owner.
+paths match every deployed route: the remaining command routes are owned by
+their feature stories and cannot be rewired inside this scoped slice. Wiring the
+gate into each owning service, and a live POST-mapping ↔ catalog parity test,
+are follow-on cross-boundary work with a named owner.
+
+Replay authorization is a second consumer of the full definition set: idempotent
+replay now resolves the ten delivered routes to their owning policies instead of
+failing closed with no registered action. That widens the replay decision to the
+same action the owning service already checks, and it is asserted by
+`CommandCatalogRealRouteTest.mappingOnlyEntriesAreVisibleToReplayScopeAsWellAsLookup`.
+Any future mapping must be reviewed for both the HTTP gate and replay scope.
 
 PRD-06 clinical decisions remain human acts in the owning services. This gate
 does not derive a diagnosis, treatment or release decision, does not bind a
@@ -116,6 +128,11 @@ REFACTOR-PACKAGES-02.
 | Drift detection and CLI | `CommandClientGeneratorTest.writeAndCheckDetectEveryKindOfDrift`, `runWritesChecksAndRejectsMalformedArguments`, `mainUsesTheSyntheticCatalog` |
 | Build-failing artifact drift | `CommandClientGeneratorTest.committedArtifactsMatchAFreshGeneration` |
 | 500 fail-closed outcome in the contract | `CommandClientGeneratorTest.contractDocumentsTheFailClosedAuditOutcome` |
+| Delivered handler route → command id | `CommandCatalogRealRouteTest.deliveredPostHandlersResolveToTheirOwnCommands` |
+| Normalized template match, concrete id never selects a command | `CommandCatalogRealRouteTest.normalizedTemplateMatchesButConcreteRequestIdentifierNeverSelectsACommand` |
+| Mapping-only entries do not broaden gate registration | `CommandCatalogRealRouteTest.deliveredMappingsDoNotBroadenLiveGateRegistration`, `CommandAuthorizationTest.mappingOnlyDefinitionsKeepGateRegistrationUnchanged` |
+| HTTP resolution and decision recording on a delivered route | `CommandCatalogRealRouteHttpTest.deliveredRouteResolvesItsCommandAndRecordsTheDecision` |
+| Committed artifacts carry the delivered routes | `CommandClientGeneratorTest.committedArtifactsBindTheDeliveredHandlerRoutes` |
 | Collaborator failures record and fail closed | `CommandAuthorizationTest.collaboratorFailuresAreRecordedAndReturnedAsMachineReadableErrors` |
 | Bounded untrusted audit identifiers | `CommandAuthorizationTest.untrustedCommandIdentifiersAreBoundedBeforeTheyAreAudited` |
 | Generator-safe tokens and unique routes | `CommandAuthorizationTest.definitionsRejectTokensThatCannotBeGeneratedSafely`, `catalogRejectsDuplicateRoutes` |

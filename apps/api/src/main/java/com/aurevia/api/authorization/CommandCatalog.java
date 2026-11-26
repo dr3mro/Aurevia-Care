@@ -149,12 +149,17 @@ public final class CommandCatalog {
     }
 
     /**
-     * Return every registered POST route template in declaration order.
+     * Return every POST route template the live HTTP gate registers, in declaration order.
+     *
+     * <p>Definitions that only bind a delivered handler are deliberately excluded:
+     * adding a handler-to-command mapping must not silently gate a route whose
+     * owning service has not been reviewed for the decision ledger. The full set,
+     * including mapping-only entries, is available through {@code commands()}.</p>
      *
      * @return immutable route templates used to register the single command gate
      */
     public List<String> paths() {
-        return commands.stream().map(CommandDefinition::path).toList();
+        return commands.stream().filter(CommandDefinition::gated).map(CommandDefinition::path).toList();
     }
 
     /**
@@ -183,7 +188,11 @@ public final class CommandCatalog {
      * <p>The action keys are the constants of the named policies; no role set
      * is restated here. Every ARC-03 explicit command family is present: sign,
      * correct, acknowledge, release and exchange, alongside the delivered G0
-     * administrative and clinical commands.</p>
+     * administrative and clinical commands. The published baseline routes are
+     * kept for contract compatibility; the appended definitions bind delivered
+     * Spring handler templates to their commands. Those mapping-only entries
+     * are not registered by the live gate until their owning services have been
+     * reviewed for decision-ledger enforcement.</p>
      *
      * @return the synthetic command catalog
      */
@@ -236,6 +245,29 @@ public final class CommandCatalog {
                 new CommandDefinition("issueInvoice", FinanceActions.CREATE, "POST",
                         "/api/v1/invoices", FINANCE_POLICY),
                 new CommandDefinition("acknowledgeInstruction", InstructionFactActions.ACKNOWLEDGE, "POST",
-                        "/api/v1/instructions/{id}/acknowledge", INSTRUCTION_POLICY)));
+                        "/api/v1/instructions/{id}/acknowledge", INSTRUCTION_POLICY),
+                // Handler-to-command bindings for delivered POST routes. The owning
+                // controller method is the only authority for the transition; these
+                // entries make its route resolvable to a command, not enforce it here.
+                new CommandDefinition("verifyClinicIdentity", WorklistPolicy.IDENTITY_VERIFY, "POST",
+                        "/api/v1/clinic/verifications", WORKLIST_POLICY, false),
+                new CommandDefinition("checkInClinicAppointment", WorklistPolicy.CHECK_IN, "POST",
+                        "/api/v1/clinic/appointments/{id}/check-in", WORKLIST_POLICY, false),
+                new CommandDefinition("assignClinicWorkItem", WorklistPolicy.WORKLIST_ASSIGN, "POST",
+                        "/api/v1/clinic/worklist/{id}/assign", WORKLIST_POLICY, false),
+                new CommandDefinition("acceptTherapyEpisode", SpecialtyActions.PT_ACCEPT_REFERRAL, "POST",
+                        "/api/v1/therapy/episodes", SPECIALTY_POLICY, false),
+                new CommandDefinition("acceptExchangeResponse", ExchangeResponseActionPolicy.EXCHANGE_ACCEPT,
+                        "POST", "/api/v1/xch03/orders/{id}/accept", EXCHANGE_RESPONSE_POLICY, false),
+                new CommandDefinition("rejectExchangeResponse", ExchangeResponseActionPolicy.EXCHANGE_REJECT,
+                        "POST", "/api/v1/xch03/orders/{id}/reject", EXCHANGE_RESPONSE_POLICY, false),
+                new CommandDefinition("authorizePatientRelease", ReleaseActionPolicy.AUTHORIZE, "POST",
+                        "/api/v1/releases", RELEASE_POLICY, false),
+                new CommandDefinition("acknowledgeReportedCriticalResult", CriticalActions.ACKNOWLEDGE, "POST",
+                        "/api/v1/critical-results/{id}/acknowledge", CRITICAL_POLICY, false),
+                new CommandDefinition("createFinanceInvoice", FinanceActions.CREATE, "POST",
+                        "/api/v1/finance/invoices", FINANCE_POLICY, false),
+                new CommandDefinition("acknowledgePublishedInstruction", InstructionFactActions.ACKNOWLEDGE,
+                        "POST", "/api/v1/instructions/acknowledge", INSTRUCTION_POLICY, false)));
     }
 }
