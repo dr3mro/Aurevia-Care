@@ -79,6 +79,9 @@ class ProblemTests(unittest.TestCase):
         self.assertEqual(verdicts.problems(canonical, verdicts.REQUIRED), [])
         mixed = GOOD.replace("- aurevia-code-reviewer: GO", "- code-reviewer: GO")
         self.assertEqual(verdicts.problems(mixed, verdicts.REQUIRED), [])
+        # The --require side accepts bare agent IDs too, not just legacy labels.
+        self.assertEqual(verdicts.problems(GOOD, ["code-reviewer", "coverage-auditor",
+                                                  "devsecops"]), [])
 
     def test_a_missing_reviewer_a_no_go_and_an_open_finding_each_fail(self):
         text = ("## Review verdicts\n- aurevia-code-reviewer: NO-GO\n"

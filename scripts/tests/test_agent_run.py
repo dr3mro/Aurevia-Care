@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import stat
@@ -386,6 +387,10 @@ class AgentRunTests(unittest.TestCase):
         self.assertIn("## Routing", text)
         self.assertIn("--agent task-advisor", text)
         self.assertNotIn("load the full project context", text)
+        trail = self.repo / ".agent/work-trail.jsonl"
+        records = [json.loads(line) for line in trail.read_text().splitlines()]
+        self.assertTrue(any(record["step"] == "brief" and record["agent"] == "task-advisor"
+                            for record in records), records)
 
     def test_a_failed_advisor_falls_back_to_the_routing_block(self):
         text = self.brief_prompts(BRIEF_MODE="rate")
