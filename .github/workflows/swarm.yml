@@ -123,10 +123,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      # Optional: the PO job may upload no trail when selection fails. A pattern
+      # with no match exits cleanly; `name:` would emit a red artifact-not-found
+      # annotation that `continue-on-error` cannot suppress.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         with:
-          name: trail-feature
+          pattern: trail-feature
           path: .agent
       - name: Allocate non-overlapping tasks with OpenCode
         id: run
@@ -407,10 +410,12 @@ jobs:
             scripts
             tasks/
             tasks
+      # The SM allocation job is skipped when no feature is selected, so this
+      # artifact may not exist. A no-match pattern is a successful no-op.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         with:
-          name: trail-allocation
+          pattern: trail-allocation
           path: .agent
       - name: Wait for Delivery on main before advancing
         if: needs.plan.outputs.max_task == 'false'
