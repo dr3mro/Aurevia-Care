@@ -123,18 +123,25 @@ jobs:
             echo "::error::OpenCode produced no feature selection output" >&2
             exit 1
           fi
-          feature=$(/usr/bin/grep -oE '^feature=[A-Za-z0-9_-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2)
-          tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/selected-feature.txt | tail -n 1 | cut -d= -f2)
+          # SELECTION-GUARD-BEGIN
+          # The * makes an explicitly empty value match: `tasks=` is an answer,
+          # while a missing line means the agent never answered and is an error.
+          feature_re='^feature=[A-Za-z0-9_-]*$'
+          tasks_re='^tasks=[A-Za-z0-9_,-]*$'
+          if ! /usr/bin/grep -Eq "$feature_re" .agent/selected-feature.txt \
+            || ! /usr/bin/grep -Eq "$tasks_re" .agent/selected-feature.txt; then
+            echo "::error::OpenCode returned no feature=/tasks= while open [ ] tasks exist" >&2
+            exit 1
+          fi
+          feature=$(/usr/bin/grep -Eo "$feature_re" .agent/selected-feature.txt | tail -n 1 | cut -d= -f2-)
+          tasks=$(/usr/bin/grep -Eo "$tasks_re" .agent/selected-feature.txt | tail -n 1 | cut -d= -f2-)
           if [[ -z "$feature" || -z "$tasks" ]]; then
-            if /usr/bin/grep -RqsE '^- \[ \]' tasks; then
-              echo "::error::OpenCode returned no feature=/tasks= while open [ ] tasks exist" >&2
-              exit 1
-            fi
-            echo "No open tasks; empty feature selection is expected" >&2
+            echo "::notice::Empty feature selection is a valid answer; no eligible task was chosen from candidates ${tasks:-none}." >&2
           fi
           echo "Selected feature: ${feature:-none}; candidates: ${tasks:-none}" >&2
-          echo "feature=${feature:-}" >> "$GITHUB_OUTPUT"
-          echo "task_ids=${tasks:-}" >> "$GITHUB_OUTPUT"
+          echo "feature=$feature" >> "$GITHUB_OUTPUT"
+          echo "task_ids=$tasks" >> "$GITHUB_OUTPUT"
+          # SELECTION-GUARD-END
           python3 -I scripts/work_trail.py --stage feature --agent product-owner \
             --instruction "select one feature prefix and its candidate task ids" \
             --outputs "feature=${feature:-} tasks=${tasks:-}"
@@ -156,6 +163,9 @@ jobs:
       packages: read
     outputs:
       task_ids: ${{ steps.run.outputs.task_ids }}
+      # Set only on a successful agent answer, including an empty allocation.
+      # It lets the planner tell "no non-overlapping task" from "job skipped".
+      allocated: ${{ steps.run.outputs.allocated }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -218,13 +228,25 @@ jobs:
             echo "::error::OpenCode produced no task allocation output" >&2
             exit 1
           fi
-          tasks=$(/usr/bin/grep -oE '^tasks=[A-Za-z0-9_,-]+$' .agent/allocated-tasks.txt | tail -n 1 | cut -d= -f2)
-          if [[ -z "$tasks" ]] && /usr/bin/grep -RqsE '^- \[ \]' tasks; then
+          # ALLOCATION-GUARD-BEGIN
+          # An explicit empty answer means every candidate overlapped a taken
+          # task; only a missing line (a failed or silent agent) is an error.
+          tasks_re='^tasks=[A-Za-z0-9_,-]*$'
+          if ! /usr/bin/grep -Eq "$tasks_re" .agent/allocated-tasks.txt; then
             echo "::error::OpenCode returned no tasks= while open [ ] tasks exist" >&2
             exit 1
           fi
+          tasks=$(/usr/bin/grep -Eo "$tasks_re" .agent/allocated-tasks.txt | tail -n 1 | cut -d= -f2-)
+          if [[ -z "$tasks" ]]; then
+            # CANDIDATES is bound from the PO job's validated id list; no free
+            # text from the agent reaches the annotation or the run summary.
+            echo "::notice::No non-overlapping task was available from candidates ${CANDIDATES:-none}; open [ ] tasks exist but overlap taken work or each other." >&2
+            echo "Swarm wave summary: no non-overlapping tasks were available from candidates ${CANDIDATES:-none}." >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "Allocated tasks: ${tasks:-none}" >&2
-          echo "task_ids=${tasks:-}" >> "$GITHUB_OUTPUT"
+          echo "task_ids=$tasks" >> "$GITHUB_OUTPUT"
+          echo "allocated=true" >> "$GITHUB_OUTPUT"
+          # ALLOCATION-GUARD-END
           python3 -I scripts/work_trail.py --stage allocation --agent scrum-master \
             --instruction "pick at most ${WORKER_COUNT:-1} non-overlapping tasks from ${CANDIDATES:-}" \
             --outputs "feature=${FEATURE:-} tasks=${tasks:-}"
@@ -339,12 +361,47 @@ jobs:
           WORKERS: ${{ inputs.workers || '20' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
-          LAUNCH_TASK: ${{ needs.allocate.outputs.task_ids || needs.select.outputs.task_ids || inputs.task }}
+          LAUNCH_TASK: ${{ needs.allocate.outputs.task_ids }}
+          ALLOCATION_DONE: ${{ needs.allocate.outputs.allocated }}
+          ALLOCATE_RESULT: ${{ needs.allocate.result }}
+          FALLBACK_TASK: ${{ needs.select.outputs.task_ids }}
+          INPUT_TASK: ${{ inputs.task }}
           FEATURE: ${{ needs.select.outputs.feature }}
           IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}
           IMAGES_REASON: ${{ steps.images.outputs.reason }}
         run: |
+          # PLAN-LAUNCH-GUARD-BEGIN
+          # SM owns the choice once it answered: its empty result must not fall
+          # back to PO candidates that overlap taken work. A skipped SM job may
+          # still use the PO shortlist, and a person's dispatch wins over both.
+          if [[ -n "${INPUT_TASK:-}" ]]; then
+            LAUNCH_TASK="$INPUT_TASK"
+          elif [[ "${ALLOCATION_DONE:-}" != "true" && "${ALLOCATE_RESULT:-}" != "failure" && -z "${LAUNCH_TASK:-}" ]]; then
+            LAUNCH_TASK="${FALLBACK_TASK:-}"
+          fi
+          # PLAN-LAUNCH-GUARD-END
+          # PLAN-EMPTY-GUARD-BEGIN
+          # An empty allocation is a valid answer, not permission for the
+          # planner to choose backlog tasks nobody selected for this wave.
+          if [[ "${ALLOCATE_RESULT:-}" == "failure" && -z "${INPUT_TASK:-}" ]]; then
+            echo "OpenCode allocation failed; no wave is planned." >&2
+            {
+              echo 'matrix={"include":[]}'
+              echo 'count=0'
+              echo 'reason=allocation_failed'
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "${ALLOCATION_DONE:-}" == "true" && -z "${LAUNCH_TASK:-}" ]]; then
+            {
+              echo 'matrix={"include":[]}'
+              echo 'count=0'
+              echo 'reason=allocation_empty'
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # PLAN-EMPTY-GUARD-END
           if [[ "$IMAGES_READY" != true && "${IGNORE_RED_MAIN:-false}" != true ]]; then
             echo "Prepared images not ready: $IMAGES_REASON; skipping this wave." >&2
             {
@@ -391,7 +448,13 @@ jobs:
         env:
           PLAN_REASON: ${{ steps.plan.outputs.reason }}
         run: |
-          echo "Swarm wave skipped: $PLAN_REASON" >> "$GITHUB_STEP_SUMMARY"
+          # PLAN-REASON-GUARD-BEGIN
+          if [[ "$PLAN_REASON" == "allocation_empty" ]]; then
+            echo "Swarm wave summary: no non-overlapping tasks were available; no worker started." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Swarm wave skipped: $PLAN_REASON" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          # PLAN-REASON-GUARD-END
   worker:
     # Static name: GitHub renders matrix values in a job name only when the
     # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.

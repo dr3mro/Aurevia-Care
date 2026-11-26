@@ -1003,7 +1003,10 @@ class PlanTests(unittest.TestCase):
                 self.assertIn("::error::", step)
                 self.assertIn("OPENCODE_API_KEY_ALT", step)
                 self.assertIn("keys+=(", step)
-                self.assertIn(r"^- \[ \]", step)
+                # The old open-task grep decided whether an empty answer was an
+                # error. Now the answer line's presence decides it, so bind the
+                # regex that accepts an explicit empty value instead.
+                self.assertIn("^tasks=[A-Za-z0-9_,-]*$", step)
         self.assertIn("no feature=/tasks=", select)
         self.assertIn("no tasks=", allocate)
 
