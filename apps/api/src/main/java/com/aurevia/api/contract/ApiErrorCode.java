@@ -21,6 +21,8 @@ public enum ApiErrorCode {
     INVALID_IDEMPOTENCY_KEY(422, "idempotency key has invalid characters or length"),
     /** The key was reused with a different payload or is still in progress. */
     IDEMPOTENCY_CONFLICT(409, "the idempotency key was reused or is still in progress"),
+    /** A replay key was reused with a different request body on a write endpoint. */
+    IDEMPOTENCY_KEY_REUSED(422, "idempotency key reused with a different payload"),
     /** The tenant, caller or command scope of a key is incomplete. */
     INVALID_SCOPE(422, "idempotency scope is incomplete"),
     /** An opaque cursor could not be decoded or belongs to another tenant. */
