@@ -33,6 +33,11 @@ class IntegrationStackTests(unittest.TestCase):
     def test_empty_wave_plans_nothing(self):
         self.assertEqual(stack.stack_plan([], "main"), ())
 
+    def test_accepted_branches_ignore_malformed_entries(self):
+        self.assertEqual(stack.accepted_branches('[1760, "x", true, 1761]'), ("pr-1760", "pr-1761"))
+        self.assertEqual(stack.accepted_branches("not-json"), ())
+        self.assertEqual(stack.accepted_branches({"nope": 1}), ())
+
 
 class StackWiringTests(unittest.TestCase):
     def test_integrator_publishes_a_stack_plan(self):
@@ -41,11 +46,27 @@ class StackWiringTests(unittest.TestCase):
         workflow = yaml.safe_load((ROOT / ".github/workflows/swarm-integrator.yml").read_text())
         steps = workflow["jobs"]["validate"]["steps"]
         plan = next(step for step in steps if step.get("name", "").startswith("Plan stacked"))
-        self.assertIn("from scripts.integration_stack import stack_plan", plan["run"])
-        artifact = next(step for step in steps if step.get("name") == "Upload validated batch"
-                        or step.get("with", {}).get("name") == "validated-batch")
-        self.assertIn("validated", artifact["with"]["path"])
-        self.assertIn("validated/stack-plan.json", plan["run"])
+        self.assertIn("scripts/integration_stack.py plan", plan["run"])
+        self.assertIn("--accepted", plan["run"])
+        self.assertNotIn("|| true", plan["run"])
+        self.assertIn(".agent/stack-plan.json", plan["run"])
+        artifacts = {step["with"]["name"]: step["with"]["path"] for step in steps
+                     if (step.get("with") or {}).get("name") in ("validated-batch", "stack-plan")}
+        self.assertEqual(artifacts["validated-batch"], "validated")
+        for suffix in ("stack-plan.json", "stack-branches", "stack-checks", "stack-check.log"):
+            self.assertIn(f".agent/{suffix}", artifacts["stack-plan"])
+
+    def test_publish_job_checks_the_flat_batch_layout(self):
+        import yaml
+        from helpers import ROOT
+        workflow = yaml.safe_load((ROOT / ".github/workflows/swarm-integrator.yml").read_text())
+        steps = workflow["jobs"]["publish"]["steps"]
+        guard = next(step for step in steps if step.get("name") == "Verify the validated batch layout")
+        self.assertIn("::error::", guard["run"])
+        for path in ("validated/manifest.json", "validated/main.bundle"):
+            self.assertIn(path, guard["run"])
+        publish = next(step for step in steps if "integrate-publish" in step.get("run", ""))
+        self.assertIn("validated/manifest.json", publish["run"])
 
     def test_agent_run_exposes_integrate_stack(self):
         from helpers import ROOT
@@ -69,6 +90,21 @@ class StackCliTests(unittest.TestCase):
             runpy.run_path(str(ROOT / "scripts/integration_stack.py"), run_name="__main__")
         plan = json.loads(out.getvalue())
         self.assertEqual([item["base"] for item in plan], ["main", "w1"])
+
+    def test_main_accepts_the_workflow_accepted_json(self):
+        import contextlib
+        import io
+        import json
+        import runpy
+        import sys
+        from helpers import ROOT
+        argv = ["integration_stack.py", "plan", "--accepted", "[1760, 1761]",
+                "--base", "main", "--trail", "/nonexistent"]
+        out = io.StringIO()
+        with mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(out):
+            runpy.run_path(str(ROOT / "scripts/integration_stack.py"), run_name="__main__")
+        plan = json.loads(out.getvalue())
+        self.assertEqual([item["branch"] for item in plan], ["pr-1760", "pr-1761"])
 
 
 class TrailOrderingTests(unittest.TestCase):

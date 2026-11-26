@@ -6,7 +6,11 @@ It classifies each pull request, validates task metadata and protected-file
 policy against the protected base revision, checks that worker evidence names
 a tested revision proven by the trusted commit graph to be in the pull request
 ancestry, and validates an integration manifest against real commit ancestry.
-Exact head currency is checked separately from the evidence claim.
+Exact head currency is checked separately from the evidence claim. A first-time
+worker cannot add evidence to a still-open or taken task on the protected base,
+so those tasks may satisfy `task_evidence` from the worker note's required
+sections and canonical command; done tasks and non-worker PRs keep the
+base-only rule.
 
 Trust model: GitHub Actions runs this module from a checkout of the protected
 base revision, never from the PR head. The immutable GitHub event payload
@@ -251,13 +255,38 @@ def _field(task_text, name):
     return match.group(1).strip() if match else ""
 
 
-def validate_task_metadata(task_text, task_id, pr_number):
-    """Check task existence, identifier, eligibility, evidence and PR reference."""
+def validate_task_metadata(task_text, task_id, pr_number, evidence_text=""):
+    """Check task existence, identifier, eligibility, evidence and PR reference.
+
+    The protected base cannot know a first-time worker's evidence: the task is
+    still ``[ ]``/``[-]`` there because only the integrator writes ``evidence:``
+    when a task becomes ``[x]``. For those tasks the worker note read from the
+    PR head may supply the same shape that ``validate_verification_evidence``
+    already requires. Done tasks and non-worker PRs keep the base-only rule;
+    notes are never treated as proof of a passing check.
+    """
     exists = bool(task_text)
     mark = TASK_MARK.search(task_text) if exists else None
     declared = mark.group(2) if mark else ""
-    eligible = bool(mark and mark.group(1) in (" ", "-") and declared == task_id)
+    open_or_taken = bool(mark and mark.group(1) in (" ", "-") and declared == task_id)
+    eligible = open_or_taken
     evidence = _field(task_text, "evidence") if exists else ""
+    base_ok = bool(evidence) and evidence.lower() not in ("none", "pending")
+    # An explicit none/pending is a verdict, not a missing field: notes may fill
+    # a gap, but they cannot override a base record that says evidence is absent.
+    base_rejected = bool(evidence) and not base_ok
+    notes = evidence_text or ""
+    notes_ok = (open_or_taken
+                and not base_rejected
+                and all(section in notes for section in EVIDENCE_SECTIONS)
+                and any(command in notes for command in CHECK_COMMANDS))
+    if base_ok:
+        reason = "task record carries evidence"
+    elif notes_ok:
+        reason = "worker notes carry the required evidence sections and a canonical command; base task record has none"
+    else:
+        reason = ("task record carries evidence, or worker notes carry the required "
+                  "sections and a canonical command")
     declared_pr = _field(task_text, "pr").lstrip("#")
     pr_ok = not declared_pr or (declared_pr.isdigit() and int(declared_pr) == pr_number)
     return [
@@ -265,8 +294,7 @@ def validate_task_metadata(task_text, task_id, pr_number):
         _check("task_identifier", bool(task_id and TASK_ID.fullmatch(task_id)),
                "task identifier is valid"),
         _check("task_eligible", eligible, "task is open or taken by this worker"),
-        _check("task_evidence", bool(evidence) and evidence.lower() not in ("none", "pending"),
-               "task record carries evidence"),
+        _check("task_evidence", base_ok or notes_ok, reason),
         _check("task_pr_reference", pr_ok, "task record names this PR or no PR"),
     ]
 
@@ -373,7 +401,8 @@ def evaluate(ctx):
                                          ctx.commit_authors, ctx.author_association)
     checks = [_check("pr_classification", kind != UNKNOWN, f"classified as {kind}")]
     if kind == WORKER:
-        checks.extend(validate_task_metadata(ctx.task_text, task_id, ctx.pr_number))
+        checks.extend(validate_task_metadata(ctx.task_text, task_id, ctx.pr_number,
+                                             ctx.evidence_text))
     else:
         checks.extend(_check(n, True, "not a worker PR", when=False) for n in
                       ("task_exists", "task_identifier", "task_eligible", "task_evidence",

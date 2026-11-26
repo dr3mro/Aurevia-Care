@@ -118,14 +118,47 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(result.check("task_eligible").state, gate.FAILED)
 
     def test_done_task_and_missing_evidence_field_fail(self):
+        # Behavior changed on purpose: a taken task may now use valid head notes.
+        # A done task and an invalid base evidence value still fail closed.
         self.assertEqual(run(task_text="- [x] TASK-01 · work it\n").
                          check("task_eligible").state, gate.FAILED)
-        self.assertEqual(run(task_text="- [-] TASK-01 · work it\n").
+        self.assertEqual(run(task_text="- [x] TASK-01 · work it\n").
                          check("task_evidence").state, gate.FAILED)
         self.assertEqual(run(task_text="- [-] TASK-01 · work it\n  - evidence: none\n").
                          check("task_evidence").state, gate.FAILED)
         self.assertEqual(run(task_text="- [-] TASK-01 · work it\n  - evidence: pending\n").
                          check("task_evidence").state, gate.FAILED)
+
+    def test_taken_task_without_base_evidence_uses_head_notes(self):
+        """A first-time worker cannot edit the base task; its notes supply evidence."""
+        result = run(task_text="- [-] TASK-01 · work it\n")
+        self.assertEqual(result.check("task_evidence").state, gate.PASSED)
+        self.assertIn("worker notes", result.check("task_evidence").reason)
+        self.assertTrue(result.passed, result.failures)
+
+    def test_taken_task_without_notes_still_fails(self):
+        result = run(task_text="- [-] TASK-01 · work it\n", evidence_text="")
+        self.assertEqual(result.check("task_evidence").state, gate.FAILED)
+        self.assertIn("task_evidence", "\n".join(result.failures))
+
+    def test_notes_missing_a_heading_or_command_do_not_satisfy_task_evidence(self):
+        plain_task = "- [-] TASK-01 · work it\n"
+        no_heading = EVIDENCE.replace("## Coverage\n100%\n\n", "")
+        self.assertEqual(run(task_text=plain_task, evidence_text=no_heading).
+                         check("task_evidence").state, gate.FAILED)
+        no_command = EVIDENCE.replace("scripts/quick-check.sh passed", "all good")
+        self.assertEqual(run(task_text=plain_task, evidence_text=no_command).
+                         check("task_evidence").state, gate.FAILED)
+
+    def test_base_evidence_source_is_reported(self):
+        result = run()
+        self.assertEqual(result.check("task_evidence").state, gate.PASSED)
+        self.assertIn("task record", result.check("task_evidence").reason)
+
+    def test_reconciliation_cannot_use_the_notes_fallback(self):
+        result = run(head_ref="swarm/reconcile/b1", task_text="", evidence_text=EVIDENCE,
+                     required_checks=(), check_runs={})
+        self.assertEqual(result.check("task_evidence").state, gate.NOT_APPLICABLE)
 
     def test_task_pr_reference(self):
         plain = "- [-] TASK-01 · work it\n"

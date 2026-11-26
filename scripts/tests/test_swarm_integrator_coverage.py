@@ -659,6 +659,23 @@ class IntegratorBatchTest(unittest.TestCase):
         emit.assert_any_call("merged", 0)
         self.assertTrue(any("needs-human" in str(arg) for c in gh.call_args_list for arg in c.args))
 
+    def test_integrate_publish_with_no_accepted_prs_succeeds(self):
+        """A conflict/report-only wave still publishes a manifest with an empty accepted list."""
+        root = self.repo()
+        manifest = root / "manifest.json"
+        bundle = root / "main.bundle"
+        manifest.write_text(json.dumps({"tip": "tip", "accepted": [], "gates": {},
+                                        "rejected": [], "conflict_details": []}))
+        bundle.write_text("synthetic")
+        with mock.patch.object(swarm, "git", return_value="tip"), \
+             mock.patch.object(swarm, "report_validation") as report, \
+             mock.patch.object(swarm, "emit") as emit, \
+             mock.patch.object(swarm, "integrate_finalize") as finalize:
+            self.assertEqual(swarm.integrate_publish(str(manifest), str(bundle)), 0)
+        report.assert_called_once()
+        emit.assert_called_once_with("merged", 0)
+        finalize.assert_not_called()
+
     def test_rejection_restores_existing_note_and_removes_new_note(self):
         root = self.repo()
         notes = root / "docs" / "swarm"

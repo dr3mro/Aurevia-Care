@@ -51,17 +51,43 @@ def stack_plan(branches, base, stages=()):
     return tuple(plan)
 
 
+def accepted_branches(accepted):
+    """Turn the integrator's accepted PR numbers into stacked branch names.
+
+    Args: accepted is a JSON array of pull request numbers (or a JSON-encoded
+    string). Returns: a tuple of ``pr-<number>`` branch names in queue order.
+    Malformed entries are ignored so untrusted event text cannot inject a branch.
+    """
+    if isinstance(accepted, str):
+        try:
+            accepted = json.loads(accepted or "[]")
+        except ValueError:
+            return ()
+    if not isinstance(accepted, (list, tuple)):
+        return ()
+    return tuple(f"pr-{int(number)}" for number in accepted
+                 if isinstance(number, int) and not isinstance(number, bool))
+
+
 def main():
-    """Write the stacked plan as JSON to stdout for the trusted integrator job."""
+    """Write the stacked plan as JSON to stdout for the trusted integrator job.
+
+    ``plan --accepted`` is used by the workflow with a script invocation, so
+    the module never depends on the caller's ``sys.path``. ``--branches`` stays
+    available for agent-run.sh, which already derives branch names itself.
+    """
     import argparse
     import sys
 
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("command", nargs="?", choices=("plan",), default="plan")
     parser.add_argument("--branches", nargs="*", default=[])
+    parser.add_argument("--accepted", default="")
     parser.add_argument("--base", default="main")
     parser.add_argument("--trail", default=".agent/work-trail.jsonl")
     args = parser.parse_args()
-    json.dump(stack_plan(args.branches, args.base, trail_stages(args.trail)), sys.stdout)
+    branches = args.branches or accepted_branches(args.accepted)
+    json.dump(stack_plan(branches, args.base, trail_stages(args.trail)), sys.stdout)
 
 
 if __name__ == "__main__":
