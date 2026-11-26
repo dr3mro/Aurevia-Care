@@ -345,6 +345,50 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
         self.assertNotIn("continue-on-error", jobs["publish"])
 
 
+class ReleasePublicationRetryTest(unittest.TestCase):
+    """A release retry verifies provenance labels, never the rebuild-dependent .Id."""
+
+    @staticmethod
+    def publish_body():
+        workflow = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))
+        step = next(
+            item for item in workflow["jobs"]["release"]["steps"]
+            if item.get("name") == "Publish exact tested image and release"
+        )
+        return run_text(step)
+
+    def test_published_child_is_verified_by_version_and_revision_labels(self):
+        body = self.publish_body()
+        self.assertIn("version_label=", body)
+        self.assertIn("revision_label=", body)
+        self.assertIn('docker image inspect "$child" --format "$version_label"', body)
+        self.assertIn('docker image inspect "$child" --format "$revision_label"', body)
+        self.assertNotIn('{{.Id}}', body)
+
+    def test_cross_commit_reuse_fails_closed_with_an_actionable_message(self):
+        body = self.publish_body()
+        self.assertIn("already published for revision", body)
+        self.assertIn("use a new version tag", body)
+
+    def test_an_already_published_version_fails_before_any_write(self):
+        body = self.publish_body()
+        manifest_guard = '$image already exists; version tags are immutable'
+        release_guard = 'release $VERSION already exists; version tags are immutable'
+        self.assertIn(manifest_guard, body)
+        self.assertIn(release_guard, body)
+        self.assertIn('docker buildx imagetools inspect "$image"', body)
+        self.assertIn('gh release view "$VERSION"', body)
+        first_push = body.index("docker push")
+        self.assertLess(body.index(manifest_guard), first_push)
+        self.assertLess(body.index(release_guard), first_push)
+
+    def test_manifest_uses_tag_refs_and_fails_closed_on_a_transient_pull_error(self):
+        body = self.publish_body()
+        self.assertIn('docker buildx imagetools create --tag "$image" "${children[@]}"', body)
+        self.assertIn("refusing to overwrite", body)
+        self.assertNotIn("RepoDigests", body)
+
+
 class SwarmPlanReasonWiringTest(unittest.TestCase):
     """A skipped wave must expose a safe reason to the developer in the run UI."""
 
