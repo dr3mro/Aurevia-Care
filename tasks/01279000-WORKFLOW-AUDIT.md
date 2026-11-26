@@ -198,6 +198,13 @@
 - Owner decisions required before implementation: ratify reserved headroom (recommended 5), repository-wide versus swarm-only runner accounting, 15-minute request/480-minute lease policy, optional daily/triage/resolver admission, and `SWARM_TOKEN`/ruleset permission for atomic capacity-ledger commits.
 - Acceptance also requires live GitHub race, cancellation and lease evidence, which the standing no-Git directive prohibits. WF-36 is therefore `[!]` externally blocked, not marked fixed or disproven.
 
+## Expanded branch evidence (2026-11-26)
+- Tool (interpreter): after the session restart `/usr/bin/python3` is 3.9 without PyYAML; all final Python checks used `/opt/homebrew/bin/python3` (3.15), which has PyYAML. The environment change is recorded in WORKSPACE.md.
+- Tool: `test_swarm_cli_coverage.py` 64/64; `test_delivery_workflow_gates.py` 19/19; `test_swarm_integrator_coverage.py` 49/49; `test_task_requests.py` 26/26; `test_swarm_schedule_coverage.py` 28/28; `test_swarm_drafts.py` 15/15; `test_swarm_delivery_state.py` 67/67; `test_swarm_workers_coverage.py` 6/6; full `test_swarm.py` 368/368.
+- Tool/source: found and fixed `PrFlowTests.run()` shadowing `unittest.TestCase.run()`, which had caused 34 PR-flow tests to report zero executed tests under discovery; renamed to `make_run()` and all call sites updated.
+- Tool: literal `py_compile`, `python3 -I scripts/check-docs.py`, `scripts/check-constraints.py --help`, and actionlint with only the established queue-key ignore all exit 0.
+- aurevia-coverage-auditor: GO after the expanded branch tests (simulated static reviewer); optional truthy non-dict readiness case added and `test_swarm_drafts.py` 15/15 green.
+
 ## Owner approval and final source fix (2026-11-24)
 - Owner message: "fix all and I approve all". Recorded in MEMORY.md as ratification of the complete WF-36 policy: global 20, repository-wide accounting, headroom 5, 15-minute request/480-minute lease, optional agents under the same cap, and `SWARM_TOKEN` write permission for the atomic reservation commit.
 - Tool/source: fixed `parse_tasks` so an inline `- details: ...` value is preserved; red test `WorkerCoverageTests.test_parse_tasks_keeps_inline_details` then green. `PlanTests.test_committed_files_are_valid` is now green, closing `QA-01279000-01` at source level in `scripts/swarm.py` without weakening the assertion.
