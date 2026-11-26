@@ -248,6 +248,49 @@ class ConcurrentWaveTests(unittest.TestCase):
         self.assertFalse(swarm.is_worker_job("Plan the wave"))
 
 
+class WorkerValidationSkewTests(unittest.TestCase):
+    """The tokenless validator must not judge an old bundle with new main tests."""
+
+    def workflow(self):
+        return (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+
+    def test_validate_merges_main_before_the_trusted_scripts_overlay(self):
+        text = self.workflow()
+        candidate = text.split("name: Resolve the candidate commit", 1)[1].split(
+            "name: Run the trusted gate", 1)[0]
+        merge = candidate.index("git -C candidate-tree merge --no-edit origin/main")
+        overlay = candidate.index("cp -R scripts/. candidate-tree/scripts/")
+        self.assertLess(merge, overlay)
+        self.assertIn("git fetch -q origin", candidate)
+
+    def test_merge_conflict_is_reported_as_stale_not_as_a_code_defect(self):
+        text = self.workflow()
+        candidate = text.split("name: Resolve the candidate commit", 1)[1].split(
+            "name: Run the trusted gate", 1)[0]
+        self.assertIn("if ! git -C candidate-tree merge --no-edit origin/main", candidate)
+        self.assertIn("::notice::", candidate)
+        self.assertIn('echo "stale=true" >> "$GITHUB_OUTPUT"', candidate)
+        self.assertIn('echo "passed=false" >> "$GITHUB_OUTPUT"', candidate)
+        self.assertIn("stale:", text.split("outputs:", 1)[1].split("runs-on:", 1)[0])
+        gate = text.split("name: Run the trusted gate", 1)[1]
+        self.assertIn("steps.candidate.outputs.stale != 'true'", gate)
+
+    def test_failure_output_is_visible_and_the_first_failing_test_is_summarised(self):
+        gate = self.workflow().split("name: Run the trusted gate", 1)[1].split(
+            "name: Upload", 1)[0]
+        self.assertIn("PYTHONUNBUFFERED: 1", gate)
+        self.assertIn("grep -nE 'FAIL|ERROR|Traceback|AssertionError|worker check' validate.log | head -60", gate)
+        self.assertIn('GITHUB_STEP_SUMMARY', gate)
+        self.assertIn('AssertionError', gate)
+
+    def test_publish_keeps_a_stale_candidate_retryable_without_an_attempt(self):
+        publish = self.workflow().split("name: Refuse to publish an unvalidated candidate", 1)[1].split(
+            "name: Re-check", 1)[0]
+        self.assertIn("STALE", publish)
+        self.assertIn("stale-retry", self.workflow())
+        self.assertIn("PUBLISH=skip", publish)
+
+
 class WorkerPostgresTests(unittest.TestCase):
     """Workers must be able to run the PostgreSQL integration suites themselves."""
 

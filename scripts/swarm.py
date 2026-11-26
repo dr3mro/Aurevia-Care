@@ -3039,6 +3039,18 @@ def release_claim(task_id, reason):
     )
 
 
+def stale_retry(task_id):
+    """Release a stale worker claim and reset its attempt counter.
+
+    A candidate that was rejected only because main moved during the worker run
+    has not consumed a real attempt. The trusted publish job calls this so the
+    planner can offer the task again to a worker that merges main first.
+    """
+    def edit(text):
+        return set_task_status(reset_attempts(text, task_id), task_id, "todo")
+    return update_todo(edit, f"Retry {task_id}: stale candidate")
+
+
 def update_todo(edit, message, path="", attempts=8):
     """Apply `edit(text)` to TODO.md on main and push. Reapplied on fresh main if the push races."""
     for attempt in range(attempts):
@@ -6888,6 +6900,8 @@ def main(argv=None):
     p.add_argument("--gate", default="scripts/integrator-gate.sh")
     p = sub.add_parser("resolve-publish")
     p.add_argument("--dir", required=True)
+    p = sub.add_parser("stale-retry")
+    p.add_argument("--task", required=True, help="task id whose stale claim is released")
     p = sub.add_parser("slot-config")
     p.add_argument("--slot", type=int, required=True)
     p.add_argument("--slots", default=".opencode/config/slots.json")
@@ -7358,6 +7372,8 @@ def main(argv=None):
         return integration_exit_code(integrate_publish(a.manifest, a.bundle, a.gate))
     elif a.cmd == "resolve-publish":
         resolve_publish(a.dir)
+    elif a.cmd == "stale-retry":
+        stale_retry(a.task)
     elif a.cmd == "guard":
         emit("blocked", "true" if guard(a.pr, a.repair) else "false")
     elif a.cmd == "merge-local":

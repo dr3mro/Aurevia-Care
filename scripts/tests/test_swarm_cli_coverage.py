@@ -766,5 +766,24 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertIs(printed["autoupdate"], False)
 
 
+class StaleRetryTests(unittest.TestCase):
+    def test_stale_retry_releases_the_claim_and_resets_the_attempt(self):
+        text = ("- [-] TASK-01 · work it\n  - agent: swarm-2\n  - attempts: 2\n"
+                "  - details:\n    stay inside scope\n")
+        with mock.patch.object(swarm, "update_todo",
+                               side_effect=lambda edit, message: edit(text)) as update:
+            result = swarm.stale_retry("TASK-01")
+        self.assertIn("- [ ] TASK-01 · work it", result)
+        self.assertNotIn("  - agent:", result)
+        self.assertIn("  - attempts: 0", result)
+        self.assertIn("stay inside scope", result)
+        self.assertIn("Retry TASK-01", update.call_args.args[1])
+
+    def test_main_dispatches_stale_retry(self):
+        with mock.patch.object(swarm, "stale_retry") as retry:
+            swarm.main(["stale-retry", "--task", "TASK-09"])
+        retry.assert_called_once_with("TASK-09")
+
+
 if __name__ == "__main__":
     unittest.main()
