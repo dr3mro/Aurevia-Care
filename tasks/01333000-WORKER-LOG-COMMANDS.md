@@ -1,5 +1,6 @@
 - [-] WORKER-LOG-COMMANDS · Stop worker logs from fake error annotations and 17 MB of output
   - agent: orca
+  - pr: 1766
   - requirements: OPS-06
   - scope: scripts/agent-run.sh, scripts/tests/test_agent_run.py, scripts/tests/test_swarm.py, .github/workflows/swarm.yml, .github/workflows/swarm-worker.yml, tasks/01333000-WORKER-LOG-COMMANDS.md
   - details:
@@ -47,11 +48,13 @@
   - (tool) Full suite with the Xcode system Python 3.9 → `Ran 2133 tests in 481.246s`, `FAILED (errors=27)`, all `ModuleNotFoundError: No module named 'yaml'` in workflow-YAML tests. Re-run with `PATH=/opt/homebrew/bin:$PATH` (`Python 3.15.2`, `PyYAML 6.0.3`): `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 2201 tests in 367.419s`, `OK`; `bash scripts/python-coverage.sh` → `Ran 2201 tests in 332.752s`, `OK`, `python coverage: every changed script line is covered`. This is the documented worker-image PyYAML limit, not a code failure.
   - (reviewer) Task advisor plan re-review: first `NO-GO` with three Required gaps (tracker fixture/path, workflow quoting, branch map), all fixed; final `VERDICT: GO`, no remaining Required gap. Shell, Python and workflow specialists returned `GO` on their bounded audits.
   - (tool) Traceability correction: the initial red command used `-k '*workflow_echoes*'`, which matched no test, so the 12 red cases were the other six methods in both test classes; `test_worker_log_echoes_in_workflows_are_neutralised` was added to the green command as `-k '*worker_log_echoes*'`.
+  - (tool) Publication: local commit `191992fa6ae8edf73291b10ef93481775a061eb3` pushed to `origin/fix/worker-log-commands`; PR #1766 opened at https://github.com/dr3mro/Aurevia-Care/pull/1766. An automation rebased the PR head to `c7d8812a4627fee925852b542ff68655ddc4e292`; `git diff --stat 191992fa c7d8812a` changed only four unrelated `tasks/` files, so every scoped file is byte-identical to the tested local commit and the tested revision is an ancestor of the PR head. `gh pr view 1766 --json body` and `git log -1 --format=%B` contain no `Claude-Session` or `Co-Authored-By` line.
 
-  ## Review verdicts
-  - plan-reviewer: GO (after three Required gaps were fixed and re-reviewed).
-  - code-reviewer: GO (no Critical or Required finding; optional follow-ups noted for a pre-existing `::error::` interpolation and `fix-pr-gate.yml`).
-  - coverage-auditor: GO (every changed branch mapped to an asserting test; no suppression, skip, exclusion or lowered threshold).
-  - devsecops: GO (masking matches `swarm.py` SECRET shapes; no token in agent steps; legitimate annotations preserved).
-  - github-workflow: GO (echoes moved out of `bash -lc`, five filters identical, exit codes and permissions unchanged).
-  - qa-reviewer: pending re-review after verdicts, tested-revision binding and publication are recorded.
+## Review verdicts
+
+- plan-reviewer: GO (after three Required gaps were fixed and re-reviewed).
+- code-reviewer: GO (no Critical or Required finding; optional follow-ups noted for a pre-existing `::error::` interpolation and `fix-pr-gate.yml`).
+- coverage-auditor: GO (every changed branch mapped to an asserting test; no suppression, skip, exclusion or lowered threshold).
+- devsecops: GO (masking matches `swarm.py` SECRET shapes; no token in agent steps; legitimate annotations preserved).
+- github-workflow: GO (echoes moved out of `bash -lc`, five filters identical, exit codes and permissions unchanged).
+- qa-reviewer: GO (after verdicts, tested-revision binding and publication were recorded; no product defect found).
