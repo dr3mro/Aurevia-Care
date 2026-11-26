@@ -27,7 +27,7 @@ RUN mvn -B -q -f apps/api/pom.xml -Pno-security -DskipTests package spring-boot:
  && cp apps/api/target/*.jar /api.jar
 
 # postgres:17-alpine (digest pinned; Dependabot bumps it)
-FROM postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+FROM postgres:18-alpine@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
 RUN apk add --no-cache nginx openjdk21-jre-headless
 ARG VERSION=dev
 ARG REVISION=unknown
