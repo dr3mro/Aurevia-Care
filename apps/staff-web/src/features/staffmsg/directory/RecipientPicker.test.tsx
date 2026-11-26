@@ -98,7 +98,7 @@ describe('RecipientPicker', () => {
       expect(rowFor(contact.subject).textContent).toContain(contact.facilityCode);
     }
     const marked = rows().filter((row) =>
-      (row.textContent ?? '').includes(directoryText('en', 'otherFacility')),
+      row.textContent.includes(directoryText('en', 'otherFacility')),
     );
     expect(marked).toHaveLength(1);
     expect(marked[0]).toBe(rowFor(otherFacilityContact.subject));

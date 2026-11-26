@@ -560,7 +560,7 @@ function measureSpacing(): { spacing: readonly SpacingMetric[] } {
     if (!helpers.visible(element) || helpers.inRegion(element)) {
       continue;
     }
-    if ((element.textContent ?? '').trim().length === 0) {
+    if (element.textContent.trim().length === 0) {
       continue;
     }
     const style = getComputedStyle(element);

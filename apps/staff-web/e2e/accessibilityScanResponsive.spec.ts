@@ -277,7 +277,7 @@ for (const target of SCAN_TARGETS) {
                 const isStateHeading = await title.evaluate(
                   (element, headings) =>
                     element.tagName === 'H2' &&
-                    headings.includes((element.textContent ?? '').trim()),
+                    headings.includes(element.textContent.trim()),
                   substituteHeadings,
                 );
                 return !isStateHeading;

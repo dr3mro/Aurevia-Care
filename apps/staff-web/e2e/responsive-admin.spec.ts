@@ -1215,7 +1215,7 @@ async function collectValuePairs(page: Page, sectionName: string): Promise<reado
     const normalize = (value: string): string => value.replace(/\s+/g, ' ').trim();
     const add = (element: Element, key: string): void => {
       element.setAttribute('data-e2e-pair', key);
-      pairs.push({ key, text: normalize(element.textContent ?? '') });
+      pairs.push({ key, text: normalize(element.textContent) });
     };
     const historyCards = Array.from(document.querySelectorAll('main#main .card-list table'));
 

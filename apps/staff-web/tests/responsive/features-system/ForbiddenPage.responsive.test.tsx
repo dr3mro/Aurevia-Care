@@ -105,7 +105,7 @@ describe('responsive ForbiddenPage (WEB-07, UX-01)', () => {
         screen.getByRole('heading', { level: 2, name: 'You do not have access' }),
       ).toBeTruthy();
       expect(screen.getByText('Your role cannot perform this action.')).toBeTruthy();
-      expect(panel.textContent?.length ?? 0).toBeGreaterThan(0);
+      expect(panel.textContent.length).toBeGreaterThan(0);
 
       const { button } = actionParts();
       expect(button.textContent).toBe('Go home');

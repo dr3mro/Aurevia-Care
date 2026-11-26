@@ -30,7 +30,7 @@ function RouteProbe() {
 }
 
 function renderedPath(): string {
-  return screen.getByTestId('route').textContent ?? '';
+  return screen.getByTestId('route').textContent;
 }
 
 function renderAt(

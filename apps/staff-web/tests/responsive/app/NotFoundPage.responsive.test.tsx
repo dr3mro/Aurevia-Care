@@ -190,8 +190,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(heading.style.display).not.toBe('none');
       expect(heading.style.getPropertyValue('block-size')).toBe('');
       expect(pageRoot().style.getPropertyValue('block-size')).toBe('');
-      expect(heading.textContent?.trim().length).toBeGreaterThan(0);
-      expect(screen.getByRole('status').textContent?.trim().length).toBeGreaterThan(0);
+      expect(heading.textContent.trim().length).toBeGreaterThan(0);
+      expect(screen.getByRole('status').textContent.trim().length).toBeGreaterThan(0);
     });
   },
 );

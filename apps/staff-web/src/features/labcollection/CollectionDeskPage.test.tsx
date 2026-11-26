@@ -339,8 +339,8 @@ describe('CollectionDeskPage paging, tenant switching and routing', () => {
     const labels = within(list)
       .getAllByRole('button')
       .map((button) => button.textContent);
-    expect(labels.some((text) => text?.includes('ACC-100') === true)).toBe(true);
-    expect(labels.some((text) => text?.includes('ACC-200') === true)).toBe(true);
+    expect(labels.some((text) => text.includes('ACC-100'))).toBe(true);
+    expect(labels.some((text) => text.includes('ACC-200'))).toBe(true);
   });
 
   it('clears the previous tenant rows before the new tenant responds', async () => {
