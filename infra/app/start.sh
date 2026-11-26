@@ -25,8 +25,14 @@ shutdown() {
             rm -f "$DUMPS/persist.sql.tmp"
         fi
     fi
-    for pid in "$web_pid" "$api_pid"; do [[ -n "$pid" ]] && kill -TERM "$pid" 2>/dev/null || true; done
-    [[ -n "$pg_pid" ]] && kill -INT "$pg_pid" 2>/dev/null || true
+    for pid in "$web_pid" "$api_pid"; do
+        if [[ -n "$pid" ]]; then
+            kill -TERM "$pid" 2>/dev/null || true
+        fi
+    done
+    if [[ -n "$pg_pid" ]]; then
+        kill -INT "$pg_pid" 2>/dev/null || true
+    fi
     wait 2>/dev/null || true
     exit 0
 }
