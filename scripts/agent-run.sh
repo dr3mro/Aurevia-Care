@@ -51,6 +51,9 @@ export GIT_CONFIG_KEY_2=core.fsmonitor GIT_CONFIG_VALUE_2=false
 
 cd "${GITHUB_WORKSPACE:-$(dirname "$0")/..}"
 repo_root=$(pwd -P)
+if [[ -n "${AUREVIA_SIGNAL_TARGET_FILE:-}" ]]; then
+  printf '%s\n' "$$" > "$AUREVIA_SIGNAL_TARGET_FILE"
+fi
 git() { command git -C "$repo_root" "$@"; }
 mkdir -p "$HOME"
 repo_top=$(git rev-parse --show-toplevel 2>/dev/null || true)
@@ -85,10 +88,14 @@ worktree_status() {
 }
 
 require_clean_worktree() {
-  local status
-  if ! status=$(worktree_status); then
+  local status _tmp
+  _tmp=$(mktemp)
+  if ! worktree_status > "$_tmp"; then
+    rm -f "$_tmp"
     return 1
   fi
+  status=$(<"$_tmp")
+  rm -f "$_tmp"
   if [[ -n "$status" ]]; then
     printf 'refusing to run in a dirty workspace; commit or stash unrelated work first\n' >&2
     return 1
@@ -118,7 +125,7 @@ auth_active=0
 auth_mode=""
 auth_tmp=""
 cleanup() {
-  local failed=0
+  local saved=$? failed=0
   if [[ "$config_active" == 1 ]]; then
     restore_config || failed=1
   fi
@@ -134,7 +141,8 @@ cleanup() {
     exit 1
   fi
   rm -f "$config_backup" "$auth_backup"
-  rmdir "$backup_dir"
+  rmdir "$backup_dir" 2>/dev/null || true
+  exit "$saved"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
@@ -462,6 +470,13 @@ FULL
   cat <<PROMPT
 Work exactly one story, test first, with synthetic data only. Commit to the
 current branch. Do not push, tag or call gh. $(tracker_rules)
+If SWARM_SINGLE_TASK is enabled, work as the single active task: decompose the story
+into ordered steps before coding, implement one step at a time, and do not start a
+new story. Before coding, run aurevia-plan-reviewer and fix any NO-GO findings.
+After coding, run aurevia-code-reviewer, aurevia-coverage-auditor, aurevia-devsecops and
+aurevia-qa-reviewer (plus any specialist the brief names) and record each final VERDICT
+line under "## Review verdicts" in ${notes_file} as "- <reviewer>: GO". Do not publish
+until all of them answer GO.
 Keep the branch current with the base branch: at the start, after each stage of the story and
 before you finish, run git merge --no-edit origin/${BASE_BRANCH:-main} (origin/${BASE_BRANCH:-main} is already fetched;
 do not fetch, you have no token). If it stops with conflicts, resolve every conflicted file by keeping both
@@ -624,7 +639,10 @@ $(tail -n 40 "$out/quality.log")" "$out/quality-fix-${attempt}.log" > /dev/null
   fi
 
   local commits checks=skipped
-  commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  commits=0
+  if [[ -s "$out/base-sha" ]]; then
+    commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  fi
   # A rate limit or timeout ends this worker now: do not spend runner minutes on
   # the full check. The trusted publish job still sees the commit count.
   if [[ "$result" == rate_limited || "$result" == timeout ]]; then
@@ -910,7 +928,10 @@ cmd_merge_main() {
   while [[ "$outcome" == conflict && $attempt -lt $max ]]; do
     attempt=$((attempt + 1))
     files=$(git diff --name-only --diff-filter=U)
-    mapfile -t conflicted_files <<< "$files"
+    conflicted_files=()
+    while IFS= read -r conflicted_file; do
+      conflicted_files+=("$conflicted_file")
+    done <<< "$files"
     activate_ci_config
     result=$(run_agent orca "$(conflict_prompt "$files")" "$out/merge-$attempt.log")
     restore_config
@@ -925,10 +946,13 @@ cmd_merge_main() {
       git commit -q --no-edit || true
     fi
     # Look for leftover conflict markers in the conflicted files and in everything the merge brought in.
-    mapfile -t scan_files < <({ printf '%s\n' "${conflicted_files[@]}"; git diff --name-only "$pre" HEAD; } | sort -u | sed '/^$/d')
+    scan_files=()
+    while IFS= read -r scan_file; do
+      scan_files+=("$scan_file")
+    done < <({ printf '%s\n' ${conflicted_files[@]+"${conflicted_files[@]}"}; git diff --name-only "$pre" HEAD; } | sort -u | sed '/^$/d')
     if [[ ! -f "$(git rev-parse --git-path MERGE_HEAD)" && -z "$(git ls-files -u)" ]] \
         && git merge-base --is-ancestor "$base" HEAD \
-        && ! git grep -qE '^(<<<<<<<|>>>>>>>) ' HEAD -- "${scan_files[@]}" 2> /dev/null; then
+        && ! git grep -qE '^(<<<<<<<|>>>>>>>) ' HEAD -- ${scan_files[@]+"${scan_files[@]}"} 2> /dev/null; then
       outcome=merged
     else
       # Not a clean merge: start the next attempt from the original conflict.
@@ -994,11 +1018,16 @@ cmd_fetch_prs() {
   : "${GH_TOKEN:?GH_TOKEN is required}" "${CONFLICTED:?CONFLICTED is required}"
   validate_conflicted
   local -a prs
-  mapfile -t prs < <(jq -r '.[]' <<< "$CONFLICTED")
+  prs=()
+  while IFS= read -r pr; do
+    prs+=("$pr")
+  done < <(jq -r '.[]' <<< "$CONFLICTED")
   local pr
-  for pr in "${prs[@]}"; do
-    github_git fetch -q origin "pull/$pr/head:pr-$pr"
-  done
+  if [[ ${#prs[@]} -gt 0 ]]; then
+    for pr in "${prs[@]}"; do
+      github_git fetch -q origin "pull/$pr/head:pr-$pr"
+    done
+  fi
 }
 
 # resolve: the integrator could not merge these PRs into main. Merge main into
@@ -1008,9 +1037,13 @@ cmd_resolve() {
   : "${CONFLICTED:?CONFLICTED is required}"
   validate_conflicted
   local -a prs
-  mapfile -t prs < <(jq -r '.[]' <<< "$CONFLICTED")
+  prs=()
+  while IFS= read -r pr; do
+    prs+=("$pr")
+  done < <(jq -r '.[]' <<< "$CONFLICTED")
   local pr
   mkdir -p "$out/resolve"
+  if [[ ${#prs[@]} -gt 0 ]]; then
   for pr in "${prs[@]}"; do
     require_clean_worktree
     git switch -q -C "resolve-$pr" "pr-$pr"
@@ -1033,6 +1066,7 @@ cmd_resolve() {
         || printf 'failed' > "$out/resolve/$pr"
     fi
   done
+  fi
 }
 
 cmd_audit() {
@@ -1196,8 +1230,11 @@ cmd_sync_generated() {
 cmd_bundle() {
   local commits
   local prerequisite
-  prerequisite=$(cat "$out/bundle-base" 2>/dev/null || cat "$out/base-sha")
-  commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  prerequisite=$(cat "$out/bundle-base" 2>/dev/null || cat "$out/base-sha" 2>/dev/null || true)
+  commits=0
+  if [[ -s "$out/base-sha" ]]; then
+    commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  fi
   if [[ "$commits" -gt 0 ]]; then
     git bundle create "$out/result.bundle" "^${prerequisite}" HEAD
   fi
@@ -1209,7 +1246,7 @@ cmd_review() {
   local role result status
   for role in $REVIEWERS; do
     activate_ci_config
-    result=$(run_agent orca "Review the changes on this branch against $(cat "$out/base-sha") in review-only mode. Do not edit files, commit or push. Delegate to ${role}. Reply with findings only, each naming the requirement ID, impact, evidence and suggested fix. State plainly when evidence is only simulated." "$out/review-${role}.md")
+    result=$(run_agent orca "Review the changes on this branch against $(cat "$out/base-sha" 2>/dev/null || echo 'the current branch') in review-only mode. Do not edit files, commit or push. Delegate to ${role}. Reply with findings only, each naming the requirement ID, impact, evidence and suggested fix. State plainly when evidence is only simulated." "$out/review-${role}.md")
     # Reviewers are read-only. Preserve any evidence of a violation instead of
     # deleting it, and stop before another reviewer can overwrite the trail.
     restore_config
@@ -1217,9 +1254,13 @@ cmd_review() {
       record_configuration_error
       return 1
     fi
-    if ! status=$(worktree_status -- . ":(exclude)$out" ":(exclude)$out/**"); then
+    _tmp=$(mktemp)
+    if ! worktree_status -- . ":(exclude)$out" ":(exclude)$out/**" > "$_tmp"; then
+      rm -f "$_tmp"
       return 1
     fi
+    status=$(<"$_tmp")
+    rm -f "$_tmp"
     if [[ -n "$status" ]]; then
       printf 'reviewer changed the workspace; refusing to delete its changes\n' >&2
       return 1
@@ -1285,8 +1326,13 @@ cmd_publish() {
     cat .github/pull_request_template.md
   } > "$body"
   [[ "$checks" != passed || "$result" != ok ]] && args+=(--draft)
-  gh pr create --base "${BASE_BRANCH:-main}" --head "$branch" \
-    --title "${STORY_TITLE:-${STORY_ID}}" --body-file "$body" "${args[@]}"
+  if [[ ${#args[@]} -gt 0 ]]; then
+    gh pr create --base "${BASE_BRANCH:-main}" --head "$branch" \
+      --title "${STORY_TITLE:-${STORY_ID}}" --body-file "$body" "${args[@]}"
+  else
+    gh pr create --base "${BASE_BRANCH:-main}" --head "$branch" \
+      --title "${STORY_TITLE:-${STORY_ID}}" --body-file "$body"
+  fi
   emit pr "$(gh pr view "$branch" --json number --jq .number)"
 }
 

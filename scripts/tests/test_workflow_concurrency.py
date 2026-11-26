@@ -87,3 +87,14 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         self.assertIsInstance(trigger, dict)
         self.assertNotIn("paths", trigger)
         self.assertNotIn("paths-ignore", trigger)
+
+    def test_operator_docs_do_not_describe_a_filtered_delivery_trigger(self):
+        """Stale path-filter claims make operators expect a gate GitHub never reports."""
+        docs = (ROOT / "docs" / "reference" / "testing-guide.md",
+                ROOT / "docs" / "swarm" / "EFFICIENCY.md")
+        for path in docs:
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertNotIn("paths-ignore", text)
+                self.assertNotIn("paths:", text)
+                self.assertIn("delivery gate", text.lower())
