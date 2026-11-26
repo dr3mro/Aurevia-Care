@@ -24,7 +24,7 @@
     <maven.compiler.release>21</maven.compiler.release>
     <postgresql.version>42.7.14</postgresql.version>
     <!-- Pinned AWS SDK for Java v2 used by the managed S3 object-store adapter (ARC-06). -->
-    <aws.sdk.version>2.59.5</aws.sdk.version>
+    <aws.sdk.version>2.59.7</aws.sdk.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jacoco.version>0.8.16</jacoco.version>
     <owasp.version>13.0.0</owasp.version>
