@@ -108,7 +108,9 @@ jobs:
   # that is green here cannot turn main red, whoever merges it.
   java-verify:
     name: Java and database verification
-    needs: frontend
+    # Independent of frontend; both wait only for script-tests so the two
+    # slowest jobs run in parallel. The gate still requires both to pass.
+    needs: script-tests
     timeout-minutes: 30
     runs-on: ubuntu-24.04
     services:
@@ -134,7 +136,8 @@ jobs:
 
   docs:
     name: Developer reference
-    needs: java-verify
+    # Join both verification branches before continuing to verify/gate.
+    needs: [frontend, java-verify]
     timeout-minutes: 10
     runs-on: ubuntu-24.04
     steps:
