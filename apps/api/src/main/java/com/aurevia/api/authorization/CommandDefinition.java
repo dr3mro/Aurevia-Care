@@ -23,8 +23,30 @@ import com.aurevia.api.ApiException;
  * @param method HTTP method of the command; explicit commands are always POST
  * @param path   documented route template in the active organization
  * @param policy simple name of the policy that owns the action key
+ * @param gated  whether the live HTTP gate registers this route. A mapping-only definition
+ *               binds a delivered handler without broadening that registration; other
+ *               consumers of the full definition set, such as replay authorization,
+ *               still see it and must be reviewed when a mapping is added.
  */
-public record CommandDefinition(String id, String action, String method, String path, String policy) {
+public record CommandDefinition(String id, String action, String method, String path, String policy,
+                                boolean gated) {
+
+    /**
+     * Build a definition that the live HTTP gate registers.
+     *
+     * <p>This is the published baseline shape; callers that only bind a delivered
+     * handler use the full constructor and leave gate registration unchanged.</p>
+     *
+     * @param id     stable wire command identifier
+     * @param action existing action key whose owning policy decides the roles
+     * @param method HTTP method; explicit commands are always POST
+     * @param path   documented route template in the active organization
+     * @param policy simple name of the policy that owns the action key
+     */
+    public CommandDefinition(String id, String action, String method, String path, String policy) {
+        this(id, action, method, path, policy, true);
+    }
+
 
     /** Tokens emitted into YAML and JSON without further escaping. */
     private static final Pattern SAFE = Pattern.compile("[A-Za-z/][A-Za-z0-9._:/{}-]*");

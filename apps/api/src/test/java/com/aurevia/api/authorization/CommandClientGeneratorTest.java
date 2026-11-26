@@ -104,6 +104,22 @@ class CommandClientGeneratorTest {
     }
 
     @Test
+    void committedArtifactsBindTheDeliveredHandlerRoutes() throws IOException {
+        Path generated = locateGeneratedArtifacts();
+        String yaml = Files.readString(generated.resolve(CommandClientGenerator.CONTRACT));
+        String client = Files.readString(generated.resolve(CommandClientGenerator.CLIENT));
+        String manifest = Files.readString(generated.resolve(CommandClientGenerator.MANIFEST));
+
+        assertTrue(yaml.contains("  /api/v1/xch03/orders/{id}/accept:"));
+        assertTrue(yaml.contains("  /api/v1/finance/invoices:"));
+        assertTrue(client.contains("export function acceptExchangeResponse("));
+        assertTrue(client.contains("export function createFinanceInvoice("));
+        assertTrue(client.contains("path: '/api/v1/xch03/orders/' + encodeURIComponent(id) + '/accept',"));
+        assertTrue(manifest.contains("\"id\": \"acceptExchangeResponse\""));
+        assertTrue(manifest.contains("\"path\": \"/api/v1/finance/invoices\""));
+    }
+
+    @Test
     void manifestCarriesDeterministicChecksumsAndEveryCommand() {
         CommandCatalog catalog = CommandCatalog.synthetic();
         CommandClientGenerator generator = new CommandClientGenerator(catalog);
