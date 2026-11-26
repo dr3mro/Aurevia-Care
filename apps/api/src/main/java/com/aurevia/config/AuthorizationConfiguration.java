@@ -1,6 +1,5 @@
 package com.aurevia.config;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -23,14 +22,13 @@ import com.aurevia.api.authorization.JdbcDecisionSink;
 public class AuthorizationConfiguration {
 
     /**
-     * Provide the durable decision sink unless a test supplied its own.
+     * Provide the single durable decision sink used by the command gate.
      *
      * @param jdbc               shared named-parameter JDBC template
      * @param transactionManager tenant-guarded platform transaction manager
      * @return the production decision sink writing to the V65 ledger
      */
     @Bean
-    @ConditionalOnMissingBean(DecisionSink.class)
     DecisionSink authorizationDecisionSink(NamedParameterJdbcTemplate jdbc,
                                            PlatformTransactionManager transactionManager) {
         TransactionTemplate ledgerTransactions = new TransactionTemplate(transactionManager);

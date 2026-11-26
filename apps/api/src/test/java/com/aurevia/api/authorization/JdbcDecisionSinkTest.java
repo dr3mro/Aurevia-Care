@@ -174,6 +174,14 @@ class JdbcDecisionSinkTest {
     }
 
     @Test
+    void nullReasonCodeOnAllowedDecisionDeniesWithoutWriting() {
+        bind(ORG_A);
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        assertDenied(() -> sink.record(decision(ORG_A, true, null)));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
     void missingTenantContextDeniesWithoutWriting() {
         TenantContext.clear();
         JdbcDecisionSink sink = sink(jdbc, transactions);
@@ -324,6 +332,20 @@ class JdbcDecisionSinkTest {
         SqlParameterSource params = captured(jdbc);
         assertEquals("", params.getValue("subject"));
         assertEquals("", params.getValue("correlationId"));
+    }
+
+    @Test
+    void transactionFailureDeniesWithoutLeakingDetails() {
+        bind(ORG_A);
+        when(transactions.execute(any(TransactionCallback.class))).thenThrow(
+                new DataAccessException("SECRET_TENANT_TOKEN") { });
+        JdbcDecisionSink sink = sink(jdbc, transactions);
+        ApiException failure = assertThrows(ApiException.class,
+                () -> sink.record(decision(ORG_A, true, "ALLOWED")));
+        assertEquals(403, failure.status());
+        assertEquals("AUDIT_UNAVAILABLE", failure.code());
+        assertFalse(failure.getMessage().contains("SECRET_TENANT_TOKEN"));
+        verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
     }
 
     @Test

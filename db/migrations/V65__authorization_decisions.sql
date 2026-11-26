@@ -19,7 +19,7 @@ CREATE TABLE public.authorization_decision (
     id              uuid NOT NULL DEFAULT gen_random_uuid(),
     subject         text NOT NULL DEFAULT '',
     action          text NOT NULL DEFAULT '',
-    resource_type   text NOT NULL DEFAULT '',
+    resource_type   text NOT NULL DEFAULT 'COMMAND' CHECK (resource_type = 'COMMAND'),
     decision        text NOT NULL CHECK (decision IN ('allow', 'deny')),
     reason_code     text NOT NULL CHECK (reason_code IN (
         'ALLOWED', 'UNAUTHENTICATED', 'INVALID_COMMAND', 'UNKNOWN_COMMAND',
