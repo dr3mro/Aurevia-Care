@@ -263,11 +263,12 @@ quote_command_lines() {
 
 # Story text is not carried through the workflow matrix (GitHub drops a matrix that
 # might contain a secret); the worker reads its task from the tracked task files.
-# The raw dump is kept only in the ignored scratch directory; the copy echoed to
-# stdout is neutralised so markers cannot become annotations and tokens are masked.
-# Keeping that echo is deliberate: prompt consumers still need tracker context.
-# The dump is best effort: a broken tracker must not stop the command, and the
-# sentinel keeps trailing blank lines intact through the capture.
+
+# Running this on every invocation would flood the Actions log with unquoted task
+# text, so keep a copy in the ignored scratch directory for agents that need it
+# and echo a quoted copy. The dump is best effort: a broken tracker must not stop
+# the command. The sentinel keeps trailing blank lines intact through the capture.
+
 if [[ -f scripts/taskstore.py ]]; then
   python3 -I scripts/taskstore.py view > .agent/tasks.txt || true
   tracker_dump=$(cat .agent/tasks.txt; printf X)
