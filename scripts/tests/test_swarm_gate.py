@@ -20,7 +20,18 @@ from helpers import ROOT, load
 gate = load("swarm_gate")
 HEAD, BASE, WORKER = "a" * 40, "b" * 40, "c" * 40
 EVIDENCE = ("# notes\n\n## Test evidence\nscripts/quick-check.sh passed\n\n## Coverage\n100%\n\n"
-            "## Review verdicts\nGO\n\n" + HEAD + "\n")
+            "## Review verdicts\nGO\n\nTested revision: " + HEAD + "\n")
+ANCESTOR, DIVERGED, STALE = "e" * 40, "f" * 40, "d" * 40
+
+
+def binding_evidence(sha):
+    """Return a worker note whose canonical field names one tested revision."""
+    return EVIDENCE.replace(f"Tested revision: {HEAD}", f"Tested revision: {sha}")
+
+
+def compare_result(status, merge_base, behind_by=0):
+    """Return the bounded compare payload the trusted collector keeps."""
+    return {"status": status, "merge_base": merge_base, "behind_by": behind_by}
 
 
 def context(**overrides):
@@ -31,6 +42,9 @@ def context(**overrides):
                 task_text="- [-] TASK-01 · work it\n  - evidence: tool evidence\n  - pr: #42\n",
                 evidence_text=EVIDENCE, required_checks=("Policy and tooling",),
                 check_runs={"Policy and tooling": "success"},
+                note_sha=HEAD,
+                revision_evidence=compare_result("identical", HEAD),
+                cross_repo_head=False,
                 verified_at="2026-01-01T00:00:00Z")
     data.update(overrides)
     return gate.GateContext(**data)
@@ -169,6 +183,289 @@ class CheckTests(unittest.TestCase):
     def test_stale_and_malformed_revision_fail(self):
         self.assertEqual(run(tested_sha="d" * 40).check("tested_revision").state, gate.FAILED)
         self.assertEqual(run(tested_sha="").check("tested_revision").state, gate.FAILED)
+
+
+class RevisionBindingTests(unittest.TestCase):
+    """A note may name only a revision proven to be in the pull request history."""
+
+    def test_head_sha_claim_alone_no_longer_passes(self):
+        """The old substring rule accepted a bare SHA; the new field rule must not."""
+        bare = EVIDENCE.replace(f"Tested revision: {HEAD}\n", f"I tested {HEAD}\n")
+        self.assertEqual(gate.extract_note_revision(bare), "")
+        result = run(evidence_text=bare, note_sha=HEAD,
+                     revision_evidence=compare_result("identical", HEAD))
+        self.assertEqual(result.check("revision_binding").state, gate.FAILED)
+
+    def test_ancestor_and_identical_revisions_pass(self):
+        for sha, status in ((ANCESTOR, "ahead"), (HEAD, "identical")):
+            with self.subTest(sha=sha):
+                result = run(evidence_text=binding_evidence(sha), note_sha=sha,
+                             revision_evidence=compare_result(status, sha))
+                self.assertEqual(result.check("revision_binding").state, gate.PASSED)
+                self.assertTrue(result.passed, result.failures)
+
+    def test_malformed_missing_and_ambiguous_revisions_fail(self):
+        for sha in ("short", "g" * 40, HEAD.upper(), "e" * 39):
+            with self.subTest(sha=sha):
+                result = run(evidence_text=binding_evidence(sha), note_sha=sha,
+                             revision_evidence=compare_result("ahead", sha))
+                self.assertEqual(result.check("revision_binding").state, gate.FAILED)
+        ambiguous = EVIDENCE + f"Tested revision: {ANCESTOR}\n"
+        self.assertEqual(gate.extract_note_revision(ambiguous), "")
+        self.assertEqual(run(evidence_text=ambiguous, note_sha=ANCESTOR).check("revision_binding").state,
+                         gate.FAILED)
+        repeated = EVIDENCE + f"Tested revision: {HEAD}\n"
+        self.assertEqual(gate.extract_note_revision(repeated), "")
+        self.assertEqual(run(evidence_text=repeated, note_sha=HEAD,
+                             revision_evidence=compare_result("identical", HEAD)
+                             ).check("revision_binding").state, gate.FAILED)
+
+    def test_diverged_behind_and_incomplete_compare_fail(self):
+        cases = (
+            compare_result("diverged", BASE, 3),
+            compare_result("behind", HEAD, 2),
+            compare_result("ahead", ANCESTOR, 1),
+            compare_result("ahead", ANCESTOR, False),
+            {"status": "ahead", "behind_by": 0},
+        )
+        for index, evidence in enumerate(cases):
+            with self.subTest(case=index):
+                result = run(evidence_text=binding_evidence(ANCESTOR), note_sha=ANCESTOR,
+                             revision_evidence=evidence)
+                self.assertEqual(result.check("revision_binding").state, gate.FAILED)
+
+    def test_cross_repository_head_fails(self):
+        result = run(evidence_text=binding_evidence(ANCESTOR), note_sha=ANCESTOR,
+                     revision_evidence=compare_result("ahead", ANCESTOR), cross_repo_head=True)
+        self.assertEqual(result.check("revision_binding").state, gate.FAILED)
+
+    def test_compare_failure_reason_is_reported(self):
+        """An API outage must be distinguishable from a bad revision claim."""
+        result = run(evidence_text=binding_evidence(ANCESTOR), note_sha=ANCESTOR,
+                     revision_evidence={"status": "error", "reason": "compare evidence unavailable"})
+        self.assertEqual(result.check("revision_binding").state, gate.FAILED)
+        self.assertIn("compare evidence unavailable", result.check("revision_binding").reason)
+
+    def test_non_worker_revision_binding_is_not_applicable(self):
+        result = run(head_ref="feature/x", title="Add thing", task_text="",
+                     evidence_text="", note_sha="", revision_evidence=None)
+        self.assertEqual(result.check("revision_binding").state, gate.NOT_APPLICABLE)
+
+    def test_tested_revision_stays_independent(self):
+        for tested, expected in ((HEAD, gate.PASSED), (STALE, gate.FAILED), ("", gate.FAILED)):
+            with self.subTest(tested=tested):
+                result = run(evidence_text=binding_evidence(ANCESTOR), note_sha=ANCESTOR,
+                             revision_evidence=compare_result("ahead", ANCESTOR), tested_sha=tested)
+                self.assertEqual(result.check("revision_binding").state, gate.PASSED)
+                self.assertEqual(result.check("tested_revision").state, expected)
+
+    def test_compare_api_error_and_bad_payload_fail_closed(self):
+        for effect in (subprocess.CalledProcessError(1, "gh"), ValueError("bad json"),
+                       OSError("gh unavailable"), []):
+            with self.subTest(effect=effect):
+                with mock.patch.object(gate, "_gh_json", side_effect=effect if isinstance(effect, Exception) else None,
+                                       return_value=effect if isinstance(effect, list) else None):
+                    result = gate.check_revision_ancestry(ANCESTOR, HEAD, "owner/repo")
+                self.assertTrue(result.get("status") == "error" or
+                                result.get("in_ancestry") is False)
+                self.assertTrue(result.get("reason") or result.get("error"))
+
+    def test_compare_call_is_repo_scoped_and_validated(self):
+        with mock.patch.object(gate, "_gh_json", return_value={"status": "ahead"}) as call:
+            payload = gate.check_revision_ancestry(ANCESTOR, HEAD, "owner/repo")
+            self.assertEqual(payload["status"], "ahead")
+            args = call.call_args.args
+            self.assertEqual(args[1:3],
+                             ("repos/owner/repo/compare/" + ANCESTOR + "..." + HEAD, "--jq"))
+            for bad in (("short", HEAD, "owner/repo"), (ANCESTOR, "short", "owner/repo"),
+                        (ANCESTOR, HEAD, "../bad"), (ANCESTOR, HEAD, "owner/.."),
+                        (ANCESTOR, HEAD, "owner/repo/extra"), (ANCESTOR, HEAD, "bad slug")):
+                with self.subTest(bad=bad):
+                    self.assertEqual(gate.check_revision_ancestry(*bad)["status"], "error")
+            call.assert_called_once()
+
+    def test_note_selection_uses_newest_timestamp_not_lexicographic_order(self):
+        """A stale numeric-ID fix note sorts last but has the older timestamp."""
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "01320000.md").write_text("- [-] 01320000 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "01320000-fix-20261125-060501.md").write_text("# stale fix\n")
+            (notes / "01320000-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            ctx = gate._collect_task_and_evidence(
+                gate.GateContext(head_ref="swarm/01320000-7"), str(base), str(head))
+        self.assertIn(binding_evidence(ANCESTOR), ctx.evidence_text)
+        self.assertEqual(gate.extract_note_revision(ctx.evidence_text), ANCESTOR)
+
+    def test_note_key_handles_undated_and_numeric_prefix_names(self):
+        self.assertEqual(gate._note_key(Path("01320000-1.md")), ("", "01320000-1.md"))
+        self.assertEqual(gate._note_key(Path("01320000-20261126-051824.md")),
+                         ("20261126-051824", "01320000-20261126-051824.md"))
+        self.assertEqual(gate._note_key(Path("01320000-fix-20261125-060501.md")),
+                         ("20261125-060501", "01320000-fix-20261125-060501.md"))
+
+    def test_legacy_notes_directory_is_used_as_fallback(self):
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / "docs" / "pr" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            ctx = gate._collect_task_and_evidence(
+                gate.GateContext(head_ref="swarm/TASK-01-7"), str(base), str(head))
+        self.assertEqual(ctx.evidence_text, binding_evidence(ANCESTOR))
+
+    def test_collection_binds_note_and_detects_fork(self):
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                      "head": {"sha": HEAD, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "fork/evil"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []}}
+            details = {"title": "TASK-01: x", "labels": [], "commits": [],
+                       "headRefOid": HEAD}
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.object(gate, "check_revision_ancestry",
+                                   return_value=compare_result("ahead", ANCESTOR)) as checker, \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base), head_root=str(head))
+            self.assertEqual(ctx.note_sha, ANCESTOR)
+            self.assertEqual(ctx.tested_sha, HEAD)
+            self.assertTrue(ctx.cross_repo_head)
+            checker.assert_not_called()
+            result = gate.evaluate(ctx)
+            self.assertEqual(result.check("revision_binding").state, gate.FAILED)
+
+    def test_collection_accepts_injected_ancestry_checker(self):
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                      "head": {"sha": HEAD, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []}}
+            details = {"title": "TASK-01: x", "labels": [], "commits": [],
+                       "headRefOid": HEAD}
+            observed = []
+
+            def checker(note_sha, head_sha, repo):
+                observed.append((note_sha, head_sha, repo))
+                return compare_result("ahead", ANCESTOR)
+
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.object(gate, "check_revision_ancestry",
+                                   side_effect=AssertionError("injected checker must be used")), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base),
+                                           head_root=str(head), ancestry_checker=checker)
+            self.assertEqual(observed, [(ANCESTOR, HEAD, "owner/repo")])
+            self.assertEqual(ctx.revision_evidence["merge_base"], ANCESTOR)
+            self.assertEqual(gate.evaluate(ctx).check("revision_binding").state, gate.PASSED)
+
+    def test_collection_uses_trusted_compare_by_default(self):
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                      "head": {"sha": HEAD, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []}}
+            details = {"title": "TASK-01: x", "labels": [], "commits": [],
+                       "headRefOid": HEAD}
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.object(gate, "check_revision_ancestry",
+                                   return_value=compare_result("ahead", ANCESTOR)) as checker, \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base), head_root=str(head))
+            checker.assert_called_once_with(ANCESTOR, HEAD, "owner/repo")
+            self.assertEqual(ctx.revision_evidence["merge_base"], ANCESTOR)
+
+    def test_injected_checker_and_environment_repo_are_used(self):
+        """The test seam and GITHUB_REPOSITORY reach the real compare query."""
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                      "head": {"sha": HEAD, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []}}
+            details = {"title": "TASK-01: x", "labels": [], "commits": [],
+                       "headRefOid": HEAD}
+            fake = mock.Mock(return_value=compare_result("ahead", ANCESTOR))
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "owner/repo"}), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base),
+                                           head_root=str(head), ancestry_checker=fake)
+            fake.assert_called_once_with(ANCESTOR, HEAD, "owner/repo")
+            self.assertEqual(ctx.revision_evidence["status"], "ahead")
+            self.assertEqual(gate.evaluate(ctx).check("revision_binding").state, gate.PASSED)
+
+    def test_same_repository_requires_all_known_names_to_agree(self):
+        with mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "owner/repo"}):
+            self.assertTrue(gate._same_repository("", ""))
+            self.assertTrue(gate._same_repository("owner/repo", "owner/repo"))
+            self.assertFalse(gate._same_repository("fork/evil", "owner/repo"))
+
+    def test_live_head_ref_is_the_tested_revision(self):
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                      "head": {"sha": HEAD, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []}}
+            details = {"title": "TASK-01: x", "labels": [], "commits": [],
+                       "headRefOid": DIVERGED}
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.object(gate, "check_revision_ancestry",
+                                   return_value=compare_result("ahead", ANCESTOR)), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base), head_root=str(head))
+            self.assertEqual(ctx.tested_sha, DIVERGED)
+            self.assertFalse(ctx.cross_repo_head)
+            result = gate.evaluate(ctx)
+            self.assertEqual(result.check("tested_revision").state, gate.FAILED)
+
+    def test_merge_group_does_not_call_compare(self):
+        with mock.patch.object(gate, "check_revision_ancestry") as checker:
+            result = integration()
+        checker.assert_not_called()
+        self.assertEqual(result.check("revision_binding").state, gate.NOT_APPLICABLE)
 
 
 class ManifestTests(unittest.TestCase):

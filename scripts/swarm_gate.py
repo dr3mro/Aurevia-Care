@@ -3,9 +3,10 @@
 The Swarm gate answers a different question from Delivery: Delivery verifies
 that code builds and passes tests; this module verifies the *swarm contract*.
 It classifies each pull request, validates task metadata and protected-file
-policy against the protected base revision, checks that evidence is bound to
-the exact revision GitHub will merge, and validates an integration manifest
-against real commit ancestry.
+policy against the protected base revision, checks that worker evidence names
+a tested revision proven by the trusted commit graph to be in the pull request
+ancestry, and validates an integration manifest against real commit ancestry.
+Exact head currency is checked separately from the evidence claim.
 
 Trust model: GitHub Actions runs this module from a checkout of the protected
 base revision, never from the PR head. The immutable GitHub event payload
@@ -48,6 +49,13 @@ TRACKERS = ("tasks/*", ".opencode/config/MEMORY.md", ".opencode/config/WORKSPACE
 
 TASK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
+# A worker note is a claim, not proof. The canonical line is the only field
+# used as a compare query; a SHA anywhere else in a log must not count.
+TESTED_REVISION = re.compile(r"^Tested revision:[ \t]*([0-9a-f]{40})[ \t]*$", re.M)
+# Anchor to the filename suffix: an eight-digit task ID followed by a date
+# would otherwise be read as a timestamp and select a stale note.
+NOTE_STAMP = re.compile(r"(\d{8}-\d{6})(?:-[A-Za-z0-9_-]+)?\.md$")
+REPO_SLUG = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 SWARM_BRANCH = re.compile(r"^swarm/([A-Za-z0-9-]+)-\d+$")
 INTEGRATION_BRANCH = re.compile(r"^swarm/integration/[A-Za-z0-9._-]+$")
 RECONCILE_BRANCH = re.compile(r"^swarm/reconcile/[A-Za-z0-9._-]+$")
@@ -57,6 +65,16 @@ EVIDENCE_SECTIONS = ("## Test evidence", "## Coverage", "## Review verdicts")
 CHECK_COMMANDS = ("scripts/quick-check.sh", "scripts/check.sh", "mvn ",
                   "python3 -I -m unittest", "apps/patient-mobile/check.sh", "apps/staff-web/check.sh")
 MANIFEST_PATH = ".agent/integration-manifest.json"
+
+
+def _valid_repo(repo):
+    """True for an ``owner/name`` slug without dot path segments.
+
+    The compare endpoint interpolates this value into a URL path, so a note or
+    event cannot turn it into a different route.
+    """
+    return bool(REPO_SLUG.fullmatch(repo)
+                and all(part not in (".", "..") for part in repo.split("/")))
 
 
 @dataclass(frozen=True)
@@ -131,6 +149,9 @@ class GateContext:
     manifest: Mapping = None
     ancestors: Mapping = None
     verified_at: str = ""
+    note_sha: str = ""
+    revision_evidence: Mapping = None
+    cross_repo_head: bool = False
 
 
 def _check(name, ok, reason, when=True, na_reason="not applicable to this PR kind"):
@@ -143,6 +164,50 @@ def _check(name, ok, reason, when=True, na_reason="not applicable to this PR kin
 def _matches(path, patterns):
     """True when one fnmatch pattern covers ``path``."""
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+
+
+def extract_note_revision(text):
+    """Return the single canonical ``Tested revision`` SHA, or empty when absent.
+
+    Worker notes are untrusted data. More than one field is rejected instead
+    of choosing one, so a stale or repeated line cannot satisfy the binding by
+    accident.
+    """
+    values = TESTED_REVISION.findall(text or "")
+    return values[0] if len(values) == 1 else ""
+
+
+def _note_key(path):
+    """Sort key that prefers the newest timestamp, not lexicographic order.
+
+    A fix note named ``-fix-...`` sorts after a dated story note but can be
+    older; the timestamp is the only reliable ordering signal in a filename.
+    """
+    stamp = NOTE_STAMP.search(path.name)
+    return (stamp.group(1) if stamp else "", path.name)
+
+
+def check_revision_ancestry(claimed, head, repo=""):
+    """Ask the trusted GitHub compare API whether ``claimed`` is in ``head`` history.
+
+    The note supplies only a validated query token; the returned status,
+    behind-by count and merge-base SHA come from GitHub. Any malformed input or
+    API failure returns an error mapping so the caller fails closed.
+    """
+    error = {"status": "error", "merge_base": "", "behind_by": None, "reason": ""}
+    if not (SHA.fullmatch(claimed) and SHA.fullmatch(head) and _valid_repo(repo)):
+        return {**error, "reason": "invalid tested revision or repository"}
+    try:
+        data = _gh_json(
+            "api", f"repos/{repo}/compare/{claimed}...{head}", "--jq",
+            "{status: .status, behind_by: .behind_by, merge_base: .merge_base_commit.sha}",
+            use_repo_selector=False,
+        )
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        return {**error, "reason": "compare evidence unavailable"}
+    if not isinstance(data, Mapping):
+        return {**error, "reason": "compare evidence malformed"}
+    return data
 
 
 def classify_pull_request(head_ref="", labels=(), title="", commit_authors=(),
@@ -227,16 +292,39 @@ def validate_protected_files(files, kind):
     ]
 
 
-def validate_verification_evidence(evidence_text, kind, head_sha):
-    """Check evidence schema, a canonical command and exact revision binding."""
+def validate_verification_evidence(evidence_text, kind, note_sha="", revision_evidence=None,
+                                   cross_repo_head=False):
+    """Check evidence schema, a canonical command and tested-revision lineage.
+
+    A worker can name the revision it tested but cannot know the final head
+    SHA. The claim passes only when it matches the canonical note field and
+    trusted compare evidence proves that revision is the merge base of the
+    head (an ancestor, or the head itself). ``evaluate`` stays pure: all
+    network facts arrive in ``revision_evidence``.
+    """
     text = evidence_text or ""
+    evidence = revision_evidence if isinstance(revision_evidence, Mapping) else {}
+    behind = evidence.get("behind_by")
+    # bool is a subclass of int: a malformed compare payload must not pass.
+    integer_behind = isinstance(behind, int) and not isinstance(behind, bool)
+    bound = bool(
+        note_sha and SHA.fullmatch(note_sha)
+        and extract_note_revision(text) == note_sha
+        and not cross_repo_head
+        and evidence.get("status") in ("ahead", "identical")
+        and evidence.get("merge_base") == note_sha
+        and integer_behind and behind == 0
+    )
+    reason = "notes name a tested revision proven in the pull request ancestry"
+    detail = evidence.get("reason", "") if not bound else ""
+    if detail:
+        reason = f"{reason}: {detail}"
     return [
         _check("evidence_schema", all(h in text for h in EVIDENCE_SECTIONS),
                "notes use the documented required headings", when=kind == WORKER),
         _check("mandatory_commands", any(c in text for c in CHECK_COMMANDS),
                "notes name a canonical verification command", when=kind == WORKER),
-        _check("revision_binding", bool(head_sha and head_sha in text),
-               "notes bind to the exact tested head revision", when=kind == WORKER),
+        _check("revision_binding", bound, reason, when=kind == WORKER),
     ]
 
 
@@ -291,7 +379,8 @@ def evaluate(ctx):
                       ("task_exists", "task_identifier", "task_eligible", "task_evidence",
                        "task_pr_reference"))
     checks.extend(validate_protected_files(ctx.files, kind))
-    checks.extend(validate_verification_evidence(ctx.evidence_text, kind, ctx.head_sha))
+    checks.extend(validate_verification_evidence(
+        ctx.evidence_text, kind, ctx.note_sha, ctx.revision_evidence, ctx.cross_repo_head))
     checks.extend(validate_check_results(ctx.check_runs, ctx.required_checks))
     checks.extend(validate_integration_manifest(ctx.manifest, ctx.ancestors, ctx.base_sha, kind))
     checks.append(_check("tested_revision",
@@ -315,19 +404,37 @@ def _gh_repo_args():
     return ("--repo", repo) if repo else ()
 
 
-def _gh_json(*args):
-    """Run ``gh`` with the workflow's read-only token and parse its JSON output."""
+def _gh_json(*args, use_repo_selector=True):
+    """Run ``gh`` with the workflow's read-only token and parse its JSON output.
+
+    ``gh api`` takes the repository in its endpoint, not through ``--repo``;
+    callers building a REST path must opt out of the selector.
+    """
+    selector = _gh_repo_args() if use_repo_selector else ()
     return json.loads(subprocess.check_output(
-        ["gh", *_gh_repo_args(), *args], text=True, stderr=subprocess.DEVNULL,
+        ["gh", *selector, *args], text=True, stderr=subprocess.DEVNULL,
         env=child_environment(read_only=True),
     ) or "{}")
 
 
-def collect_context(event, event_name, root, required_checks=(), head_root=None):
+def _same_repository(head_repo, base_repo):
+    """True when every known repository name agrees with the configured repository.
+
+    Fork heads are classified as workers by title alone, so repository identity
+    comes only from the immutable event and the workflow's configured slug.
+    """
+    names = {name.lower() for name in
+             (head_repo, base_repo, os.environ.get("GITHUB_REPOSITORY", "")) if name}
+    return len(names) <= 1
+
+
+def collect_context(event, event_name, root, required_checks=(), head_root=None,
+                    ancestry_checker=None):
     """Gather a :class:`GateContext` from the immutable event and read-only APIs.
 
     ``root`` is the trusted base checkout (verifier, tasks, evidence);
     ``head_root`` is a separate checkout of the tested revision (manifest).
+    ``ancestry_checker`` is a test seam; production uses the trusted compare API.
     """
     tested_root = head_root or root
     if event_name == "merge_group":
@@ -338,12 +445,15 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None)
                           required_checks=tuple(required_checks))
         return _collect_manifest(ctx, tested_root)
     pr = event.get("pull_request") or {}
+    head, base = pr.get("head") or {}, pr.get("base") or {}
+    cross_repo = not _same_repository((head.get("repo") or {}).get("full_name", ""),
+                                      (base.get("repo") or {}).get("full_name", ""))
     number = pr.get("number", 0)
     ctx = GateContext(pr_number=number, event_name=event_name,
-                      head_ref=pr.get("head", {}).get("ref", ""),
-                      head_sha=pr.get("head", {}).get("sha", ""),
-                      base_sha=pr.get("base", {}).get("sha", ""),
-                      tested_sha=pr.get("head", {}).get("sha", ""),
+                      head_ref=head.get("ref", ""),
+                      head_sha=head.get("sha", ""),
+                      base_sha=base.get("sha", ""),
+                      tested_sha=head.get("sha", ""),
                       labels=tuple(x.get("name", "") for x in pr.get("labels", [])),
                       title=pr.get("title", ""),
                       author_association=pr.get("author_association", ""),
@@ -359,8 +469,22 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None)
                          "labels": tuple(x.get("name", "") for x in details.get("labels", [])),
                          "commit_authors": tuple((x.get("author") or {}).get("login", "")
                                                  for x in details.get("commits", [])),
+                         "tested_sha": details.get("headRefOid", ""),
                          "files": tuple(files)})
     ctx = _collect_task_and_evidence(ctx, root, tested_root)
+    kind, _ = classify_pull_request(ctx.head_ref, ctx.labels, ctx.title,
+                                    ctx.commit_authors, ctx.author_association)
+    if kind == WORKER:
+        note_sha = extract_note_revision(ctx.evidence_text)
+        repo = os.environ.get("GITHUB_REPOSITORY") or (base.get("repo") or {}).get("full_name", "")
+        evidence = {}
+        # extract_note_revision already validated the canonical field, so the
+        # compare token is safe without a second, unreachable SHA guard.
+        if note_sha and not cross_repo and repo:
+            checker = ancestry_checker or check_revision_ancestry
+            evidence = checker(note_sha, ctx.head_sha, repo)
+        ctx = GateContext(**{**ctx.__dict__, "note_sha": note_sha,
+                             "revision_evidence": evidence, "cross_repo_head": cross_repo})
     return _collect_manifest(ctx, tested_root)
 
 
@@ -393,12 +517,13 @@ def _collect_task_and_evidence(ctx, root, head_root=None):
         return ctx
     task_path = _task_file(root, task_id)
     notes_root = Path(head_root or root)
-    notes = sorted((notes_root / ".agents" / "notes").glob(f"{task_id}-*.md"))
+    notes = list((notes_root / ".agents" / "notes").glob(f"{task_id}-*.md"))
     if not notes:
-        notes = sorted((notes_root / "docs" / "pr" / "notes").glob(f"{task_id}-*.md"))
+        notes = list((notes_root / "docs" / "pr" / "notes").glob(f"{task_id}-*.md"))
+    newest = max(notes, key=_note_key) if notes else None
     return GateContext(**{**ctx.__dict__,
                           "task_text": task_path.read_text() if task_path.is_file() else "",
-                          "evidence_text": notes[-1].read_text() if notes else ""})
+                          "evidence_text": newest.read_text() if newest else ""})
 
 
 def _collect_manifest(ctx, root):
