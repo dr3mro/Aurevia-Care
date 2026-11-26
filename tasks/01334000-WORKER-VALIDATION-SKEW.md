@@ -19,5 +19,6 @@
   - review verdicts (read-only subagents, agent file IDs):
     - coverage-auditor: GO (0 Critical, 0 Required, 1 Optional: full-suite/coverage evidence pending — every new production line and branch has a named asserting test).
     - devsecops: GO (0 Critical, 0 Required, 3 Optional: clarify that main's gate scripts are overlaid rather than claiming no candidate code runs, bound raw `tail` output, and mask the pre-existing commits annotation — no trust boundary weakened).
+    - github-workflow: GO (0 Critical, 0 Required, 1 Optional: the extra unauthenticated `origin` fetch is redundant with `fetch-depth: 0` and would fail for a private repo; public repo makes it harmless today).
 
     Unverified: the workflow cannot run locally; no live run has exercised a stale merge yet. Full Python suite and coverage gate are pending in the orchestrator.
