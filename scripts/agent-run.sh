@@ -51,6 +51,9 @@ export GIT_CONFIG_KEY_2=core.fsmonitor GIT_CONFIG_VALUE_2=false
 
 cd "${GITHUB_WORKSPACE:-$(dirname "$0")/..}"
 repo_root=$(pwd -P)
+if [[ -n "${AUREVIA_SIGNAL_TARGET_FILE:-}" ]]; then
+  printf '%s\n' "$$" > "$AUREVIA_SIGNAL_TARGET_FILE"
+fi
 git() { command git -C "$repo_root" "$@"; }
 mkdir -p "$HOME"
 repo_top=$(git rev-parse --show-toplevel 2>/dev/null || true)
