@@ -39,6 +39,16 @@ def checkout_paths(path):
     return paths
 
 
+def job_checkout_paths(job):
+    """Return the sparse-checkout patterns of one job, in step order."""
+    paths = []
+    for step in job.get("steps", []):
+        sparse = step.get("with", {}).get("sparse-checkout")
+        if isinstance(sparse, str):
+            paths.extend(line.strip() for line in sparse.splitlines() if line.strip())
+    return paths
+
+
 class SwarmSparseCheckoutTest(unittest.TestCase):
     def test_slots_default_path_exists_in_repository(self):
         """The path swarm.py reads is the authoritative, checked-in slots file."""
@@ -56,6 +66,40 @@ class SwarmSparseCheckoutTest(unittest.TestCase):
         for path in sorted(WORKFLOWS.glob("*.yml")):
             with self.subTest(workflow=path.name):
                 self.assertNotIn(".github/swarm", checkout_paths(path))
+
+    def test_jobs_with_local_actions_check_out_the_action_directory(self):
+        """A sparse checkout must include the local action it uses, per job.
+
+        A checkout in a different job cannot satisfy this: the local action is
+        resolved by the runner on the same job that invokes ``uses: ./...``.
+        """
+        for path in sorted(WORKFLOWS.glob("*.yml")):
+            config = yaml.safe_load(path.read_text(encoding="utf-8"))
+            for name, job in config["jobs"].items():
+                steps = job.get("steps", [])
+                sparse_indexes = [i for i, step in enumerate(steps)
+                                  if "sparse-checkout" in (step.get("with") or {})]
+                if not sparse_indexes:
+                    continue
+                for i, step in enumerate(steps):
+                    uses = str(step.get("uses", ""))
+                    if not uses.startswith("./.github/actions/"):
+                        continue
+                    with self.subTest(workflow=path.name, job=name, action=uses):
+                        self.assertTrue((ROOT / ".github" / "actions").is_dir())
+                        self.assertIn(".github/actions", job_checkout_paths(job))
+                        self.assertLess(min(sparse_indexes), i)
+
+    def test_integrator_reconcile_can_load_its_setup_action(self):
+        """The 16:38Z failure was a checkout without .github/actions."""
+        config = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
+        reconcile = config["jobs"]["reconcile"]
+        self.assertIn(".github/actions", job_checkout_paths(reconcile))
+        steps = reconcile["steps"]
+        checkout = next(i for i, step in enumerate(steps) if "sparse-checkout" in (step.get("with") or {}))
+        setup = next(i for i, step in enumerate(steps)
+                     if step.get("uses") == "./.github/actions/setup-tooling-python")
+        self.assertLess(checkout, setup)
 
 
 if __name__ == "__main__":

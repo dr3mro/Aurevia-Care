@@ -19,4 +19,6 @@
     - github-workflow: GO (0 Critical, 0 Required, 2 Optional: reviewer could not re-run commands, and no live two-feature wave observed — output compatibility and focus parsing verified statically).
     - code-reviewer: GO (0 Critical, 0 Required, 2 Optional: stale step name and WORKER_COUNT wording — both fixed in the final tree: the step is "Select features with OpenCode" and the SM prompt treats $WORKER_COUNT as authoritative).
 
+    Concurrency note: one verification run captured `swarm.yml` mid-merge from another session (`fix/swarm-empty-allocation`) and reported transient conflict markers and stale assertions. The merge committed cleanly (`cf9be21c`); the current tree has no markers, retains the two-feature prompt and parser, and `test_swarm.py` is 377 tests OK again. No fix was needed beyond re-running on the merged tree.
+
     Unverified: no live swarm wave has produced a two-feature selection yet; model behavior is guided by prompt and structural tests only. No simulated-user or authorized-human feedback was used.

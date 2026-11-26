@@ -1020,7 +1020,9 @@ class PlanTests(unittest.TestCase):
         self.assertIn("up to two features", select)
         self.assertIn("Prefer two different feature prefixes", select)
         self.assertIn("feature=<comma-separated feature prefixes>", select)
-        self.assertIn("^feature=[A-Za-z0-9_,-]+$", select)
+        # The quantifier is * so an explicit `feature=` is a valid empty answer;
+        # the guard still rejects a missing feature= line.
+        self.assertIn("^feature=[A-Za-z0-9_,-]*$", select)
 
     def test_sm_prefers_different_features_and_falls_back_to_one_task(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
@@ -1066,7 +1068,10 @@ class PlanTests(unittest.TestCase):
                 self.assertIn("::error::", step)
                 self.assertIn("OPENCODE_API_KEY_ALT", step)
                 self.assertIn("keys+=(", step)
-                self.assertIn(r"^- \[ \]", step)
+                # The old open-task grep decided whether an empty answer was an
+                # error. Now the answer line's presence decides it, so bind the
+                # regex that accepts an explicit empty value instead.
+                self.assertIn("^tasks=[A-Za-z0-9_,-]*$", step)
         self.assertIn("no feature=/tasks=", select)
         self.assertIn("no tasks=", allocate)
 
