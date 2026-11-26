@@ -340,4 +340,74 @@ class AuthorizationDecisionLedgerTest {
             assertEquals(COLUMNS, actual, "no patient, request-body or role-list column exists");
         }
     }
+
+    @Test
+    void codedFieldLengthLimitsAreEnforcedAtBoundaries() throws Exception {
+        bind(ORG_A, "admin-a");
+        String subject = "s".repeat(256);
+        String action = "a".repeat(128);
+        String resourceType = "r".repeat(128);
+        String correlationId = "c".repeat(128);
+        String insert = """
+                INSERT INTO public.authorization_decision
+                    (organization_id, subject, action, resource_type, decision, reason_code, correlation_id)
+                VALUES ('%s', '%s', '%s', '%s', 'allow', 'ALLOWED', '%s')
+                """;
+
+        assertTrue(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, subject, action, resourceType, correlationId)));
+        assertEquals(1L, count("aurevia_migrate", ORG_A, correlationId));
+
+        assertFalse(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, "s".repeat(257), action, resourceType, "corr-subject-overflow")));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-subject-overflow"));
+        assertFalse(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, subject, "a".repeat(129), resourceType, "corr-action-overflow")));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-action-overflow"));
+        assertFalse(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, subject, action, "r".repeat(129), "corr-resource-overflow")));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-resource-overflow"));
+        String correlationOverflow = "c".repeat(129);
+        assertFalse(executes("aurevia_app", ORG_A,
+                insert.formatted(ORG_A, subject, action, resourceType, correlationOverflow)));
+        assertEquals(0L, count("aurevia_migrate", ORG_A, correlationOverflow));
+
+        // The production sink bounds untrusted fields before insertion; the
+        // database checks above remain the backstop for direct SQL callers.
+        List<Decision> oversizedDecisions = List.of(
+                new Decision("createFacility", action, ORG_A, "s".repeat(257),
+                        "corr-sink-subject-overflow", true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()),
+                new Decision("createFacility", "a".repeat(129), ORG_A, subject,
+                        "corr-sink-action-overflow", true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()),
+                new Decision("createFacility", action, ORG_A, subject,
+                        correlationOverflow, true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()));
+        for (Decision oversized : oversizedDecisions) {
+            String storedCorrelation = oversized.correlationId().substring(
+                    0, Math.min(128, oversized.correlationId().length()));
+            long before = count("aurevia_migrate", ORG_A, storedCorrelation);
+
+            sink.record(oversized);
+
+            assertEquals(before + 1, count("aurevia_migrate", ORG_A, storedCorrelation));
+            try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+                connection.setAutoCommit(false);
+                bind(connection, ORG_A, "admin-a");
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "SELECT subject, action, correlation_id FROM public.authorization_decision "
+                                + "WHERE correlation_id = ? AND decided_at = CAST(? AS timestamptz)")) {
+                    statement.setString(1, storedCorrelation);
+                    statement.setObject(2, OffsetDateTime.ofInstant(CLOCK.instant(), ZoneOffset.UTC));
+                    try (ResultSet result = statement.executeQuery()) {
+                        assertTrue(result.next());
+                        assertEquals(oversized.subject().substring(0, 255), result.getString("subject"));
+                        assertEquals(oversized.action().substring(0, 128), result.getString("action"));
+                        assertEquals(storedCorrelation, result.getString("correlation_id"));
+                        assertFalse(result.next());
+                    }
+                } finally {
+                    connection.rollback();
+                }
+            }
+        }
+    }
 }

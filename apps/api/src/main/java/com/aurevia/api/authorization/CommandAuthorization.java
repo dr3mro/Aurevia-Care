@@ -26,15 +26,17 @@ import com.aurevia.scheduling.checkin.WorklistPolicy;
  * command identifier and inert claimed fields; the subject comes from the
  * server request context, membership and roles are re-resolved on every call,
  * and the action is decided by exactly the policy that owns it. Other policies
- * cannot widen a command through a colliding action key. Every outcome,
- * including malformed, unauthenticated and denied calls, is recorded before the
- * caller receives a response.</p>
+ * cannot widen a command through a colliding action key. Every evaluated
+ * outcome, including malformed, unauthenticated and denied calls, is passed to
+ * the decision sink before the caller receives a response; a sink failure
+ * never allows the command to proceed.</p>
  *
  * <p>This gate is deliberately coarse: it does not replace the owning service's
  * object authorization, revision preconditions or human clinical attestation
- * (PRD-06). The production OPS-02 sink records in its own tenant-guarded
- * transaction so a denial survives the rejected command's rollback; the
- * in-memory sink in this package is synthetic only.</p>
+ * (PRD-06). The caller supplies the {@code DecisionSink}; production uses the
+ * durable OPS-02 sink in its own tenant-guarded transaction so a denial survives
+ * rollback of the command it rejected. The in-memory sink in this package is
+ * synthetic only.</p>
  */
 public final class CommandAuthorization {
 
