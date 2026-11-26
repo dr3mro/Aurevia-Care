@@ -119,12 +119,13 @@ jobs:
       # The read-only token is used here, before the agent has touched the
       # workspace. The main branch can move during the run, so the merge step
       # later fetches nothing; a newer main is picked up by the integrator.
+      # Optional: allocation can be skipped when no feature was selected. Match
+      # by pattern so an absent trail is a quiet no-op rather than a red error.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         with:
-          name: trail-allocation
+          pattern: trail-allocation
           path: .agent
-          if-no-files-found: ignore
       - name: Fetch main
         env:
           # This job is read-only; the job token is enough. Never expose the

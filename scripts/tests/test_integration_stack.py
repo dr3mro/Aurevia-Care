@@ -118,3 +118,55 @@ class OptionalArtifactTests(unittest.TestCase):
                     if uses.startswith("actions/download-artifact@"):
                         with self.subTest(workflow=name, step=step.get("name", uses)):
                             self.assertIs(step.get("continue-on-error"), True)
+
+    def test_optional_artifacts_are_downloaded_by_pattern_not_by_name(self):
+        """A missing pattern match exits 0; a missing name calls core.setFailed.
+
+        Producers such as ``Allocate tasks (SM)`` are skipped when no feature is
+        selected, so their artifact never exists.  Downloading it by ``name``
+        makes ``actions/download-artifact`` emit a red ``##[error]`` annotation
+        even when ``continue-on-error`` keeps the job green.  A glob pattern
+        that matches nothing logs a normal "0 artifact(s) downloaded" instead.
+        """
+        import yaml
+        from helpers import ROOT
+
+        # Job id, artifact and destination path are pinned so a future edit
+        # cannot silently relocate the trail while still using a harmless
+        # pattern. With one match the action extracts directly into `path`:
+        # swarm.yml and swarm-worker.yml keep `.agent/work-trail.jsonl`,
+        # swarm-integrator.yml keeps `trails/trail-allocation/work-trail.jsonl`
+        # and `validated/manifest.json`.
+        expected = (
+            ("swarm.yml", "allocate", "trail-feature", ".agent"),
+            ("swarm.yml", "loop", "trail-allocation", ".agent"),
+            ("swarm-worker.yml", "work", "trail-allocation", ".agent"),
+            ("swarm-integrator.yml", "validate", "trail-allocation", "trails/trail-allocation"),
+            ("swarm-integrator.yml", "publish", "validated-batch", "validated"),
+        )
+        for filename, job_name, artifact, path in expected:
+            with self.subTest(workflow=filename, job=job_name, artifact=artifact):
+                doc = yaml.safe_load((ROOT / ".github/workflows" / filename).read_text())
+                steps = doc["jobs"][job_name]["steps"]
+                step = next(
+                    step
+                    for step in steps
+                    if str(step.get("uses", "")).startswith("actions/download-artifact@")
+                    and artifact in (
+                        (step.get("with") or {}).get("pattern"),
+                        (step.get("with") or {}).get("name"),
+                    )
+                )
+                self.assertEqual(
+                    step["uses"],
+                    "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+                )
+                with_options = step["with"]
+                self.assertEqual(with_options.get("pattern"), artifact)
+                self.assertNotIn("name", with_options)
+                # A literal pattern matches at most one artifact, so the action
+                # extracts it straight into `path` without a subdirectory.
+                self.assertFalse(any(char in artifact for char in "*?["))
+                self.assertNotIn("merge-multiple", with_options)
+                self.assertEqual(with_options.get("path"), path)
+                self.assertIs(step.get("continue-on-error"), True)
