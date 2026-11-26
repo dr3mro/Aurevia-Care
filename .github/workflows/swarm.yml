@@ -138,6 +138,9 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix || steps.kill.outputs.matrix || '{"include":[]}' }}
       count: ${{ steps.plan.outputs.count || steps.kill.outputs.count || '0' }}
       image_prefix: ${{ steps.image.outputs.prefix }}
+      # Downstream jobs already depend on plan; forwarding the resolved flag here
+      # keeps the job graph unchanged while every gate reads one canonical value.
+      single_task: ${{ needs.flags.outputs.single_task }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -234,7 +237,7 @@ jobs:
     # Static name: GitHub renders matrix values in a job name only when the
     # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.
     name: Swarm worker
-    needs: [plan, flags]
+    needs: plan
     # count is empty when the budget gate skipped the plan step; fromJSON('')
     # on the matrix would then fail the whole run and trigger a false repair.
     if: needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
@@ -270,7 +273,7 @@ jobs:
       slot: ${{ format('{0}', matrix.slot) }}
       task: ${{ toJSON(matrix) }}
       ignore_red_main: ${{ inputs.ignore_red_main == true }}
-      single_task: ${{ needs.flags.outputs.single_task }}
+      single_task: ${{ needs.plan.outputs.single_task }}
   # Integration runs inside the wave, after its workers: no workflow_run chain.
   # The integrator serializes itself (group swarm-integrator), so overlapping
   # waves queue their batches instead of racing to push main. It also runs when
@@ -297,7 +300,7 @@ jobs:
   # worker fails three times waits for a person, so this cannot spin forever.
   loop:
     name: Start the next wave
-    needs: [plan, worker, integrate, flags]
+    needs: [plan, worker, integrate]
     if: always() && needs.plan.result == 'success' && needs.integrate.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -315,7 +318,7 @@ jobs:
             tasks/
             tasks
       - name: Wait for Delivery on main before advancing
-        if: needs.flags.outputs.single_task == 'true'
+        if: needs.plan.outputs.single_task == 'true'
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: |

@@ -127,8 +127,9 @@ class WorkflowVariableContractTest(unittest.TestCase):
         swarm = read("swarm.yml")
         wait = next(s for s in swarm["jobs"]["loop"]["steps"]
                     if s.get("name") == "Wait for Delivery on main before advancing")
-        self.assertEqual(wait["if"], "needs.flags.outputs.single_task == 'true'")
-        self.assertIn("flags", swarm["jobs"]["loop"]["needs"])
+        self.assertEqual(wait["if"], "needs.plan.outputs.single_task == 'true'")
+        self.assertEqual(swarm["jobs"]["plan"]["outputs"]["single_task"],
+                         "${{ needs.flags.outputs.single_task }}")
         worker = read("swarm-worker.yml")
         fill = next(s for s in worker["jobs"]["publish"]["steps"]
                     if s.get("name") == "Fill the free slot")
@@ -137,7 +138,7 @@ class WorkflowVariableContractTest(unittest.TestCase):
     def test_worker_receives_the_canonical_single_task_input(self):
         swarm = read("swarm.yml")
         self.assertEqual(swarm["jobs"]["worker"]["with"]["single_task"],
-                         "${{ needs.flags.outputs.single_task }}")
+                         "${{ needs.plan.outputs.single_task }}")
         worker = read("swarm-worker.yml")
         inputs = trigger(worker)["workflow_call"]["inputs"]
         self.assertEqual(inputs["single_task"]["type"], "string")

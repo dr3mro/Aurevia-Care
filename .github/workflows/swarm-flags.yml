@@ -24,6 +24,11 @@ on:
         value: ${{ jobs.resolve.outputs.notes }}
 permissions:
   contents: read
+# Each caller run resolves its own flags; waiting runs are kept so a queued
+# wave never silently reuses another run's variables.
+concurrency:
+  group: swarm-flags-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   resolve:
