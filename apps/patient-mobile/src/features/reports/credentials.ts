@@ -1,41 +1,33 @@
 import * as SecureStore from 'expo-secure-store';
 
+import { createTokenStore } from '../../api/sessionCredentialStore';
+import type { SecureStoreAdapter, TokenStoreFunctions } from '../../api/sessionCredentialStore';
 import type { TokenStore } from './types';
 
-/** Stable key for the single protected session credential. */
-const TOKEN_KEY = 'aurevia.patient.session';
+export type { SecureStoreAdapter };
 
 /**
- * The OS-backed storage surface used by {@link SecureCredentialStore}.
+ * Report-download credential store (PAT-02).
  *
- * Injecting this seam keeps the credential boundary testable with a synthetic adapter and makes the
- * reliance on native secure storage explicit at the call site.
- */
-export interface SecureStoreAdapter {
-  /** Read a protected value. */
-  getItemAsync(key: string): Promise<string | null>;
-  /** Write a protected value. */
-  setItemAsync(key: string, value: string): Promise<void>;
-  /** Remove a protected value. */
-  deleteItemAsync(key: string): Promise<void>;
-}
-
-/**
- * OS-backed credential storage (PAT-02).
- *
- * The session token lives in `expo-secure-store`, never in app state, AsyncStorage or a clinical
- * cache. Callers read it immediately before a protected request so a revocation takes effect on the
- * next action.
+ * This class is a thin adapter over the single canonical session store: the
+ * key, the blank-credential rule and the fail-closed sign-out live in
+ * {@link ../../api/sessionCredentialStore.createTokenStore}. Keeping only the `TokenStore`
+ * seam here means a sign-out through the report path removes the same OS
+ * credential and clinical memory as a sign-out through the transport path.
  */
 export class SecureCredentialStore implements TokenStore {
+  private readonly store: TokenStoreFunctions;
+
   /**
    * @param adapter native secure storage; defaults to the platform implementation
    */
-  constructor(private readonly adapter: SecureStoreAdapter = SecureStore) {}
+  constructor(adapter: SecureStoreAdapter = SecureStore) {
+    this.store = createTokenStore(adapter);
+  }
 
   /** Read the protected session credential. */
-  async read(): Promise<string | null> {
-    return this.adapter.getItemAsync(TOKEN_KEY);
+  read(): Promise<string | null> {
+    return this.store.loadToken();
   }
 
   /**
@@ -43,15 +35,12 @@ export class SecureCredentialStore implements TokenStore {
    *
    * @throws Error with code `INVALID_CREDENTIAL` when the token is empty or blank
    */
-  async save(token: string): Promise<void> {
-    if (token.trim().length === 0) {
-      throw new Error('INVALID_CREDENTIAL');
-    }
-    await this.adapter.setItemAsync(TOKEN_KEY, token);
+  save(token: string): Promise<void> {
+    return this.store.saveToken(token);
   }
 
-  /** Remove the protected credential, for example after a logout or device revocation. */
-  async clear(): Promise<void> {
-    await this.adapter.deleteItemAsync(TOKEN_KEY);
+  /** Remove the credential and all cached clinical data after logout or revocation. */
+  clear(): Promise<void> {
+    return this.store.clearToken();
   }
 }

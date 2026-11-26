@@ -6,6 +6,7 @@ import {
   clinicalCacheSize,
   readClinical,
 } from './clinicalCache';
+import { SecureCredentialStore } from '../features/reports/credentials';
 import { clearToken, loadToken, saveToken } from './tokenStore';
 
 /** The native adapter is replaced with a synthetic, in-memory SecureStore. */
@@ -101,5 +102,29 @@ describe('tokenStore (PAT-02, ARC-03)', () => {
 
     expect(clinicalCacheSize()).toBe(0);
     expect(readClinical('messages', 'msg-1')).toBeUndefined();
+  });
+
+  it('clears the shared credential and clinical cache through the report store even when native delete rejects', async () => {
+    await saveToken(TOKEN);
+    cacheClinical('reports', 'report-1', { text: 'synthetic-report' });
+    secureStore.deleteItemAsync.mockImplementationOnce(async (key: string) => {
+      secureStore.__store.delete(key);
+      throw new Error('keychain unavailable');
+    });
+
+    const store = new SecureCredentialStore();
+    await expect(store.clear()).rejects.toThrow('keychain unavailable');
+
+    await expect(loadToken()).resolves.toBeNull();
+    expect(clinicalCacheSize()).toBe(0);
+    expect(readClinical('reports', 'report-1')).toBeUndefined();
+  });
+
+  it('writes only the canonical session key from both credential stores', async () => {
+    await saveToken(TOKEN);
+    await new SecureCredentialStore().save('synthetic-report-token');
+
+    expect([...secureStore.__store.keys()]).toEqual([TOKEN_KEY]);
+    expect(secureStore.__store.size).toBe(1);
   });
 });
