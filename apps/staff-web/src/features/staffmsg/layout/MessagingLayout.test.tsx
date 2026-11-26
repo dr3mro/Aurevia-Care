@@ -78,12 +78,20 @@ function installViewport(width: number): Viewport {
 }
 
 /** A stateful list child that can open the detail pane through the hook. */
-function ListWithNavigation({ openLabel = layoutText('en', 'detailPane') }: { readonly openLabel?: string }) {
+function ListWithNavigation({
+  openLabel = layoutText('en', 'detailPane'),
+}: {
+  readonly openLabel?: string;
+}) {
   const navigation = useMessagingNavigation();
   const [value, setValue] = useState('synthetic draft');
   return (
     <div>
-      <input aria-label="Synthetic draft" value={value} onChange={(event) => setValue(event.target.value)} />
+      <input
+        aria-label="Synthetic draft"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+      />
       <button type="button" onClick={navigation.openDetail}>
         {openLabel}
       </button>
@@ -137,6 +145,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Normalize jsdom's CSS serialization of zero lengths before comparing grid tracks. */
+function normalizeGridStyle(style: string | null | undefined): string {
+  return (style ?? '').replace(/0px/g, '0');
+}
+
 describe('MessagingLayout pane counts', () => {
   it('renders three labelled panes at the expanded breakpoint', () => {
     installViewport(1280);
@@ -151,7 +164,9 @@ describe('MessagingLayout pane counts', () => {
     ]);
     expect(screen.queryByTestId('synthetic-notice')).toBeNull();
     for (const id of ['list', 'detail', 'auxiliary']) {
-      expect(screen.getByRole('region', { name: layoutText('en', `${id}Pane` as 'listPane') })).toBeTruthy();
+      expect(
+        screen.getByRole('region', { name: layoutText('en', `${id}Pane` as 'listPane') }),
+      ).toBeTruthy();
     }
   });
 
@@ -178,7 +193,9 @@ describe('MessagingLayout pane counts', () => {
 
     fireEvent.click(screen.getByRole('button', { name: layoutText('en', 'detailPane') }));
     expect(root?.getAttribute('data-stage')).toBe('detail');
-    expect(visiblePanes(container).map((pane) => pane.getAttribute('data-pane'))).toEqual(['detail']);
+    expect(visiblePanes(container).map((pane) => pane.getAttribute('data-pane'))).toEqual([
+      'detail',
+    ]);
     expect(screen.getByRole('button', { name: layoutText('en', 'back') })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: layoutText('en', 'back') }));
@@ -201,9 +218,11 @@ describe('MessagingLayout pane counts', () => {
       'detail',
     ]);
     expect(container.querySelector('[data-pane="auxiliary"]')).toBeNull();
-    expect(container.querySelector('[data-panes]')?.getAttribute('style')).toContain(
-      'grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)',
-    );
+    // jsdom normalizes a zero length to `0px` in newer releases; normalize it
+    // back so the assertion checks the layout contract, not CSS serialization.
+    expect(
+      normalizeGridStyle(container.querySelector('[data-panes]')?.getAttribute('style')),
+    ).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)');
   });
 });
 
@@ -213,7 +232,9 @@ describe('MessagingLayout reflow and keyboard behaviour', () => {
     const { container } = wrap();
     const grid = container.querySelector<HTMLElement>('[data-panes]');
     const style = grid?.getAttribute('style') ?? '';
-    expect(style).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)');
+    expect(normalizeGridStyle(style)).toContain(
+      'grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)',
+    );
     expect(style).not.toContain('220px');
     for (const pane of visiblePanes(container)) {
       const style = pane.getAttribute('style') ?? '';
@@ -234,7 +255,8 @@ describe('MessagingLayout reflow and keyboard behaviour', () => {
       const style = composer?.getAttribute('style') ?? '';
       expect(style).toContain('position: sticky');
       expect(style).toContain('inset-block-end: 0');
-      expect(root?.getAttribute('style')).toContain('calc(16rem + 4px)');
+      // jsdom versions differ on calc operand order; both mean the same clearance.
+      expect(root?.getAttribute('style')).toMatch(/calc\((?:16rem \+ 4px|4px \+ 16rem)\)/);
       expect(root?.getAttribute('style')).toContain('scroll-padding-block-end');
       expect(root?.getAttribute('style')).toContain('display: block');
     };
