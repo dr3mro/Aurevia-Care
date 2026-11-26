@@ -21,11 +21,11 @@ on:
         description: 'Task id to launch first (optional; ignores the attempt limit, still needs open status, met dependencies and a free scope)'
         default: ''
       now:
-        description: 'Reserved and currently inert: a dispatch still queues behind the running wave for this branch. The one-wave-per-branch group cannot be bypassed.'
+        description: 'Reserved; dispatches still queue behind the current wave.'
         type: boolean
         default: false
       ignore_red_main:
-        description: 'Safety override: bypass claim, dependency, attempt, scope, in-flight PR, image, budget and worker-cap gates; the one-wave-per-branch group and all verification and merge gates still apply.'
+        description: 'Bypass task gates; wave queue and CI/merge gates still apply.'
         type: boolean
         default: false
   push:
