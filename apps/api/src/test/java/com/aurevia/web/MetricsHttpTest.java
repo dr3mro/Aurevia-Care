@@ -162,7 +162,8 @@ class MetricsHttpTest {
     private static WebApplicationContextRunner newSyntheticRunner() {
         return new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, Stubs.class)
-                .withPropertyValues("spring.profiles.active=synthetic-auth");
+                .withPropertyValues("spring.profiles.active=synthetic-auth",
+                        "AUREVIA_ALLOW_SYNTHETIC_AUTH=true");
     }
 
     private MockMvc mvc(ApplicationContext context) {

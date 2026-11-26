@@ -24,6 +24,7 @@ class SecurityConfigurationTest {
     private static final String AUDIENCE_PROPERTY = "spring.security.oauth2.resourceserver.jwt.audiences";
     private static final String ISSUER = "https://issuer.example.test";
     private static final String AUDIENCE = "synthetic-api";
+    private static final String OPT_IN_PROPERTY = "AUREVIA_ALLOW_SYNTHETIC_AUTH";
     private static final String FAILURE_MESSAGE = "AUREVIA_OIDC_ISSUER_URI must be set";
     private static final String AUDIENCE_FAILURE_MESSAGE = "AUREVIA_OIDC_AUDIENCE must be set";
 
@@ -41,10 +42,30 @@ class SecurityConfigurationTest {
     }
 
     @Test
-    void syntheticProfileBuildsAPermissiveChainWithoutAnIssuer() {
+    void syntheticProfileWithoutOptInFailsStartup() {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class)
                 .withPropertyValues("spring.profiles.active=synthetic-auth")
+                .run(context -> {
+                    Throwable failure = context.getStartupFailure();
+                    assertNotNull(failure, "synthetic-auth must fail closed without the explicit opt-in");
+                    assertTrue(failureMessageChain(failure).contains(SecurityConfiguration.SYNTHETIC_OPT_IN_MESSAGE));
+                });
+    }
+
+    @Test
+    void syntheticFilterChainRejectsMissingOptInDirectly() {
+        IllegalStateException failure = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> new SecurityConfiguration("", "", false).syntheticSecurityFilterChain(null));
+        assertEquals(SecurityConfiguration.SYNTHETIC_OPT_IN_MESSAGE, failure.getMessage());
+    }
+
+    @Test
+    void syntheticProfileWithOptInBuildsPermissiveChain() {
+        new WebApplicationContextRunner()
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class)
+                .withPropertyValues("spring.profiles.active=synthetic-auth", OPT_IN_PROPERTY + "=true")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     assertNotNull(context.getBean(SecurityFilterChain.class));
@@ -89,7 +110,7 @@ class SecurityConfigurationTest {
     void blankIssuerIsRejectedDirectly() {
         IllegalStateException failure = org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalStateException.class,
-                () -> new SecurityConfiguration("   ", AUDIENCE)
+                () -> new SecurityConfiguration("   ", AUDIENCE, false)
                         .oidcSecurityFilterChain(null, new DecoderStub().jwtDecoder(), disabledDocs()));
         assertEquals(FAILURE_MESSAGE, failure.getMessage());
     }
@@ -98,7 +119,7 @@ class SecurityConfigurationTest {
     void blankAudienceIsRejectedDirectly() {
         IllegalStateException failure = org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalStateException.class,
-                () -> new SecurityConfiguration(ISSUER, "   ")
+                () -> new SecurityConfiguration(ISSUER, "   ", false)
                         .oidcSecurityFilterChain(null, new DecoderStub().jwtDecoder(), disabledDocs()));
         assertEquals(AUDIENCE_FAILURE_MESSAGE, failure.getMessage());
     }

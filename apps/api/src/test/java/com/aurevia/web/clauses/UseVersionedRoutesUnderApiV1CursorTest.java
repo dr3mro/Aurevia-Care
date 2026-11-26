@@ -40,7 +40,8 @@ import com.aurevia.observability.CorrelationIdFilter;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_arc03_clause1_it")
+        properties = {"spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_arc03_clause1_it",
+                "AUREVIA_ALLOW_SYNTHETIC_AUTH=true"})
 @ActiveProfiles("synthetic-auth")
 class UseVersionedRoutesUnderApiV1CursorTest {
 

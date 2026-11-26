@@ -52,7 +52,8 @@ import com.aurevia.exchange.response.ExchangeResponseActionPolicy;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_arc03_post_commands_it")
+        properties = {"spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_arc03_post_commands_it",
+                "AUREVIA_ALLOW_SYNTHETIC_AUTH=true"})
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class UseExplicitPostCommandsSignCorrectAcknowledgeTest {
