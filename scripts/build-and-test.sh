@@ -223,7 +223,7 @@ finish() {
 }
 
 # --- policy -----------------------------------------------------------------
-shell_files=(scripts/*.sh infra/bootstrap/start.sh apps/api/check.sh db/check.sh)
+shell_files=(scripts/*.sh infra/bootstrap/start.sh infra/app/start.sh apps/api/check.sh db/check.sh)
 
 # shellcheck disable=SC2329,SC2317
 check_shell() {

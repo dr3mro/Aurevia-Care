@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-files=(scripts/*.sh infra/bootstrap/start.sh apps/api/check.sh db/check.sh scripts/quick-check.sh)
+files=(scripts/*.sh infra/bootstrap/start.sh infra/app/start.sh apps/api/check.sh db/check.sh scripts/quick-check.sh)
 for file in "${files[@]}"; do bash -n "$file"; done
 if command -v shellcheck >/dev/null; then shellcheck "${files[@]}"; fi
 

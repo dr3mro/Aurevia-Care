@@ -36,7 +36,7 @@ jobs:
           fetch-depth: 0
       - name: Shell syntax and lint
         run: |
-          files=(scripts/*.sh infra/bootstrap/start.sh apps/api/check.sh db/check.sh)
+          files=(scripts/*.sh infra/bootstrap/start.sh infra/app/start.sh apps/api/check.sh db/check.sh)
           for file in "${files[@]}"; do bash -n "$file"; done
           shellcheck "${files[@]}"
       - name: Workflow lint (actionlint)

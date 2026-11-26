@@ -10,13 +10,27 @@ from helpers import ROOT
 
 
 class BuildAndTestTests(unittest.TestCase):
+    def test_app_entrypoint_is_covered_by_every_shell_lint_list(self):
+        """Every shell gate must put the release entrypoint in its lint array, not in a comment."""
+        entrypoint = "infra/app/start.sh"
+        for relative, array_name in (("scripts/check.sh", "scripts"),
+                                     ("scripts/quick-check.sh", "files"),
+                                     ("scripts/build-and-test.sh", "shell_files"),
+                                     (".github/workflows/delivery.yml", "files")):
+            with self.subTest(file=relative):
+                lines = (ROOT / relative).read_text().splitlines()
+                assignments = [line for line in lines
+                               if line.lstrip().startswith(f"{array_name}=(")]
+                self.assertTrue(assignments, f"no {array_name} lint array in {relative}")
+                self.assertIn(entrypoint, assignments[0])
+
     def test_policy_failure_is_preserved_in_the_step_log_and_exit_status(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for subdir in ("scripts", "infra/bootstrap", "apps/api", "db", "bin"):
+            for subdir in ("scripts", "infra/bootstrap", "infra/app", "apps/api", "db", "bin"):
                 (root / subdir).mkdir(parents=True)
-            for script in ("infra/bootstrap/start.sh", "apps/api/check.sh", "db/check.sh",
-                           "scripts/python-coverage.sh"):
+            for script in ("infra/bootstrap/start.sh", "infra/app/start.sh", "apps/api/check.sh",
+                           "db/check.sh", "scripts/python-coverage.sh"):
                 (root / script).touch()
             shutil.copy(ROOT / "scripts/build-and-test.sh", root / "scripts")
             stubs = {

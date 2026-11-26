@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-scripts=(scripts/*.sh infra/bootstrap/start.sh)
+scripts=(scripts/*.sh infra/bootstrap/start.sh infra/app/start.sh)
 for file in "${scripts[@]}"; do bash -n "$file"; done
 if command -v shellcheck >/dev/null; then
   shellcheck "${scripts[@]}"
