@@ -37,9 +37,11 @@ import com.aurevia.tenant.TenantContext;
 public class ReconciliationService {
 
     private static final String PURPOSE = "XCH04_RECONCILIATION_RESOLVE";
+    private static final String READ_PURPOSE = "XCH04_RECONCILIATION_RESOLUTION_READ";
     private static final String SCOPE = "EXCHANGE";
     private static final String RESOURCE_TYPE = "RECONCILIATION_ENTRY";
     private static final String ACTION = ResultActionPolicy.RECONCILIATION_RESOLVE;
+    private static final String READ_ACTION = ResultActionPolicy.RECONCILIATION_READ;
 
     private final ResultRepository repository;
     private final ResultActionPolicy policy;
@@ -87,7 +89,7 @@ public class ReconciliationService {
         AtomicReference<ApiException> failure = new AtomicReference<>();
         Resolution resolution = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
-            ApiException denial = authorize(context, id);
+            ApiException denial = authorize(context, PURPOSE, ACTION, id);
             if (denial != null) {
                 failure.set(denial);
                 return null;
@@ -103,11 +105,11 @@ public class ReconciliationService {
             if (inserted == null) {
                 ApiException conflict = new ApiException(409, "ENTRY_ALREADY_RESOLVED",
                         "this reconciliation entry has already been resolved");
-                writeAudit(context, id, "CONFLICT");
+                writeAudit(context, PURPOSE, ACTION, id, "CONFLICT");
                 failure.set(conflict);
                 return null;
             }
-            writeAudit(context, id, "SUCCESS");
+            writeAudit(context, PURPOSE, ACTION, id, "SUCCESS");
             return inserted;
         });
         if (failure.get() != null) {
@@ -125,28 +127,44 @@ public class ReconciliationService {
     public Optional<Resolution> resolution(String entryId) {
         String id = uuid(entryId, "entryId");
         // The read must run inside the guarded transaction: app.current_org is a transaction-local
-        // GUC, so a bare query would be hidden by forced RLS even for the owning tenant.
-        return transactions.execute(status -> {
+        // GUC, so a bare query would be hidden by forced RLS even for the owning tenant. A decision
+        // is clinical-review metadata, so read access requires the same bounded role as the queue.
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        Optional<Resolution> found = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
-            return Optional.ofNullable(store.find(context.organizationId(), id));
+            ApiException denial = authorize(context, READ_PURPOSE, READ_ACTION, id);
+            if (denial != null) {
+                // Report after the callback so the DENIED audit is committed with the transaction.
+                failure.set(denial);
+                return Optional.empty();
+            }
+            Optional<Resolution> resolution = Optional.ofNullable(store.find(context.organizationId(), id));
+            writeAudit(context, READ_PURPOSE, READ_ACTION, id,
+                    resolution.isPresent() ? "SUCCESS" : "NOT_FOUND");
+            return resolution;
         });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return found;
     }
 
-    private ApiException authorize(TenantContext context, String resourceId) {
+    private ApiException authorize(TenantContext context, String purpose, String action, String resourceId) {
         if (!repository.hasActiveMembership(context.subject())) {
-            writeAudit(context, resourceId, "DENIED");
+            writeAudit(context, purpose, action, resourceId, "DENIED");
             return new ApiException(403, "FORBIDDEN", "no active membership");
         }
         if (repository.activeRoles(context.subject()).stream()
-                .noneMatch(role -> policy.allows(ACTION, role))) {
-            writeAudit(context, resourceId, "DENIED");
+                .noneMatch(role -> policy.allows(action, role))) {
+            writeAudit(context, purpose, action, resourceId, "DENIED");
             return new ApiException(403, "FORBIDDEN", "missing reconciliation permission");
         }
         return null;
     }
 
-    private void writeAudit(TenantContext context, String resourceId, String outcome) {
-        audit.append(context, PURPOSE, ACTION, RESOURCE_TYPE, SCOPE, resourceId, outcome);
+    private void writeAudit(TenantContext context, String purpose, String action, String resourceId,
+                            String outcome) {
+        audit.append(context, purpose, action, RESOURCE_TYPE, SCOPE, resourceId, outcome);
     }
 
     private static String uuid(String value, String field) {

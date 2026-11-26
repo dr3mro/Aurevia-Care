@@ -353,6 +353,10 @@ class ResultRoutingIntegrationTest {
         assertEquals(HttpStatus.OK, readBack.getStatusCode(), readBack.getBody());
         assertEquals("match", text(readBack, "/action"), "a second worker must observe the stored decision");
         assertEquals("identifiers verified", text(readBack, "/reason"));
+        assertEquals(HttpStatus.OK, send(HttpMethod.GET, QUEUE + "/" + entryId + "/resolution", null,
+                "auditor-a", ORG_A).getStatusCode(), "the privacy auditor keeps read access");
+        assertEquals(HttpStatus.FORBIDDEN, send(HttpMethod.GET, QUEUE + "/" + entryId + "/resolution", null,
+                "reception-a", ORG_A).getStatusCode(), "read access is bounded to the reconciliation read role");
 
         ResponseEntity<String> openAfter = send(HttpMethod.GET, QUEUE + "?status=open", null,
                 "auditor-a", ORG_A);
@@ -380,12 +384,18 @@ class ResultRoutingIntegrationTest {
         assertEquals(1, auditCount("XCH04_RECONCILIATION_RESOLVE", entryId, "SUCCESS"));
         assertEquals(1, auditCount("XCH04_RECONCILIATION_RESOLVE", entryId, "CONFLICT"));
         assertEquals(1, auditCount("XCH04_RECONCILIATION_RESOLVE", entryId, "DENIED"));
+        assertEquals(2, auditCount("XCH04_RECONCILIATION_READ", entryId, "SUCCESS"));
+        assertEquals(1, auditCount("XCH04_RECONCILIATION_READ", entryId, "DENIED"));
+        assertEquals(1, count(ORG_B, "SELECT count(*) FROM public.audit_event "
+                + "WHERE action = 'XCH04_RECONCILIATION_READ' AND resource_id = '" + entryId
+                + "' AND outcome = 'NOT_FOUND'"));
 
         assertResolutionRejects(entryId, "UPDATE public.reconciliation_resolution "
                 + "SET reason = 'tampered' WHERE entry_id = '" + entryId + "'");
         assertResolutionRejects(entryId, "DELETE FROM public.reconciliation_resolution "
                 + "WHERE entry_id = '" + entryId + "'");
         assertResolutionRejects(entryId, "TRUNCATE TABLE public.reconciliation_resolution");
+        assertResolutionRejectsUnboundActor(entryId);
     }
 
     @Test
@@ -697,6 +707,33 @@ class ResultRoutingIntegrationTest {
                 fail("append-only resolution must reject " + mutation);
             } catch (SQLException expected) {
                 assertEquals("44000", expected.getSQLState(), expected.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Prove the actor guard fails closed when no authenticated subject of the active tenant is bound.
+     * The tenant GUCs are set in one session and the entry is asserted visible first, so the rejection
+     * comes from the trigger rather than from RLS hiding the row.
+     */
+    private void assertResolutionRejectsUnboundActor(String entryId) throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
+             Statement statement = connection.createStatement()) {
+            connection.setAutoCommit(false);
+            statement.execute("SET LOCAL app.current_org = '" + ORG_A + "'");
+            statement.execute("SET LOCAL app.actor = ''");
+            try (ResultSet result = statement.executeQuery("SELECT count(*) FROM public.xch04_reconciliation "
+                    + "WHERE id = '" + entryId + "'")) {
+                assertTrue(result.next());
+                assertEquals(1L, result.getLong(1), "the queue entry must be visible to the actor probe");
+            }
+            try {
+                statement.execute("INSERT INTO public.reconciliation_resolution "
+                        + "(organization_id, entry_id, action, reason) VALUES ('" + ORG_A + "', '"
+                        + entryId + "', 'match', 'unbound actor')");
+                fail("a decision without an authenticated tenant actor must be rejected");
+            } catch (SQLException expected) {
+                assertEquals("42501", expected.getSQLState(), expected.getMessage());
             }
         }
     }

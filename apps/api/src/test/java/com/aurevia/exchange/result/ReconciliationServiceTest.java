@@ -193,6 +193,18 @@ class ReconciliationServiceTest {
     }
 
     @Test
+    void readingAResolutionRequiresMembershipAndAReadRole() {
+        when(repository.hasActiveMembership(ACTOR)).thenReturn(false);
+
+        assertEquals(403, assertThrows(ApiException.class, () -> service.resolution(ENTRY_ID)).status());
+        verify(audit, atLeastOnce()).append(any(), any(), any(), any(), any(), any(), eq("DENIED"));
+
+        authorized("reception");
+        assertEquals(403, assertThrows(ApiException.class, () -> service.resolution(ENTRY_ID)).status());
+        verify(store, never()).find(anyString(), anyString());
+    }
+
+    @Test
     void resolutionIsScopedToTheActiveTenant() {
         authorized("tenant_admin");
         openEntry();
