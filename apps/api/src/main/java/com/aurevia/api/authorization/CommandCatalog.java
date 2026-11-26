@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.aurevia.api.ApiException;
 import com.aurevia.authz.ActionPolicy;
@@ -57,30 +58,41 @@ public final class CommandCatalog {
     /** Patient instruction facts owned by the MSG-05 policy. */
     public static final String INSTRUCTION_POLICY = "InstructionFactActions";
 
+    /** A route variable such as {@code {id}}; variable names are not part of route identity. */
+    private static final Pattern PATH_VARIABLE = Pattern.compile("\\{[^/{}]+\\}");
+
     private final List<CommandDefinition> commands;
     private final Map<String, CommandDefinition> byId;
+    private final Map<String, CommandDefinition> byRoute;
 
     /**
-     * Build a catalog with stable insertion order and no duplicate identifiers.
+     * Build a catalog with stable insertion order and no duplicate identifiers or routes.
      *
      * @param commands definitions to register
-     * @throws IllegalArgumentException when two definitions share an identifier or a route
+     * @throws IllegalArgumentException when two definitions share an identifier, a path or a
+     *         normalized method-and-route key
      */
     public CommandCatalog(List<CommandDefinition> commands) {
         Objects.requireNonNull(commands, "commands");
         Map<String, CommandDefinition> index = new LinkedHashMap<>();
-        Set<String> routes = new HashSet<>();
+        Map<String, CommandDefinition> routesByIdentity = new LinkedHashMap<>();
+        Set<String> paths = new HashSet<>();
         for (CommandDefinition definition : commands) {
             if (index.putIfAbsent(definition.id(), definition) != null) {
                 throw new IllegalArgumentException("duplicate command id: " + definition.id());
             }
             // One OpenAPI path key per route; a duplicate would silently drop an operation.
-            if (!routes.add(definition.path())) {
+            if (!paths.add(definition.path())) {
                 throw new IllegalArgumentException("duplicate command path: " + definition.path());
+            }
+            String route = route(definition.method(), definition.path());
+            if (routesByIdentity.putIfAbsent(route, definition) != null) {
+                throw new IllegalArgumentException("duplicate command route: " + route);
             }
         }
         this.commands = List.copyOf(commands);
         this.byId = Map.copyOf(index);
+        this.byRoute = Map.copyOf(routesByIdentity);
     }
 
     /**
@@ -118,12 +130,51 @@ public final class CommandCatalog {
     }
 
     /**
+     * Resolve the command bound to a matched HTTP route.
+     *
+     * <p>Only the HTTP method and the Spring route template are compared. Path variable names
+     * are normalized because a handler may name a parameter differently from the documented
+     * catalog entry; the concrete request path is never used, so identifiers in the URI cannot
+     * select a command. A blank or absent input has no match and fails closed at the caller.</p>
+     *
+     * @param method HTTP method of the matched handler
+     * @param path   matched route template, for example {@code /api/v1/orders/{id}/accept}
+     * @return the owning definition, or empty when the route is not registered
+     */
+    public Optional<CommandDefinition> findByPath(String method, String path) {
+        if (method == null || path == null || method.isBlank() || path.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(byRoute.get(route(method, path)));
+    }
+
+    /**
+     * Return every registered POST route template in declaration order.
+     *
+     * @return immutable route templates used to register the single command gate
+     */
+    public List<String> paths() {
+        return commands.stream().map(CommandDefinition::path).toList();
+    }
+
+    /**
      * Return the distinct action keys named by the catalog.
      *
      * @return immutable, declaration-ordered action keys
      */
     public List<String> actions() {
         return commands.stream().map(CommandDefinition::action).distinct().toList();
+    }
+
+    /**
+     * Build the route identity of a method and template, ignoring variable names.
+     *
+     * @param method HTTP method, already checked non-blank by the caller
+     * @param path   route template, already checked non-blank by the caller
+     * @return stable {@code METHOD /template} key
+     */
+    private static String route(String method, String path) {
+        return method.trim() + " " + PATH_VARIABLE.matcher(path.trim()).replaceAll("{}");
     }
 
     /**
