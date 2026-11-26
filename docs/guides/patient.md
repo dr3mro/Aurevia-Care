@@ -17,25 +17,27 @@ and values in the product are synthetic.
    accessibility label such as "Appointments tab". You should see the app title
    and the title of the selected tab.
 
-2. **See your appointments.** Screen: **Appointments**. Each card shows the
-   status word from the service — `booked`, `checked_in`, `in_progress`,
-   `completed`, `cancelled` or `no_show` — followed by the date and time with the
-   facility time zone. A generic notice appears above the cards. You should see
-   your appointments in time order. With none, you see
-   "No appointments".
+2. **See your appointments.** Screen: **Appointments**. Each card shows a status
+   pill (for example "Please confirm", "Confirmed {time}" or "Completed") with
+   the service status in small secondary text, then the date and time in the
+   facility time zone. A generic notice appears above the cards. Appointments
+   appear in the order returned by the service; the installed screen does not
+   sort them. With none, you see "No appointments".
 
 3. **Confirm or inspect an appointment.** Screen: **Appointments**. On a card
    whose status is `booked` and where confirmation is enabled, press "Confirm";
    you should see "Confirmed at" followed by the time. Press "View details" to
-   request the authenticated detail view. On an active device you can press
+   open a detail card for the appointment already loaded on the list; no
+   separate detail request is made. On an active device you can press
    "Revoke device" to remove it.
 
 4. **Read a released report.** Screen: **Reports**. Each card shows "Revision",
    the issuing organization and the effective date. A corrected report shows the
    line "Corrected revision {revision} — {reason}"; the display direction follows
-   the report's language. Press "Download" to save that exact revision. You
-   should see the download begin for the revision you chose. With nothing
-   released you see "No released reports".
+   the report's language. Press "Download PDF"; the app asks you to confirm and
+   checks the server authorization for that exact revision. In the installed
+   build no local copy is saved yet because the document handoff is deferred,
+   so no download begins. With nothing released you see "No released reports".
 
 5. **Message a care unit.** Screen: **Messages**. The inbox lists each unit with
    its state and an unread count. You should see your conversations and their
@@ -44,18 +46,14 @@ and values in the product are synthetic.
    `PLANNED: BUILD-71`: today a row press does not open a thread.
 
 6. **Review attachments before sending.** Screen: **Review attachments** under
-   Messages. Each pending file shows its "Scan state": "In quarantine — not
-   accessible yet", "Clean — ready after authorized send" or "Scan failed —
-   remove or replace". Use "Remove", "Replace" or "Download", then "Send to
-   unit". You should see "Nothing is sent until you press Send." before you
-   act; nothing leaves the app until you press the button.
+   Messages. The installed Messages tab supplies no pending files, so the screen
+   shows "No pending files." and the "Remove", "Replace", "Download" and
+   "Send to unit" controls are placeholders. The scan-state flow is
+   `PLANNED: BUILD-71`; nothing can be sent from this tab yet.
 
-7. **Acknowledge an instruction.** Screen: **Instructions** under Messages. A
-   card that needs action shows "Acknowledgment requested" (or "Acknowledgment
-   requested - overdue" when late) and a button such as "Acknowledge receipt of
-   instruction revision {revision}". Press it. You should see "Receipt
-   acknowledged". A withdrawn instruction shows "Instruction withdrawn" and no
-   button.
+7. **Acknowledge an instruction.** Screen: **Instructions** under Messages.
+   The installed tab supplies no instruction projections, so no card is shown.
+   The card and acknowledgment flow are `PLANNED: BUILD-71`.
 
 8. **Manage your account.** Screen: **Account**. The account menu opens
    "Enrollment", "Recovery", "Support" and "Lockout" screens; use "Back" to

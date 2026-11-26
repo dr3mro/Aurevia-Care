@@ -121,7 +121,7 @@ confirm() {
 find_repo() {
   local dir
   for dir in "$REPO" "$PWD" "$HOME_DIR/../.." ; do
-    [[ -n "$dir" && -f "$dir/compose.yaml" && -f "$dir/TODO.md" ]] && { (cd "$dir" && pwd); return 0; }
+    [[ -n "$dir" && -f "$dir/compose.yaml" && -d "$dir/tasks" ]] && { (cd "$dir" && pwd); return 0; }
   done
   if [[ -f "$HOME_DIR/repo" ]]; then
     dir=$(cat "$HOME_DIR/repo")
@@ -322,9 +322,10 @@ cmd_monitor() { need_repo; run bash "$ROOT/scripts/monitor.sh" "$@"; }
 cmd_todo() {
   need_repo
   local open taken done_
-  open=$(grep -c '^- \[ \]' "$ROOT/TODO.md" || true)
-  taken=$(grep -c '^- \[-\]' "$ROOT/TODO.md" || true)
-  done_=$(grep -c '^- \[x\]' "$ROOT/TODO.md" || true)
+  # Tasks live one per file in tasks/; a single TODO.md no longer exists.
+  open=$({ grep -h '^- \[ \]' "$ROOT"/tasks/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+  taken=$({ grep -h '^- \[-\]' "$ROOT"/tasks/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+  done_=$({ grep -h '^- \[x\]' "$ROOT"/tasks/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
   printf 'open %s · taken %s · done %s\n' "$open" "$taken" "$done_"
 }
 

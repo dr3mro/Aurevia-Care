@@ -24,9 +24,9 @@ The catalog-generated contract is emitted from the Java command catalog, not
 hand-authored. Its own [README](../../contracts/openapi/README.md) states that it
 does **not** prove that a running `@PostMapping` calls the authorization gate or
 that every documented path matches a deployed route. The drift is concrete: the
-generated contract advertises `/api/v1/orders/{id}/accept` and
-`/api/v1/critical/{id}/acknowledge`, while the controllers register
-`/api/v1/xch03/orders/{id}/accept` and
+generated contract still advertises stale mapping-only paths
+`/api/v1/orders/{id}/accept` and `/api/v1/critical/{id}/acknowledge` alongside
+the delivered controller paths `/api/v1/xch03/orders/{id}/accept` and
 `/api/v1/critical-results/{id}/acknowledge`. Treat the controller path in this
 guide as authoritative and confirm paths during onboarding. Where the documented
 contract and the controllers disagree, this guide says so explicitly (see
@@ -197,7 +197,7 @@ review task
 | Result kind `corrected` | Must name `supersedesVersion`, which must equal the current lineage tip. It appends the next revision, links the previous one, notifies prior recipients and reopens review even if the prior revision was acknowledged. A stale target is diverted to reconciliation. |
 | Result kind `critical` | Imports and routes the report with a critical marker. Due-time escalation and human acknowledgment are the XCH-05 workflow below; import alone closes nothing. |
 | Review state `unreviewed → acknowledged` | A clinician acknowledges one exact revision with `If-Match` at `POST /api/v1/xch04/results/{id}/acknowledge`. A repeat is `409 ALREADY_ACKNOWLEDGED`; a stale version is `412`. |
-| Reconciliation entry `open` | An unmatched or conflicting report gets an `open` entry, listed with `GET /api/v1/xch04/reconciliations?status=open\|resolved`. It stays reprocessable; it is not consumed as a duplicate. Only listing is implemented today — no route moves an entry to `resolved` (`PLANNED: BUILD-08` covers operator match/reject/reassign). |
+| Reconciliation entry `open` | An unmatched or conflicting report gets an `open` entry, listed with `GET /api/v1/xch04/reconciliations?status=open\|resolved`. It stays reprocessable; it is not consumed as a duplicate. `POST /api/v1/xch04/reconciliations/{id}/resolve` implements match, reject and reassign with an immutable in-memory decision and an audit row; the durable `xch04_reconciliation.status` column is still not advanced (V22 grants the runtime role `SELECT, INSERT` only). |
 
 ### 5.4 Critical findings (XCH-05)
 

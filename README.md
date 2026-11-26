@@ -65,12 +65,12 @@ Keys: `q` quits and `r` refreshes now. A new failed run rings the terminal bell 
 
 The monitor also keeps the swarm running: when no Agent swarm run is queued or in progress and `tasks/` still has open tasks, it dispatches a wave (`gh workflow run swarm.yml`), at most once every 10 minutes. `--autostart-wait MINUTES` changes that gap and `--no-autostart` turns it off. `--once` never starts a wave.
 
-### Force a task
+### Put a task first in the next wave
 
-To start one task now, ahead of the queue, dispatch the swarm with its id (needs `gh`, signed in):
+To put one task first in the next wave, dispatch the swarm with its id (needs `gh`, signed in). This cannot bypass the one-wave-per-branch group:
 
 ```
-gh workflow run swarm.yml --ref main -f task=FIX-INSTANT-OPENAPI -f now=true -f workers=1
+gh workflow run swarm.yml --ref main -f task=FIX-INSTANT-OPENAPI -f workers=1
 ```
 
 Replace `FIX-INSTANT-OPENAPI` with any task id from `tasks/`. See "Forcing a task" in `docs/SWARM.md` for what it overrides.

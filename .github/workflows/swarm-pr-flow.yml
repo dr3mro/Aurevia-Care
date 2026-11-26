@@ -1,7 +1,7 @@
 name: Swarm PR flow
 # Keeps pull requests moving. A pull request that stalls blocks the tasks that depend on it,
 # pauses the stories while fixes wait and delays the next batch, so this does not wait for the
-# next integration run or the hourly wave. It runs when a Delivery run finishes and every ten
+# next integration run or the hourly wave. It runs when a Delivery run finishes and every twenty
 # minutes, and does the next step for every open swarm pull request at once:
 #   - Delivery failed on the current head      -> the debugger (then a fix worker)
 #   - a draft nobody has taken                 -> a fix worker

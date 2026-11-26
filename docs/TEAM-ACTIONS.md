@@ -23,7 +23,7 @@ Follow the setup in [SWARM.md](SWARM.md#setup): run **Agent image** once, save `
 | Every 15 minutes, and when a watched workflow finishes | `swarm-watchdog.yml`: failure and stall issues, closing finished ones, and starting a wave when none has run for 30 minutes while work waits |
 | 05:10 daily | `daily-notes.yml`: reconcile yesterday's worker notes |
 | 06:00 (summer) or 07:00 (winter) daily | `swarm-issue-monitor.yml`: 2:00 AM New York pass over issues with no progress for 24 hours |
-| Every 10 minutes, and when Delivery finishes | `swarm-pr-flow.yml`: moves every open swarm pull request to its next step (debugger, fix worker, Delivery re-run, integrator) |
+| Every 20 minutes, and when Delivery finishes | `swarm-pr-flow.yml`: moves every open swarm pull request to its next step (debugger, fix worker, Delivery re-run, integrator) |
 | Every 10 minutes, and on every new, reopened or labeled issue | `swarm-issue-monitor.yml` (mode now): hands unassigned issues to a worker after five minutes |
 | 07:17 daily | `daily-audit.yml` |
 | 08:43 daily | `daily-qa.yml`: QA review, tasks and suggestions for agents and workflows |
@@ -39,5 +39,5 @@ Everything else is event driven: a push to `tasks/`, a finished wave, a pull req
 - Agent steps have no write token. Pushing, pull request creation, labels and issues happen in separate trusted jobs that run the scripts from `main`. The agent profile denies `gh`, `git push`, `git tag`, `curl`, `wget`, `ssh` and `docker`.
 - Issues and comments are read only when written by the repository's automation or by an owner, member or collaborator; their text reaches agents as untrusted notes.
 - Reviewers and the triage, audit and notes workers run read-only. Anything they write is validated before it lands: bounded text, safe scopes, no workflow, script or agent files, and the docs and secret checks Delivery runs. The `SWARM_ALLOW_PROTECTED` repository variable is the only exception to the protected-file rule: with it on, a protected-file pull request merges after the full gate and opens a non-blocking `protected-change` oversight issue ([Kill switch](SWARM.md#kill-switch)); the full gate, tracker rule and file-count limit remain.
-- Do not make `Delivery gate` a required check on `main` while the integrator merges locally and pushes straight to `main`; a required check would reject its push.
+- `Delivery gate` is a required check on `main` under the `PROTECT` ruleset. The integrator's direct push is separately authorized; the required check is never removed to accommodate it.
 - Use synthetic data only. Free models are not suitable for real patient data.

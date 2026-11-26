@@ -1,9 +1,10 @@
-# Candidate validation isolation — proposed workflow patch
+# Candidate validation isolation — applied workflow patch
 
-Status: **proposed only**. No file under `.github/workflows` is changed by this
-pull request. The unified diff below was produced from a scratch copy outside the
-repository and verified with `git apply --check` against the current files; a
-person with workflow-file permission applies it.
+Status: **applied**. `swarm-worker.yml`, `swarm-integrator.yml` and
+`fix-pr-gate.yml` now run validation in a tokenless job before a trusted publish
+job on a fresh runner. The diff below is the historical proposal that was applied
+to those files; `scripts/swarm.py integrate-validate` and `integrate-publish` now
+exist and are used by the workflows.
 
 Requirements: OPS-06, WEB-12. The goal is that code from a candidate pull request
 is never executed in a job or step that also holds a token able to push, publish
@@ -81,12 +82,11 @@ parse of the patched files:
   skip `resolve` entirely. `resolve` now reads `validate`'s output directly and
   `publish`'s unused `conflicted` output was removed.
 
-## Prerequisite (blocking) — trusted script change
+## Trusted script change (applied)
 
-The integrator part of the patch calls two small subcommands that do not exist
-yet. They modify a protected file, so a person must add them first; the workflow
-patch below is written against this contract and will fail at startup until they
-land.
+The integrator part of the patch calls `integrate-validate` and
+`integrate-publish` in `scripts/swarm.py`. Both commands were added with the
+workflow change; the signatures below remain the contract for future edits.
 
 - `python3 -I scripts/swarm.py integrate-validate --queue <json> --gate <script>
   --out <dir>`: for each queued PR, read `headRefOid` with the read-only token,

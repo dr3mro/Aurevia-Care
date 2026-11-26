@@ -1,6 +1,6 @@
 # Project setup and delivery
 
-This archive contains a resumable OpenCode 2.x team, the approved V1 specification snapshot, GitHub Actions, a monorepo skeleton and a Docker release rehearsal. It supports repeated delivery cycles as new stories and defects arrive. The first container is a disposable bootstrap test stack with an HTTP health endpoint and loopback-only PostgreSQL. Each start initializes a fresh database. Application modules are pending. Replace the bootstrap Dockerfile and smoke assertions with the real web/API entry points during G0 and keep the tag and digest contract. The patient app lives in the same repo and is built and tested through its own Expo tooling.
+This archive contains a resumable OpenCode 2.x team, the approved V1 specification snapshot, GitHub Actions, a monorepo skeleton and a Docker release rehearsal. It supports repeated delivery cycles as new stories and defects arrive. The first container is a disposable bootstrap test stack with an HTTP health endpoint and loopback-only PostgreSQL. Each start initializes a fresh database. The application modules are implemented with canonical `check.sh` gates; the bootstrap image remains the release-rehearsal smoke target and keeps the tag and digest contract. The patient app lives in the same repo and is built and tested through its own Expo tooling.
 
 ## Project name
 
@@ -74,12 +74,12 @@ See [docs/TEAM-ACTIONS.md](../../docs/TEAM-ACTIONS.md) for the prepared agent im
 
 ## Agent swarm
 
-See [docs/SWARM.md](../../docs/SWARM.md) for the 10-worker swarm driven by `tasks/`: its integrator, the issue hand-off between workers, the issue monitor, the daily notes and the daily audit.
+See [docs/SWARM.md](../../docs/SWARM.md) for the swarm of up to 20 story workers per wave (hard ceiling 20) driven by `tasks/`: its integrator, the issue hand-off between workers, the issue monitor, the daily notes and the daily audit.
 
 ## Browse and maintain the code
 
 Install Doxygen, then run `scripts/docs.sh`. Open `build/developer-reference/html/index.html` in your browser. It links to the maintainer guide, Java packages, class and file references, source pages and staff and mobile TypeScript references. GitHub Actions builds the site and makes it available as the `developer-reference` artifact. Download and extract the artifact before opening the index.
 
-Java uses Javadoc comments rendered by Doxygen. Each TypeScript app adds a version-pinned TypeDoc dependency and an `apps/<module>/docs.sh` hook as part of its first implementation. The hook receives an absolute output directory as its first argument, uses the locked local TypeDoc tool and compiler configuration, fails on warnings, and writes `index.html`. See `CODING_STYLE.md` for required comments and `docs/WORKFLOW.md` for review routing. The starter site contains maintainer guidance and pending-module pages until application code is added.
+Java uses Javadoc comments rendered by Doxygen. Each TypeScript app adds a version-pinned TypeDoc dependency and an `apps/<module>/docs.sh` hook as part of its first implementation. The hook receives an absolute output directory as its first argument, uses the locked local TypeDoc tool and compiler configuration, fails on warnings, and writes `index.html`. See `CODING_STYLE.md` for required comments and `docs/WORKFLOW.md` for review routing. The generated site contains maintainer guidance and the implemented module references.
 
 If your browser restricts local-file search, run `python3 -m http.server 8000 --bind 127.0.0.1 --directory build/developer-reference/html` and browse to `http://127.0.0.1:8000/`. Keep the server bound to localhost when reading internal source.

@@ -102,13 +102,11 @@ Each is a follow-up for the owning module.
 | 3 | The label colour of the primary button is taken from the page background token, which passes by coincidence rather than by role | 6.70:1 light and 8.25:1 dark today (`tokens.background` on the accent); 8.60:1 is the proposed `color.action.primary.text`, not the shipped value | `color.action.primary.text` |
 | 4 | One border token serves both control boundaries and decorative lines, so a decorative line and an input edge cannot diverge | `apps/staff-web/src/theme/tokens.ts` | `color.border.subtle` |
 | 5 | The spacing token exposes three steps; the contract defines a closed scale | `apps/staff-web/src/theme/tokens.ts` | `space.<n>` |
-| 6 | Component and document styles contain literal values outside the token set (control heights, dialog width, scrim colour, skip-link colours, index keys, cell borders) | `Dialog.tsx`, `Button.tsx`, `FormField.tsx`, `DataTable.tsx`, `index.html` | Sections 6.2, 3.1 and 6.3 of the contract |
-| 7 | Table rows are keyed by array index, so a refresh can reuse a row key for a different patient | `apps/staff-web/src/components/DataTable.tsx` | Row identity, accessibility patterns section 4 |
-| 8 | There is no automated accessibility rule set in the module test tooling yet | `apps/staff-web/package.json` | Verification table, accessibility patterns section 10 |
-| 9 | The patient app has configuration but no source yet, so the contract is unadopted there | `apps/patient-mobile` | Section 8.2 adoption |
-| 10 | The mode provider hard-codes light, writes `data-theme` after first paint, has no stored preference and never reads `prefers-color-scheme`, so there is no flash-free first load and no explicit choice to persist | `apps/staff-web/src/theme/ThemeProvider.tsx`; the ring and `color-scheme` are also set in `index.html` | Theming rules 1–2 in the contract |
-| 11 | Neither the number nor the date formatter pins a numbering system, so locale `ar` renders Arabic-Indic digits beside Latin identifiers and dates; measurement also joins value and unit with a plain space | `apps/staff-web/src/i18n/format.ts`; the tests assert neither the digits nor the separator | RTL section 3, D4 |
-| 12 | A disabled primary button differs from the enabled state only by the cursor, with no disabled fill or label treatment | `apps/staff-web/src/components/Button.tsx` | `color.action.primary.disabled` |
+| 6 | Component and document styles contain literal values outside the token set (control heights, dialog width, scrim colour, skip-link colours, cell borders) | `Dialog.tsx`, `Button.tsx`, `FormField.tsx`, `DataTable.tsx`, `index.html` | Sections 6.2, 3.1 and 6.3 of the contract |
+| 7 | The automated accessibility rule set runs only in the Playwright e2e suite, so `check.sh` has no axe gate | `apps/staff-web/package.json`, `apps/staff-web/e2e/accessibilityScanResponsive.spec.ts` | Verification table, accessibility patterns section 10 |
+| 8 | The patient app source exists but has not adopted the token contract | `apps/patient-mobile` | Section 8.2 adoption |
+| 9 | The mode provider hard-codes light, writes `data-theme` after first paint, has no stored preference and never reads `prefers-color-scheme`, so there is no flash-free first load and no explicit choice to persist | `apps/staff-web/src/theme/ThemeProvider.tsx`; the ring and `color-scheme` are also set in `index.html` | Theming rules 1–2 in the contract |
+| 10 | A disabled primary button differs from the enabled state only by the cursor, with no disabled fill or label treatment | `apps/staff-web/src/components/Button.tsx` | `color.action.primary.disabled` |
 
 ## Adoption
 
@@ -130,16 +128,15 @@ records the version it implements in its own README when it adopts one.
 
 | Item | Why it is open | Who can close it |
 |---|---|---|
-| Arabic-Indic digit policy per site | A clinical and market decision, not a design one | Site clinical lead with the market policy pack |
+| Site-configurable numerals | The formatter pins `latn`; allowing a site to choose another numbering system is a clinical and market decision, not a design one | Site clinical lead with the market policy pack |
 | Whether the acknowledgment alone may clear the critical-result region, and which commands it gates | A coverage and escalation policy decision; the document states the safest default, not the approved one | Site clinical safety lead and medical director |
 | Banner content sufficiency at the moment of decision | What a clinician needs to act on a critical value is a clinical judgement | Site clinical safety lead |
 | Read-back requirements and who may be a recipient | Policy decides when read-back is required | Site clinical safety lead and privacy lead |
 | Whether the patient's name is spoken aloud in a shared clinical space | A privacy decision that changes the announced text | Privacy lead with the clinical lead |
 | Whether the amber accent survives as a secondary highlight once the ring is replaced | Cosmetic, but it touches the audit highlight and the selected-row treatment | Design review with the module owner |
 | Contrast measurement in continuous integration | The recipe is reproducible by hand; a CI job needs a token source file to consume | Module owner with the build tooling owner |
-| Automated accessibility rule set (axe-core or equivalent) in the staff-web test run | Needs a dependency decision and a baseline of existing failures | Staff web module owner |
-| Index-keyed table rows in any worklist that shows an actionable clinical row | The contract requires a stable domain key; the current table uses the array index | Staff web module owner, before that worklist ships |
-| Patient app token adoption and native screen-reader pass | Module is pending | Patient app module owner |
+| Automated accessibility rule set in `check.sh` | axe already runs in the Playwright e2e suite; adding it to the unit gate needs a baseline decision | Staff web module owner |
+| Patient app token adoption and native screen-reader pass | The module exists but has not adopted the token contract | Patient app module owner |
 | Clinical review of the critical-result banner content and the acknowledgment gate | Requires qualified clinical reviewers; nothing in this repository substitutes for it | Site clinical safety lead |
 
 ## Boundaries

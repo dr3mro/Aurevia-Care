@@ -1,8 +1,9 @@
 # staff-web
 
-React + TypeScript + Vite visual foundation for the Aurevia staff portal.
-Only synthetic fixtures are used. No application endpoint is contacted and no
-authentication logic is implemented.
+React + TypeScript + Vite staff portal. Feature loaders use the typed,
+credentialed transport in `src/api/transport.ts` against `/api/v1/*` routes;
+fixtures are synthetic and no real patient data is stored in the repository.
+The sign-in screen and protected-route shell are still placeholders.
 
 ## Requirements
 
@@ -12,9 +13,9 @@ authentication logic is implemented.
 - UX-01: English and Arabic bundles, RTL direction, local-name and mixed-script
   display, UTC instants with IANA zones and civil dates, and themed accessible
   primitives.
-- ARC-03: request descriptors use the generated contract paths, explicit
-  tenant/correlation/idempotency/version metadata and a refusal to call any
-  real endpoint.
+- ARC-03: request descriptors use the generated contract paths and explicit
+  tenant/correlation/idempotency/version metadata; `src/api/transport.ts` sends
+  them with credentials and CSRF protection to the real `/api/v1/*` routes.
 
 ## Commands
 
@@ -41,8 +42,9 @@ It is checked in, carries the tool's generated-file header, and is verified by
 `npm run gen:api:check`. It is never edited by hand and never copied manually.
 
 Coverage uses `include: ['src/**/*.{ts,tsx}']` with `perFile: true` and 100%
-thresholds for lines, branches, functions and statements. The only exclusions
-are the generated declaration directory and `**/*.d.ts`: declaration files
+thresholds for lines, branches, functions and statements. Apart from test files
+and build output (`**/*.test.{ts,tsx}`, `dist/**`, `coverage/**`), the only
+source exclusions are `src/api/generated/**` and `**/*.d.ts`: declaration files
 emit no runnable code, and their freshness is enforced by the drift check.
 Every hand-written source file is therefore required to be fully covered; an
 unimported source file fails the gate.

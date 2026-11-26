@@ -1,6 +1,6 @@
 # patient-mobile
 
-Add a tracked check.sh with build, lint, tests and enforced coverage when implementation begins.
+Run `bash apps/patient-mobile/check.sh` from the repository root: pinned install, typecheck, lint and Jest with 100% global coverage.
 
 ## Tablets and landscape
 
@@ -29,10 +29,13 @@ React Native's `useWindowDimensions()` plus the existing `useSafeAreaInsets()`
 and returns `{ windowClass, width, height, isLandscape, fontScale, insets }`.
 Because the window hook re-renders on a dimension change, the class, orientation
 (`width > height`) and font scale are recomputed after a rotation or a resize.
-On `large` windows list-and-detail screens (the conversation inbox and thread,
-and appointments/reports where present) render side by side; on `compact` and
-`regular` the detail stays a separate pushed screen. Device type is never used
-to choose a layout.
+On `large` windows the appointments list/detail, report summary/result and
+Account/Messages menu/screen render side by side. On `compact` and `regular`
+the appointment detail is stacked below the list and the Account/Messages screens
+use the in-app Back control. The conversation thread component is not yet
+reachable from the Messages tab (the row press is a placeholder), so it is not
+part of the installed two-pane flow. Device type is never used to choose a
+layout.
 
 ### Running on an iPad (iOS Simulator)
 

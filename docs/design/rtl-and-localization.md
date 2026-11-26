@@ -123,11 +123,11 @@ Do not perform unit conversion in the interface. Display the unit the source
 returned, with its value; conversion is a clinical decision that belongs to a
 documented workflow with provenance, not to a formatter.
 
-The merged `apps/staff-web/src/i18n/format.ts` does not yet pass
-`numberingSystem`, and `formatMeasurement` joins value and unit with a plain
-space. Both are recorded as deviations in the
-[design language home](README.md#known-deviations-in-the-current-code); neither
-is fixed by this document.
+The merged `apps/staff-web/src/i18n/format.ts` pins `NUMERAL_SYSTEM = 'latn'`
+and passes `numberingSystem` to the date and number formatters, so Arabic
+locales still render Latin digits. `formatMeasurement` joins value and unit with
+a plain space, which remains a deviation from the non-breaking-space rule in
+the [design language home](README.md#known-deviations-in-the-current-code).
 
 ## 4. Identifiers and codes
 

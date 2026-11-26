@@ -330,7 +330,7 @@ or by a named reviewer:
 
 | Check | How | Evidence to record |
 |---|---|---|
-| Semantics and names | Component test with the rendered accessibility tree, plus an automated rule set (for example axe-core) once it is added to the staff-web test tooling. A jsdom test can assert the attribute and the generated stylesheet, not the painted focus ring. | Test name and result |
+| Semantics and names | Component test with the rendered accessibility tree, plus the automated axe scan already recorded in the staff-web Playwright e2e suite. A jsdom test can assert the attribute and the generated stylesheet, not the painted focus ring. | Test name and result |
 | Keyboard only | Tab, Shift+Tab, arrow, Enter, Space and Escape through the whole flow, including the scroll region and the dialog | Named pass with the screens covered |
 | Focus visible and not obscured | A real-browser pass at 320 px and 1280 px in both directions, with the sticky header scrolled over the focused control; the ring's painted colour is not observable in jsdom | Browser run and screenshot references |
 | Critical-result banner | A screen-reader pass on a page loaded with an outstanding critical result: one polite announcement, no focus movement, no dismiss control, and the patient identity present | Named pass per platform |

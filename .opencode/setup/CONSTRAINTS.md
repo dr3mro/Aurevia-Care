@@ -8,7 +8,7 @@ check fails any added line that weakens one.
 | # | Dimension | Bar | Enforced by |
 |---|---|---|---|
 | 1 | Java line/branch/instruction/method/class coverage | 100% | JaCoCo in `apps/api/check.sh` |
-| 2 | Staff web line/branch/function/statement coverage | 100% | Vitest thresholds in `vitest.config.ts` |
+| 2 | Staff web line/branch/function/statement coverage | 100% | Vitest thresholds in `apps/staff-web/vite.config.ts`, run by `apps/staff-web/check.sh` |
 | 3 | Patient app coverage | 100% of touched source | Jest `coverageThreshold` in `apps/patient-mobile/jest.config.ts` |
 | 4 | Lint warnings | 0 | `eslint --max-warnings=0` in both apps |
 | 5 | TypeScript strictness | `strict: true`, `noUncheckedIndexedAccess: true` | app `tsconfig*.json` + `scripts/frontend-check.sh` |

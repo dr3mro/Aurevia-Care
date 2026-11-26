@@ -621,7 +621,7 @@ change what a user sees:
 | `focusRing` | `color.focus.ring` + `border.width.focus` + a 2 px offset | The current value is a whole `box-shadow` string, measures 1.64:1 on the light page, and is not the ring that actually paints; it must be replaced, not renamed |
 | `spacing.sm` / `.md` / `.lg` | `space.1` / `space.2` / `space.4` | Values 4 / 8 / 16 px are unchanged |
 | `spacing.sm` used as a corner radius | `radius.sm` | `Button.tsx` sets `borderRadius: tokens.spacing.sm`; the value is the same but the role is not, and section 1 forbids a spacing token in a radius slot |
-| `minHeight: '32px'` in `Button.tsx` and `FormField.tsx` | `size.control.height.sm` | The contract's default is `.md` (40 px), so adoption **changes every control height**; choose per surface and record it |
+| Control target floors from `--sc-size-target-min` / `--sc-size-target-comfortable` via `.touch` in `responsive.css` | `size.control.height.sm` | The contract's default is `.md` (40 px), so adoption **changes every control height**; choose per surface and record it. Leftover inline `minHeight: '32px'` values live in feature screens, not in `Button.tsx` or `FormField.tsx` |
 | Secondary button (`transparent` fill, `foreground` text) | `color.action.secondary.background` + `color.text.primary` + `color.border.default` | No rename exists; the variant must be mapped explicitly |
 | Dialog `minWidth`, scrim, control heights inside `Dialog.tsx` | `size.*`, `color.surface.scrim` | Literal values, not fields of `ThemeTokens`; they are part of the same migration |
 
