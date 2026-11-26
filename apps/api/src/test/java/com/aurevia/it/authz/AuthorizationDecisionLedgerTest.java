@@ -154,6 +154,22 @@ class AuthorizationDecisionLedgerTest {
         }
     }
 
+    /** Count only the allowed facility-write decision recorded without a correlation id. */
+    private static long countAllowWithMissingCorrelation() throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT count(*) FROM public.authorization_decision WHERE correlation_id = '' "
+                             + "AND action = 'FACILITY_WRITE' AND reason_code = 'ALLOWED' "
+                             + "AND decision = 'allow'")) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getLong(1);
+            }
+        }
+    }
+
     private static long count(String role, String organization, String correlation) throws Exception {
         try (Connection connection = DriverManager.getConnection(URL, role, "")) {
             connection.setAutoCommit(false);
@@ -169,6 +185,27 @@ class AuthorizationDecisionLedgerTest {
                 }
             } finally {
                 connection.rollback();
+            }
+        }
+    }
+
+    private static void assertLedgerDecision(String correlation, String action, String reason, String outcome)
+            throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT action, resource_type, reason_code, decision FROM public.authorization_decision "
+                             + "WHERE organization_id = CAST(? AS uuid) AND correlation_id = ? AND action = ?")) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            statement.setString(1, ORG_A);
+            statement.setString(2, correlation);
+            statement.setString(3, action);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals(action, result.getString("action"));
+                assertEquals("COMMAND", result.getString("resource_type"));
+                assertEquals(reason, result.getString("reason_code"));
+                assertEquals(outcome, result.getString("decision"));
             }
         }
     }
@@ -417,6 +454,134 @@ class AuthorizationDecisionLedgerTest {
     }
 
     @Test
+    void gatePersistsBoundedCodesAndMissingCorrelationThroughProductionSink() throws Exception {
+        bind(ORG_A, "admin-a");
+        CommandAuthorization allowing = CommandAuthorization.synthetic(CommandCatalog.synthetic(),
+                new Resolver(List.of("tenant_admin")), sink, CLOCK);
+        String untrusted = "SECRET_MARKER\n" + "a".repeat(256);
+        ApiException unknown = assertThrows(ApiException.class, () -> allowing.authorize(
+                new CommandRequest(untrusted, null, null),
+                new ServerIdentity(ORG_A, "admin-a", "corr-unknown-gate")));
+        assertEquals(422, unknown.status());
+        assertEquals("UNKNOWN_COMMAND", unknown.code());
+        ApiException malformed = assertThrows(ApiException.class, () -> allowing.authorize(
+                new CommandRequest("   ", null, null),
+                new ServerIdentity(ORG_A, "admin-a", "corr-malformed-gate")));
+        assertEquals(422, malformed.status());
+        assertEquals("INVALID_COMMAND", malformed.code());
+        Decision allowed = allowing.authorize(new CommandRequest("createFacility", null, null),
+                new ServerIdentity(ORG_A, "admin-a", null));
+        assertTrue(allowed.allowed());
+
+        bind(ORG_A, "reception-a");
+        CommandAuthorization denying = CommandAuthorization.synthetic(CommandCatalog.synthetic(),
+                new Resolver(List.of("reception")), sink, CLOCK);
+        ApiException denied = assertThrows(ApiException.class, () -> denying.authorize(
+                new CommandRequest("createFacility", null, null),
+                new ServerIdentity(ORG_A, "reception-a", "corr-deny-gate")));
+        assertEquals(403, denied.status());
+
+        assertEquals(1L, count("aurevia_migrate", ORG_A, "corr-unknown-gate"));
+        assertEquals(1L, count("aurevia_migrate", ORG_A, "corr-malformed-gate"));
+        // Other acceptance cases commit their own missing-correlation rows, so scope
+        // this count to the allowed command made above rather than every empty key.
+        assertEquals(1L, countAllowWithMissingCorrelation());
+        assertEquals(1L, count("aurevia_migrate", ORG_A, "corr-deny-gate"));
+        assertLedgerDecision("corr-unknown-gate", "", "UNKNOWN_COMMAND", "deny");
+        assertLedgerDecision("corr-malformed-gate", "", "INVALID_COMMAND", "deny");
+        assertLedgerDecision("", "FACILITY_WRITE", "ALLOWED", "allow");
+        assertLedgerDecision("corr-deny-gate", "FACILITY_WRITE", "COMMAND_FORBIDDEN", "deny");
+
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT count(*) FROM public.authorization_decision "
+                             + "WHERE concat_ws(' ', subject, action, resource_type, reason_code, correlation_id) "
+                             + "LIKE '%SECRET_MARKER%'")) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals(0L, result.getLong(1), "client-controlled text never reaches the ledger");
+            }
+        }
+    }
+
+    @Test
+    void unauthenticatedDecisionsKeep401AndPersistOnlyWithVerifiedTenantContext() throws Exception {
+        TenantContext.clear();
+        CommandAuthorization gate = CommandAuthorization.synthetic(CommandCatalog.synthetic(),
+                new Resolver(List.of("tenant_admin")), sink, CLOCK);
+        ApiException withoutContext = assertThrows(ApiException.class, () -> gate.authorize(
+                new CommandRequest("createFacility", null, null),
+                new ServerIdentity(ORG_A, null, "corr-unauthenticated-no-context")));
+        assertEquals(401, withoutContext.status());
+        assertEquals("UNAUTHENTICATED", withoutContext.code());
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-unauthenticated-no-context"));
+
+        bind(ORG_A, "admin-a");
+        ApiException withContext = assertThrows(ApiException.class, () -> gate.authorize(
+                new CommandRequest("createFacility", null, null),
+                new ServerIdentity(ORG_A, null, "corr-unauthenticated-with-context")));
+        assertEquals(401, withContext.status());
+        assertEquals("UNAUTHENTICATED", withContext.code());
+        assertEquals(1L, count("aurevia_migrate", ORG_A, "corr-unauthenticated-with-context"));
+        assertLedgerDecision("corr-unauthenticated-with-context", "", "UNAUTHENTICATED", "deny");
+    }
+
+    @Test
+    void productionSinkSanitizesUntrustedEvidence() throws Exception {
+        bind(ORG_A, "admin-a");
+        String correlation = "sanitized-" + "c".repeat(118);
+        sink.record(new Decision("ignored", "A".repeat(140) + "\nFORGED", ORG_A,
+                "s".repeat(260) + "\nFORGED", correlation + "\rFORGED",
+                true, "ALLOWED", List.of("tenant_admin"), CLOCK.instant()));
+
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT subject, action, correlation_id FROM public.authorization_decision "
+                             + "WHERE organization_id = CAST(? AS uuid) AND correlation_id = ?")) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            statement.setString(1, ORG_A);
+            statement.setString(2, correlation);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals("s".repeat(255), result.getString("subject"));
+                assertEquals("A".repeat(128), result.getString("action"));
+                assertEquals(correlation, result.getString("correlation_id"));
+            }
+        }
+    }
+
+    @Test
+    void contradictoryUnauthenticatedDecisionNeverBypassesValidation() throws Exception {
+        TenantContext.clear();
+        Decision contradictory = new Decision("createFacility", "FACILITY_WRITE", ORG_A, "admin-a",
+                "corr-contradictory-unauthenticated", true, "UNAUTHENTICATED", List.of(), CLOCK.instant());
+
+        ApiException failure = assertThrows(ApiException.class, () -> sink.record(contradictory));
+
+        assertEquals(403, failure.status());
+        assertEquals("AUDIT_UNAVAILABLE", failure.code());
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-contradictory-unauthenticated"));
+        assertEquals(0L, count("aurevia_migrate", null, "corr-contradictory-unauthenticated"));
+    }
+
+    @Test
+    void crossTenantDecisionEvidenceNeverChangesTheWriteTenant() throws Exception {
+        bind(ORG_A, "admin-a");
+        Decision crossTenant = new Decision("createFacility", "FACILITY_WRITE", ORG_B, "admin-a",
+                "corr-cross-tenant-evidence", false, "COMMAND_FORBIDDEN", List.of(), CLOCK.instant());
+
+        ApiException failure = assertThrows(ApiException.class, () -> sink.record(crossTenant));
+
+        assertEquals(403, failure.status());
+        assertEquals("AUDIT_UNAVAILABLE", failure.code());
+        assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-cross-tenant-evidence"));
+        assertEquals(0L, count("aurevia_migrate", ORG_B, "corr-cross-tenant-evidence"));
+    }
+
+    @Test
     void ledgerIsAppendOnlyForRuntimeAndOwnerAndStoresOnlyCodedColumns() throws Exception {
         bind(ORG_A, "admin-a");
         sink.record(new Decision("createFacility", "FACILITY_WRITE", ORG_A, "admin-a", "corr-immutable",
@@ -470,7 +635,7 @@ class AuthorizationDecisionLedgerTest {
         bind(ORG_A, "admin-a");
         String subject = "s".repeat(256);
         String action = "a".repeat(128);
-        String resourceType = "r".repeat(128);
+        String resourceType = "COMMAND";
         String correlationId = "c".repeat(128);
         String insert = """
                 INSERT INTO public.authorization_decision
@@ -488,8 +653,10 @@ class AuthorizationDecisionLedgerTest {
         assertFalse(executes("aurevia_app", ORG_A,
                 insert.formatted(ORG_A, subject, "a".repeat(129), resourceType, "corr-action-overflow")));
         assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-action-overflow"));
+        // The discriminator is fixed by policy, not merely bounded: a client-supplied
+        // command name must never become a resource category in the ledger.
         assertFalse(executes("aurevia_app", ORG_A,
-                insert.formatted(ORG_A, subject, action, "r".repeat(129), "corr-resource-overflow")));
+                insert.formatted(ORG_A, subject, action, "CLIENT_COMMAND", "corr-resource-overflow")));
         assertEquals(0L, count("aurevia_migrate", ORG_A, "corr-resource-overflow"));
         String correlationOverflow = "c".repeat(129);
         assertFalse(executes("aurevia_app", ORG_A,

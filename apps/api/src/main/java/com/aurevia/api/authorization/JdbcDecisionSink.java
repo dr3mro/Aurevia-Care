@@ -1,12 +1,5 @@
 package com.aurevia.api.authorization;
 
-<<<<<<< HEAD
-import java.sql.Timestamp;
-
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.transaction.support.TransactionCallback;
-=======
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
@@ -14,53 +7,10 @@ import java.util.Set;
 
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
->>>>>>> origin/main
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.api.ApiException;
 import com.aurevia.api.authorization.CommandAuthorization.Decision;
-<<<<<<< HEAD
-
-/**
- * Durable OPS-02 authorization decision ledger backed by PostgreSQL (V65).
- *
- * <p>Each decision is appended inside the tenant-guarded transaction, so the
- * session's {@code app.current_org} matches the row's organization and forced
- * RLS confines every write and read. A decision with no server identity is
- * stored with a NULL organization as tenant-less evidence; it carries no
- * patient field or request body. If the ledger cannot be written the sink
- * fails closed with {@code AUDIT_UNAVAILABLE}, so a missing audit record can
- * never turn a command into an allowed one.</p>
- */
-public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink {
-
-    /** Bounded resource category; the command identifier has its own column. */
-    static final String RESOURCE_TYPE = "command";
-
-    private static final String INSERT = """
-            INSERT INTO public.authorization_decision
-                (organization_id, command_id, subject, action, resource_type,
-                 decision, reason_code, correlation_id, decided_at)
-            VALUES
-                (CAST(:organizationId AS uuid), :commandId, :subject, :action, :resourceType,
-                 :decision, :reasonCode, :correlationId, CAST(:decidedAt AS timestamptz))
-            """;
-
-    /** Narrow append boundary; the framework template is never exposed by this sink. */
-    @FunctionalInterface
-    private interface RowAppender {
-        void append(MapSqlParameterSource values);
-    }
-
-    /** Narrow transaction boundary that binds the tenant before the append. */
-    @FunctionalInterface
-    private interface TenantTransaction {
-        void run(TransactionCallback<Void> work);
-    }
-
-    private final RowAppender appender;
-    private final TenantTransaction transactions;
-=======
 import com.aurevia.tenant.TenantContext;
 
 /**
@@ -72,9 +22,13 @@ import com.aurevia.tenant.TenantContext;
  * command rolls back; the trade-off is that an allowed decision remains recorded
  * even if the command later fails. Only coded columns are persisted: no role
  * list, request body, credential or patient value reaches the ledger. A
- * constraint violation, missing context or cross-tenant decision denies the
- * request with {@code AUDIT_UNAVAILABLE} using a fixed error message, so no SQL
- * or bind detail is echoed to the caller.</p>
+ * constraint violation, missing tenant context for a tenant-scoped decision or
+ * cross-tenant decision denies the request with {@code AUDIT_UNAVAILABLE} using
+ * a fixed error message, so no SQL or bind detail is echoed to the caller. A
+ * valid {@code UNAUTHENTICATED} denial has no row when no verified tenant context
+ * exists; the gate still returns its defined 401 because forced RLS cannot own
+ * such a row. If a verified-tenant write fails, the fixed audit error still
+ * denies the request.</p>
  */
 public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink {
 
@@ -87,7 +41,7 @@ public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink
     /** Fixed, non-sensitive failure message. */
     static final String FAILURE_MESSAGE = "authorization decision could not be recorded";
 
-    /** Reason codes emitted by the gate; the V65 constraint allows exactly these. */
+    /** Accepted ledger reason codes; the V65 constraint allows exactly these. */
     static final Set<String> REASON_CODES = Set.of(
             "ALLOWED", "UNAUTHENTICATED", "INVALID_COMMAND", "UNKNOWN_COMMAND",
             "MEMBERSHIP_INACTIVE", "MEMBERSHIP_UNAVAILABLE", "POLICY_UNAVAILABLE",
@@ -110,52 +64,11 @@ public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink
 
     private final NamedParameterJdbcTemplate jdbc;
     private final TransactionTemplate transactions;
->>>>>>> origin/main
 
     /**
      * Create the durable sink.
      *
      * @param jdbc         shared named-parameter JDBC template
-<<<<<<< HEAD
-     * @param transactions tenant-guarded transaction template that binds the
-     *                     session tenant before the insert
-     */
-    public JdbcDecisionSink(NamedParameterJdbcTemplate jdbc, TransactionTemplate transactions) {
-        // The injected templates are mutable Spring collaborators. Capturing only
-        // their append/run operations keeps this immutable sink from exposing
-        // them as its own state while preserving constructor injection.
-        this.appender = values -> jdbc.update(INSERT, values);
-        this.transactions = work -> transactions.execute(work);
-    }
-
-    /**
-     * Append one allow or deny decision inside the caller's tenant transaction.
-     *
-     * @param decision outcome from the authorization gate
-     * @throws ApiException {@code 500 AUDIT_UNAVAILABLE} when the ledger write
-     *         fails; the command is denied because no evidence was persisted
-     */
-    @Override
-    public void record(Decision decision) {
-        try {
-            transactions.run(status -> {
-                appender.append(new MapSqlParameterSource()
-                        .addValue("organizationId", organization(decision.organizationId()))
-                        .addValue("commandId", decision.commandId())
-                        .addValue("subject", decision.subject())
-                        .addValue("action", decision.action())
-                        .addValue("resourceType", RESOURCE_TYPE)
-                        .addValue("decision", decision.allowed() ? "allow" : "deny")
-                        .addValue("reasonCode", decision.reasonCode())
-                        .addValue("correlationId", decision.correlationId())
-                        .addValue("decidedAt", Timestamp.from(decision.occurredAt())));
-                return null;
-            });
-        } catch (RuntimeException failure) {
-            // The transaction guard also rejects a missing tenant context, so a
-            // failed write of any kind must be reported as an unavailable audit.
-            throw new ApiException(500, "AUDIT_UNAVAILABLE", "authorization decision ledger unavailable");
-=======
      * @param transactions tenant-guarded transaction template for the ledger write
      */
     public JdbcDecisionSink(NamedParameterJdbcTemplate jdbc, TransactionTemplate transactions) {
@@ -164,28 +77,39 @@ public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink
     }
 
     /**
-     * Append one authorization decision to the active tenant's ledger.
+     * Append one validated decision under the verified tenant context.
      *
-     * @param decision allow or deny outcome with stable reason code and decision time
-     * @throws NullPointerException  when the decision is absent
-     * @throws ApiException         {@code 403 AUDIT_UNAVAILABLE} when the tenant or reason is
-     *                             invalid, the insert fails, or no row was written
+     * <p>A valid unauthenticated denial without a verified tenant is not written
+     * because forced RLS cannot own such a row; every other missing-tenant or
+     * invalid-evidence case fails closed.</p>
+     *
+     * @param decision bounded authorization outcome; {@code null} is a programming error
+     * @throws NullPointerException when the decision is absent
+     * @throws ApiException fixed {@code 403 AUDIT_UNAVAILABLE} for invalid evidence or a failed write
      */
     @Override
     public void record(Decision decision) {
         Objects.requireNonNull(decision, "decision");
+        String reason = decision.reasonCode();
+        if (reason == null || !REASON_CODES.contains(reason)
+                || decision.allowed() != reason.equals("ALLOWED")) {
+            // Contradictory outcome evidence is more dangerous than a missing row:
+            // reject it before the tenant-less unauthenticated no-row exception.
+            throw unavailable();
+        }
         TenantContext context = TenantContext.current();
         String organization = context == null ? null : context.organizationId();
+        if (reason.equals("UNAUTHENTICATED") && (organization == null || organization.isBlank())) {
+            // Forced RLS cannot own this row. The command is already denied, so skip
+            // only the impossible audit write and preserve the gate's 401 contract.
+            return;
+        }
         if (organization == null || organization.isBlank()) {
             throw unavailable();
         }
         String decidedFor = decision.organizationId();
         if (decidedFor != null && !decidedFor.isBlank() && !decidedFor.equals(organization)) {
             // The decision's tenant is evidence, never an authority to write under.
-            throw unavailable();
-        }
-        String reason = decision.reasonCode();
-        if (reason == null || !REASON_CODES.contains(reason)) {
             throw unavailable();
         }
         String outcome = decision.allowed() ? "allow" : "deny";
@@ -209,20 +133,10 @@ public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink
         } catch (RuntimeException failure) {
             // Never propagate a JDBC message: it can name tables, binds or tenants.
             throw unavailable();
->>>>>>> origin/main
         }
     }
 
     /**
-<<<<<<< HEAD
-     * Map an absent server organization to the tenant-less evidence row.
-     *
-     * @param organizationId server-derived organization or an empty/absent value
-     * @return the organization identifier, or {@code null} when there is no tenant
-     */
-    private static String organization(String organizationId) {
-        return organizationId == null || organizationId.isBlank() ? null : organizationId;
-=======
      * Build the single fixed deny used for every ledger failure.
      *
      * @return the machine-readable fail-closed error
@@ -252,6 +166,5 @@ public final class JdbcDecisionSink implements CommandAuthorization.DecisionSink
         }
         String clean = value.replaceAll("[\\p{Cntrl}\\p{Cf}\\p{Zl}\\p{Zp}]", "");
         return clean.length() > maxLength ? clean.substring(0, maxLength) : clean;
->>>>>>> origin/main
     }
 }
