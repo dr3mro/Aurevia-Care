@@ -159,7 +159,7 @@ class RepositoryTests(unittest.TestCase):
     def test_agent_notes_and_reports_are_not_enumerated_as_docs(self):
         tmp = self.make_repo("IAM-01 clean\n")
         for rel in (".agents/notes/N.md", ".agents/reports/2026-11-24.md",
-                    ".agents/notes/archive/x.md"):
+                    ".agents/notes/archive/x.md", ".workspaces/pr-1/notes/N.md"):
             path = tmp / rel
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("bad | ragged | table\n")
@@ -167,6 +167,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertNotIn(".agents/notes/N.md", names)
         self.assertNotIn(".agents/reports/2026-11-24.md", names)
         self.assertNotIn(".agents/notes/archive/x.md", names)
+        self.assertNotIn(".workspaces/pr-1/notes/N.md", names)
 
     def make_repo(self, note):
         tmp = Path(tempfile.mkdtemp())

@@ -51,6 +51,9 @@ export GIT_CONFIG_KEY_2=core.fsmonitor GIT_CONFIG_VALUE_2=false
 
 cd "${GITHUB_WORKSPACE:-$(dirname "$0")/..}"
 repo_root=$(pwd -P)
+if [[ -n "${AUREVIA_SIGNAL_TARGET_FILE:-}" ]]; then
+  printf '%s\n' "$$" > "$AUREVIA_SIGNAL_TARGET_FILE"
+fi
 git() { command git -C "$repo_root" "$@"; }
 mkdir -p "$HOME"
 repo_top=$(git rev-parse --show-toplevel 2>/dev/null || true)
@@ -85,10 +88,14 @@ worktree_status() {
 }
 
 require_clean_worktree() {
-  local status
-  if ! status=$(worktree_status); then
+  local status _tmp
+  _tmp=$(mktemp)
+  if ! worktree_status > "$_tmp"; then
+    rm -f "$_tmp"
     return 1
   fi
+  status=$(<"$_tmp")
+  rm -f "$_tmp"
   if [[ -n "$status" ]]; then
     printf 'refusing to run in a dirty workspace; commit or stash unrelated work first\n' >&2
     return 1
@@ -118,7 +125,7 @@ auth_active=0
 auth_mode=""
 auth_tmp=""
 cleanup() {
-  local failed=0
+  local saved=$? failed=0
   if [[ "$config_active" == 1 ]]; then
     restore_config || failed=1
   fi
@@ -134,7 +141,8 @@ cleanup() {
     exit 1
   fi
   rm -f "$config_backup" "$auth_backup"
-  rmdir "$backup_dir"
+  rmdir "$backup_dir" 2>/dev/null || true
+  exit "$saved"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
@@ -1246,9 +1254,13 @@ cmd_review() {
       record_configuration_error
       return 1
     fi
-    if ! status=$(worktree_status -- . ":(exclude)$out" ":(exclude)$out/**"); then
+    _tmp=$(mktemp)
+    if ! worktree_status -- . ":(exclude)$out" ":(exclude)$out/**" > "$_tmp"; then
+      rm -f "$_tmp"
       return 1
     fi
+    status=$(<"$_tmp")
+    rm -f "$_tmp"
     if [[ -n "$status" ]]; then
       printf 'reviewer changed the workspace; refusing to delete its changes\n' >&2
       return 1

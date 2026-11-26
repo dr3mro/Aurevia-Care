@@ -103,3 +103,5 @@ class WorkflowConcurrencyTest(unittest.TestCase):
                 text = path.read_text(encoding="utf-8").lower()
                 self.assertIn("no path filter", text)
                 self.assertNotIn("paths-ignore", text)
+                self.assertNotIn("paths:", text)
+                self.assertIn("delivery gate", text)
