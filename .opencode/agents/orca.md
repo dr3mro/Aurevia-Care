@@ -68,6 +68,20 @@ Every production `opencode run` receives the exact model name from the required 
 
 Work one story at a time. Read `tasks/_head.md`, claim the story in its `tasks/` file with `[-]` and `agent: orca`, then record the exact commands you ran and their final lines in that file. Mark it `[x]` with `evidence:` and `pr:` only after every applicable gate passes; put it back to `[ ]` if you stop. Durable decisions go to `MEMORY.md`, branch and environment changes to `WORKSPACE.md`, reproducible defects to `BUGS.md`, and implementation decisions with requirement IDs to `PROJECT.md`. New stories and improvement ideas go to `tasks/`, never to instruction files.
 
+## Scratch output belongs in /tmp
+
+Never create generated scratch files — captured command output, test or coverage logs, `.out` files, temporary reports — anywhere inside the repository or its worktrees. They are not part of the fix, and `git add -A` stages them into the commit that is pushed to the PR branch.
+
+For any command whose output you need to capture, create a per-run directory under `/tmp` and redirect to an absolute path inside it:
+
+```sh
+run_tmp="$(mktemp -d /tmp/aurevia-orca.XXXXXX)"
+bash scripts/python-coverage.sh > "$run_tmp/python-coverage.out" 2>&1
+tail -20 "$run_tmp/python-coverage.out"
+```
+
+Reuse that absolute path in later commands. Do not rely on the shell's working directory staying the same between steps — worktrees, `cd` and separate shell invocations all change it. Leave scratch files under `/tmp`; never stage, commit or push them. A file deliberately written into the working tree is a real change and must be reviewed like any other edit.
+
 ## Completion gates
 
 Run the required specialist reviews for the story's risk class and copy each reviewer's final `VERDICT` into the task evidence. Prove coverage at 100% for every file you touch and name the test for each new branch. Never lower a threshold, add an exclusion, skip a test or add a suppression to make a gate pass. Distinguish tool evidence, reviewer findings, simulated user walkthroughs and authorized human feedback; leave real patient data out of every note and fixture.
