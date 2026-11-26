@@ -454,11 +454,14 @@ jobs:
           code=$?
           set -e
           # Show actionable failures before the tail; unittest keeps stdout and
-          # stderr interleaved through PYTHONUNBUFFERED.
-          grep -nE 'FAIL|ERROR|Traceback|AssertionError|worker check' validate.log | head -60 || true
-          tail -80 validate.log
+          # stderr interleaved through PYTHONUNBUFFERED. Every echo passes through
+          # the same neutraliser as the other workflow log dumps, so untrusted
+          # candidate text cannot become an annotation or leak a token.
+          grep -nE 'FAIL|ERROR|Traceback|AssertionError|worker check' validate.log | head -60 \
+            | sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' -e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}/***/g' || true
+          tail -80 validate.log | sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' -e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}/***/g'
           if (( code != 0 )); then
-            first=$(grep -nE 'FAIL|ERROR|Traceback|AssertionError' validate.log | head -1 || true)
+            first=$(grep -nE 'FAIL|ERROR|Traceback|AssertionError' validate.log | sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' -e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}/***/g' | head -1 || true)
             {
               echo "### Worker validation failed"
               echo "First failing test: ${first:-see validate.log}"

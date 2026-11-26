@@ -17,6 +17,7 @@ if [[ -n "${ARGV_LOG:-}" ]]; then printf '%s\\0' "$@" >> "$ARGV_LOG"; fi
 case "$*" in *"--agent task-advisor"*)
   case "${BRIEF_MODE:-none}" in
     good) printf 'chatter\\n<<<BRIEF\\nGoal: advised goal\\nBRIEF>>>\\n' ;;
+    commands) printf 'chatter\\n<<<BRIEF\\n::error::brief marker\\n  ##[warning]brief warning\\nBRIEF>>>\\n' ;;
     rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
   esac
   exit 0 ;;
@@ -34,6 +35,8 @@ case "$FAKE_MODE" in
   stubborn) echo nothing ;;
   slow) sleep 5 ;;
   report) mkdir -p .agent; printf 'Root cause found: yes\\n## Fix plan\\n1. fix it\\n' > .agent/debug-report.md; echo done ;;
+  log-commands) printf '%s\\n' '##[error]Process completed with exit code 1' '::error::fake' '  ##[warning]x' "::error:: $FAKE_TOKEN" 'plain line' '' '' ;;
+  rate-log-commands) printf '%s\\n' '##[error]Process completed with exit code 1' 'Error: 429 rate limit exceeded' "::error:: $FAKE_TOKEN" 'plain line'; exit 1 ;;
 esac
 """
 FAKE_GH = """#!/usr/bin/env bash
@@ -277,6 +280,108 @@ class AgentRunTests(unittest.TestCase):
                 for line in text.splitlines():
                     self.assertFalse(line.lstrip().startswith("##["), line)
                     self.assertFalse(line.lstrip().startswith("::"), line)
+
+    def test_agent_log_command_lines_are_quoted_in_stderr_and_saved_log(self):
+        fake_token = "ghp_" + "A" * 24
+        result = self.run_cmd("implement", FAKE_MODE="log-commands", FAKE_TOKEN=fake_token)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "ok")
+        saved = (self.repo / ".agent/implement.log").read_text()
+        for label, text in (("stderr", result.stderr), ("implement.log", saved)):
+            with self.subTest(stream=label):
+                self.assertIn("> ##[error]Process completed with exit code 1", text, text)
+                self.assertIn("> ::error::fake", text, text)
+                self.assertIn("  > ##[warning]x", text, text)
+                # The shell filter mirrors swarm.clean(): a token on a quoted
+                # command line must not survive in either the log or the prompt.
+                self.assertIn("> ::error:: ***", text, text)
+                self.assertNotIn(fake_token, text)
+                for line in text.splitlines():
+                    self.assertFalse(line.lstrip().startswith("##["), line)
+                    self.assertFalse(line.lstrip().startswith("::"), line)
+
+    def test_agent_log_keeps_plain_lines_and_trailing_blank_lines(self):
+        result = self.run_cmd("implement", FAKE_MODE="log-commands",
+                              FAKE_TOKEN="ghp_" + "A" * 24)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        saved = (self.repo / ".agent/implement.log").read_text()
+        self.assertTrue(saved.endswith("plain line\n\n\n"), saved[-80:])
+        # Later trail_record output follows the agent stream on stderr, so the
+        # exact tail is asserted on the saved log and as a prefix here.
+        self.assertIn("plain line\n\n\n", result.stderr)
+        self.assertEqual(saved.splitlines()[-3:], ["plain line", "", ""])
+
+    def test_rate_limit_detection_still_reads_a_neutralised_log(self):
+        fake_token = "ghp_" + "A" * 24
+        result = self.run_cmd("implement", FAKE_MODE="rate-log-commands", FAKE_TOKEN=fake_token)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.outputs()["result"], "rate_limited")
+        saved = (self.repo / ".agent/implement.log").read_text()
+        self.assertIn("> ##[error]Process completed with exit code 1", saved)
+        self.assertIn("Error: 429 rate limit exceeded", saved)
+        self.assertNotIn(fake_token, saved)
+
+    def test_quoted_story_tokens_are_masked(self):
+        fake_token = "ghp_" + "A" * 24
+        body = f"::error:: {fake_token}\nplain line\n\n"
+        prompts = self.tmp / "story-token-masked.log"
+        result = self.run_cmd("implement", FAKE_MODE="commit", PROMPT_LOG=str(prompts),
+                              STORY_BODY=body)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = prompts.read_text()
+        self.assertIn("> ::error:: ***", text)
+        self.assertNotIn(fake_token, text)
+        self.assertIn("plain line\n\n", text)
+
+    def test_brief_extraction_still_works_when_the_agent_log_is_neutralised(self):
+        prompts = self.tmp / "brief-neutralised.log"
+        result = self.run_cmd("implement", FAKE_MODE="commit", SWARM="1",
+                              BRIEF_MODE="commands", PROMPT_LOG=str(prompts))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = prompts.read_text()
+        self.assertIn("> ::error::brief marker", text)
+        self.assertIn("  > ##[warning]brief warning", text)
+        for line in text.splitlines():
+            self.assertFalse(line.lstrip().startswith("##["), line)
+            self.assertFalse(line.lstrip().startswith("::"), line)
+
+    def test_tracker_dump_is_written_to_a_file_not_the_log(self):
+        wrapper = (__import__("helpers").ROOT / "scripts/agent-run.sh").read_text()
+        self.assertIn("python3 -I scripts/taskstore.py view > .agent/tasks.txt", wrapper)
+        # $out is .agents for read-only modes, which would dirty the workspace.
+        self.assertNotIn('> "$out/tasks.txt"', wrapper)
+        (self.repo / "tasks").mkdir()
+        sentinel = "TRACKER-DUMP-SENTINEL-01333000"
+        (self.repo / "tasks/00001000-issue-5-story.md").write_text(
+            f"- [ ] issue-5 · Story with sentinel\n  - details: {sentinel}\n")
+        self.git("add", "tasks")
+        self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "task")
+        result = self.run_cmd("implement", FAKE_MODE="none")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn(sentinel, result.stderr)
+        self.assertIn(sentinel, (self.repo / ".agent/tasks.txt").read_text())
+        # The quoted copy stays visible on stdout for prompt consumers; only
+        # untrusted markers and tokens are neutralised, not tracker context.
+        self.assertIn(sentinel, result.stdout)
+
+    def test_worker_log_echoes_in_workflows_are_neutralised(self):
+        workflows = __import__("helpers").ROOT / ".github/workflows"
+        select_allocate = (workflows / "swarm.yml").read_text()
+        worker = (workflows / "swarm-worker.yml").read_text()
+        sed = (r"sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' "
+               r"-e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
+               r"sk-[A-Za-z0-9_-]{20,}/***/g'")
+        for name in ("select.log", "selected-feature.txt", "allocate.log",
+                     "allocated-tasks.txt"):
+            self.assertIn(f"{sed} .agent/{name} >&2", select_allocate, name)
+        self.assertNotIn("cat .agent/", select_allocate)
+        # A sed expression with single quotes cannot live inside bash -lc '...'.
+        for container in select_allocate.split("bash -lc '")[1:]:
+            script = container.split("'", 1)[0]
+            self.assertNotIn("cat .agent/", script)
+            self.assertNotIn("sed -E", script)
+        self.assertIn(f"tail -80 validate.log | {sed}", worker)
+        self.assertNotIn("tail -80 validate.log\n", worker)
 
     def test_a_default_story_prompt_has_no_requested_change_line(self):
         prompts = self.tmp / "story-prompt-default.log"

@@ -1052,7 +1052,7 @@ class PlanTests(unittest.TestCase):
         self.assertNotIn("--agent aurevia-scrum-master", workflow)
 
     def test_selection_steps_report_agency_failure_instead_of_hiding_it(self):
-        """Both LLM steps keep stdout, stderr and the exit code visible."""
+        """Both LLM steps keep stdout, stderr and the exit code visible, quoted."""
         workflow = (ROOT / ".github/workflows/swarm.yml").read_text()
         select = workflow.split("name: Select features with OpenCode", 1)[1].split("  allocate:", 1)[0]
         allocate = workflow.split("name: Allocate non-overlapping tasks with OpenCode", 1)[1]
@@ -1064,7 +1064,13 @@ class PlanTests(unittest.TestCase):
                 self.assertIn('exit "$rc"', step)
                 self.assertIn("> .agent/", step)
                 self.assertIn("2>.agent/", step)
-                self.assertIn("cat .agent/", step)
+                # Agent text is displayed through the same command-marker
+                # filter as the worker log, so it cannot become an annotation.
+                quoted = (r"sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' "
+                          r"-e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
+                          r"sk-[A-Za-z0-9_-]{20,}/***/g' .agent/")
+                self.assertIn(quoted, step)
+                self.assertNotIn("cat .agent/", step)
                 self.assertIn("::error::", step)
                 self.assertIn("OPENCODE_API_KEY_ALT", step)
                 self.assertIn("keys+=(", step)

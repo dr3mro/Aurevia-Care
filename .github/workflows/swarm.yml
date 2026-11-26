@@ -101,8 +101,6 @@ jobs:
                 opencode run --auto --agent product-owner --model "$SWARM_MODEL" "$prompt" \
                   > .agent/selected-feature.txt 2>.agent/select.log
                 rc=$?
-                echo "--- OpenCode select log ---" >&2
-                if [[ -f .agent/select.log ]]; then cat .agent/select.log >&2; fi
                 echo "opencode rc=$rc" >&2
                 if (( rc == 0 )); then break; fi
                 if ! /usr/bin/grep -qiE "rate.?limit|too many requests|quota|429|unauthor|401|403|invalid api key|authentication" .agent/select.log; then break; fi
@@ -111,9 +109,15 @@ jobs:
             '
           rc=$?
           echo "docker rc=$rc" >&2
+          # Agent text is outside the container here, where the quoting of the
+          # sed expressions is plain shell rather than the inner bash -lc string.
+          if [[ -f .agent/select.log ]]; then
+            echo "--- OpenCode select log ---" >&2
+            sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' -e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}/***/g' .agent/select.log >&2
+          fi
           if [[ -f .agent/selected-feature.txt ]]; then
             echo "--- selected feature output ---" >&2
-            cat .agent/selected-feature.txt >&2
+            sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' -e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}/***/g' .agent/selected-feature.txt >&2
           fi
           if (( rc != 0 )); then
             echo "::error::OpenCode feature selection failed with rc=$rc; see the select log above" >&2
@@ -210,8 +214,6 @@ jobs:
                 opencode run --auto --agent scrum-master --model "$SWARM_MODEL" "$prompt" \
                   > .agent/allocated-tasks.txt 2>.agent/allocate.log
                 rc=$?
-                echo "--- OpenCode allocate log ---" >&2
-                if [[ -f .agent/allocate.log ]]; then cat .agent/allocate.log >&2; fi
                 echo "opencode rc=$rc" >&2
                 if (( rc == 0 )); then break; fi
                 if ! /usr/bin/grep -qiE "rate.?limit|too many requests|quota|429|unauthor|401|403|invalid api key|authentication" .agent/allocate.log; then break; fi
@@ -220,9 +222,13 @@ jobs:
             '
           rc=$?
           echo "docker rc=$rc" >&2
+          if [[ -f .agent/allocate.log ]]; then
+            echo "--- OpenCode allocate log ---" >&2
+            sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' -e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}/***/g' .agent/allocate.log >&2
+          fi
           if [[ -f .agent/allocated-tasks.txt ]]; then
             echo "--- allocated tasks output ---" >&2
-            cat .agent/allocated-tasks.txt >&2
+            sed -E -e 's/^([[:space:]]*)(##\[|::)/\1> \2/' -e 's/gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}/***/g' .agent/allocated-tasks.txt >&2
           fi
           if (( rc != 0 )); then
             echo "::error::OpenCode task allocation failed with rc=$rc; see the allocate log above" >&2
