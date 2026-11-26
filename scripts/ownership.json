@@ -49,6 +49,7 @@
     "scripts/frontend-typecheck-check.sh": "project",
     "scripts/gen-opencode.py": "project",
     "scripts/integrator-gate.sh": "project",
+    "scripts/link_developer_reference.py": "project",
     "scripts/monitor.py": "project",
     "scripts/monitor.sh": "project",
     "scripts/mutation-check.sh": "project",
