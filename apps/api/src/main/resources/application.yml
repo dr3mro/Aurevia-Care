@@ -10,6 +10,11 @@ spring:
       initialization-fail-timeout: -1
   flyway:
     enabled: false
+  # IAM-01: synthetic-auth is test-only. SecurityConfiguration fails startup
+  # unless AUREVIA_ALLOW_SYNTHETIC_AUTH=true is explicitly supplied. The only
+  # default is deny (:false in the Java binding); no permissive value is configured
+  # here, so a deployed image cannot silently inherit the permit-all
+  # header-identity chain. The OIDC checks below are unaffected by that opt-in.
   security:
     oauth2:
       resourceserver:

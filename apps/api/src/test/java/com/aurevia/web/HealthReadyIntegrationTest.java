@@ -29,7 +29,8 @@ import org.springframework.web.client.RestClient;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_health_it")
+        properties = {"spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/aurevia_health_it",
+                "AUREVIA_ALLOW_SYNTHETIC_AUTH=true"})
 @ActiveProfiles("synthetic-auth")
 class HealthReadyIntegrationTest {
 

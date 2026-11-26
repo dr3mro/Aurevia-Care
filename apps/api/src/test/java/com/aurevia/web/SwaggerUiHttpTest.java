@@ -385,6 +385,9 @@ class SwaggerUiHttpTest {
         if (profiles != null) {
             String active = profiles;
             runner = runner.withInitializer(context -> context.getEnvironment().setActiveProfiles(active));
+            if (active.contains("synthetic-auth")) {
+                runner = runner.withPropertyValues("AUREVIA_ALLOW_SYNTHETIC_AUTH=true");
+            }
         }
         if (docsEnabled != null) {
             runner = runner.withPropertyValues(DOCS_PROPERTY + "=" + docsEnabled);

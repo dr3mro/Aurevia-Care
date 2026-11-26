@@ -1,6 +1,8 @@
 package com.aurevia.web;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -38,6 +40,7 @@ class SecurityFilterChainHttpTest {
     private static final String ISSUER_PROPERTY = "spring.security.oauth2.resourceserver.jwt.issuer-uri";
     private static final String AUDIENCE_PROPERTY = "spring.security.oauth2.resourceserver.jwt.audiences";
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
+    private static final String OPT_IN_PROPERTY = "AUREVIA_ALLOW_SYNTHETIC_AUTH";
 
     private JdbcTemplate jdbc;
 
@@ -78,6 +81,53 @@ class SecurityFilterChainHttpTest {
     @AfterEach
     void clearTenant() {
         TenantContext.clear();
+    }
+
+    /**
+     * The synthetic chain stays test-only: no explicit opt-in means the context
+     * cannot start, so no request can reach a permit-all chain by config drift.
+     */
+    @Test
+    void syntheticWithoutOptInFailsStartup() {
+        new WebApplicationContextRunner()
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, DecoderStub.class)
+                .withPropertyValues("spring.profiles.active=synthetic-auth")
+                .run(context -> {
+                    Throwable failure = context.getStartupFailure();
+                    assertNotNull(failure);
+                    assertTrue(messageChain(failure).contains(SecurityConfiguration.SYNTHETIC_OPT_IN_MESSAGE));
+                });
+    }
+
+    /**
+     * The explicit opt-in admits an unauthenticated GET through the real filter
+     * chain; the synthetic subject and tenant headers still bind the caller.
+     *
+     * @throws Throwable when the context runner or MockMvc fails
+     */
+    @Test
+    void syntheticOptInAllowsUnauthenticatedProbeGet() throws Throwable {
+        new WebApplicationContextRunner()
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class, DecoderStub.class)
+                .withPropertyValues("spring.profiles.active=synthetic-auth", OPT_IN_PROPERTY + "=true")
+                .run(context -> {
+                    assertNull(context.getStartupFailure());
+                    mvc(context).perform(get("/api/v1/probe")
+                                    .header("X-Synthetic-Subject", "subject-1")
+                                    .header("X-Active-Organization", ORG))
+                            .andExpect(status().isOk());
+                });
+    }
+
+    /** @return the guard message across the whole cause chain */
+    private static String messageChain(Throwable failure) {
+        StringBuilder messages = new StringBuilder();
+        Throwable cause = failure;
+        while (cause != null) {
+            messages.append(cause.getMessage()).append('\n');
+            cause = cause.getCause();
+        }
+        return messages.toString();
     }
 
     @Test

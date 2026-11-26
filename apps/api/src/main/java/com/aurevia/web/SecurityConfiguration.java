@@ -28,7 +28,10 @@ import jakarta.servlet.http.HttpServletRequest;
  *
  * <p>Under the {@code synthetic-auth} profile every request is permitted by the
  * filter chain and {@link com.aurevia.web.TenantContextInterceptor} remains the only gate,
- * reading synthetic headers exactly as before. In every other profile the
+ * but only after the explicit test-only opt-in {@code AUREVIA_ALLOW_SYNTHETIC_AUTH=true}
+ * has been supplied. The profile fails startup closed by default so a deployed
+ * image cannot inherit header-only identity through configuration drift; once
+ * opted in, the chain reads synthetic headers exactly as before. In every other profile the
  * filter chain is a stateless OIDC resource server: a valid JWT bearer token is
  * required and {@link com.aurevia.web.TenantContextInterceptor} binds the active organization
  * from verified claims. The staff web cookie session is a separate
@@ -53,34 +56,51 @@ import jakarta.servlet.http.HttpServletRequest;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class SecurityConfiguration {
 
+    /** Message naming the opt-in that makes the synthetic header login legal. */
+    static final String SYNTHETIC_OPT_IN_MESSAGE =
+            "AUREVIA_ALLOW_SYNTHETIC_AUTH must be set to true to enable the synthetic-auth profile";
+
     private final String issuerUri;
     private final String audience;
+    private final boolean allowSyntheticAuth;
 
     /**
-     * Read the issuer and audience used to validate bearer tokens; an absent
-     * property resolves to an empty string and fails startup closed outside the
-     * synthetic profile.
+     * Read the issuer and audience used to validate bearer tokens and the flag
+     * that authorizes the synthetic header login. An absent issuer or audience
+     * resolves to an empty string and fails startup closed outside the synthetic
+     * profile; the synthetic opt-in resolves to {@code false} when it is absent.
      *
-     * @param issuerUri configured OIDC issuer, possibly empty
-     * @param audience  expected OIDC token audience, possibly empty
+     * @param issuerUri        configured OIDC issuer, possibly empty
+     * @param audience         expected OIDC token audience, possibly empty
+     * @param allowSyntheticAuth explicit test-only opt-in, false by default
      */
     public SecurityConfiguration(
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri,
-            @Value("${spring.security.oauth2.resourceserver.jwt.audiences:}") String audience) {
+            @Value("${spring.security.oauth2.resourceserver.jwt.audiences:}") String audience,
+            @Value("${AUREVIA_ALLOW_SYNTHETIC_AUTH:false}") boolean allowSyntheticAuth) {
         this.issuerUri = issuerUri;
         this.audience = audience;
+        this.allowSyntheticAuth = allowSyntheticAuth;
     }
 
     /**
      * Permissive chain for the synthetic header login used by existing tests.
      *
+     * <p>The guard runs before the builder is touched so no request can reach a
+     * permit-all chain when the opt-in is missing; failing context startup is the
+     * only way to prevent config drift from exposing a header-only API.</p>
+     *
      * @param http shared web security builder
      * @return the synthetic filter chain
+     * @throws java.lang.IllegalStateException when the test-only opt-in is missing
      * @throws Exception when the chain cannot be built
      */
     @Bean
     @Profile("synthetic-auth")
     SecurityFilterChain syntheticSecurityFilterChain(HttpSecurity http) throws Exception {
+        if (!allowSyntheticAuth) {
+            throw new IllegalStateException(SYNTHETIC_OPT_IN_MESSAGE);
+        }
         return http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
                 .build();

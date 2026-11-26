@@ -45,8 +45,9 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/"
-                + CommitStatusAcceptanceEventAuditTogetherTest.DB)
+        properties = {"spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/"
+                + CommitStatusAcceptanceEventAuditTogetherTest.DB,
+                "AUREVIA_ALLOW_SYNTHETIC_AUTH=true"})
 @ActiveProfiles("synthetic-auth")
 @Timeout(300)
 class CommitStatusAcceptanceEventAuditTogetherTest {
