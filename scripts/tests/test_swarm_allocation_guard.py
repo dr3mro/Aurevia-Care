@@ -113,6 +113,13 @@ class SwarmAnswerGuardTest(unittest.TestCase):
         self.assertIn("::error::OpenCode returned no tasks=", result.stderr)
         self.assertNotIn("task_ids=", output)
 
+    def test_malformed_late_allocation_line_is_an_error(self):
+        """A late bad answer must not leave an earlier valid allocation in force."""
+        result, output, _ = self.run_guard("ALLOCATION", "tasks=FU-1747-05\ntasks=BAD!;x\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("::error::OpenCode returned no tasks=", result.stderr)
+        self.assertNotIn("task_ids=", output)
+
     def test_non_empty_allocation_keeps_ids_without_empty_wave_annotation(self):
         result, output, summary = self.run_guard("ALLOCATION", "tasks=FU-1747-05\n")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -161,6 +168,23 @@ class SwarmAnswerGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("feature=FU-1747\n", output)
         self.assertIn("task_ids=FU-1747-02\n", output)
+
+    def test_last_selection_line_wins_over_earlier_answer(self):
+        result, output, _ = self.run_guard(
+            "SELECTION", "feature=FU-1747\ntasks=FU-1747-02\nfeature=PRINT\ntasks=PRINT-01\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("feature=PRINT\n", output)
+        self.assertIn("task_ids=PRINT-01\n", output)
+        self.assertNotIn("feature=FU-1747\n", output)
+
+    def test_malformed_late_selection_line_is_an_error(self):
+        """A late bad feature answer must not keep the earlier valid one."""
+        result, output, _ = self.run_guard(
+            "SELECTION", "feature=FU-1747\ntasks=FU-1747-02\nfeature=FU-1747;echo x\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("::error::OpenCode returned no feature=/tasks=", result.stderr)
+        self.assertNotIn("feature=", output)
+        self.assertNotIn("task_ids=", output)
 
 
 class SwarmEmptyWaveTest(unittest.TestCase):

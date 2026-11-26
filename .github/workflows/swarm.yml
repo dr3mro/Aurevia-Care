@@ -127,15 +127,18 @@ jobs:
           # The * makes an explicitly empty value match: `feature=` and `tasks=`
           # are answers, while a missing line means the agent never answered and
           # is an error. The comma lets the PO return more than one feature prefix.
+          # Validate the last answer line itself: a later malformed answer must
+          # fail instead of silently leaving an earlier valid value in force.
           feature_re='^feature=[A-Za-z0-9_,-]*$'
           tasks_re='^tasks=[A-Za-z0-9_,-]*$'
-          if ! /usr/bin/grep -Eq "$feature_re" .agent/selected-feature.txt \
-            || ! /usr/bin/grep -Eq "$tasks_re" .agent/selected-feature.txt; then
+          feature_line=$(/usr/bin/grep -E '^feature=' .agent/selected-feature.txt | tail -n 1)
+          tasks_line=$(/usr/bin/grep -E '^tasks=' .agent/selected-feature.txt | tail -n 1)
+          if [[ ! "$feature_line" =~ $feature_re ]] || [[ ! "$tasks_line" =~ $tasks_re ]]; then
             echo "::error::OpenCode returned no feature=/tasks= while open [ ] tasks exist" >&2
             exit 1
           fi
-          feature=$(/usr/bin/grep -Eo "$feature_re" .agent/selected-feature.txt | tail -n 1 | cut -d= -f2-)
-          tasks=$(/usr/bin/grep -Eo "$tasks_re" .agent/selected-feature.txt | tail -n 1 | cut -d= -f2-)
+          feature=${feature_line#feature=}
+          tasks=${tasks_line#tasks=}
           if [[ -z "$feature" || -z "$tasks" ]]; then
             echo "::notice::Empty feature selection is a valid answer; no eligible task was chosen from candidates ${tasks:-none}." >&2
           fi
@@ -232,12 +235,15 @@ jobs:
           # ALLOCATION-GUARD-BEGIN
           # An explicit empty answer means every candidate overlapped a taken
           # task; only a missing line (a failed or silent agent) is an error.
+          # Validate the last answer line itself so a malformed late answer
+          # cannot leave an earlier allocation in force.
           tasks_re='^tasks=[A-Za-z0-9_,-]*$'
-          if ! /usr/bin/grep -Eq "$tasks_re" .agent/allocated-tasks.txt; then
+          tasks_line=$(/usr/bin/grep -E '^tasks=' .agent/allocated-tasks.txt | tail -n 1)
+          if [[ ! "$tasks_line" =~ $tasks_re ]]; then
             echo "::error::OpenCode returned no tasks= while open [ ] tasks exist" >&2
             exit 1
           fi
-          tasks=$(/usr/bin/grep -Eo "$tasks_re" .agent/allocated-tasks.txt | tail -n 1 | cut -d= -f2-)
+          tasks=${tasks_line#tasks=}
           if [[ -z "$tasks" ]]; then
             # CANDIDATES is bound from the PO job's validated id list; no free
             # text from the agent reaches the annotation or the run summary.
