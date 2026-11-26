@@ -1024,6 +1024,36 @@ class WorkflowFileTests(unittest.TestCase):
         self.assertIn("path: ${{ runner.temp }}/notes-in", publish)
         self.assertIn("path: ${{ runner.temp }}/reconciled", publish)
 
+    def test_every_notes_consumer_uses_an_out_of_checkout_path(self):
+        text = (self.root / "daily-notes.yml").read_text()
+        collect = text.split("  collect:", 1)[1].split("  reconcile:", 1)[0]
+        reconcile = text.split("  reconcile:", 1)[1].split("  publish:", 1)[0]
+        publish = text.split("  publish:", 1)[1]
+        temp = "${{ runner.temp }}/notes-in"
+        for name, job in (("collect", collect), ("reconcile", reconcile),
+                          ("publish", publish)):
+            with self.subTest(job=name):
+                self.assertIn(f"path: {temp}", job)
+        self.assertIn('NOTES_IN: ${{ runner.temp }}/notes-in', collect)
+        self.assertIn('NOTES_IN: ${{ runner.temp }}/notes-in', reconcile)
+        self.assertIn('--out "$NOTES_IN"', collect)
+        self.assertNotIn("path: notes-in", text)
+
+    def test_a_failed_reconcile_stops_publish_with_a_clear_error(self):
+        text = (self.root / "daily-notes.yml").read_text()
+        publish = text.split("  publish:", 1)[1]
+        guard_at = publish.index("if: needs.reconcile.result != 'success'")
+        error_at = publish.index("::error::")
+        download_at = publish.index("name: notes-reconciled")
+        publish_at = publish.index("notes-publish")
+        self.assertLess(guard_at, error_at)
+        self.assertLess(guard_at, download_at)
+        self.assertLess(guard_at, publish_at)
+        self.assertIn("exit 1", publish[guard_at:download_at])
+        uses_at = publish.rindex("      - uses: actions/download-artifact", 0, download_at)
+        download_step = publish[uses_at:].split("      - name:", 1)[0]
+        self.assertIn("continue-on-error: true", download_step)
+
     def test_the_notes_workflow_covers_both_new_york_offsets(self):
         text = (self.root / "daily-notes.yml").read_text()
         self.assertIn("'10 5 * * *'", text)

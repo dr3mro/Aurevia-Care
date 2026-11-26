@@ -49,12 +49,14 @@ jobs:
       - id: image
         run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-2:latest" >> "$GITHUB_OUTPUT"
       - id: pick
-        run: python3 -I scripts/swarm.py notes-collect --out notes-in
+        env:
+          NOTES_IN: ${{ runner.temp }}/notes-in
+        run: python3 -I scripts/swarm.py notes-collect --out "$NOTES_IN"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: steps.pick.outputs.act == 'true'
         with:
           name: notes-in
-          path: notes-in
+          path: ${{ runner.temp }}/notes-in
           retention-days: 1
   reconcile:
     name: Reconcile with a worker
@@ -84,13 +86,16 @@ jobs:
           ref: main
           fetch-depth: 1
           persist-credentials: false
+      # Outside the checkout: the reconcile runner refuses a dirty worktree, and an
+      # untracked notes-in/ artifact would stop the agent before it ever starts.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: notes-in
-          path: notes-in
+          path: ${{ runner.temp }}/notes-in
       - name: Reconcile (no GitHub token in this step)
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_2 || secrets.OPENCODE_API_KEY }}
+          NOTES_IN: ${{ runner.temp }}/notes-in
         run: scripts/agent-run.sh reconcile
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
@@ -110,6 +115,16 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      # Report the real cause before touching the optional artifact: a failed
+      # reconcile produces no usable notes-reconciled upload, and downloading it
+      # would otherwise hide the failure behind a confusing artifact error.
+      - name: Stop when reconciliation did not succeed
+        if: needs.reconcile.result != 'success'
+        env:
+          RESULT: ${{ needs.reconcile.result }}
+        run: |
+          printf '::error::Reconcile did not succeed (result: %s); no usable notes-reconciled artifact was produced. Check the "Reconcile with a worker" job log. Publishing is stopped and the originals stay for the next run.\n' "$RESULT" >&2
+          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: main
