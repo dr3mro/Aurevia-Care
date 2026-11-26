@@ -1,4 +1,4 @@
-- [-] FIX-DAILY-NOTES-RECONCILE · Reconcile must run from an out-of-workspace notes directory
+- [x] FIX-DAILY-NOTES-RECONCILE · Reconcile must run from an out-of-workspace notes directory
   - requirements: OPS-06
   - scope: .github/workflows/daily-notes.yml, scripts/agent-run.sh, scripts/tests/test_agent_run.py, scripts/tests/test_swarm_monitor.py
   - agent: orca
@@ -10,15 +10,21 @@
     Test evidence (tool, worktree `.workspaces/daily-notes-reconcile`, Python 3.15.2 unless noted):
     - Red before production edits: `/opt/homebrew/bin/python3.15 -I -m unittest discover -s scripts/tests -p test_agent_run.py -k reconcile -k tracker -k notes_directory -k local_notes -v` -> `Ran 12 tests ... FAILED (failures=6)`; `-p test_swarm_monitor.py -k notes_consumer -k failed_reconcile -v` -> `Ran 2 tests ... FAILED (failures=3, errors=1)` (three `subTest` failures plus one missing-guard error from the two selected test methods).
     - Green after fix: same agent-run selection -> `Ran 12 tests ... OK`; workflow selection plus the two existing token/path tests -> `Ran 4 tests ... OK` (`test_a_failed_reconcile_stops_publish_with_a_clear_error`, `test_every_notes_consumer_uses_an_out_of_checkout_path`, `test_the_notes_publish_job_keeps_agent_files_out_of_the_checkout`, `test_agent_steps_never_hold_a_github_token`).
-    - Full suite: `/opt/homebrew/bin/python3.15 -I -m unittest discover -s scripts/tests -q` -> `Ran 2199 tests in 474.858s`, `OK` (exit 0).
+    - Full suite: `/opt/homebrew/bin/python3.15 -I -m unittest discover -s scripts/tests -q` -> `Ran 2199 tests in 319.103s`, `OK` (exit 0), after the final assertion refinement. An intermediate run failed only on the newly scoped `continue-on-error` assertion (the slice started at `name:` and missed the preceding `- uses:` line); the test slice was corrected and the full suite rerun green.
     - Pristine baseline on HEAD bfd781bc: `python3 -I -m unittest discover -s scripts/tests -p test_agent_run.py -q` -> `Ran 125 tests in 339.817s`, `OK`.
     - Lint/policy: `bash -n scripts/agent-run.sh` exit 0; `shellcheck scripts/agent-run.sh` 0.11.0 exit 0; `actionlint -ignore 'unexpected key "queue" for "concurrency" section' .github/workflows/daily-notes.yml` 1.7.12 exit 0; `git diff --check` exit 0; `python3 -I scripts/check-pack.py` -> `Delivery tooling validated: 39 agents, 39 skills`; `python3 -I scripts/check-constraints.py --require-base`, `check-docs.py`, `check-secrets.py`, `gen-opencode.py --check` each exit 0.
     - `bash scripts/python-coverage.sh` -> `python coverage: every changed script line is covered`, exit 0. No scripts/*.py production line changed.
+    - Delivery (tool, `gh run watch 45855695253 --interval 30 --exit-status`): exit 0 on exact head `12e1a1278bc3e7d880e381a7c9ea6f777129354c`; `gh pr checks 1765` shows Delivery gate, Delivery tooling tests, Developer reference, Frontend standards, Java and database verification and Policy and tooling all pass, Swarm gate pass on the later run. The first advisory Swarm gate run failed only on `tested_revision` binding (the interactive PR body has no worker `Tested revision:` line); no required check failed and no code change was needed.
+    - Commit `12e1a1278bc3e7d880e381a7c9ea6f777129354c` (`Fix daily notes reconcile input path and log annotations`) pushed to `fix/daily-notes-reconcile`; PR #1765 https://github.com/dr3mro/Aurevia-Care/pull/1765 opened against `main`. Commit and PR contain no `Co-Authored-By` or `Claude-Session` line.
     Coverage (branch-to-test):
     - `NOTES_IN=${NOTES_IN:-notes-in}` default: `AgentRunTests.test_reconcile_defaults_to_the_local_notes_directory` (and inherited copy); override with three prompt references: `test_reconcile_reads_notes_from_an_outside_directory` (and inherited copy).
     - Clean vs dirty worktree: `test_reconcile_reads_notes_from_an_outside_directory` (clean) and `test_an_untracked_notes_directory_still_refuses_reconcile` with both default and explicit in-repo NOTES_IN (dirty, no prompt log written). Guard itself untouched.
     - `quote_command_lines` matched/unmatched sed branches: `test_tracker_command_markers_are_quoted_in_the_log` (raw `##[error]`, indented `::error::`, plain line); failing tracker `|| true` path: `test_a_failing_tracker_dump_does_not_stop_a_command`.
     - Workflow: `test_every_notes_consumer_uses_an_out_of_checkout_path` (collect upload, reconcile download/env, publish download, no in-checkout path); `test_a_failed_reconcile_stops_publish_with_a_clear_error` (guard before ::error::, optional download and notes-publish, `exit 1`, `continue-on-error` retained); existing `test_agent_steps_never_hold_a_github_token` still green.
-    Review verdicts: pending
+    Review verdicts (read-only subagents, agent file IDs, after fixing all Critical/Required findings — none were raised):
+    - code-reviewer: GO (two Optional wording nits applied: partial-artifact language in the workflow comment and ::error:: message).
+    - coverage-auditor: GO (two Optional assertion gaps applied: explicit collect env and download-scoped continue-on-error).
+    - devsecops: GO (Optional pre-existing agent-output command-marker hardening noted for a future pass; agent job still has no write token).
+    - qa-reviewer: GO (Optional: supervised workflow_dispatch after merge to observe container runner.temp mount and annotation rendering).
     Unverified locally: live Actions execution, container mount of ${{ runner.temp }}, and annotation rendering.
-  - pr: pending
+  - pr: 1765
