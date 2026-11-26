@@ -4,8 +4,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.stereotype.Service;
@@ -25,16 +23,15 @@ import com.aurevia.tenant.TenantContext;
  * <p>Each command runs in one tenant-guarded transaction. Membership and role
  * are re-derived from the active tenant on every request, the entry is read
  * inside that transaction, and the reason and optional new owner are validated
- * before the decision is recorded. The immutable decision is kept in an
- * append-only, tenant-keyed projection; a second resolution of the same entry
- * is rejected instead of overwriting the first. The action and its outcome are
- * also appended to the durable audit log with identifiers only - never the
- * inbound clinical payload.</p>
+ * before the decision is recorded. The immutable decision is appended to a
+ * tenant-owned fact table through {@link com.aurevia.exchange.result.ReconciliationStore};
+ * its unique key rejects a second resolution instead of overwriting the first,
+ * and its presence removes the entry from the open queue through the read-side
+ * fold. The action and its outcome are also appended to the durable audit log
+ * with identifiers only - never the inbound clinical payload.</p>
  *
- * <p>The queue status column cannot be advanced here: migration V22 grants
- * {@code aurevia_app} only SELECT and INSERT on the reconciliation table,
- * and this story reserves no migration version. A follow-up storage story must
- * grant a bounded UPDATE before the durable status can mirror the decision.</p>
+ * <p>The V22 reconciliation ledger stays immutable: its status column is never
+ * updated, so the original queue row remains an unaltered record of diversion.</p>
  */
 @Service
 public class ReconciliationService {
@@ -49,7 +46,7 @@ public class ReconciliationService {
     private final TransactionTemplate transactions;
     private final AuditAppender audit;
     private final Clock clock;
-    private final ConcurrentMap<String, Resolution> resolutions = new ConcurrentHashMap<>();
+    private final ReconciliationStore store;
 
     /**
      * Create the service.
@@ -59,14 +56,17 @@ public class ReconciliationService {
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
      * @param clock        injected clock for deterministic timestamps
+     * @param store        durable tenant-scoped decision store
      */
     public ReconciliationService(ResultRepository repository, ResultActionPolicy policy,
-                                 TransactionTemplate transactions, AuditAppender audit, Clock clock) {
+                                 TransactionTemplate transactions, AuditAppender audit, Clock clock,
+                                 ReconciliationStore store) {
         this.repository = repository;
         this.policy = policy;
         this.transactions = transactions;
         this.audit = audit;
         this.clock = clock;
+        this.store = store;
     }
 
     /**
@@ -97,8 +97,10 @@ public class ReconciliationService {
             Instant at = clock.instant();
             Resolution decision = ReconciliationDecision.decide(entry, action,
                     request.reason(), request.assignedOwner(), at);
-            Resolution prior = resolutions.putIfAbsent(key(context, id), decision);
-            if (prior != null) {
+            // The tenant-scoped unique key is the only arbiter of a repeat: an empty result means
+            // another worker appended the first decision, so this call must not overwrite it.
+            Resolution inserted = store.insert(context.organizationId(), decision);
+            if (inserted == null) {
                 ApiException conflict = new ApiException(409, "ENTRY_ALREADY_RESOLVED",
                         "this reconciliation entry has already been resolved");
                 writeAudit(context, id, "CONFLICT");
@@ -106,7 +108,7 @@ public class ReconciliationService {
                 return null;
             }
             writeAudit(context, id, "SUCCESS");
-            return decision;
+            return inserted;
         });
         if (failure.get() != null) {
             throw failure.get();
@@ -122,8 +124,12 @@ public class ReconciliationService {
      */
     public Optional<Resolution> resolution(String entryId) {
         String id = uuid(entryId, "entryId");
-        TenantContext context = TenantContext.current();
-        return Optional.ofNullable(resolutions.get(key(context, id)));
+        // The read must run inside the guarded transaction: app.current_org is a transaction-local
+        // GUC, so a bare query would be hidden by forced RLS even for the owning tenant.
+        return transactions.execute(status -> {
+            TenantContext context = TenantContext.current();
+            return Optional.ofNullable(store.find(context.organizationId(), id));
+        });
     }
 
     private ApiException authorize(TenantContext context, String resourceId) {
@@ -141,10 +147,6 @@ public class ReconciliationService {
 
     private void writeAudit(TenantContext context, String resourceId, String outcome) {
         audit.append(context, PURPOSE, ACTION, RESOURCE_TYPE, SCOPE, resourceId, outcome);
-    }
-
-    private static String key(TenantContext context, String entryId) {
-        return context.organizationId() + ":" + entryId;
     }
 
     private static String uuid(String value, String field) {

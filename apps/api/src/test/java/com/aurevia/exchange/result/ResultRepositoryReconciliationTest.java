@@ -1,6 +1,7 @@
 package com.aurevia.exchange.result;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,5 +59,42 @@ class ResultRepositoryReconciliationTest {
         when(jdbc.query(anyString(), ArgumentMatchers.<Map<String, Object>>any(),
                 ArgumentMatchers.<RowMapper<ReconciliationEntry>>any())).thenReturn(List.of());
         assertEquals(Optional.empty(), repository.findReconciliation(ENTRY_ID));
+    }
+
+    private List<ReconciliationEntry> listAndCapture(String status, AtomicReference<String> sql,
+                                                     AtomicReference<Object> resolved) {
+        when(jdbc.query(anyString(), ArgumentMatchers.<Map<String, Object>>any(),
+                ArgumentMatchers.<RowMapper<ReconciliationEntry>>any())).thenAnswer(invocation -> {
+                    sql.set(invocation.getArgument(0));
+                    resolved.set(invocation.<Map<String, Object>>getArgument(1).get("resolved"));
+                    return List.of(entry);
+                });
+        return repository.listReconciliation(status);
+    }
+
+    @Test
+    void listOpenFoldsRowsWithoutAResolutionOnly() {
+        AtomicReference<String> sql = new AtomicReference<>();
+        AtomicReference<Object> resolved = new AtomicReference<>();
+
+        List<ReconciliationEntry> found = listAndCapture("open", sql, resolved);
+
+        assertEquals(List.of(entry), found);
+        assertTrue(sql.get().contains("public.reconciliation_resolution"),
+                "the fold must consult the durable resolution fact table");
+        assertEquals(Boolean.FALSE, resolved.get(), "open must exclude entries that have a resolution");
+    }
+
+    @Test
+    void listResolvedFoldsRowsWithAResolutionOnly() {
+        AtomicReference<String> sql = new AtomicReference<>();
+        AtomicReference<Object> resolved = new AtomicReference<>();
+
+        List<ReconciliationEntry> found = listAndCapture("resolved", sql, resolved);
+
+        assertEquals(List.of(entry), found);
+        assertTrue(sql.get().contains("public.reconciliation_resolution"),
+                "the fold must consult the durable resolution fact table");
+        assertEquals(Boolean.TRUE, resolved.get(), "resolved must include entries that have a resolution");
     }
 }

@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -322,6 +324,71 @@ class ResultRoutingIntegrationTest {
     }
 
     @Test
+    void resolutionIsDurableClosesTheOpenQueueAndIsTenantScoped() throws Exception {
+        ResponseEntity<String> queued = importResult(ORG_A, "verifier-a",
+                resultBody("ORD-RR", "SRC-RR", "ACC-RR", "final", null));
+        assertEquals(HttpStatus.ACCEPTED, queued.getStatusCode(), queued.getBody());
+        String entryId = text(queued, "/id");
+        assertEquals("open", text(queued, "/status"));
+
+        ResponseEntity<String> before = send(HttpMethod.GET, QUEUE + "?status=open", null,
+                "auditor-a", ORG_A);
+        assertEquals(HttpStatus.OK, before.getStatusCode(), before.getBody());
+        assertTrue(containsEntry(before, entryId), "a fresh reconciliation entry must start open");
+
+        assertEquals(HttpStatus.FORBIDDEN, send(HttpMethod.POST, QUEUE + "/" + entryId + "/resolve",
+                "{\"action\":\"match\",\"reason\":\"verified\"}", "auditor-a", ORG_A).getStatusCode());
+        assertEquals(HttpStatus.OK, send(HttpMethod.GET, QUEUE + "?status=open", null,
+                "auditor-a", ORG_A).getStatusCode(), "the auditor keeps queue read access");
+
+        ResponseEntity<String> resolved = send(HttpMethod.POST, QUEUE + "/" + entryId + "/resolve",
+                "{\"action\":\"match\",\"reason\":\"identifiers verified\"}", "verifier-a", ORG_A);
+        assertEquals(HttpStatus.OK, resolved.getStatusCode(), resolved.getBody());
+        assertEquals(entryId, text(resolved, "/entryId"));
+        assertEquals("match", text(resolved, "/action"));
+        assertEquals("identifiers verified", text(resolved, "/reason"));
+
+        ResponseEntity<String> readBack = send(HttpMethod.GET, QUEUE + "/" + entryId + "/resolution", null,
+                "admin-a", ORG_A);
+        assertEquals(HttpStatus.OK, readBack.getStatusCode(), readBack.getBody());
+        assertEquals("match", text(readBack, "/action"), "a second worker must observe the stored decision");
+        assertEquals("identifiers verified", text(readBack, "/reason"));
+
+        ResponseEntity<String> openAfter = send(HttpMethod.GET, QUEUE + "?status=open", null,
+                "auditor-a", ORG_A);
+        assertEquals(HttpStatus.OK, openAfter.getStatusCode(), openAfter.getBody());
+        assertFalse(containsEntry(openAfter, entryId), "a resolved entry must leave the open queue");
+
+        ResponseEntity<String> doneAfter = send(HttpMethod.GET, QUEUE + "?status=resolved", null,
+                "auditor-a", ORG_A);
+        assertEquals(HttpStatus.OK, doneAfter.getStatusCode(), doneAfter.getBody());
+        assertTrue(containsEntry(doneAfter, entryId), "a resolved entry must appear in the resolved queue");
+        assertEquals("resolved", entryStatus(doneAfter, entryId));
+
+        assertEquals(HttpStatus.NOT_FOUND, send(HttpMethod.GET, QUEUE + "/" + entryId + "/resolution", null,
+                "verifier-b", ORG_B).getStatusCode(), "a foreign tenant must not read the decision");
+
+        ResponseEntity<String> replay = send(HttpMethod.POST, QUEUE + "/" + entryId + "/resolve",
+                "{\"action\":\"reject\",\"reason\":\"changed my mind\"}", "admin-a", ORG_A);
+        assertEquals(HttpStatus.CONFLICT, replay.getStatusCode(), replay.getBody());
+        assertEquals("ENTRY_ALREADY_RESOLVED", text(replay, "/code"));
+
+        assertEquals(1, count(ORG_A, "SELECT count(*) FROM public.reconciliation_resolution "
+                + "WHERE entry_id = '" + entryId + "'"));
+        assertEquals(0, count(ORG_B, "SELECT count(*) FROM public.reconciliation_resolution "
+                + "WHERE entry_id = '" + entryId + "'"));
+        assertEquals(1, auditCount("XCH04_RECONCILIATION_RESOLVE", entryId, "SUCCESS"));
+        assertEquals(1, auditCount("XCH04_RECONCILIATION_RESOLVE", entryId, "CONFLICT"));
+        assertEquals(1, auditCount("XCH04_RECONCILIATION_RESOLVE", entryId, "DENIED"));
+
+        assertResolutionRejects(entryId, "UPDATE public.reconciliation_resolution "
+                + "SET reason = 'tampered' WHERE entry_id = '" + entryId + "'");
+        assertResolutionRejects(entryId, "DELETE FROM public.reconciliation_resolution "
+                + "WHERE entry_id = '" + entryId + "'");
+        assertResolutionRejects(entryId, "TRUNCATE TABLE public.reconciliation_resolution");
+    }
+
+    @Test
     void correctionPreservesTheOriginalReopensReviewAndNotifiesPriorRecipients() throws Exception {
         assertEquals(HttpStatus.CREATED, register(ORG_A, "admin-a",
                 orderBody("ORD-R3", patientA, "SRC-3", "ACC-R3", "verifier-a", "queue-a")).getStatusCode());
@@ -586,5 +653,51 @@ class ResultRoutingIntegrationTest {
     private long auditCount(String action, String resourceId) throws Exception {
         return count(ORG_A, "SELECT count(*) FROM public.audit_event "
                 + "WHERE action = '" + action + "' AND resource_id = '" + resourceId + "'");
+    }
+
+    private long auditCount(String action, String resourceId, String outcome) throws Exception {
+        return count(ORG_A, "SELECT count(*) FROM public.audit_event "
+                + "WHERE action = '" + action + "' AND resource_id = '" + resourceId + "' "
+                + "AND outcome = '" + outcome + "'");
+    }
+
+    private static boolean containsEntry(ResponseEntity<String> response, String entryId) {
+        for (JsonNode node : json(response)) {
+            if (entryId.equals(node.at("/id").asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String entryStatus(ResponseEntity<String> response, String entryId) {
+        for (JsonNode node : json(response)) {
+            if (entryId.equals(node.at("/id").asText())) {
+                return node.at("/status").asText();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Prove the append-only fact-table trigger fires as the migration owner with a matching row visible
+     * under the tenant GUCs. A missing or RLS-hidden row would make the probe pass for the wrong reason.
+     */
+    private void assertResolutionRejects(String entryId, String mutation) throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "");
+             Statement statement = connection.createStatement()) {
+            connection.setAutoCommit(false);
+            bind(connection, ORG_A, "admin-a");
+            try (ResultSet result = statement.executeQuery("SELECT id::text FROM public.reconciliation_resolution "
+                    + "WHERE entry_id = '" + entryId + "'")) {
+                assertTrue(result.next(), "seeded resolution must be visible to the tenant-bound owner");
+            }
+            try {
+                statement.execute(mutation);
+                fail("append-only resolution must reject " + mutation);
+            } catch (SQLException expected) {
+                assertEquals("44000", expected.getSQLState(), expected.getMessage());
+            }
+        }
     }
 }

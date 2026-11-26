@@ -51,15 +51,17 @@ class ReconciliationServiceTest {
 
     private ResultRepository repository;
     private AuditAppender audit;
+    private ReconciliationStore store;
     private ReconciliationService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(ResultRepository.class);
         audit = mock(AuditAppender.class);
+        store = mock(ReconciliationStore.class);
         TransactionTemplate transactions = mock(TransactionTemplate.class);
         service = new ReconciliationService(repository, new ResultActionPolicy(), transactions, audit,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC), store);
         doAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));
@@ -89,17 +91,24 @@ class ReconciliationServiceTest {
         return new ResolveRequest(action, reason, owner);
     }
 
+    private void storeAccepts(Resolution resolution) {
+        when(store.insert(eq(ORG), any(Resolution.class))).thenReturn(resolution);
+        when(store.find(ORG, ENTRY_ID)).thenReturn(resolution);
+    }
+
     @Test
     void matchRecordsTheReasonWithoutAnOwnerAndAuditsSuccess() {
         authorized("tenant_admin");
         openEntry();
+        Resolution expected = new Resolution(ENTRY_ID, ReconciliationAction.MATCH,
+                "identifiers verified", null, NOW);
+        storeAccepts(expected);
 
         Resolution resolution = service.resolve(ENTRY_ID, request("match", "identifiers verified", null));
 
-        assertEquals(ReconciliationAction.MATCH, resolution.action());
-        assertEquals("identifiers verified", resolution.reason());
-        assertNull(resolution.assignedOwner());
-        assertEquals(Optional.of(resolution), service.resolution(ENTRY_ID));
+        assertEquals(expected, resolution);
+        assertEquals(NOW, resolution.resolvedAt());
+        assertEquals(Optional.of(expected), service.resolution(ENTRY_ID));
         verify(audit, atLeastOnce()).append(any(), any(), any(), any(), any(), any(), eq("SUCCESS"));
     }
 
@@ -107,12 +116,14 @@ class ReconciliationServiceTest {
     void reassignRecordsTheNewOwnerAndReason() {
         authorized("lab_verifier");
         openEntry();
+        Resolution expected = new Resolution(ENTRY_ID, ReconciliationAction.REASSIGN,
+                "owner on leave", "owner-b", NOW);
+        storeAccepts(expected);
 
         Resolution resolution = service.resolve(ENTRY_ID,
                 request("reassign", "owner on leave", "owner-b"));
 
-        assertEquals(ReconciliationAction.REASSIGN, resolution.action());
-        assertEquals("owner-b", resolution.assignedOwner());
+        assertEquals(expected, resolution);
         assertEquals("owner-b", service.resolution(ENTRY_ID).orElseThrow().assignedOwner());
     }
 
@@ -123,6 +134,7 @@ class ReconciliationServiceTest {
         assertEquals("INVALID_REQUEST", assertThrows(ApiException.class,
                 () -> service.resolve(ENTRY_ID, null)).code());
         verify(repository, never()).findReconciliation(anyString());
+        verify(store, never()).insert(anyString(), any(Resolution.class));
     }
 
     @Test
@@ -153,6 +165,7 @@ class ReconciliationServiceTest {
         when(repository.findReconciliation(ENTRY_ID)).thenReturn(Optional.empty());
         assertEquals(404, assertThrows(ApiException.class,
                 () -> service.resolve(ENTRY_ID, request("match", "verified", null))).status());
+        verify(store, never()).insert(anyString(), any(Resolution.class));
     }
 
     @Test
@@ -162,29 +175,33 @@ class ReconciliationServiceTest {
         assertEquals("REASON_REQUIRED", assertThrows(ApiException.class,
                 () -> service.resolve(ENTRY_ID, request("match", "  ", null))).code());
         assertTrue(service.resolution(ENTRY_ID).isEmpty());
+        verify(store, never()).insert(anyString(), any(Resolution.class));
     }
 
     @Test
-    void reportsARepeatedResolutionAsAConflictAndKeepsTheFirstDecision() {
+    void aRejectedStoreInsertIsReportedAsAConflictAndAudited() {
         authorized("tenant_admin");
         openEntry();
-        Resolution first = service.resolve(ENTRY_ID, request("match", "verified", null));
+        when(store.insert(eq(ORG), any(Resolution.class))).thenReturn(null);
 
         ApiException error = assertThrows(ApiException.class,
                 () -> service.resolve(ENTRY_ID, request("reject", "changed my mind", null)));
         assertEquals(409, error.status());
         assertEquals("ENTRY_ALREADY_RESOLVED", error.code());
-        assertEquals(first, service.resolution(ENTRY_ID).orElseThrow());
         verify(audit, atLeastOnce()).append(any(), any(), any(), any(), any(), any(), eq("CONFLICT"));
+        verify(audit, never()).append(any(), any(), any(), any(), any(), any(), eq("SUCCESS"));
     }
 
     @Test
     void resolutionIsScopedToTheActiveTenant() {
         authorized("tenant_admin");
         openEntry();
-        service.resolve(ENTRY_ID, request("match", "verified", null));
+        Resolution decision = new Resolution(ENTRY_ID, ReconciliationAction.MATCH, "verified", null, NOW);
+        storeAccepts(decision);
+        assertEquals(decision, service.resolve(ENTRY_ID, request("match", "verified", null)));
 
         TenantContext.set(new TenantContext(OTHER_ORG, ACTOR, "XCH04_RECONCILIATION_RESOLVE", "corr-2"));
         assertTrue(service.resolution(ENTRY_ID).isEmpty());
+        verify(store).find(OTHER_ORG, ENTRY_ID);
     }
 }

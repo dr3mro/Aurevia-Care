@@ -46,6 +46,14 @@ public class ResultRepository {
             id::text AS id, order_ref, patient_id::text AS patient_id, source_code, accession,
             destination_code, reason, mismatches, detail, status, created_at
             """;
+    // The ledger's status is immutable, so the open/resolved view is folded from the durable decision
+    // fact. Every shared column is qualified: both tables carry id and created_at.
+    private static final String RECONCILIATION_LIST_COLUMNS = """
+            r.id::text AS id, r.order_ref, r.patient_id::text AS patient_id, r.source_code, r.accession,
+            r.destination_code, r.reason, r.mismatches, r.detail,
+            CASE WHEN resolution.id IS NOT NULL THEN 'resolved' ELSE r.status END AS status,
+            r.created_at
+            """;
     private static final RowMapper<ResultReport> REPORT_MAPPER = ResultRepository::mapReport;
     private static final RowMapper<ReconciliationEntry> RECONCILIATION_MAPPER =
             ResultRepository::mapReconciliation;
@@ -315,16 +323,24 @@ public class ResultRepository {
     }
 
     /**
-     * List a bounded page of reconciliation entries by status.
+     * List a bounded page of reconciliation entries in the requested folded status.
+     *
+     * <p>The immutable ledger never advances its status column. Presence of a durable decision fact is
+     * the authority: an entry without one is open, and an entry with one is resolved. The correlated
+     * join carries the tenant key so a fact from another organization cannot change this tenant's view.</p>
      *
      * @param status {@code open} or {@code resolved}
      * @return entries newest first, at most 200
      */
     public List<ReconciliationEntry> listReconciliation(String status) {
-        return jdbc.query("SELECT " + RECONCILIATION_COLUMNS
-                        + " FROM public.xch04_reconciliation WHERE status = :status "
-                        + "ORDER BY created_at DESC, id LIMIT 200",
-                Map.of("status", status), RECONCILIATION_MAPPER);
+        return jdbc.query("SELECT " + RECONCILIATION_LIST_COLUMNS
+                        + " FROM public.xch04_reconciliation r"
+                        + " LEFT JOIN public.reconciliation_resolution resolution"
+                        + "   ON resolution.organization_id = r.organization_id"
+                        + "  AND resolution.entry_id = r.id"
+                        + " WHERE (resolution.id IS NOT NULL) = CAST(:resolved AS boolean)"
+                        + " ORDER BY r.created_at DESC, r.id LIMIT 200",
+                Map.of("resolved", "resolved".equals(status)), RECONCILIATION_MAPPER);
     }
 
     /**
