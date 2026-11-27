@@ -8,9 +8,11 @@ import { TransportError, send } from '../../api/transport';
 import type * as TransportModule from '../../api/transport';
 import { stateViewText } from '../../components/stateViewMessages';
 import { I18nProvider } from '../../i18n/I18nProvider';
+import type { Locale } from '../../i18n/messages';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { createRoutes } from '../../app/routes';
 import { SchedulingPage } from './SchedulingPage';
+import { schedulingText } from './messages';
 import type { AppointmentViewResponse, AppointmentPageResponse } from './api';
 import { alphaOrganizationId, betaOrganizationId } from './fixtures';
 
@@ -49,18 +51,18 @@ function page(overrides: Record<string, unknown> = {}): ReactElement {
   return <SchedulingPage anchorCivilDate="2026-03-09" {...overrides} />;
 }
 
-function element(ui: ReactElement, organizationId: string): ReactElement {
+function element(ui: ReactElement, organizationId: string, initialLocale: Locale = 'en'): ReactElement {
   return (
     <ThemeProvider>
-      <I18nProvider initialLocale="en">
+      <I18nProvider initialLocale={initialLocale}>
         <ActiveOrganizationProvider value={{ organizationId }}>{ui}</ActiveOrganizationProvider>
       </I18nProvider>
     </ThemeProvider>
   );
 }
 
-function wrap(ui: ReactElement, organizationId = alphaOrganizationId) {
-  return render(element(ui, organizationId));
+function wrap(ui: ReactElement, organizationId = alphaOrganizationId, initialLocale: Locale = 'en') {
+  return render(element(ui, organizationId, initialLocale));
 }
 
 function descriptorAt(call: number): RequestDescriptor {
@@ -396,6 +398,108 @@ describe('SchedulingPage range, paging and tenant switching', () => {
     expect(screen.queryByText('patient-001')).toBeNull();
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
     expect(descriptorAt(1).headers['X-Active-Organization']).toBe(betaOrganizationId);
+  });
+});
+
+describe('SchedulingPage pagination failure recovery', () => {
+  it('keeps earlier rows and retries the same cursor when a later page fails', async () => {
+    const recovered = deferred<AppointmentPageResponse>();
+    sendMock
+      .mockResolvedValueOnce({
+        items: [apiView({ id: 'apt-001', patientId: 'patient-001' })],
+        nextCursor: 'cursor-2',
+      })
+      .mockRejectedValueOnce(transportFailure('server', 'corr-page2'))
+      .mockReturnValueOnce(recovered.promise);
+
+    wrap(page());
+    expect(await screen.findByRole('rowheader', { name: 'patient-001' })).toBeTruthy();
+    expect(descriptorAt(0).url).not.toContain('cursor=');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+    // A failed later page must surface an error without hiding the rows already loaded.
+    expect(await screen.findByText(stateViewText('en', 'error'))).toBeTruthy();
+    expect(screen.getByText('corr-page2')).toBeTruthy();
+    expect(screen.getByRole('button', { name: stateViewText('en', 'retry') })).toBeTruthy();
+    expect(screen.getByRole('rowheader', { name: 'patient-001' })).toBeTruthy();
+    expect(descriptorAt(1).url).toContain('cursor=cursor-2');
+
+    fireEvent.click(screen.getByRole('button', { name: stateViewText('en', 'retry') }));
+
+    // Retained rows stay visible while the retry is still in flight.
+    expect(screen.getByRole('rowheader', { name: 'patient-001' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: stateViewText('en', 'loading') })).toBeNull();
+
+    recovered.resolve({
+      items: [apiView({ id: 'apt-002', patientId: 'patient-002' })],
+      nextCursor: null,
+    });
+
+    expect(await screen.findByText('patient-002')).toBeTruthy();
+    expect(screen.getAllByText('patient-002')).toHaveLength(1);
+    expect(screen.getAllByText('patient-001')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+    expect(sendMock).toHaveBeenCalledTimes(3);
+
+    const retry = descriptorAt(2);
+    expect(retry.method).toBe('GET');
+    expect(retry.url).toContain('cursor=cursor-2');
+    expect(retry.url).toContain('from=2026-03-09T00%3A00%3A00Z');
+    expect(retry.url).toContain('to=2026-03-10T00%3A00%3A00Z');
+    expect(retry.headers['X-Active-Organization']).toBe(alphaOrganizationId);
+  });
+
+  it('localizes the pagination failure and retry controls in Arabic', async () => {
+    sendMock
+      .mockResolvedValueOnce({
+        items: [apiView({ id: 'apt-001', patientId: 'patient-001' })],
+        nextCursor: 'cursor-2',
+      })
+      .mockRejectedValueOnce(transportFailure('server', 'corr-page2'));
+
+    wrap(page(), alphaOrganizationId, 'ar');
+    expect(await screen.findByRole('rowheader', { name: 'patient-001' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('ar', 'loadMore') }));
+
+    expect(await screen.findByText(stateViewText('ar', 'error'))).toBeTruthy();
+    expect(screen.getByRole('button', { name: stateViewText('ar', 'retry') })).toBeTruthy();
+    expect(screen.getByText('corr-page2')).toBeTruthy();
+    expect(screen.getByRole('rowheader', { name: 'patient-001' })).toBeTruthy();
+    expect(screen.queryByText(stateViewText('en', 'error'))).toBeNull();
+    expect(screen.queryByRole('button', { name: stateViewText('en', 'retry') })).toBeNull();
+  });
+
+  it('retries the same cursor when Load more is pressed after a failure', async () => {
+    sendMock
+      .mockResolvedValueOnce({
+        items: [apiView({ id: 'apt-001', patientId: 'patient-001' })],
+        nextCursor: 'cursor-2',
+      })
+      .mockRejectedValueOnce(transportFailure('server', 'corr-page2'))
+      .mockResolvedValueOnce({
+        items: [apiView({ id: 'apt-002', patientId: 'patient-002' })],
+        nextCursor: null,
+      });
+
+    wrap(page());
+    expect(await screen.findByRole('rowheader', { name: 'patient-001' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    expect(await screen.findByText('corr-page2')).toBeTruthy();
+    expect(screen.getByRole('button', { name: stateViewText('en', 'retry') })).toBeTruthy();
+
+    const loadMore = screen.getByRole('button', { name: 'Load more' });
+    expect(loadMore.getAttribute('disabled')).toBeNull();
+    fireEvent.click(loadMore);
+
+    expect(await screen.findByText('patient-002')).toBeTruthy();
+    expect(screen.getAllByText('patient-002')).toHaveLength(1);
+    expect(screen.getAllByText('patient-001')).toHaveLength(1);
+    expect(sendMock).toHaveBeenCalledTimes(3);
+    expect(descriptorAt(2).url).toContain('cursor=cursor-2');
+    expect(descriptorAt(2).headers['X-Active-Organization']).toBe(alphaOrganizationId);
   });
 });
 
