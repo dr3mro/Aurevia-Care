@@ -81,6 +81,29 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(gate.classify_pull_request("swarm/reconcile/b1")[0], gate.RECONCILIATION)
         self.assertEqual(gate.classify_pull_request("feature/x", title="Add thing")[0], gate.HUMAN)
 
+    def test_trusted_repair_pr_is_not_a_worker(self):
+        title = "FIX-45920447774: correct ownership documentation path"
+        self.assertEqual(gate.classify_pull_request("fix/ownership", title=title,
+                         author_association="OWNER")[0], gate.HUMAN)
+        self.assertEqual(gate.classify_pull_request("fix/ownership", title=title,
+                         labels=("autofix",), author_association="NONE")[0], gate.HUMAN)
+        self.assertEqual(gate.classify_pull_request("fix/ownership", title=title,
+                         author_association="NONE")[0], gate.UNKNOWN)
+        self.assertEqual(gate.classify_pull_request("fix/dlv", title="DLV-7: delivery repair",
+                         author_association="OWNER")[0], gate.HUMAN)
+        self.assertEqual(gate.classify_pull_request("fix/dlv", title="DLV-7: delivery repair",
+                         author_association="NONE")[0], gate.UNKNOWN)
+        self.assertEqual(gate.classify_pull_request("swarm/FIX-7-1", title=title,
+                         author_association="OWNER")[0], gate.WORKER)
+
+    def test_repair_can_touch_protected_paths_without_a_worker_note(self):
+        result = run(head_ref="fix/ownership",
+                     title="FIX-45920447774: correct ownership documentation path",
+                     author_association="OWNER", files=("docs/swarm/QA-SOURCE-04.md",),
+                     task_text="", evidence_text="", required_checks=(), check_runs={})
+        self.assertTrue(result.passed, result.failures)
+        self.assertEqual(result.check("protected_files").state, gate.NOT_APPLICABLE)
+
     def test_malformed_automation_fails_closed(self):
         for args, kwargs in ((("swarm/!!bad",), {}),
                              (("feature/x",), {"labels": ("swarm",)}),
