@@ -413,4 +413,57 @@ SQL
 )
 [[ "$fold" == "0" ]] || { printf 'fail: foreign tenant saw config\n' >&2; exit 1; }
 
-printf 'db: migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified\n'
+# V102: durable reply client ids are unique per tenant/conversation and bounded.
+"${mig[@]}" -v a="$org_a" <<'SQL' >/dev/null
+SET app.current_org = :'a';
+SET app.actor = 'admin-a';
+INSERT INTO public.patient_record (organization_id, id, version, mrn, mrn_issuer,
+                                   display_name, normalized_name, dob_unknown_reason, created_by)
+  VALUES (:'a', '33333333-3333-3333-3333-333333333333', 1, 'MRN-V102', 'SYNTHETIC',
+          'Synthetic Patient', 'synthetic patient', 'synthetic fixture',
+          (SELECT id FROM public.user_identity WHERE subject = 'admin-a'));
+INSERT INTO public.patient_link (organization_id, subject, patient_id, active, created_by)
+  VALUES (:'a', 'synthetic-patient', '33333333-3333-3333-3333-333333333333', true,
+          (SELECT id FROM public.user_identity WHERE subject = 'admin-a'));
+INSERT INTO public.conversation (organization_id, id, patient_id, patient_subject,
+                                 unit_key, connection_id, topic, state, created_by)
+  VALUES (:'a', '44444444-4444-4444-4444-444444444444',
+          '33333333-3333-3333-3333-333333333333', 'synthetic-patient', 'clinic',
+          'conn-v102', 'v102', 'awaiting_staff',
+          (SELECT id FROM public.user_identity WHERE subject = 'admin-a'));
+INSERT INTO public.conversation_message (organization_id, conversation_id, sequence,
+                                         sender_kind, sender_subject, sender_role, body,
+                                         client_message_id)
+  VALUES (:'a', '44444444-4444-4444-4444-444444444444', 1, 'staff', 'admin-a',
+          'tenant_admin', 'first', 'v102-client-key');
+SQL
+
+if "${mig[@]}" -v a="$org_a" <<'SQL' >/dev/null 2>&1
+SET app.current_org = :'a';
+SET app.actor = 'admin-a';
+INSERT INTO public.conversation_message (organization_id, conversation_id, sequence,
+                                         sender_kind, sender_subject, sender_role, body,
+                                         client_message_id)
+  VALUES (:'a', '44444444-4444-4444-4444-444444444444', 2, 'staff', 'admin-a',
+          'tenant_admin', 'duplicate', 'v102-client-key');
+SQL
+then
+  printf 'fail: duplicate conversation client id accepted\n' >&2
+  exit 1
+fi
+
+if "${mig[@]}" -v a="$org_a" <<'SQL' >/dev/null 2>&1
+SET app.current_org = :'a';
+SET app.actor = 'admin-a';
+INSERT INTO public.conversation_message (organization_id, conversation_id, sequence,
+                                         sender_kind, sender_subject, sender_role, body,
+                                         client_message_id)
+  VALUES (:'a', '44444444-4444-4444-4444-444444444444', 3, 'staff', 'admin-a',
+          'tenant_admin', 'overlong', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
+SQL
+then
+  printf 'fail: overlong conversation client id accepted\n' >&2
+  exit 1
+fi
+
+printf 'db: migrations, forced RLS, role separation, isolation, audit, append-only staff history, versioned config and durable reply keys verified\n'

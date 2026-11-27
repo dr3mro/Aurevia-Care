@@ -387,6 +387,7 @@ class SupportRepliesInboxUnreadCountsMobileRoleTest {
             headers.set("X-Active-Organization", organization);
         }
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Idempotency-Key", java.util.UUID.randomUUID().toString());
         extra.forEach(headers::set);
         RestClient.RequestBodySpec spec = rest.method(method).uri(uri)
                 .headers(httpHeaders -> httpHeaders.addAll(headers));

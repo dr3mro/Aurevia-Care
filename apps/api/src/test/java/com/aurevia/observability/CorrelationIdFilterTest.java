@@ -61,6 +61,7 @@ class CorrelationIdFilterTest {
         new CorrelationIdFilter(clock).doFilter(request, response, chain);
 
         assertEquals(VALID_ID, response.getHeader(HEADER));
+        assertEquals(VALID_ID, request.getAttribute(CorrelationIdFilter.CORRELATION_ATTRIBUTE));
         assertEquals(VALID_ID, seenInChain[0]);
         assertEquals(VALID_ID, RequestLogCapture.requestLog(output).get("correlationId").asString());
     }
@@ -77,6 +78,7 @@ class CorrelationIdFilterTest {
         String generated = response.getHeader(HEADER);
         assertNotNull(generated);
         assertDoesNotThrow(() -> UUID.fromString(generated));
+        assertEquals(generated, request.getAttribute(CorrelationIdFilter.CORRELATION_ATTRIBUTE));
         assertEquals(generated, seenInChain[0]);
         assertEquals(generated, RequestLogCapture.requestLog(output).get("correlationId").asString());
     }
@@ -93,6 +95,7 @@ class CorrelationIdFilterTest {
         assertNotNull(generated);
         assertDoesNotThrow(() -> UUID.fromString(generated));
         assertNotEquals("not-a-uuid", generated);
+        assertEquals(generated, request.getAttribute(CorrelationIdFilter.CORRELATION_ATTRIBUTE));
         assertEquals(generated, RequestLogCapture.requestLog(output).get("correlationId").asString());
     }
 

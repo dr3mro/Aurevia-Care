@@ -457,6 +457,7 @@ class ExposeCommandsConnectSendAssignResolveAcknowledgeTest {
             headers.set("If-Match", ifMatch);
         }
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Idempotency-Key", java.util.UUID.randomUUID().toString());
         RestClient.RequestBodySpec spec = rest.method(method).uri(uri)
                 .headers(httpHeaders -> httpHeaders.addAll(headers));
         RestClient.RequestHeadersSpec<?> headerSpec = body == null ? spec : spec.body(body);

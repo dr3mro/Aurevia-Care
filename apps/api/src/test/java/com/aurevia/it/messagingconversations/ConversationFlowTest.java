@@ -184,6 +184,53 @@ class ConversationFlowTest {
                 + "FROM public.patient_record WHERE mrn = 'MRN-1'");
     }
 
+    @Test
+    void retriedReplyReplaysTheOriginalAndRejectsADifferentBody() throws Exception {
+        String id = open(ORG_A, LAB_STAFF, PATIENT, "lab");
+        String body = "{\"body\":\"synthetic reply\"}";
+        String key = "durable-reply-key";
+        Map<String, String> headers = Map.of("If-Match", "1", "Idempotency-Key", key);
+
+        ResponseEntity<String> first = send(HttpMethod.POST, "/api/v1/conversations/" + id + "/reply",
+                body, LAB_STAFF, ORG_A, headers);
+        ResponseEntity<String> replay = send(HttpMethod.POST, "/api/v1/conversations/" + id + "/reply",
+                body, LAB_STAFF, ORG_A, headers);
+        assertEquals(HttpStatus.OK, first.getStatusCode(), first.getBody());
+        assertEquals(HttpStatus.OK, replay.getStatusCode(), replay.getBody());
+        assertEquals(tree(first).get("conversation").get("version").asInt(),
+                tree(replay).get("conversation").get("version").asInt());
+        assertEquals(1, tree(replay).get("messages").size(), replay.getBody());
+        assertEquals(tree(first).get("messages").size(), tree(replay).get("messages").size());
+
+        ResponseEntity<String> conflict = send(HttpMethod.POST, "/api/v1/conversations/" + id + "/reply",
+                "{\"body\":\"different body\"}", LAB_STAFF, ORG_A, headers);
+        // The reply route is excluded from frozen replay so the service re-checks
+        // live thread access; a changed body under the same key conflicts there.
+        assertEquals(HttpStatus.CONFLICT, conflict.getStatusCode(), conflict.getBody());
+    }
+
+    @Test
+    void replyRequiresAnIdempotencyKey() {
+        String id = open(ORG_A, LAB_STAFF, PATIENT, "lab");
+
+        ResponseEntity<String> missing = send(HttpMethod.POST, "/api/v1/conversations/" + id + "/reply",
+                "{\"body\":\"synthetic reply\"}", LAB_STAFF, ORG_A,
+                Map.of("If-Match", "1", "Idempotency-Key", ""));
+
+        assertEquals(HttpStatus.PRECONDITION_REQUIRED, missing.getStatusCode(), missing.getBody());
+    }
+
+    @Test
+    void replyRejectsAMalformedIdempotencyKey() {
+        String id = open(ORG_A, LAB_STAFF, PATIENT, "lab");
+
+        ResponseEntity<String> malformed = send(HttpMethod.POST, "/api/v1/conversations/" + id + "/reply",
+                "{\"body\":\"synthetic reply\"}", LAB_STAFF, ORG_A,
+                Map.of("If-Match", "1", "Idempotency-Key", "bad key!"));
+
+        assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, malformed.getStatusCode(), malformed.getBody());
+    }
+
     private HttpHeaders headers(String subject, String organization, Map<String, String> extra) {
         HttpHeaders headers = new HttpHeaders();
         if (subject != null) {
@@ -193,6 +240,7 @@ class ConversationFlowTest {
             headers.set("X-Active-Organization", organization);
         }
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Idempotency-Key", java.util.UUID.randomUUID().toString());
         extra.forEach(headers::set);
         return headers;
     }

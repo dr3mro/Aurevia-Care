@@ -28,6 +28,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.api.ApiException;
+import com.aurevia.api.contract.IdempotencyKey;
 import com.aurevia.audit.AuditAppender;
 import com.aurevia.messaging.conversations.ConversationActions;
 import com.aurevia.messaging.conversations.ConversationContract.AssignRequest;
@@ -74,6 +75,7 @@ class ConversationServiceTest {
     private static final String LAB_UNIT_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     private static final String RADIOLOGY_UNIT_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
     private static final Instant NOW = Instant.parse("2026-11-19T10:00:00Z");
+    private static final IdempotencyKey KEY = IdempotencyKey.parse("reply-key-1");
 
     @Mock
     private ConversationRepository repository;
@@ -100,6 +102,9 @@ class ConversationServiceTest {
         service = new ConversationService(repository, new ConversationActions(), transactions, audit, directory);
         lenient().when(transactions.execute(any(TransactionCallback.class))).thenAnswer(invocation ->
                 ((TransactionCallback<Object>) invocation.getArgument(0)).doInTransaction(null));
+        lenient().when(repository.findMessageByClientId(any(), any())).thenReturn(Optional.empty());
+        lenient().when(repository.insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
         bind("patient-a");
         unitStore.addMember(ORG, "patient-a", "patient", true);
         unitStore.addPatient(ORG, PATIENT_ID);
@@ -289,8 +294,56 @@ class ConversationServiceTest {
                 "topic", State.AWAITING_PATIENT, null, 0, 0, NOW)));
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
         assertEquals(403, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
-        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
+        verify(repository, never()).updateState(any(), anyInt(), any());
+    }
+
+    @Test
+    void identicalClientIdReplaysTheOriginalMessageWithoutAWrite() {
+        asPatient("patient-a");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(
+                conversation(State.AWAITING_STAFF, 2, "patient-a", "lab", null)));
+        when(repository.findMessageByClientId(ID, KEY.value())).thenReturn(Optional.of(
+                new Message(ID, ID, 1, SenderKind.PATIENT, "patient-a", "patient", "hello", NOW)));
+        stubView(State.AWAITING_STAFF, 2, List.of(message(1, SenderKind.PATIENT)));
+
+        View view = service.reply(ID, new ReplyRequest("hello"), 1, KEY);
+
+        assertEquals(State.AWAITING_STAFF, view.conversation().state());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
+        verify(repository, never()).updateState(any(), anyInt(), any());
+    }
+
+    @Test
+    void reusedClientIdWithADifferentBodyConflicts() {
+        asPatient("patient-a");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(
+                conversation(State.AWAITING_STAFF, 1, "patient-a", "lab", null)));
+        when(repository.findMessageByClientId(ID, KEY.value())).thenReturn(Optional.of(
+                new Message(ID, ID, 1, SenderKind.PATIENT, "patient-a", "patient", "first", NOW)));
+
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> service.reply(ID, new ReplyRequest("second"), 1, KEY)).status());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void concurrentDuplicateClientIdReturnsOriginalInsteadOfAppending() {
+        asPatient("patient-a");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(
+                conversation(State.AWAITING_STAFF, 1, "patient-a", "lab", null)));
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
+        when(repository.nextSequence(ID)).thenReturn(2);
+        when(repository.insertMessageIfAbsent(eq(ID), eq(2), any(), any(), any(), eq("hello"), eq(KEY.value())))
+                .thenReturn(false);
+        when(repository.findMessageByClientId(ID, KEY.value())).thenReturn(Optional.empty(), Optional.of(
+                new Message(ID, ID, 2, SenderKind.PATIENT, "patient-a", "patient", "hello", NOW)));
+        stubView(State.AWAITING_STAFF, 2, List.of(message(2, SenderKind.PATIENT)));
+
+        View view = service.reply(ID, new ReplyRequest("hello"), 1, KEY);
+
+        assertEquals(2, view.conversation().version());
         verify(repository, never()).updateState(any(), anyInt(), any());
     }
 
@@ -303,8 +356,8 @@ class ConversationServiceTest {
                 "topic", State.AWAITING_PATIENT, null, 0, 0, NOW)));
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
         assertEquals(403, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
-        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
         verify(repository, never()).updateState(any(), anyInt(), any());
     }
 
@@ -317,10 +370,10 @@ class ConversationServiceTest {
         when(repository.nextSequence(ID)).thenReturn(2);
         stubView(State.AWAITING_STAFF, 2, List.of());
 
-        View view = service.reply(ID, new ReplyRequest(" hello "), 1);
+        View view = service.reply(ID, new ReplyRequest(" hello "), 1, KEY);
 
         assertEquals(State.AWAITING_STAFF, view.conversation().state());
-        verify(repository).insertMessage(ID, 2, "patient", "patient-a", "patient", "hello");
+        verify(repository).insertMessageIfAbsent(ID, 2, "patient", "patient-a", "patient", "hello", KEY.value());
         verify(repository).updateState(ID, 1, "awaiting_staff");
         verify(repository, never()).appendEvent(eq(ID), eq(2), eq("reopened"), any(), any(), any(), any());
     }
@@ -333,10 +386,10 @@ class ConversationServiceTest {
         when(repository.nextSequence(ID)).thenReturn(3);
         stubView(State.AWAITING_PATIENT, 2, List.of());
 
-        View view = service.reply(ID, new ReplyRequest("please arrive early"), 1);
+        View view = service.reply(ID, new ReplyRequest("please arrive early"), 1, KEY);
 
         assertEquals(State.AWAITING_PATIENT, view.conversation().state());
-        verify(repository).insertMessage(ID, 3, "staff", "lab-a", "lab_verifier", "please arrive early");
+        verify(repository).insertMessageIfAbsent(ID, 3, "staff", "lab-a", "lab_verifier", "please arrive early", KEY.value());
     }
 
     @Test
@@ -346,11 +399,11 @@ class ConversationServiceTest {
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(false);
 
         ApiException failure = assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 2));
+                () -> service.reply(ID, new ReplyRequest("hello"), 2, KEY));
 
         assertEquals(404, failure.status());
         assertEquals("NOT_FOUND", failure.code());
-        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
         verify(repository, never()).updateState(any(), anyInt(), any());
         verify(repository, never()).appendEvent(any(), anyInt(), any(), any(), any(), any(), any());
     }
@@ -363,7 +416,7 @@ class ConversationServiceTest {
         when(repository.nextSequence(ID)).thenReturn(3);
         stubView(State.AWAITING_PATIENT, 3, List.of());
 
-        service.reply(ID, new ReplyRequest("one more answer"), 2);
+        service.reply(ID, new ReplyRequest("one more answer"), 2, KEY);
 
         verify(repository).appendEvent(eq(ID), eq(3), eq("reopened"), eq("lab-a"),
                 eq("resolved"), eq("awaiting_patient"), any());
@@ -378,7 +431,7 @@ class ConversationServiceTest {
         when(repository.nextSequence(ID)).thenReturn(4);
         stubView(State.AWAITING_STAFF, 3, List.of());
 
-        service.reply(ID, new ReplyRequest("one more question"), 2);
+        service.reply(ID, new ReplyRequest("one more question"), 2, KEY);
 
         verify(repository).appendEvent(eq(ID), eq(3), eq("reopened"), eq("patient-a"),
                 eq("resolved"), eq("awaiting_staff"), any());
@@ -390,7 +443,7 @@ class ConversationServiceTest {
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.RESOLVED, 2, "patient-a", "lab", null)));
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(false);
         assertEquals(404, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 2)).status());
+                () -> service.reply(ID, new ReplyRequest("hello"), 2, KEY)).status());
     }
 
     @Test
@@ -398,7 +451,7 @@ class ConversationServiceTest {
         asPatient("patient-a");
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.CLOSED, 2, "patient-a", "lab", null)));
         ApiException failure = assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 2));
+                () -> service.reply(ID, new ReplyRequest("hello"), 2, KEY));
         assertEquals(409, failure.status());
         assertEquals("CLOSED_THREAD", failure.code());
     }
@@ -408,7 +461,7 @@ class ConversationServiceTest {
         asPatient("patient-a");
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.AWAITING_STAFF, 2, "patient-a", "lab", null)));
         assertEquals(412, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
     }
 
     @Test
@@ -416,7 +469,7 @@ class ConversationServiceTest {
         asPatient("patient-a");
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.AWAITING_STAFF, 1, "patient-b", "lab", null)));
         assertEquals(404, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
     }
 
     @Test
@@ -424,7 +477,7 @@ class ConversationServiceTest {
         asStaff("lab-a", "lab_verifier");
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.AWAITING_STAFF, 1, "patient-a", "clinic", null)));
         assertEquals(403, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
     }
 
     @Test
@@ -432,13 +485,13 @@ class ConversationServiceTest {
         asStaff("lab-a", "lab_verifier");
         when(repository.loadForUpdate(ID)).thenReturn(Optional.empty());
         assertEquals(404, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
     }
 
     @Test
     void replyRejectsBlankBodyBeforeAnyWrite() {
         assertEquals(422, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("  "), 1)).status());
+                () -> service.reply(ID, new ReplyRequest("  "), 1, KEY)).status());
         verify(repository, never()).loadForUpdate(any());
     }
 
@@ -637,7 +690,7 @@ class ConversationServiceTest {
                 () -> service.assign(ID, new AssignRequest("lab-b", "cover"), 1));
         assertEquals(403, assignFailure.status());
         ApiException replyFailure = assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1));
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY));
         assertEquals(403, replyFailure.status());
         verify(repository, never()).loadForUpdate(any());
         verify(audit).append(any(), eq("WORK_ASSIGN"), eq("WORK_ASSIGN"),
@@ -651,9 +704,9 @@ class ConversationServiceTest {
                 Optional.of(conversation(State.AWAITING_STAFF, 2, "patient-b", "lab", null)),
                 Optional.of(conversation(State.CLOSED, 2, "patient-b", "lab", null)));
         assertEquals(404, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
         assertEquals(404, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 2)).status());
+                () -> service.reply(ID, new ReplyRequest("hello"), 2, KEY)).status());
     }
 
     @Test
@@ -662,7 +715,7 @@ class ConversationServiceTest {
         when(repository.loadForUpdate(ID)).thenReturn(
                 Optional.of(conversation(State.AWAITING_STAFF, 2, "patient-a", "clinic", null)));
         assertEquals(403, assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
     }
 
     @Test

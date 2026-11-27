@@ -34,6 +34,7 @@ describe('unit inbox API descriptors', () => {
     await sendReply(
       {
         threadId: 'thread-001',
+        clientMessageId: 'stable-reply-key',
         version: 3,
         recipientName: 'Synthetic Grace Okafor',
         recipientId: 'synthetic-patient-001',
@@ -47,7 +48,7 @@ describe('unit inbox API descriptors', () => {
     expect(descriptor.url).toBe('/api/v1/conversations/thread-001/reply');
     expect(descriptor.headers['X-Active-Organization']).toBe('org-alpha');
     expect(descriptor.headers['If-Match']).toBe('3');
-    expect(descriptor.headers['Idempotency-Key']).toMatch(/\S/);
+    expect(descriptor.headers['Idempotency-Key']).toBe('stable-reply-key');
     expect(descriptor.body).toEqual({
       body: 'Thank you',
       recipient: 'Synthetic Grace Okafor',
