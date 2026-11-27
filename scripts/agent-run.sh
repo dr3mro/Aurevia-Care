@@ -27,6 +27,8 @@
 # OPENCODE_API_KEY (agent steps), GH_TOKEN (publish steps only),
 # NOTES_IN (collected worker notes for reconcile; defaults to notes-in for local use;
 #           CI sets it outside the checkout so the clean-worktree guard still applies).
+# TRIAGE_IN (collected issue files for triage; defaults to triage-in for local use;
+#            CI sets it outside the checkout so the clean-worktree guard still applies).
 set -euo pipefail
 # Inherited Git routing/configuration must never redirect this automation at the
 # primary checkout. Unset in this process only; every child (including OpenCode)

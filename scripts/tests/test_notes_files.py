@@ -40,7 +40,7 @@ class NotesFileTests(unittest.TestCase):
             self.assertTrue(path.startswith(".agents/notes/"), path)
             self.assertTrue(path.endswith(".md"), path)
 
-    def test_daily_archives_keep_the_documented_dated_zip_shape(self):
+    def test_daily_archives_keep_the_documented_dated_shape(self):
         archives = [
             path for path in self.tracked(".agents/notes")
             if path.startswith(".agents/notes/archive/")

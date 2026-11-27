@@ -8,6 +8,8 @@ so the tests never touch the network or a real repository.
 import datetime
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -266,7 +268,6 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
     def test_malformed_evidence_shapes_fail_before_write(self):
         path = self.write("one.md", "- [ ] CW-001 · one\n")
         answers = (
-            "",
             json.dumps([{"number": 7, "title": "CW-001: one"}, "not-an-object"]),
             json.dumps([{"number": "7", "title": "CW-001: one", "baseRefName": "main", "state": "MERGED"}]),
             json.dumps([{"number": 7, "title": 42, "baseRefName": "main", "state": "MERGED"}]),
@@ -304,6 +305,38 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
         self.assertIn("baseRefName: .base.ref", jq)
         self.assertIn('"MERGED"', jq)
 
+    def test_paginated_fetch_invokes_a_real_gh_argv_and_parses_two_records(self):
+        # Drive the actual subprocess boundary with a fake gh executable: no
+        # network, but the argv and the multi-page JSON-lines contract are real.
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root)
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        args_log = root / "argv.log"
+        records = [
+            {"number": 7, "title": "X-7: one", "baseRefName": "main", "state": "MERGED"},
+            {"number": 8, "title": "X-8: two", "baseRefName": "main", "state": "MERGED"},
+        ]
+        fake = bin_dir / "gh"
+        fake.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' \"$@\" >> {shlex.quote(str(args_log))}\n"
+            "printf '%s\\n' "
+            + " ".join(shlex.quote(json.dumps(r)) for r in records)
+            + "\n"
+        )
+        fake.chmod(0o755)
+        with mock.patch.dict(os.environ, {"PATH": f"{bin_dir}:{os.environ['PATH']}"}):
+            merged = swarm.paginated_merged_pull_requests("main")
+        self.assertEqual([r["number"] for r in merged], [7, 8])
+        argv = args_log.read_text().splitlines()
+        self.assertEqual(argv[:3], [
+            "api", "--paginate",
+            f"repos/{swarm.repo_slug()}/pulls?state=closed&base=main&per_page=100",
+        ])
+        self.assertIn("--jq", argv)
+        self.assertNotIn("--slurp", argv)
+
     def test_paginated_stream_rejects_a_non_dict_record(self):
         path = self.write("one.md", "- [ ] CW-001 · one\n")
         with mock.patch.object(subprocess, "check_output", return_value=json.dumps([1, 2])), \
@@ -325,12 +358,14 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
         git.assert_not_called()
         self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
 
-    def test_empty_paginated_stream_fails_before_write(self):
+    def test_empty_paginated_stream_is_a_valid_empty_batch(self):
         path = self.write("one.md", "- [ ] CW-001 · one\n")
         with mock.patch.object(subprocess, "check_output", return_value=""), \
-                mock.patch.object(swarm, "git") as git:
-            with self.assertRaises(swarm.ReconciliationError):
-                swarm.reconcile_tasks(directory=str(self.dir), persist=True)
+                mock.patch.object(swarm, "git") as git, \
+                mock.patch.object(swarm, "emit") as emitted:
+            count = swarm.reconcile_tasks(directory=str(self.dir), persist=True)
+        self.assertEqual(count, 0)
+        emitted.assert_not_called()
         git.assert_not_called()
         self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
 

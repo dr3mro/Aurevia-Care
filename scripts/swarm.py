@@ -1455,6 +1455,7 @@ def paginated_merged_pull_requests(branch):
     paginated REST query is authoritative; jq keeps only merged PRs and projects
     them to the shape the task matcher already validates. Each page is emitted as
     JSON lines, so a partial or malformed record fails before any task is written.
+    An empty stream means there are no merged pull requests and yields an empty list.
     """
     out = subprocess.check_output(
         [
@@ -1472,9 +1473,9 @@ def paginated_merged_pull_requests(branch):
     )
     text = out.strip()
     if not text:
-        raise ReconciliationError(
-            "merged pull-request evidence is malformed or incomplete"
-        )
+        # gh api --paginate prints nothing when the repository has no merged PRs;
+        # an empty stream is a valid empty batch, not a truncated response.
+        return []
     decoder = json.JSONDecoder()
     merged = []
     while text:

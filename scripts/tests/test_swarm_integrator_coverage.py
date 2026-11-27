@@ -891,7 +891,7 @@ class IntegratorBatchTest(unittest.TestCase):
         self.assertEqual(note.read_text(), "original\n")
         push.assert_not_called()
 
-    def test_third_push_failure_restores_records_and_stops(self):
+    def test_base_advance_restores_records_and_emits_the_retry_signal(self):
         self.repo()
         merged = [(7, "CW-001", "abc")]
         error = subprocess.CalledProcessError(1, ("push",), stderr="fetch first")
@@ -922,7 +922,8 @@ class IntegratorBatchTest(unittest.TestCase):
                 swarm.integrate_finalize(merged, {7: ("gate.sh", {})}, "gate.sh"),
                 swarm.INTEGRATION_RETRY)
         self.assertTrue(any(c.args[0] == "integration_retry" for c in emitted.call_args_list))
-        self.assertEqual(pushed.call_count, 2)
+        pushes = [c for c in pushed.call_args_list if c.args[:2] == ("push", "origin")]
+        self.assertEqual(len(pushes), 1)
         write.assert_any_call("", "before\n")
         dispatch.assert_not_called()
 
