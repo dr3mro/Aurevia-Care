@@ -4772,6 +4772,77 @@ class ReconcileTasksTests(unittest.TestCase):
             push.assert_not_called()
 
 
+class RepairEvidenceSelectionTests(unittest.TestCase):
+    """PO and SM must consume red-state evidence the trusted repair step already writes."""
+
+    @staticmethod
+    def _prompt(workflow, step_name):
+        """Return the double-quoted prompt assigned inside one docker step."""
+        step = workflow.split(step_name, 1)[1].split("  plan:", 1)[0]
+        match = re.search(r'prompt="([^"]*)"', step)
+        assert match is not None, f"no prompt in {step_name}"
+        return match.group(1)
+
+    def test_po_selects_repair_evidence_first_without_claiming_it(self):
+        prompt = self._prompt((ROOT / ".github/workflows/swarm.yml").read_text(),
+                              "name: Select features with OpenCode")
+        self.assertIn("main is red", prompt)
+        self.assertIn("failed exact-head Delivery", prompt)
+        self.assertIn("FIX-<run>", prompt)
+        self.assertIn("DLV-", prompt)
+        self.assertIn("failure evidence", prompt)
+        for token in ("head SHA", "run link", "log tail"):
+            with self.subTest(token=token):
+                self.assertIn(token, prompt)
+        self.assertIn("Eligible means an open [ ] entry with met dependencies", prompt)
+        self.assertIn("emit its id in tasks= before any backlog candidate", prompt)
+        self.assertIn("include the FIX feature prefix", prompt)
+        self.assertIn("repair ids are exempt", prompt)
+        self.assertIn("If such a repair is open and eligible", prompt)
+        self.assertIn("or invent a repair id", prompt)
+        self.assertIn("Do not edit tasks/", prompt)
+        self.assertIn(".opencode/config/BUGS.md", prompt)
+
+    def test_sm_allocates_repair_candidates_first_within_the_cap(self):
+        prompt = self._prompt((ROOT / ".github/workflows/swarm.yml").read_text(),
+                              "name: Allocate non-overlapping tasks with OpenCode")
+        self.assertIn("repair candidates first place within $WORKER_COUNT", prompt)
+        self.assertIn("FIX-<run>", prompt)
+        self.assertIn("failure evidence", prompt)
+        self.assertIn("still exclude [-], [!], unmet dependencies and overlapping scopes", prompt)
+        self.assertIn("Do not edit tasks/", prompt)
+        self.assertIn("the trusted planner does that", prompt)
+
+    def test_prompts_keep_literal_repair_tokens_after_shell_expansion(self):
+        """Backticks in the double-quoted prompt are live command substitutions.
+
+        A raw-YAML assertion cannot see that the inner bash strips the repair
+        identifiers, so evaluate the assignment with synthetic env values.
+        """
+        workflow = (ROOT / ".github/workflows/swarm.yml").read_text()
+        env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+               "WORKER_COUNT": "3", "FEATURE": "FIX", "CANDIDATES": "FIX-42"}
+        for step_name in ("name: Select features with OpenCode",
+                          "name: Allocate non-overlapping tasks with OpenCode"):
+            with self.subTest(step=step_name):
+                prompt = self._prompt(workflow, step_name)
+                self.assertNotIn("`", prompt)
+                expanded = subprocess.check_output(
+                    ["bash", "-c", 'printf %s "' + prompt + '"'], text=True, env=env)
+                self.assertIn("FIX-<run>", expanded)
+                self.assertIn("DLV-", expanded)
+                self.assertIn("Do not edit tasks/", expanded)
+                if "Allocate" in step_name:
+                    self.assertIn("within 3", expanded)
+                else:
+                    self.assertIn("include the FIX feature prefix", expanded)
+
+    def test_swarm_guide_documents_repair_first_selection(self):
+        text = (ROOT / "docs/SWARM.md").read_text()
+        self.assertIn("PO selection and SM allocation read the same red-state repair evidence", text)
+        self.assertIn("PO candidates", text)
+
+
 if __name__ == "__main__":
     unittest.main()
 

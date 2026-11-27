@@ -77,6 +77,8 @@ Task state itself uses marks in `tasks/*.md` (`[ ]` open, `[-]` taken, `[!]` inc
 
 ## Priority
 
+PO selection and SM allocation read the same red-state repair evidence: an open `FIX-<run>`/`DLV-` task with an attached failing job, head SHA, run link and bounded log tail is listed in `tasks=` before backlog work, and the SM allocates it first within the wave cap. PO candidates and SM allocations stay agent output only; agents never create or claim tasks — the trusted repair step, watchdog and planner own that.
+
 Each task may carry `priority: high|normal|low`. Without it a task is **high** when its title contains `(HIGH PRIORITY` and **low** when its id starts with `QAD-`, `DSO-` or `AUD-` (the daily QA, DevSecOps and audit findings); everything else is normal. Inside the backlog lane the task file breaks ties in high, normal and low priority. The PR fix and merge lanes are handled first. Low-priority backlog tasks use spare slots. Scheduled audit, QA, DevSecOps, notes and strategist agents wait for a later scheduled run if higher-priority work is ready or currently using all slots. `aurevia monitor` shows the queue in this order with `H` and `L` markers.
 
 ## Forcing a task
