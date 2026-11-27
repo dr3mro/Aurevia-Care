@@ -259,6 +259,20 @@ class AgentRunTests(unittest.TestCase):
             (self.repo / ".agent/branch").write_text(name)
             self.assertNotEqual(self.run_cmd("adopt").returncode, 0, name)
 
+    def test_carriage_return_markers_in_story_prompt_are_quoted(self):
+        prompts = self.tmp / "story-cr-markers.log"
+        result = self.run_cmd(
+            "implement", FAKE_MODE="commit", PROMPT_LOG=str(prompts),
+            STORY_TITLE="safe\r##[error]injected",
+            STORY_BODY="safe\r::error::injected\nsafe\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = prompts.read_text()
+        self.assertIn("> ##[error]injected", text)
+        self.assertIn("> ::error::injected", text)
+        for line in text.splitlines():
+            self.assertFalse(line.lstrip().startswith("##["), line)
+            self.assertFalse(line.lstrip().startswith("::"), line)
+
     def test_untrusted_story_markers_cannot_become_workflow_commands(self):
         body = "::error::bad body\nplain line\n\n"
         for label, extra in (("plain", {"GITHUB_RUN_NUMBER": "9"}),
@@ -980,6 +994,7 @@ class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentR
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.outputs()["result"], "ok")
         self.assertTrue((self.tmp / "triage-success.log").exists())
+        self.assertIn("triage-in/", (self.tmp / "triage-success.log").read_text())
         self.assertEqual((self.repo / ".opencode/opencode.json").read_text(),
                          '{"real": true}')
 
@@ -992,6 +1007,7 @@ class DirectModelEnvironmentTests(__import__("test_agent_run", fromlist=["AgentR
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.outputs()["result"], "ok")
         self.assertIn(str(external), prompt_log.read_text())
+        self.assertIn(str(external) + "/issue-", prompt_log.read_text())
 
     def test_reconcile_configuration_error_is_terminal(self):
         self.assert_configuration_error("reconcile")

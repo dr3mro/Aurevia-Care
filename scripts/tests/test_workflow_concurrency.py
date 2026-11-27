@@ -261,12 +261,13 @@ class IssueMonitorWorkflowTest(unittest.TestCase):
             step for step in steps
             if "Make the issue files" in step.get("name", "")
         )
-        self.assertIn("${RUNNER_TEMP}", copy["run"])
+        self.assertIn('"${RUNNER_TEMP}/monitor-selection/triage-in" "${RUNNER_TEMP}/triage-in"',
+                      copy["run"])
         triage = next(
             step for step in steps
             if step.get("name", "").startswith("Triage the issues")
         )
-        self.assertIn("runner.temp", triage["env"]["TRIAGE_IN"])
+        self.assertEqual(triage["env"]["TRIAGE_IN"], "${{ runner.temp }}/triage-in")
         self.assertNotIn("GH_TOKEN", triage["env"])
 
 

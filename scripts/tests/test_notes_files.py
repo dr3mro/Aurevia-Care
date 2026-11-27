@@ -1,3 +1,4 @@
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -18,10 +19,30 @@ class NotesFileTests(unittest.TestCase):
         self.assertNotIn(".agent/pr-notes.md", self.tracked(".agent"),
                          "the old shared notes file must stay out of the repository")
 
+    @staticmethod
+    def is_daily_archive(path):
+        """Recognise only the policy-mandated archive shape, not arbitrary zips."""
+        return re.fullmatch(
+            r"\.agents/notes/archive/\d{4}-\d{2}-\d{2}\.zip", path
+        ) is not None
+
     def test_only_per_run_notes_are_tracked_under_the_new_directory(self):
         for path in self.tracked(".agents/notes"):
+            # The daily reconciliation archives originals as a dated zip; those
+            # are not per-run notes and must not be held to the .md naming rule.
+            if self.is_daily_archive(path):
+                continue
             self.assertTrue(path.startswith(".agents/notes/"), path)
             self.assertTrue(path.endswith(".md"), path)
+
+    def test_daily_archives_keep_the_documented_dated_zip_shape(self):
+        archives = [
+            path for path in self.tracked(".agents/notes")
+            if path.startswith(".agents/notes/archive/")
+        ]
+        self.assertTrue(archives, "the daily notes workflow archives originals")
+        for path in archives:
+            self.assertTrue(self.is_daily_archive(path), path)
 
     def test_the_worker_never_copies_notes_onto_the_shared_path(self):
         script = (ROOT / "scripts/agent-run.sh").read_text()

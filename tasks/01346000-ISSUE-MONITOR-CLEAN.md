@@ -4,9 +4,13 @@
   - requirements: OPS-06
   - scope: .github/workflows/swarm-issue-monitor.yml, scripts/agent-run.sh, scripts/tests/test_agent_run.py, scripts/tests/test_workflow_concurrency.py, tasks/01346000-ISSUE-MONITOR-CLEAN.md
   - evidence:
-    Test evidence (tool, Python 3.14 venv): targeted `python3 -I -m unittest discover -s scripts/tests -p test_agent_run.py` -> `Ran 160 tests ... OK`; `-p test_workflow_concurrency.py` -> `Ran 25 tests ... OK`; `actionlint .github/workflows/swarm-issue-monitor.yml` and `shellcheck scripts/agent-run.sh` exit 0. Full suite on base eaf8b5e failed only on the D defect inherited from that base; D's fix (commit a24a18b) will be cherry-picked here before the final full run.
+    Test evidence (tool, Python 3.14 venv): targeted `python3 -I -m unittest discover -s scripts/tests -p test_agent_run.py` -> `Ran 160 tests ... OK`; `-p test_workflow_concurrency.py` -> `Ran 25 tests ... OK`; `actionlint .github/workflows/swarm-issue-monitor.yml` and `shellcheck scripts/agent-run.sh` exit 0. After cherry-picking D's test fix, full `python3 -I -m unittest discover -s scripts/tests -q` -> `Ran 2433 tests ... OK`; `COVERAGE_BASE=eaf8b5e REQUIRE_PY_COVERAGE=1 bash scripts/python-coverage.sh` -> `python coverage: every changed script line is covered`.
+    Tested revision: 1c707db07cd780a08209a99e5290ee7f4a740a3a (HEAD when final checks ran).
     Coverage: `cmd_triage` reads `${TRIAGE_IN}` from an external path, asserted by `test_triage_reads_issue_files_from_an_external_directory`; CR-delimited `##[`/`::` markers are split and quoted in `neutralise_log_lines`, asserted by `test_carriage_return_markers_are_neutralised_in_agent_log`; workflow paths asserted by `IssueMonitorWorkflowTest`.
-    Review verdicts: pending (to be filled before post-code reviewers are requested).
+    Review verdicts (after evidence sections were filled):
+    - code-reviewer: GO
+    - coverage-auditor: GO (after three Required branch-test gaps were fixed)
+    - devsecops: GO
   - details:
     Worktree `.workspaces/issue-monitor-clean`, branch `fix/issue-monitor-clean`, base `eaf8b5e`.
     Eight Swarm issue monitor runs (45961293757, 45961295008, 45961295921, 45961295644,
