@@ -4745,20 +4745,32 @@ class ReconcileTasksTests(unittest.TestCase):
                     swarm.reconcile_tasks(directory=tmp)
             self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
 
-    def test_malformed_or_duplicate_evidence_fails_before_write(self):
-        answers = ("not-json",
-                   '{"number": 7, "title": "X-1: a", "baseRefName": "main", "state": "MERGED"}\n'
-                   '{"number": 8, "title": "X-1: b", "baseRefName": "main", "state": "MERGED"}')
-        for answer in answers:
-            with self.subTest(answer=answer), tempfile.TemporaryDirectory() as tmp:
-                path = Path(tmp, "X-1.md")
-                path.write_text("- [ ] X-1 · story\n")
-                with mock.patch.object(swarm.subprocess, "check_output", return_value=answer), \
-                     mock.patch.object(swarm, "git") as git:
-                    with self.assertRaises(swarm.ReconciliationError):
-                        swarm.reconcile_tasks(directory=tmp)
-                git.assert_not_called()
-                self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
+    def test_malformed_evidence_fails_before_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "X-1.md")
+            path.write_text("- [ ] X-1 · story\n")
+            with mock.patch.object(swarm.subprocess, "check_output", return_value="not-json"), \
+                 mock.patch.object(swarm, "git") as git:
+                with self.assertRaises(swarm.ReconciliationError):
+                    swarm.reconcile_tasks(directory=tmp)
+            git.assert_not_called()
+            self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
+
+    def test_ambiguous_task_identity_stays_open_without_a_write(self):
+        answer = ('{"number": 7, "title": "X-1: a", "baseRefName": "main", "state": "MERGED"}\n'
+                  '{"number": 8, "title": "X-1: b", "baseRefName": "main", "state": "MERGED"}')
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "X-1.md")
+            path.write_text("- [ ] X-1 · story\n")
+            stderr = io.StringIO()
+            with mock.patch.object(swarm.subprocess, "check_output", return_value=answer), \
+                 mock.patch.object(swarm, "git") as git, \
+                 redirect_stderr(stderr):
+                count = swarm.reconcile_tasks(directory=tmp)
+            self.assertEqual(count, 0)
+            git.assert_not_called()
+            self.assertIn("X-1", stderr.getvalue())
+            self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
 
     def test_api_failure_returns_nonzero_without_edits(self):
         with tempfile.TemporaryDirectory() as tmp:
