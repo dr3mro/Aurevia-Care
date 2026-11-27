@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 import com.aurevia.api.ApiException;
 
 /**
- * Pure, total validation of every XCH-05 command field.
+ * Pure, total validation of every critical-result command field.
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * with a stable code before any SQL runs, so a malformed identifier or duration

@@ -9,7 +9,7 @@ import java.util.Optional;
  *
  * <p>The raw payload is retained so a deterministic fingerprint of the exact
  * received bytes can be carried into the internal result command. No clinical
- * payload is copied into logs or acknowledgments (XCH-01, XCH-04).</p>
+ * payload is copied into logs or acknowledgments.</p>
  *
  * @param delimiters delimiters declared by the MSH segment
  * @param segments   parsed segments in wire order

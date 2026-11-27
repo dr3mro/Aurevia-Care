@@ -9,8 +9,7 @@ import java.util.regex.Pattern;
  * <p>Field 1 is the three-character segment identifier. Each subsequent field
  * holds one or more repetitions, already decoded by {@link com.aurevia.exchange.hl7.Hl7Escape}; splitting
  * on the repetition separator happens before decoding so an escaped {@code \R\}
- * remains literal data rather than becoming a spurious repetition (XCH-01,
- * XCH-04).</p>
+ * remains literal data rather than becoming a spurious repetition.</p>
  *
  * @param type        three-character segment identifier
  * @param repetitions field repetitions indexed from field 1

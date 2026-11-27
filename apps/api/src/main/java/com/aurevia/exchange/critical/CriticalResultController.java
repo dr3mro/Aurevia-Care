@@ -25,11 +25,12 @@ import com.aurevia.exchange.critical.CriticalContract.VerifyRequest;
 import com.aurevia.exchange.critical.CriticalContract.View;
 
 /**
- * Thin HTTP adapter for XCH-05 critical results (ARC-03, ARC-04).
+ * Thin HTTP adapter for critical results.
  *
  * <p>Every irreversible command requires an {@code If-Match} version, parsed at
- * this boundary. Authorization, verification, escalation and acknowledgment
- * invariants live in the domain service.</p>
+ * this boundary; the header is bound as absent but the parser rejects a missing
+ * version, so it is not optional. Authorization, verification, escalation and
+ * acknowledgment invariants live in the domain service.</p>
  */
 @RestController
 @RequestMapping("/api/v1/critical-results")
@@ -51,6 +52,7 @@ public class CriticalResultController {
      *
      * @param request registration command
      * @return HTTP 201 with the created result
+     * @throws com.aurevia.api.ApiException when input, authorization or patient visibility is invalid
      */
     @PostMapping
     public ResponseEntity<Result> register(@RequestBody RegisterRequest request) {
@@ -59,9 +61,13 @@ public class CriticalResultController {
     }
 
     /**
-     * Read the operational report before the single-result route can match it.
+     * Read the operational report.
+     *
+     * <p>The literal path is more specific than the single-result path, so Spring
+     * selects it even though both routes can match the same request shape.</p>
      *
      * @return overdue alerts, roster gaps and failed notifications
+     * @throws com.aurevia.api.ApiException when the caller lacks read permission
      */
     @GetMapping("/report")
     public Report report() {
@@ -72,7 +78,8 @@ public class CriticalResultController {
      * Read one result with its event trail.
      *
      * @param id result identifier
-     * @return the result and its facts
+     * @return the result and its immutable facts
+     * @throws com.aurevia.api.ApiException when the result is invisible to the caller
      */
     @GetMapping("/{id}")
     public View get(@PathVariable String id) {
@@ -86,6 +93,8 @@ public class CriticalResultController {
      * @param request verification command
      * @param ifMatch expected version
      * @return the activated result
+     * @throws com.aurevia.api.ApiException when the version, authorization or
+     *                                    state precondition is not satisfied
      */
     @PostMapping("/{id}/verify")
     public Result verify(@PathVariable String id, @RequestBody VerifyRequest request,
@@ -100,6 +109,8 @@ public class CriticalResultController {
      * @param request assignment command
      * @param ifMatch expected version
      * @return the assigned result
+     * @throws com.aurevia.api.ApiException when the version, authorization or
+     *                                    state precondition is not satisfied
      */
     @PostMapping("/{id}/assign")
     public Result assign(@PathVariable String id, @RequestBody AssignRequest request,
@@ -114,6 +125,8 @@ public class CriticalResultController {
      * @param request escalation command
      * @param ifMatch expected version
      * @return the unchanged result
+     * @throws com.aurevia.api.ApiException when the version, authorization or
+     *                                    state precondition is not satisfied
      */
     @PostMapping("/{id}/escalate")
     public Result escalate(@PathVariable String id, @RequestBody EscalateRequest request,
@@ -128,6 +141,8 @@ public class CriticalResultController {
      * @param request read-back command
      * @param ifMatch expected version
      * @return the unchanged result
+     * @throws com.aurevia.api.ApiException when the version, authorization or
+     *                                    state precondition is not satisfied
      */
     @PostMapping("/{id}/read-back")
     public Result readBack(@PathVariable String id, @RequestBody ReadBackRequest request,
@@ -142,6 +157,8 @@ public class CriticalResultController {
      * @param request acknowledgment command
      * @param ifMatch expected version
      * @return the acknowledged result
+     * @throws com.aurevia.api.ApiException when the version, authorization or
+     *                                    state precondition is not satisfied
      */
     @PostMapping("/{id}/acknowledge")
     public Result acknowledge(@PathVariable String id, @RequestBody AcknowledgeRequest request,
@@ -156,6 +173,8 @@ public class CriticalResultController {
      * @param request follow-up command
      * @param ifMatch expected version
      * @return the closed result
+     * @throws com.aurevia.api.ApiException when the version, authorization or
+     *                                    state precondition is not satisfied
      */
     @PostMapping("/{id}/follow-up")
     public Result followUp(@PathVariable String id, @RequestBody FollowUpRequest request,
@@ -170,6 +189,8 @@ public class CriticalResultController {
      * @param request release command
      * @param ifMatch expected version
      * @return the unchanged result
+     * @throws com.aurevia.api.ApiException when the version, authorization or
+     *                                    state precondition is not satisfied
      */
     @PostMapping("/{id}/release")
     public Result release(@PathVariable String id, @RequestBody ReleaseRequest request,

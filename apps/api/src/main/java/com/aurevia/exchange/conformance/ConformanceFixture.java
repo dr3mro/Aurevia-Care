@@ -11,7 +11,6 @@ import java.util.function.Supplier;
  * a factory for a fresh receiver. It carries no patient data and no credentials;
  * all identifiers and payloads are invented for conformance rehearsal.</p>
  *
- * @return this record
  */
 public record ConformanceFixture(String id, String requirements, String description,
                                  List<PartnerEvent> events, List<Disposition> expectedDispositions,

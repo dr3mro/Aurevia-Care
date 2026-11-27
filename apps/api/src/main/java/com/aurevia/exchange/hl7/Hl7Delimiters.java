@@ -6,7 +6,7 @@ package com.aurevia.exchange.hl7;
  * <p>MSH-1 supplies the field separator and MSH-2 supplies the component,
  * repetition, escape and subcomponent characters in that order. A partner may
  * choose non-standard characters, so the parser reads them from the first
- * segment instead of assuming the standard set (XCH-01, XCH-04).</p>
+ * segment instead of assuming the standard set.</p>
  *
  * @param field       field separator (MSH-1)
  * @param component   component separator (first character of MSH-2)

@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Dependency-free writer for the bounded HL7 v2 subset used by order and result
- * exchange (XCH-01, XCH-04).
+ * exchange.
  *
  * <p>Field values are escaped before being joined, and the repetition separator
  * is inserted as structure rather than escaped data. Segment terminators are

@@ -5,7 +5,7 @@ package com.aurevia.exchange.hl7;
  *
  * <p>The machine-readable {@link com.aurevia.exchange.hl7.Hl7ParseException#reason()} is carried into the MSA/ERR portion
  * of the negative acknowledgment so a partner receives a stable error code
- * rather than a free-text diagnosis (XCH-01, XCH-04).</p>
+ * rather than a free-text diagnosis.</p>
  */
 public class Hl7ParseException extends RuntimeException {
 

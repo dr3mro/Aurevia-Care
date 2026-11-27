@@ -4,7 +4,7 @@ import java.util.Locale;
 
 /**
  * Kind of an immutable partner event used by the synthetic conformance
- * fixtures (XCH-01 to XCH-07, LAB-01, LAB-02).
+ * fixtures.
  *
  * <p>The rules exposed here are the conformance facts a receiver must honour:
  * clinical imports need identifier matching, a correction reopens review, and
@@ -13,25 +13,25 @@ import java.util.Locale;
  */
 public enum EventKind {
 
-    /** Released order or requisition (XCH-01). */
+    /** Released order or requisition. */
     ORDER,
-    /** Destination acceptance of an order (XCH-03). */
+    /** Destination acceptance of an order. */
     ACCEPT,
-    /** Transport-level delivery acknowledgment; never a clinical review (XCH-02). */
+    /** Transport-level delivery acknowledgment; never a clinical review. */
     TRANSMISSION_ACK,
-    /** Accessioned specimen and collection or rejection evidence (LAB-01). */
+    /** Accessioned specimen and collection or rejection evidence. */
     SPECIMEN,
-    /** Reported result revision (XCH-04, LAB-02). */
+    /** Reported result revision. */
     RESULT,
-    /** Corrected revision that preserves the prior one (XCH-04, LAB-02). */
+    /** Corrected revision that preserves the prior one. */
     CORRECTION,
-    /** Critical finding requiring a named owner and clinical read-back (XCH-05). */
+    /** Critical finding requiring a named owner and clinical read-back. */
     CRITICAL,
-    /** Authorized human acknowledgment of a clinical review (XCH-02, XCH-05). */
+    /** Authorized human acknowledgment of a clinical review. */
     CLINICAL_ACK,
-    /** Patient release bound to an immutable revision (XCH-06). */
+    /** Patient release bound to an immutable revision. */
     RELEASE,
-    /** Observation whose trend requires a stable test and unit (XCH-07, LAB-02). */
+    /** Observation whose trend requires a stable test and unit. */
     OBSERVATION;
 
     /**
@@ -56,7 +56,7 @@ public enum EventKind {
 
     /**
      * Whether this kind imports clinical data that must be identifier matched
-     * before it can be linked (XCH-04, LAB-01).
+     * before it can be linked.
      *
      * @return {@code true} for specimen, result, correction, critical and observation
      */

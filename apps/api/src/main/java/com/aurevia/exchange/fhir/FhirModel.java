@@ -6,8 +6,7 @@ import java.util.List;
 import com.aurevia.api.ApiException;
 
 /**
- * Immutable FHIR-boundary projections of the exchange, laboratory, imaging, document and prescription models
- * (XCH-01, XCH-04, LAB-01, LAB-02, RAD-01, CLN-07, RX-01).
+ * Immutable FHIR-boundary projections of the exchange, laboratory, imaging, document and prescription models.
  *
  * <p>These records name exactly the fields that cross the FHIR R4 boundary. They are not
  * replacements for the domain records in {@code exchange.order}, {@code lab.accession},
@@ -34,8 +33,7 @@ public final class FhirModel {
      * @param clinicalQuestion released clinical question
      * @param requester        responsible clinician
      * @param authorizationId  authorization that permitted the disclosure
-     * @return this record
-     */
+         */
     public record ServiceRequestData(String profile, String patientId, String orderId, String encounterRef,
                                      String orderCode, String priority, String clinicalQuestion,
                                      String requester, String authorizationId) {
@@ -57,8 +55,7 @@ public final class FhirModel {
      * @param receivedAt     receipt instant
      * @param quality        receipt quality code
      * @param status         specimen status code
-     * @return this record
-     */
+         */
     public record SpecimenData(String profile, String patientId, String accessionId, String accessionNo,
                                String accessionIssuer, String orderId, String specimenType, String siteCode,
                                String collector, String collectedAt, String receivedAt, String quality,
@@ -66,13 +63,12 @@ public final class FhirModel {
     }
 
     /**
-     * One approved reference range attached to an observation (LAB-02).
+     * One approved reference range attached to an observation.
      *
      * @param low  inclusive lower bound
      * @param high exclusive upper bound
      * @param unit measurement unit of both bounds
-     * @return this record
-     */
+         */
     public record FhirReferenceRange(BigDecimal low, BigDecimal high, String unit) {
     }
 
@@ -101,8 +97,7 @@ public final class FhirModel {
      * @param instrument     instrument or source
      * @param verifier       verifier of the observation
      * @param referenceRange approved reference range when supplied
-     * @return this record
-     */
+         */
     public record ObservationData(String id, String profile, String patientId, String specimenId, String code,
                                   String status, String kind, String presence, BigDecimal value,
                                   String comparator, String unit, String textValue, String codedValue,
@@ -123,8 +118,7 @@ public final class FhirModel {
      * @param observations      contained observations of this revision
      * @param supersedesVersion prior version linked by a corrected report
      * @param effectiveAt       effective instant of the revision
-     * @return this record
-     */
+         */
     public record DiagnosticReportData(String profile, String patientId, String reportId, int version,
                                        String orderId, String specimenId, String state,
                                        List<ObservationData> observations, Integer supersedesVersion,
@@ -149,7 +143,7 @@ public final class FhirModel {
     }
 
     /**
-     * The imaging study fields carried by a FHIR ImagingStudy (RAD-01).
+     * The imaging study fields carried by a FHIR ImagingStudy.
      *
      * <p>The Study Instance UID and accession are carried as typed identifiers and the
      * modality as a DICOM coding. A study is only linkable after its patient and accession
@@ -162,14 +156,13 @@ public final class FhirModel {
      * @param studyInstanceUid external DICOM Study Instance UID (required)
      * @param accession        issuer-scoped imaging accession (required)
      * @param modality         DICOM modality wire code
-     * @return this record
-     */
+         */
     public record ImagingStudyData(String profile, String patientId, String orderId,
                                    String studyInstanceUid, String accession, String modality) {
     }
 
     /**
-     * Outcome of checking an incoming imaging study against the order it claims to belong to (RAD-01).
+     * Outcome of checking an incoming imaging study against the order it claims to belong to.
      *
      * <p>Only a {@code linked} result carries a study projection, so a mismatch cannot be
      * mistaken for a successful association. The mismatch outcome and reason name exactly
@@ -179,8 +172,7 @@ public final class FhirModel {
      * @param outcome "linked", "patient_mismatch" or "accession_mismatch"
      * @param study   the linkable study projection, or {@code null} on a mismatch
      * @param reason  bounded non-sensitive mismatch detail, empty when linked
-     * @return this record
-     */
+         */
     public record StudyLinkResult(String outcome, ImagingStudyData study, String reason) {
 
         /**
@@ -227,7 +219,7 @@ public final class FhirModel {
     }
 
     /**
-     * The retained-document fields carried by a FHIR DocumentReference (CLN-07).
+     * The retained-document fields carried by a FHIR DocumentReference.
      *
      * <p>The checksum is the retained SHA-256 digest, the revision is the immutable version
      * number of the document, and the status carries the void state so a voided association
@@ -242,15 +234,14 @@ public final class FhirModel {
      * @param voidReason recorded reason when voided, otherwise empty
      * @param voidedAt   instant the association was voided, otherwise empty
      * @param mediaType  retained document media type
-     * @return this record
-     */
+         */
     public record DocumentReferenceData(String profile, String patientId, String documentId,
                                         String checksum, int revision, String status, String voidReason,
                                         String voidedAt, String mediaType) {
     }
 
     /**
-     * The prescription fields carried by a FHIR MedicationRequest (RX-01).
+     * The prescription fields carried by a FHIR MedicationRequest.
      *
      * <p>The selected catalog entry id is the drug code; dose, route, frequency, quantity,
      * prescriber and destination describe the clinician's order. No allergy or suggestion
@@ -268,8 +259,7 @@ public final class FhirModel {
      * @param quantityUnit   dispense quantity unit
      * @param prescriber     prescribing clinician reference
      * @param destination    intended pharmacy destination
-     * @return this record
-     */
+         */
     public record MedicationRequestData(String profile, String patientId, String requestId,
                                         String drugCode, String doseValue, String doseUnit, String route,
                                         String frequency, String quantity, String quantityUnit,

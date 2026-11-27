@@ -11,7 +11,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Maps a released order to and from a FHIR R4 ServiceRequest (XCH-01).
+ * Maps a released order to and from a FHIR R4 ServiceRequest.
  *
  * <p>The patient subject and the order identifier are mandatory on import: the mapper
  * rejects a resource that lacks either instead of inventing a local association. The

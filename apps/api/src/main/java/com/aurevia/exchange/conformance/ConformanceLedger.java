@@ -15,8 +15,7 @@ import java.util.function.Predicate;
  * deduplication in the sender and type namespace, per-aggregate version
  * ordering, identifier matching against the aggregate's trusted local identity,
  * bounded retry of transient outages, dead-lettering of exhausted events and
- * immutable revision history with review reopening (ARC-05, XCH-01 to XCH-07,
- * LAB-01, LAB-02).
+ * immutable revision history with review reopening.
  *
  * <p>Only a successfully applied event consumes its identity. An unmatched,
  * stale or dead-lettered event stays reprocessable after reconciliation,
@@ -77,11 +76,14 @@ public final class ConformanceLedger {
      * @return recorded disposition for the fixture to assert
      */
     public ProcessingResult apply(PartnerEvent event) {
+        // Identity is scoped to sender, kind and event id; two partners may reuse an id.
         String identity = dedupKey(event);
         if (seen.contains(identity)) {
             return new ProcessingResult(Disposition.DUPLICATE, "duplicate");
         }
         if (event.kind().requiresIdentifierMatch() && !matchesLocalIdentity(event)) {
+            // Hold the event for reconciliation; never link clinical data on an
+            // identifier that is not bound to this aggregate.
             reconciliationQueue.add(event);
             return new ProcessingResult(Disposition.UNMATCHED, "identifier");
         }
@@ -101,6 +103,7 @@ public final class ConformanceLedger {
         }
         attempts.put(identity, attemptsMade);
         if (!delivered) {
+            // Keep the identity unconsumed so a replay after recovery can still apply.
             deadLetters.add(event);
             return new ProcessingResult(Disposition.DEAD_LETTER, "outage");
         }
@@ -111,6 +114,8 @@ public final class ConformanceLedger {
         history.computeIfAbsent(event.aggregateKey(), key -> new ArrayList<>())
                 .add(new RevisionRecord(event.revision(), event.kind(), event.identifier(),
                         event.payload(), event.kind().reopensReview()));
+        // Only a clinical acknowledgment closes review; a delivery ack or release
+        // never does, so a transport fact cannot silently close a clinical task.
         if (event.kind().opensReview()) {
             reviewOpen.put(event.aggregateKey(), true);
         } else if (event.kind().isClinicalAck()) {

@@ -10,7 +10,7 @@ import com.aurevia.exchange.result.ResultCommands.ImportResultRequest;
 
 /**
  * Maps a validated HL7 v2 message to the existing internal order and result
- * commands (XCH-01, XCH-04, LAB-02).
+ * commands.
  *
  * <p>The mapper is pure: it neither writes to a store nor mutates the message.
  * Segment order and every required field are checked before a command is

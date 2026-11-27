@@ -6,7 +6,7 @@ package com.aurevia.exchange.hl7;
  * <p>{@code AA} accepts the message, {@code AE} reports an error such as a
  * malformed or truncated payload, and {@code AR} rejects a duplicate control
  * identifier. A negative acknowledgment always carries a stable reason code in
- * its reason field (XCH-01, XCH-04).</p>
+ * its reason field.</p>
  *
  * @param code              MSA-1 acknowledgment code
  * @param controlId         MSH-10 identifier assigned to this acknowledgment

@@ -8,13 +8,10 @@ import java.util.regex.Pattern;
  *
  * <p>Event identity is the pair of {@code sender} and {@code eventId}; dedup is
  * scoped to that sender and the event kind, so two partners may legitimately
- * choose the same event identifier (ARC-05). {@code revision} is the per
+ * choose the same event identifier. {@code revision} is the per
  * aggregate version used to reject stale deliveries. {@code identifier} is the
  * issuer-scoped identifier matched before clinical data is linked. {@code unit}
- * and {@code payload} carry the observation evidence used for XCH-07
- * comparability.</p>
- *
- * @return this record
+ * and {@code payload} carry the observation evidence used for clinical comparisons.</p>
  */
 public record PartnerEvent(String eventId, String sender, EventKind kind, String aggregateKey,
                            long revision, String identifier, String unit, String payload) {
@@ -50,8 +47,8 @@ public record PartnerEvent(String eventId, String sender, EventKind kind, String
     }
 
     /**
-     * Whether two observations are eligible for a shared clinical trend
-     * (XCH-07). A trend requires the same test identity, a known and identical
+     * Whether two observations are eligible for a shared clinical trend.
+     * A trend requires the same test identity, a known and identical
      * unit and numeric payloads on both sides. Qualified values such as
      * {@code <5} and qualitative values such as {@code POSITIVE} stay visible
      * in the payload but are never treated as comparable measurements.

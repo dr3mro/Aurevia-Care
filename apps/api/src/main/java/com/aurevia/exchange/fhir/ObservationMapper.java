@@ -14,7 +14,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Maps a laboratory observation to and from a FHIR R4 Observation (LAB-02, XCH-04).
+ * Maps a laboratory observation to and from a FHIR R4 Observation.
  *
  * <p>The four observation kinds keep their own FHIR value field so a less-than qualifier,
  * its unit, an abnormal flag and an approved reference range survive a round trip. A

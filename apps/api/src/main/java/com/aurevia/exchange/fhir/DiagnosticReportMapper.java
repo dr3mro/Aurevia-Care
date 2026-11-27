@@ -15,10 +15,10 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Maps a laboratory report revision to and from a FHIR R4 DiagnosticReport (LAB-02, XCH-04).
+ * Maps a laboratory report revision to and from a FHIR R4 DiagnosticReport.
  *
  * <p>A corrected revision carries a {@code supersedes} extension that links it to the
- * version it replaces; the prior revision stays immutable. Patient, accession and order
+ * version it replaces; the prior revision stays immutable. Patient, specimen and order
  * identifiers are mandatory on import, and the contained observations are mapped in both
  * directions so the report round trip keeps their qualifiers and units.</p>
  */
@@ -104,7 +104,7 @@ public final class DiagnosticReportMapper {
     }
 
     /**
-     * Read a FHIR R4 DiagnosticReport, rejecting one without a patient, accession or order identifier.
+     * Read a FHIR R4 DiagnosticReport, rejecting one without a patient, specimen or order identifier.
      *
      * @param resource FHIR resource
      * @return the FHIR-boundary projection

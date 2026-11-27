@@ -3,7 +3,7 @@ package com.aurevia.exchange.hl7;
 /**
  * Sender-side facts that cannot be carried in a clinical ORM payload.
  *
- * <p>XCH-01 requires the sending organization to authorize the specific payload,
+ * <p>The sending organization must authorize the specific payload,
  * recipient, purpose and duration. Those facts are supplied by the caller from
  * its authorization store rather than trusted from the wire; the mapper checks
  * them before producing an order command.</p>

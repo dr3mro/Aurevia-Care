@@ -12,7 +12,7 @@ import java.util.Objects;
  * adapter. A replay requires an authorized reason and keeps the immutable event
  * identity. Dedup in the sender and type namespace, stale revision holding and
  * processing-outcome recording are delegated to the conformance ledger so the
- * rules are defined once (ARC-05, XCH-04).</p>
+ * rules are defined once.</p>
  */
 public final class PartnerReportProcessor {
 
@@ -22,7 +22,7 @@ public final class PartnerReportProcessor {
     /**
      * Create a processor over a fresh conformance ledger.
      *
-     * @param ledger ledger that owns the durable conformance rules
+     * @param ledger ledger that owns the deterministic conformance rules
      */
     public PartnerReportProcessor(ConformanceLedger ledger) {
         this.ledger = Objects.requireNonNull(ledger, "ledger");

@@ -1,7 +1,7 @@
 package com.aurevia.exchange.conformance;
 
 /**
- * Authorization and reason attached to a replay of a synthetic partner event (ARC-05).
+ * Authorization and reason attached to a replay of a synthetic partner event.
  *
  * <p>A replay preserves the immutable event identity. Authorization is scoped to
  * the full dedup namespace of sender, event kind and event identifier, so an
@@ -14,7 +14,6 @@ package com.aurevia.exchange.conformance;
  * @param kind         event kind in whose namespace the replay is authorized
  * @param reason       non-blank reason the event is replayed
  * @param authorizedBy non-blank synthetic actor that authorized the replay
- * @return this record
  */
 public record ReplayRequest(String eventId, String sender, EventKind kind, String reason,
                             String authorizedBy) {

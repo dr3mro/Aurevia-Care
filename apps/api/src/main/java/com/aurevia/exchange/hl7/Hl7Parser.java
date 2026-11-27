@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 /**
  * Dependency-free parser for the bounded HL7 v2 subset used by order and result
- * exchange (XCH-01, XCH-04).
+ * exchange.
  *
  * <p>The first non-blank segment declares the delimiters; every segment is then
  * split on the field separator, each field on the repetition separator, and each
