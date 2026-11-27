@@ -25,7 +25,7 @@ on:
         type: boolean
         default: false
       ignore_red_main:
-        description: 'Bypass task gates; wave queue and CI/merge gates still apply.'
+        description: 'Bypass ordinary task gates; incomplete scope locks, wave queue and CI/merge gates still apply.'
         type: boolean
         default: false
   push:
@@ -90,7 +90,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
             -e SWARM_MODEL -e OPENCODE_API_KEY -e OPENCODE_API_KEY_ALT \
             "$image" bash -lc '
-              prompt="Use the aurevia-context-optimizer skill. The single-file trackers were removed: use tasks/ and .opencode/config/MEMORY.md; never search root TODO.md or MEMORY.md. Before deciding, read the code base and evidence: .opencode/config/PROJECT_V1_SPEC.md for the requirement IDs, tasks/ for [x] done, [-] taken and [ ] open, .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, docs/decisions/ and targeted entry points under apps/, db/ and contracts/. Separate implemented, partial, planned and unknown work. A feature is a range of related tasks sharing a task-id prefix, for example SMSG or PRINT. Select up to two features where the remaining gap is real and open eligible tasks exist (depends done, attempts below 5); Prefer two different feature prefixes when two gaps exist. If only one feature has an eligible gap, choose up to two tasks from it. Reply with exactly two lines on stdout, the last two: feature=<comma-separated feature prefixes> then tasks=<comma-separated task ids from those features>. Ids only; no prose on those lines."
+              prompt="Use the aurevia-context-optimizer skill. The single-file trackers were removed: use tasks/ and .opencode/config/MEMORY.md; never search root TODO.md or MEMORY.md. Before deciding, read the code base and evidence: .opencode/config/PROJECT_V1_SPEC.md for the requirement IDs, tasks/ for [x] done, [-] taken, [!] incomplete and [ ] open (only [ ] is eligible; [!] does not satisfy depends and keeps its scope reserved), .opencode/config/BUGS.md, .opencode/config/WORKSPACE.md, docs/decisions/ and targeted entry points under apps/, db/ and contracts/. Separate implemented, partial, planned and unknown work. A feature is a range of related tasks sharing a task-id prefix, for example SMSG or PRINT. Select up to two features where the remaining gap is real and open eligible tasks exist (depends done, attempts below 5); Prefer two different feature prefixes when two gaps exist. If only one feature has an eligible gap, choose up to two tasks from it. Reply with exactly two lines on stdout, the last two: feature=<comma-separated feature prefixes> then tasks=<comma-separated task ids from those features>. Ids only; no prose on those lines."
               keys=("$OPENCODE_API_KEY")
               if [[ -n "${OPENCODE_API_KEY_ALT:-}" && "$OPENCODE_API_KEY_ALT" != "$OPENCODE_API_KEY" ]]; then
                 keys+=("$OPENCODE_API_KEY_ALT")
@@ -203,7 +203,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
             -e SWARM_MODEL -e OPENCODE_API_KEY -e OPENCODE_API_KEY_ALT -e FEATURE -e CANDIDATES -e WORKER_COUNT \
             "$image" bash -lc '
-              prompt="Use the aurevia-context-optimizer skill. The single-file trackers were removed: use tasks/ and .opencode/config/MEMORY.md; never search root TODO.md or MEMORY.md. Before deciding, read the code base and evidence: the requirement IDs in .opencode/config/PROJECT_V1_SPEC.md, the [x] done, [-] taken and [ ] open entries in tasks/, .opencode/config/BUGS.md, docs/decisions/ and the targeted source under apps/, db/ and contracts/ for each candidate. $FEATURE is a comma-separated list of feature prefixes selected by the Product Owner. Within the $WORKER_COUNT cap, pick open tasks from candidates $CANDIDATES that are still needed, whose dependencies are met and whose scope paths do not overlap each other or any [-] task; prefer tasks from different feature prefixes when more than one prefix was selected. If only one feature is selected, pick up to two tasks when the cap allows, or one if a second eligible task cannot be found; with two features, pick one if no second eligible task exists. Reply with one line only: tasks=<comma-separated task ids>. Ids only."
+              prompt="Use the aurevia-context-optimizer skill. The single-file trackers were removed: use tasks/ and .opencode/config/MEMORY.md; never search root TODO.md or MEMORY.md. Before deciding, read the code base and evidence: the requirement IDs in .opencode/config/PROJECT_V1_SPEC.md, the [x] done, [-] taken, [!] incomplete and [ ] open entries in tasks/ (only [ ] is eligible; [!] does not satisfy depends and keeps its scope reserved), .opencode/config/BUGS.md, docs/decisions/ and the targeted source under apps/, db/ and contracts/ for each candidate. $FEATURE is a comma-separated list of feature prefixes selected by the Product Owner. Within the $WORKER_COUNT cap, pick open tasks from candidates $CANDIDATES that are still needed, whose dependencies are met and whose scope paths do not overlap each other, any [-] task or any [!] task; prefer tasks from different feature prefixes when more than one prefix was selected. If only one feature is selected, pick up to two tasks when the cap allows, or one if a second eligible task cannot be found; with two features, pick one if no second eligible task exists. Reply with one line only: tasks=<comma-separated task ids>. Ids only."
               keys=("$OPENCODE_API_KEY")
               if [[ -n "${OPENCODE_API_KEY_ALT:-}" && "$OPENCODE_API_KEY_ALT" != "$OPENCODE_API_KEY" ]]; then
                 keys+=("$OPENCODE_API_KEY_ALT")
@@ -253,7 +253,7 @@ jobs:
           if [[ -z "$tasks" ]]; then
             # CANDIDATES is bound from the PO job's validated id list; no free
             # text from the agent reaches the annotation or the run summary.
-            echo "::notice::No non-overlapping task was available from candidates ${CANDIDATES:-none}; open [ ] tasks exist but overlap taken work or each other." >&2
+            echo "::notice::No non-overlapping task was available from candidates ${CANDIDATES:-none}; open [ ] tasks exist but overlap taken or incomplete work or each other." >&2
             echo "Swarm wave summary: no non-overlapping tasks were available from candidates ${CANDIDATES:-none}." >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "Allocated tasks: ${tasks:-none}" >&2

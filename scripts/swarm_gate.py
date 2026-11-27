@@ -64,7 +64,7 @@ SWARM_BRANCH = re.compile(r"^swarm/([A-Za-z0-9-]+)-\d+$")
 INTEGRATION_BRANCH = re.compile(r"^swarm/integration/[A-Za-z0-9._-]+$")
 RECONCILE_BRANCH = re.compile(r"^swarm/reconcile/[A-Za-z0-9._-]+$")
 TASK_TITLE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9-]*):\s+\S")
-TASK_MARK = re.compile(r"^- \[([ x-])\] (\S+)\s+·", re.M)
+TASK_MARK = re.compile(r"^- \[([ x!-])\] (\S+)\s+·", re.M)
 EVIDENCE_SECTIONS = ("## Test evidence", "## Coverage", "## Review verdicts")
 CHECK_COMMANDS = ("scripts/quick-check.sh", "scripts/check.sh", "mvn ",
                   "python3 -I -m unittest", "apps/patient-mobile/check.sh", "apps/staff-web/check.sh")
@@ -260,10 +260,11 @@ def validate_task_metadata(task_text, task_id, pr_number, evidence_text=""):
 
     The protected base cannot know a first-time worker's evidence: the task is
     still ``[ ]``/``[-]`` there because only the integrator writes ``evidence:``
-    when a task becomes ``[x]``. For those tasks the worker note read from the
-    PR head may supply the same shape that ``validate_verification_evidence``
-    already requires. Done tasks and non-worker PRs keep the base-only rule;
-    notes are never treated as proof of a passing check.
+    when a task becomes ``[x]``. An ``[!]`` incomplete entry is recognized but
+    never eligible and cannot use the notes fallback. For open or taken tasks the
+    worker note read from the PR head may supply the same shape that
+    ``validate_verification_evidence`` already requires. Done tasks and non-worker
+    PRs keep the base-only rule; notes are never treated as proof of a passing check.
     """
     exists = bool(task_text)
     mark = TASK_MARK.search(task_text) if exists else None

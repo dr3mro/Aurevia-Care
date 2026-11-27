@@ -402,31 +402,33 @@ class MainDispatchCoverageTests(CliTestCase):
         # The nested `mark` callback is passed to update_todo; a fake that invokes it
         # proves the newest TODO.md is re-claimed on every push retry.
         prs = [{"number": 7, "headRefName": "swarm/story"}]
+        current = ("- [-] CW-001 · Story\n  - scope: apps/story\n"
+                   "- [ ] FIX-9 · Fix\n  - scope: apps/fix\n")
 
         def call_edit(edit, message, path):
             self.assertEqual(message, "Take 1 task(s) for the swarm")
-            edit("current TODO text")
+            edit(current)
             return True
 
         include = [{"id": "CW-001", "kind": "story", "slot": 1, "title": "secret",
                     "body": "secret", "fix": "secret"},
                    {"id": "FIX-9", "kind": "fix", "slot": 2, "title": "secret",
                     "body": "secret", "fix": "secret"}]
-        with mock.patch.object(swarm, "gh_json", side_effect=[prs, []]), \
+        with mock.patch.object(swarm, "gh_json", side_effect=[prs, [], prs, []]), \
                 mock.patch.object(swarm, "waiting_waves", return_value=0), \
                 mock.patch.object(swarm, "main_is_red", return_value=False), \
-                mock.patch.object(swarm, "live_workers", return_value=[]), \
+                mock.patch.object(swarm, "live_workers", side_effect=[[], []]), \
                 mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
-                mock.patch.object(swarm, "todo_read", return_value="current TODO text"), \
-                mock.patch.object(swarm, "reclaim", return_value="reclaimed") as reclaim, \
+                mock.patch.object(swarm, "todo_read", return_value=current), \
+                mock.patch.object(swarm, "reclaim", side_effect=lambda text, *args: text) as reclaim, \
                 mock.patch.object(swarm, "claim_open", return_value=("taken", {"CW-001"})) as claim, \
-                mock.patch.object(swarm, "plan_workers", return_value=include), \
+                mock.patch.object(swarm, "plan_workers", side_effect=[include, include]), \
                 mock.patch.object(swarm, "update_todo", side_effect=call_edit) as update, \
                 mock.patch.object(swarm, "note_claims") as note:
             self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
         update.assert_called_once()
         self.assertEqual(reclaim.call_count, 2)  # once when planning, once in `mark`
-        claim.assert_called_once_with("reclaimed", {"CW-001": "swarm-1"}, force=False)
+        claim.assert_called_once_with(current, {"CW-001": "swarm-1"}, force=False)
         note.assert_called_once()
         emitted = self.emitted()
         self.assertEqual([t["id"] for t in json.loads(emitted["matrix"])["include"]],
@@ -435,6 +437,131 @@ class MainDispatchCoverageTests(CliTestCase):
                             for field in ("title", "body", "fix")))
         self.assertEqual(emitted["count"], "2")
         self.assertNotIn("reason", emitted)
+
+    def test_main_plan_workers_drops_a_fix_that_is_incomplete_before_final_mark(self):
+        include = [{"id": "STORY-1", "kind": "story", "slot": 1, "title": "", "body": "", "fix": ""},
+                   {"id": "FIX-1", "kind": "fix", "slot": 2, "title": "", "body": "", "fix": ""}]
+        fresh_plan = [{**include[0], "slot": 2}]
+        current = ("- [ ] STORY-1 · Ready\n  - scope: apps/story\n"
+                   "- [!] FIX-1 · Held fix\n  - scope: apps/fix\n"
+                   "- [!] BLOCK-1 · Overlapping incomplete task\n  - scope: apps/fix/deep\n")
+
+        def call_edit(edit, message, path):
+            self.assertEqual(message, "Take 1 task(s) for the swarm")
+            edit(current)
+            return True
+
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], [], [], []]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "live_workers", side_effect=[[], []]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value=current), \
+                mock.patch.object(swarm, "reclaim", side_effect=lambda text, *args: text), \
+                mock.patch.object(swarm, "plan_workers", side_effect=[include, fresh_plan]), \
+                mock.patch.object(swarm, "claim_open", return_value=("taken", {"STORY-1"})) as claim, \
+                mock.patch.object(swarm, "update_todo", side_effect=call_edit), \
+                mock.patch.object(swarm, "note_claims"):
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        claim.assert_called_once_with(current, {"STORY-1": "swarm-2"}, force=False)
+        emitted = self.emitted()
+        planned = json.loads(emitted["matrix"])["include"]
+        self.assertEqual([task["id"] for task in planned], ["STORY-1"])
+        self.assertEqual(planned[0]["slot"], 2)
+        self.assertEqual(emitted["count"], "1")
+
+    def test_main_plan_workers_replans_with_fresh_capacity_slots_prs_and_live(self):
+        include = [{"id": "STORY-1", "kind": "story", "slot": 1, "title": "", "body": "", "fix": ""}]
+        fresh_include = [{**include[0], "slot": 9}]
+        fresh_prs = [{"number": 9, "headRefName": "swarm/FRESH-1-1"}]
+        fresh_everything = [{"number": 9, "headRefName": "swarm/FRESH-1-1", "state": "OPEN"}]
+        fresh_live = ["BUSY-1"]
+        fresh_slots = [{"slot": 9}]
+        current = "- [ ] STORY-1 · Ready\n  - scope: apps/story\n"
+
+        def call_edit(edit, message, path):
+            edit(current)
+            return True
+
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], [], fresh_prs, fresh_everything]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "live_workers", side_effect=[[], fresh_live]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "scheduler_room", side_effect=[2, 1]) as room, \
+                mock.patch.object(swarm, "worker_slots", side_effect=[SLOTS, fresh_slots]) as slots, \
+                mock.patch.object(swarm, "todo_read", return_value=current), \
+                mock.patch.object(swarm, "reclaim", side_effect=lambda text, *args: text), \
+                mock.patch.object(swarm, "plan_workers", side_effect=[include, fresh_include]) as plan, \
+                mock.patch.object(swarm, "claim_open", return_value=("taken", {"STORY-1"})) as claim, \
+                mock.patch.object(swarm, "update_todo", side_effect=call_edit), \
+                mock.patch.object(swarm, "note_claims"):
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        self.assertEqual([call.args[1] for call in room.call_args_list], [0, 1])
+        self.assertEqual([call.args[1] for call in slots.call_args_list], [0, 1])
+        replan = plan.call_args_list[1].args
+        self.assertEqual(replan[0], 1)
+        self.assertEqual(replan[1], fresh_slots)
+        self.assertEqual(replan[2], current)
+        self.assertEqual(replan[3], fresh_prs)
+        self.assertEqual(replan[5], fresh_live)
+        claim.assert_called_once_with(current, {"STORY-1": "swarm-9"}, force=False)
+        self.assertEqual(json.loads(self.emitted()["matrix"])["include"][0]["slot"], 9)
+
+    def test_main_plan_workers_emits_empty_matrix_when_fresh_wave_cap_is_reached(self):
+        include = [{"id": "STORY-1", "kind": "story", "slot": 1, "title": "", "body": "", "fix": ""}]
+        current = "- [ ] STORY-1 · Ready\n  - scope: apps/story\n"
+
+        def call_edit(edit, message, path):
+            edit(current)
+            return True
+
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], [], [], []]), \
+                mock.patch.object(swarm, "active_waves", side_effect=[
+                    (True, 0, ""), (False, swarm.concurrent_wave_limit(), "wave cap")]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "live_workers", side_effect=[[], []]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value=current), \
+                mock.patch.object(swarm, "reclaim", side_effect=lambda text, *args: text), \
+                mock.patch.object(swarm, "plan_workers", return_value=include) as plan, \
+                mock.patch.object(swarm, "claim_open", return_value=(current, set())) as claim, \
+                mock.patch.object(swarm, "update_todo", side_effect=call_edit), \
+                mock.patch.object(swarm, "note_claims"):
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        self.assertEqual(plan.call_count, 1)
+        claim.assert_called_once_with(current, {}, force=False)
+        emitted = self.emitted()
+        self.assertEqual(emitted["matrix"], '{"include":[]}')
+        self.assertEqual(emitted["count"], "0")
+
+    def test_main_plan_workers_reports_capacity_unavailable_from_final_refresh(self):
+        include = [{"id": "STORY-1", "kind": "story", "slot": 1, "title": "", "body": "", "fix": ""}]
+        current = "- [ ] STORY-1 · Ready\n  - scope: apps/story\n"
+
+        def call_edit(edit, message, path):
+            edit(current)
+            return True
+
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], [], [], []]), \
+                mock.patch.object(swarm, "waiting_waves", return_value=0), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "live_workers", side_effect=[[], swarm.CapacityUnavailable()]), \
+                mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
+                mock.patch.object(swarm, "todo_read", return_value=current), \
+                mock.patch.object(swarm, "reclaim", side_effect=lambda text, *args: text), \
+                mock.patch.object(swarm, "plan_workers", return_value=include) as plan, \
+                mock.patch.object(swarm, "claim_open", return_value=(current, set())) as claim, \
+                mock.patch.object(swarm, "update_todo", side_effect=call_edit), \
+                mock.patch.object(swarm, "note_claims"):
+            self.assertEqual(swarm.main(["plan-workers", "--file", str(self.dir / "TODO.md")]), 0)
+        self.assertEqual(plan.call_count, 1)
+        claim.assert_called_once_with(current, {}, force=False)
+        emitted = self.emitted()
+        self.assertEqual(emitted["matrix"], '{"include":[]}')
+        self.assertEqual(emitted["count"], "0")
+        self.assertEqual(emitted["reason"], "capacity_unavailable")
 
     def test_main_plan_workers_reports_when_all_claims_were_lost(self):
         include = [{"id": "CW-001", "kind": "story", "slot": 1, "title": "",
@@ -778,6 +905,41 @@ class StaleRetryTests(unittest.TestCase):
         self.assertIn("  - attempts: 0", result)
         self.assertIn("stay inside scope", result)
         self.assertIn("Retry TASK-01", update.call_args.args[1])
+
+    def test_stale_retry_resets_attempts_after_details(self):
+        text = ("- [-] TASK-01 · work it\n  - details:\n    stay inside scope\n"
+                "  - attempts: 4\n")
+        with mock.patch.object(swarm, "update_todo",
+                               side_effect=lambda edit, message: edit(text)):
+            result = swarm.stale_retry("TASK-01")
+        self.assertIn("- [ ] TASK-01 · work it", result)
+        self.assertIn("  - attempts: 0", result)
+        self.assertIn("stay inside scope", result)
+
+    def test_reset_attempts_resolves_aliases_and_metadata_after_details(self):
+        text = ("- [-] TASK-01 · work it\n  - aliases: TASK-ALIAS\n"
+                "  - details:\n    stay inside scope\n  - attempts: 4\n")
+        result = swarm.reset_attempts(text, "TASK-ALIAS")
+        self.assertIn("  - attempts: 0", result)
+        self.assertIn("stay inside scope", result)
+
+    def test_stale_retry_never_reopens_or_mutates_other_states(self):
+        cases = (
+            "- [ ] TASK-01 · Open\n",
+            "- [x] TASK-01 · Done\n",
+            "- [!] TASK-01 · Incomplete\n  - details:\n    Held.\n  - attempts: 3\n",
+            "- [ ] OTHER-1 · Missing target\n",
+        )
+        for text in cases:
+            with self.subTest(text=text), \
+                    mock.patch.object(swarm, "todo_read", return_value=text), \
+                    mock.patch.object(swarm, "todo_write") as write, \
+                    mock.patch.object(swarm, "git") as git, \
+                    mock.patch.object(swarm, "authed_git") as authed:
+                self.assertFalse(swarm.stale_retry("TASK-01"))
+                write.assert_not_called()
+                git.assert_not_called()
+                authed.assert_not_called()
 
     def test_main_dispatches_stale_retry(self):
         with mock.patch.object(swarm, "stale_retry") as retry:

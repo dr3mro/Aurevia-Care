@@ -18,7 +18,8 @@ DONE = "done"
 HEAD = "_head.md"
 MARK = ".sharded"           # present once the tasks are in files; its content never changes
 STEP = 1000                 # gap between neighbouring sequence numbers
-ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · ")
+# Task marks: [ ] open, [-] taken, [!] incomplete, [x] done.
+ENTRY = re.compile(r"^- \[([ x!-])\] (\S+) · ")
 NAME = re.compile(r"^(\d{8})-(.+)\.md$")
 
 

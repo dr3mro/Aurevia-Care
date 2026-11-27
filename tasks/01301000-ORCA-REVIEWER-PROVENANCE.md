@@ -1,10 +1,9 @@
-- [ ] ORCA-REVIEWER-PROVENANCE · Bind independent review verdicts to reviewer-run evidence
+- [!] ORCA-REVIEWER-PROVENANCE · Bind independent review verdicts to reviewer-run evidence
   - parent: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
-  - blocked: plan reviewer NO-GO; needs a trusted runner with Git/GitHub execution that this session does not have
   - requirements: ORCA-040, AG-19, AG-22
   - scope: scripts/check-verdicts.py, scripts/tests/test_check_verdicts.py, scripts/quality-gate.sh, scripts/agent-run.sh, .opencode/skills/aurevia-code-reviewer/SKILL.md, .opencode/skills/aurevia-coverage-auditor/SKILL.md, .opencode/skills/aurevia-devsecops/SKILL.md, tasks/01301000-ORCA-REVIEWER-PROVENANCE.md
   - depends: 01300000-ORCA-INFRASTRUCTURE-REFACTOR
-  - details: Defect ORCA-REVIEWER-PROVENANCE. `check-verdicts.py` currently accepts GO lines typed into the worker's own notes file, so an implementation agent can manufacture all three independent approvals. Add a reviewer-run evidence artifact requirement, bind each artifact to reviewer identity, session and reviewed revision, and fail closed when it is absent or stale. Keep the existing notes parsing intact; do not weaken any gate.
+  - details: Incomplete: plan reviewer NO-GO; needs a trusted runner with Git/GitHub execution that this session does not have. Next action: supply a trusted reviewer-artifact producer outside worker write authority, then reopen to `[ ]` and implement the evidence binding. Defect ORCA-REVIEWER-PROVENANCE. `check-verdicts.py` currently accepts GO lines typed into the worker's own notes file, so an implementation agent can manufacture all three independent approvals. Add a reviewer-run evidence artifact requirement, bind each artifact to reviewer identity, session and reviewed revision, and fail closed when it is absent or stale. Keep the existing notes parsing intact; do not weaken any gate.
 
 ## Loaded skills
 - aurevia-delivery — mandatory delivery loop and definition of done.

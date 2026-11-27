@@ -117,6 +117,19 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(result.check("task_exists").state, gate.FAILED)
         self.assertEqual(result.check("task_eligible").state, gate.FAILED)
 
+    def test_incomplete_task_is_recognized_but_not_eligible(self):
+        text = "- [!] TASK-01 · incomplete work\n  - evidence: tool evidence\n"
+        mark = gate.TASK_MARK.search(text)
+        self.assertIsNotNone(mark)
+        self.assertEqual(mark.group(1), "!")
+        result = run(task_text=text)
+        self.assertEqual(result.check("task_exists").state, gate.PASSED)
+        self.assertEqual(result.check("task_identifier").state, gate.PASSED)
+        self.assertEqual(result.check("task_eligible").state, gate.FAILED)
+        self.assertFalse(result.passed)
+        without_base_evidence = run(task_text="- [!] TASK-01 · incomplete work\n", evidence_text=EVIDENCE)
+        self.assertEqual(without_base_evidence.check("task_evidence").state, gate.FAILED)
+
     def test_done_task_and_missing_evidence_field_fail(self):
         # Behavior changed on purpose: a taken task may now use valid head notes.
         # A done task and an invalid base evidence value still fail closed.

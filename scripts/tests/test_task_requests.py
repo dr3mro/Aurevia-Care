@@ -207,6 +207,48 @@ class MergeTests(unittest.TestCase):
         self.assertFalse(Path("docs/swarm/T-01.md").exists())
         self.assertEqual(swarm.store().read(), before)
 
+    def test_record_merge_rejects_incomplete_task_before_notes_or_tracker_writes(self):
+        swarm.store().write(TEXT.replace("- [-] T-01", "- [!] T-01"))
+        before = swarm.store().read()
+        info = {"headRefOid": "abc", "body": "done", "title": "T-01: task",
+                "baseRefName": "main", "state": "OPEN"}
+        with mock.patch.object(swarm, "gh_json", return_value=info), \
+                mock.patch.object(swarm, "todo_write") as write:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.record_merge(415, "T-01", "abc")
+            write.assert_not_called()
+        self.assertFalse(Path("docs/swarm/T-01.md").exists())
+        self.assertEqual(swarm.store().read(), before)
+
+    def test_record_merge_rejects_ambiguous_tracker_aliases_before_notes(self):
+        text = TEXT + (
+            "\n- [ ] OTHER-1 · First alias owner\n  - aliases: SHARED\n"
+            "- [ ] OTHER-2 · Second alias owner\n  - aliases: SHARED\n"
+        )
+        swarm.store().write(text)
+        before = swarm.store().read()
+        info = {"headRefOid": "abc", "body": "done", "title": "T-01: task",
+                "baseRefName": "main", "state": "OPEN"}
+        with mock.patch.object(swarm, "gh_json", return_value=info):
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.record_merge(415, "T-01", "abc")
+        self.assertFalse(Path("docs/swarm/T-01.md").exists())
+        self.assertEqual(swarm.store().read(), before)
+
+    def test_record_merge_rejects_unique_alias_before_notes_or_tracker_write(self):
+        text = TEXT + "\n- [ ] OTHER-1 · Canonical owner\n  - aliases: TASK-ALIAS\n"
+        swarm.store().write(text)
+        before = swarm.store().read()
+        info = {"headRefOid": "abc", "body": "done", "title": "TASK-ALIAS: task",
+                "baseRefName": "main", "state": "OPEN"}
+        with mock.patch.object(swarm, "gh_json", return_value=info), \
+                mock.patch.object(swarm, "todo_write") as write:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.record_merge(415, "TASK-ALIAS", "abc")
+            write.assert_not_called()
+        self.assertFalse(Path("docs/swarm/TASK-ALIAS.md").exists())
+        self.assertEqual(swarm.store().read(), before)
+
     def test_record_merge_allows_idempotent_same_pr_retry(self):
         text = TEXT.replace("- [-] T-01", "- [x] T-01").replace(
             "  - scope: apps/api/src/a",

@@ -478,15 +478,18 @@ class TodoAndJobSummaryTests(unittest.TestCase):
                 "  - agent: swarm-1\n"
                 "- [-] TAKEN-2 · Second\n"
                 "  - scope: apps/api\n"
-                "- [x] DONE-3 · Third\n\n"
+                "- [!] INCOMPLETE-3 · Waiting\n"
+                "  - details: Needs owner input.\n"
+                "- [x] DONE-4 · Fourth\n\n"
                 "not a task line\n"
                 "  - indented noise\n")
         tasks = monitor.parse_tasks(text)
-        self.assertEqual([t["id"] for t in tasks], ["OPEN-1", "TAKEN-2", "DONE-3"])
+        self.assertEqual([t["id"] for t in tasks], ["OPEN-1", "TAKEN-2", "INCOMPLETE-3", "DONE-4"])
         self.assertEqual(tasks[0], {"status": "todo", "id": "OPEN-1", "title": "First task",
                                     "agent": "swarm-1", "priority": ""})
         self.assertEqual(tasks[1]["status"], "taken")
-        self.assertEqual(tasks[2]["status"], "done")
+        self.assertEqual(tasks[2]["status"], "incomplete")
+        self.assertEqual(tasks[3]["status"], "done")
         self.assertEqual(monitor.parse_tasks(None), [])
 
     def test_job_summary_counts_running_queued_finished_and_failed(self):
