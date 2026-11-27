@@ -66,8 +66,42 @@ jobs:
           done
           echo "::error::Pages artifact metadata never became visible" >&2
           exit 1
-      - name: Deploy to GitHub Pages
-        id: deployment
+      # The REST listing above proved only one view of artifact metadata. Run
+      # 46039411004 showed deploy-pages can see zero artifacts moments later, so
+      # allow one bounded retry after the replicas settle. If the lag is not
+      # transient the guard below fails closed; it never reports a false success.
+      - name: Deploy to GitHub Pages (first attempt)
+        id: deploy_first
+        continue-on-error: true
         uses: actions/deploy-pages@v4
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
+      - name: Wait before Pages deploy retry
+        if: steps.deploy_first.outcome == 'failure'
+        run: sleep 20
+      - name: Retry Pages deployment
+        id: deploy_retry
+        if: steps.deploy_first.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
+      - name: Verify Pages deployment
+        id: deployment
+        if: always()
+        env:
+          FIRST_OUTCOME: ${{ steps.deploy_first.outcome }}
+          RETRY_OUTCOME: ${{ steps.deploy_retry.outcome }}
+          FIRST_URL: ${{ steps.deploy_first.outputs.page_url }}
+          RETRY_URL: ${{ steps.deploy_retry.outputs.page_url }}
+        run: |
+          if [[ "$FIRST_OUTCOME" == success || "$RETRY_OUTCOME" == success ]]; then
+            url="${FIRST_URL:-$RETRY_URL}"
+            {
+              echo "page_url<<EOF"
+              printf '%s\n' "$url"
+              echo EOF
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::Pages deployment did not succeed (first=$FIRST_OUTCOME retry=$RETRY_OUTCOME)" >&2
+          exit 1

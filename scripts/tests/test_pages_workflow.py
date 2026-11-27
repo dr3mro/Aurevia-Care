@@ -45,5 +45,47 @@ class PagesWorkflowTests(unittest.TestCase):
         self.assertIn("actions: read", permissions)
 
 
+    def test_pages_deploy_retries_once_then_fails_closed(self):
+        text = (ROOT / ".github/workflows/pages.yml").read_text(encoding="utf-8")
+        first = self.step_block(text, "Deploy to GitHub Pages (first attempt)")
+        delay = self.step_block(text, "Wait before Pages deploy retry")
+        retry = self.step_block(text, "Retry Pages deployment")
+        guard = self.step_block(text, "Verify Pages deployment")
+        self.assertIn("id: deploy_first", first)
+        self.assertIn("continue-on-error: true", first)
+        self.assertIn("uses: actions/deploy-pages@v4", first)
+        self.assertIn("steps.deploy_first.outcome == 'failure'", delay)
+        self.assertIn("sleep 20", delay)
+        self.assertIn("steps.deploy_first.outcome == 'failure'", retry)
+        self.assertIn("id: deploy_retry", retry)
+        self.assertNotIn("continue-on-error", retry)
+        self.assertIn("github-pages-${{ github.run_attempt }}", retry)
+        self.assertIn("id: deployment", guard)
+        self.assertIn("if: always()", guard)
+        self.assertIn("FIRST_OUTCOME", guard)
+        self.assertIn("RETRY_OUTCOME", guard)
+        self.assertIn('if [[ "$FIRST_OUTCOME" == success || "$RETRY_OUTCOME" == success ]]', guard)
+        self.assertIn("exit 0", guard)
+        self.assertIn("did not succeed (first=$FIRST_OUTCOME retry=$RETRY_OUTCOME)", guard)
+        self.assertIn("exit 1", guard)
+        self.assertLess(text.index("Deploy to GitHub Pages (first attempt)"),
+                        text.index("Wait before Pages deploy retry"))
+        self.assertLess(text.index("Wait before Pages deploy retry"),
+                        text.index("Retry Pages deployment"))
+        self.assertLess(text.index("Retry Pages deployment"),
+                        text.index("Verify Pages deployment"))
+
+    def test_pages_environment_url_uses_the_coalesced_output(self):
+        text = (ROOT / ".github/workflows/pages.yml").read_text(encoding="utf-8")
+        guard = self.step_block(text, "Verify Pages deployment")
+        self.assertIn("environment:\n      name: github-pages\n"
+                      "      url: ${{ steps.deployment.outputs.page_url }}", text)
+        self.assertIn("FIRST_URL", guard)
+        self.assertIn("RETRY_URL", guard)
+        self.assertIn('url="${FIRST_URL:-$RETRY_URL}"', guard)
+        self.assertIn('echo "page_url<<EOF"', guard)
+        self.assertIn('>> "$GITHUB_OUTPUT"', guard)
+
+
 if __name__ == "__main__":
     unittest.main()
