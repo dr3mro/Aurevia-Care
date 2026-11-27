@@ -141,6 +141,7 @@ class GateContext:
     head_sha: str = ""
     base_sha: str = ""
     tested_sha: str = ""
+    refresh_from: str = ""
     labels: tuple = ()
     title: str = ""
     commit_authors: tuple = ()
@@ -428,6 +429,8 @@ def evaluate(ctx):
     live_head = (ctx.tested_sha or "")[:12] or "missing"
     current = bool(ctx.head_sha and ctx.tested_sha and ctx.head_sha == ctx.tested_sha)
     reason = "the verified revision is the current GitHub head"
+    if current and ctx.refresh_from:
+        reason += f"; refreshed from {ctx.refresh_from[:12]}"
     if not current:
         reason = f"event head {event_head} vs live headRefOid {live_head}"
         if ctx.head_sha and ctx.tested_sha:
@@ -512,11 +515,16 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None,
         ["gh", *_gh_repo_args(), "pr", "diff", str(number), "--name-only"],
         text=True, env=child_environment(read_only=True),
     ).split()
+    # A trusted workflow may rewrite the event head after moving to the live PR
+    # head; keep the original SHA so the verdict still records the refresh.
+    refresh = event.get("swarm_gate_head_refresh")
+    refresh_from = refresh.get("from", "") if isinstance(refresh, Mapping) else ""
     ctx = GateContext(**{**ctx.__dict__, "title": details.get("title") or ctx.title,
                          "labels": tuple(x.get("name", "") for x in details.get("labels", [])),
                          "commit_authors": tuple((x.get("author") or {}).get("login", "")
                                                  for x in details.get("commits", [])),
                          "tested_sha": details.get("headRefOid", ""),
+                         "refresh_from": refresh_from,
                          "files": tuple(files)})
     ctx = _collect_task_and_evidence(ctx, root, tested_root)
     kind, _ = classify_pull_request(ctx.head_ref, ctx.labels, ctx.title,
@@ -592,20 +600,59 @@ def _collect_manifest(ctx, root):
     return GateContext(**{**ctx.__dict__, "manifest": manifest, "ancestors": ancestors})
 
 
+def refresh_event(event_path, head_sha, original_sha, output_path):
+    """Copy a GitHub event with its PR head moved to a trusted checked-out SHA.
+
+    The workflow checks out the live PR head into a separate tree before calling
+    this pure JSON rewrite. Both SHAs must be lowercase 40-hex, the event must be
+    a pull_request event, and the original SHA must equal that event's head so the
+    provenance marker is self-verifying. The original head is recorded so the
+    verdict can name the refresh instead of silently rewriting history.
+
+    @param event_path path to the immutable GitHub event payload
+    @param head_sha exact SHA checked out and about to be evaluated
+    @param original_sha event head SHA before the trusted refresh
+    @param output_path path of the rewritten event; written only on success
+    @raises ValueError when either SHA or the event shape is invalid
+    """
+    if not SHA.fullmatch(head_sha or "") or not SHA.fullmatch(original_sha or ""):
+        raise ValueError("refreshed heads must be 40-character lowercase SHAs")
+    event = json.loads(Path(event_path).read_text(encoding="utf-8"))
+    pr = event.get("pull_request") if isinstance(event, Mapping) else None
+    if not isinstance(pr, Mapping) or not isinstance(pr.get("head"), dict):
+        raise ValueError("only pull_request events can refresh their head")
+    event_sha = pr["head"].get("sha", "")
+    if not SHA.fullmatch(event_sha or "") or event_sha != original_sha:
+        raise ValueError("the original head must match the event head")
+    refreshed = json.loads(json.dumps(event))
+    refreshed["pull_request"]["head"]["sha"] = head_sha
+    refreshed["swarm_gate_head_refresh"] = {"from": original_sha, "to": head_sha}
+    Path(output_path).write_text(json.dumps(refreshed), encoding="utf-8")
+
+
 def main(argv=None):
-    """Evaluate one event; print a readable summary; exit 0 only when it passes."""
+    """Evaluate one event or refresh a moved head; exit 0 only on success."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", nargs="?", default="evaluate", choices=("evaluate",))
+    parser.add_argument("command", nargs="?", default="evaluate",
+                        choices=("evaluate", "refresh-event"))
     parser.add_argument("--event-path", required=True)
-    parser.add_argument("--event-name", required=True)
+    parser.add_argument("--event-name")
     parser.add_argument("--root", default=".")
     # The verifier runs from the trusted base checkout, but the manifest and
     # ancestry describe the revision under test and live in a separate checkout.
     # Reading them from --root would judge a stale revision.
     parser.add_argument("--head-root", default=None)
     parser.add_argument("--required-checks", default=os.environ.get("SWARM_GATE_REQUIRED_CHECKS", ""))
+    parser.add_argument("--head-sha", default="")
+    parser.add_argument("--original-sha", default="")
+    parser.add_argument("--output", default="")
     args = parser.parse_args(argv)
     try:
+        if args.command == "refresh-event":
+            refresh_event(args.event_path, args.head_sha, args.original_sha, args.output)
+            return 0
+        if not args.event_name:
+            raise ValueError("evaluate requires --event-name")
         event = json.loads(Path(args.event_path).read_text())
         required = tuple(n.strip() for n in args.required_checks.split(",") if n.strip())
         ctx = collect_context(event, args.event_name, args.root, required,
