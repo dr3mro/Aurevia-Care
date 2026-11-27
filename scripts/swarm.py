@@ -1447,6 +1447,45 @@ def issue_input(issue):
     )
 
 
+def paginated_merged_pull_requests(branch):
+    """Read every merged pull request targeting ``branch`` as normalized records.
+
+    ``gh pr list`` has a bounded window, and a full window is normal on a busy
+    repository: treating it as incomplete evidence blocked reconciliation. The
+    paginated REST query is authoritative; jq keeps only merged PRs and projects
+    them to the shape the task matcher already validates. Each page is emitted as
+    JSON lines, so a partial or malformed record fails before any task is written.
+    """
+    out = subprocess.check_output(
+        [
+            "gh",
+            "api",
+            "--paginate",
+            f"repos/{repo_slug()}/pulls?state=closed&base={branch}&per_page=100",
+            "--jq",
+            '.[] | select(.merged_at != null) | '
+            '{number: .number, title: .title, baseRefName: .base.ref, state: "MERGED"}',
+        ],
+        text=True,
+        stderr=subprocess.DEVNULL,
+        env=child_environment(read_only=True),
+    )
+    text = out.strip()
+    if not text:
+        raise ReconciliationError(
+            "merged pull-request evidence is malformed or incomplete"
+        )
+    decoder = json.JSONDecoder()
+    merged = []
+    while text:
+        item, end = decoder.raw_decode(text)
+        if not isinstance(item, dict):
+            raise ReconciliationError("merged pull-request record is not an object")
+        merged.append(item)
+        text = text[end:].strip()
+    return merged
+
+
 def reconcile_tasks(directory="tasks", file="", persist=False):
     """Complete tasks only from unique, authoritative merges into the default branch.
 
@@ -1456,37 +1495,15 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
     """
     branch = os.environ.get("DEFAULT_BRANCH", "main")
     try:
-        out = subprocess.check_output(
-            [
-                "gh",
-                "pr",
-                "list",
-                "--state",
-                "merged",
-                "--base",
-                branch,
-                "--limit",
-                "500",
-                "--json",
-                "number,title,baseRefName,state",
-            ],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            env=child_environment(read_only=True),
-        )
-        merged = json.loads(out) if out else None
+        merged = paginated_merged_pull_requests(branch)
+    except ReconciliationError:
+        raise
     except (subprocess.CalledProcessError, ValueError, OSError, RuntimeError) as error:
         raise ReconciliationError(
             f"cannot read merged pull requests: {error}"
         ) from error
-    if not isinstance(merged, list) or len(merged) >= 500:
-        raise ReconciliationError(
-            "merged pull-request evidence is malformed or incomplete"
-        )
     by_task, by_number = {}, {}
     for item in merged:
-        if not isinstance(item, dict):
-            raise ReconciliationError("merged pull-request record is not an object")
         number, title = item.get("number"), item.get("title")
         if (
             not isinstance(number, int)

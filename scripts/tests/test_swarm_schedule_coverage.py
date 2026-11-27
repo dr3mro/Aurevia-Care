@@ -197,8 +197,8 @@ class SlotImageCoverageTests(unittest.TestCase):
 class ReconcileTasksCoverageTests(unittest.TestCase):
     """Close out task files when a merged pull request finishes their work.
 
-    The merged-PR list comes from a mocked `gh pr list`, and every task file is a
-    synthetic fixture in a temporary directory, so no repository or network is used.
+    The merged-PR stream comes from a mocked `gh api --paginate`, and every task file
+    is a synthetic fixture in a temporary directory, so no repository or network is used.
     """
 
     def setUp(self):
@@ -214,11 +214,13 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
 
         `merged` is a JSON-ready list of pull requests, or an exception for the
         failed-`gh` path. `names` controls the patched glob result; `explicit`
-        exercises the single-file entry point instead.
+        exercises the single-file entry point instead. The canned answer uses
+        JSON lines, the same stream the paginated gh command emits.
         """
         answer = (mock.patch.object(subprocess, "check_output", side_effect=merged)
                   if isinstance(merged, Exception)
-                  else mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)))
+                  else mock.patch.object(subprocess, "check_output",
+                                         return_value="\n".join(json.dumps(item) for item in merged)))
         paths = [str(self.dir / name) for name in names]
         with answer, mock.patch("glob.glob", return_value=paths):
             return swarm.reconcile_tasks(directory=str(self.dir), file=explicit or "")
@@ -278,14 +280,57 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
             git.assert_not_called()
             self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
 
-    def test_full_500_record_window_fails_before_write(self):
-        path = self.write("one.md", "- [ ] CW-001 · one\n")
-        merged = [{"number": n + 1, "title": f"X-{n}: task", "baseRefName": "main",
+    def test_paginated_fetch_reconciles_a_task_beyond_the_first_window(self):
+        # A full first window is normal on a busy repository, not proof of truncated
+        # evidence. The authoritative fetch must still see the task on a later page.
+        path = self.write("far.md", "- [ ] CW-500 · far\n")
+        merged = [{"number": n + 1, "title": f"X-{n}: other", "baseRefName": "main",
                    "state": "MERGED"} for n in range(500)]
-        with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+        merged.append({"number": 501, "title": "CW-500: far", "baseRefName": "main",
+                       "state": "MERGED"})
+        stream = "\n".join(json.dumps(item) for item in merged)
+        with mock.patch.object(subprocess, "check_output", return_value=stream) as checked, \
+                mock.patch("glob.glob", return_value=[str(path)]):
+            count = swarm.reconcile_tasks(directory=str(self.dir))
+        self.assertEqual(count, 1)
+        self.assertIn("- [x] CW-500", path.read_text())
+        command = checked.call_args.args[0]
+        self.assertEqual(command[:3], ["gh", "api", "--paginate"])
+        self.assertNotIn("--slurp", command)
+        url = next(arg for arg in command if arg.startswith("repos/"))
+        self.assertIn("pulls?state=closed&base=main&per_page=100", url)
+        jq = command[command.index("--jq") + 1]
+        self.assertIn("select(.merged_at != null)", jq)
+        self.assertIn("baseRefName: .base.ref", jq)
+        self.assertIn('"MERGED"', jq)
+
+    def test_paginated_stream_rejects_a_non_dict_record(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        with mock.patch.object(subprocess, "check_output", return_value=json.dumps([1, 2])), \
                 mock.patch.object(swarm, "git") as git:
             with self.assertRaises(swarm.ReconciliationError):
-                swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
+                swarm.reconcile_tasks(directory=str(self.dir), persist=True)
+        git.assert_not_called()
+        self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
+
+    def test_paginated_stream_rejects_trailing_garbage(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        record = {"number": 7, "title": "CW-001: one", "baseRefName": "main",
+                  "state": "MERGED"}
+        stream = json.dumps(record) + "\nnonsense\n"
+        with mock.patch.object(subprocess, "check_output", return_value=stream), \
+                mock.patch.object(swarm, "git") as git:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.reconcile_tasks(directory=str(self.dir), persist=True)
+        git.assert_not_called()
+        self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
+
+    def test_empty_paginated_stream_fails_before_write(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        with mock.patch.object(subprocess, "check_output", return_value=""), \
+                mock.patch.object(swarm, "git") as git:
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.reconcile_tasks(directory=str(self.dir), persist=True)
         git.assert_not_called()
         self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
 
@@ -363,7 +408,8 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
     def test_reconciliation_write_failure_returns_nonzero(self):
         path = self.write("one.md", "- [ ] CW-001 · one\n")
         merged = [{"number": 7, "title": "CW-001: one", "baseRefName": "main", "state": "MERGED"}]
-        with mock.patch.object(subprocess, "check_output", return_value=json.dumps(merged)), \
+        stream = "\n".join(json.dumps(item) for item in merged)
+        with mock.patch.object(subprocess, "check_output", return_value=stream), \
              mock.patch.object(swarm, "git", side_effect=subprocess.CalledProcessError(1, ("git",))), \
              mock.patch.dict(os.environ, {"GH_TOKEN": "t"}):
             with self.assertRaises(subprocess.CalledProcessError):
