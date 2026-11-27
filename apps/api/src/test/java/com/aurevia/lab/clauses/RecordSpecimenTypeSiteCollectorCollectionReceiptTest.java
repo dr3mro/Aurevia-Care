@@ -438,13 +438,33 @@ class RecordSpecimenTypeSiteCollectorCollectionReceiptTest {
      */
     private static void assertInstantField(JsonNode node, String key, String expectedIso) {
         String wire = node.get(key).asText();
-        String normalized = wire.replace(' ', 'T');
-        if (normalized.endsWith("+00")) {
-            normalized = normalized.substring(0, normalized.length() - 3) + "Z";
-        }
-        Instant submitted = Instant.parse(expectedIso);
-        Instant stored = Instant.parse(normalized);
+        Instant submitted = Instant.parse(normalizeInstant(expectedIso));
+        Instant stored = Instant.parse(normalizeInstant(wire));
         assertEquals(submitted, stored, key + " did not record the submitted instant");
+    }
+
+    /**
+     * Normalize PostgreSQL's text form to an ISO-8601 offset Java can parse.
+     *
+     * <p>PostgreSQL renders a {@code timestamptz} with a space and may shorten a
+     * whole-hour offset to {@code -05}; {@link java.time.Instant#parse} requires
+     * either {@code Z} or a {@code ±HH:MM} offset. Convert {@code +00} to {@code Z},
+     * expand the hour-only form, and otherwise leave the value unchanged instead
+     * of comparing renderings as literals, which are timezone-dependent.</p>
+     *
+     * @param value wire or expected instant text, never null
+     * @return text acceptable to {@code Instant.parse}
+     */
+    private static String normalizeInstant(String value) {
+        String normalized = value.replace(' ', 'T');
+        if (normalized.endsWith("+00")) {
+            return normalized.substring(0, normalized.length() - 3) + "Z";
+        }
+        if (normalized.matches(".*[+-][0-9]{2}")) {
+            // Append the missing minutes: -05 becomes -05:00.
+            return normalized + ":00";
+        }
+        return normalized;
     }
 
     private static void assertRejected(ResponseEntity<String> response, HttpStatus status, String code) {
