@@ -1,7 +1,7 @@
 package com.aurevia.prescription.rx;
 
 /**
- * The two approved RX-02 routing channel families (RX-02, ARC-03).
+ * The two approved routing channel families.
  *
  * <p>A channel wire key is stored in approved tenant configuration. An
  * electronic channel creates a stable submission id and may reach delivery and

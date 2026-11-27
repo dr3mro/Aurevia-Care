@@ -31,7 +31,7 @@ import com.aurevia.printing.chart.ChartExtractContract.ExtractSectionView;
 import com.aurevia.printing.chart.ChartExtractContract.SectionSelection;
 
 /**
- * Build a printable consolidated chart extract for one visit or date range (CLN-03, CLN-05, CLN-07).
+ * Build a printable consolidated chart extract for one visit or date range.
  *
  * <p>The service is a pure domain kernel: the caller gathers the immutable source
  * facts, and this class applies the release rules, honours the clinician's

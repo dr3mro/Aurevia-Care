@@ -8,7 +8,7 @@ import com.aurevia.pharmacyflow.substitution.SubstitutionContract.SignedRevision
 import com.aurevia.prescription.PrescriptionContract.Alternative;
 
 /**
- * Durable persistence boundary for pharmacy substitution decisions (RX-01, RX-02, ARC-02).
+ * Durable persistence boundary for pharmacy substitution decisions.
  *
  * <p>Every method runs inside the caller's tenant-guarded transaction, so forced
  * row-level security and the transaction-local organization binding confine each

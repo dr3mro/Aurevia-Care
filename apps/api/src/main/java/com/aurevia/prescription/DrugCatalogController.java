@@ -11,7 +11,7 @@ import com.aurevia.catalog.VersionedCatalogSearch;
 import com.aurevia.prescription.PrescriptionContract.CatalogHit;
 
 /**
- * Thin HTTP adapter for the approved, effective RX-01 drug catalog.
+ * Thin HTTP adapter for the approved, effective drug catalog.
  *
  * <p>Reads are authorized in the domain service like every other protected
  * command; the search result carries suggestion-only alternatives and never

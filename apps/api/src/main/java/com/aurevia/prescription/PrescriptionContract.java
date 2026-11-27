@@ -7,7 +7,7 @@ import com.aurevia.api.ApiException;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Domain contract for the RX-01 prescription-draft slice.
+ * Domain contract for the prescription-draft slice.
  *
  * <p>These types carry no transport or persistence concern. The design keeps the
  * clinician's selected medication separate from suggestion-only alternatives,
@@ -223,7 +223,7 @@ public final class PrescriptionContract {
     }
 
     /**
-     * One versioned, approved-effective drug catalog entry (RX-01, ADM-01).
+     * One versioned, approved-effective drug catalog entry.
      *
      * @return the validated, effective-datable catalog entry
      */

@@ -3,9 +3,9 @@ package com.aurevia.radflow.worklist;
 import java.util.Locale;
 
 /**
- * Bounded vocabularies for the RAD-01 performing-site worklist.
+ * Bounded vocabularies for the performing-site worklist.
  *
- * <p>The statuses describe the hand of the imaging order as the performing site
+ * <p>The statuses describe the handling of the imaging order as the performing site
  * sees it. They advance along one legal path only and never re-enter a past
  * state; a later finding is a new fact, not a rewrite of a completed step. The
  * enums keep these clinically meaningful choices out of free text at the trust
@@ -15,7 +15,7 @@ import java.util.Locale;
 public interface WorklistTypes {
 
     /**
-     * Forward-only status of an order on the performing-site worklist (RAD-01).
+     * Forward-only status of an order on the performing-site worklist.
      *
      * <p>An order is received, scheduled with an accession and modality, performed
      * once the external study is linked after verification, and finally reported.
@@ -25,7 +25,7 @@ public interface WorklistTypes {
 
         /** Order received with its urgency and clinical question. */
         RECEIVED,
-        /** A time, approved modality and accession were recorded. */
+        /** A time, the supplied modality and accession were recorded. */
         SCHEDULED,
         /** The external study was linked after the patient and accession check. */
         PERFORMED,
@@ -58,7 +58,7 @@ public interface WorklistTypes {
     }
 
     /**
-     * Immutable facts emitted by the worklist kernel for a later hand-off publisher (ARC-05).
+     * Immutable facts emitted by the worklist kernel for a later hand-off publisher.
      *
      * <p>A hand-off is a distinct fact from the performance it follows: recording
      * that a study was performed does not by itself prove that the referrer was

@@ -6,7 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Domain contract for the RX-02 controlled prescription transmission slice.
+ * Domain contract for the controlled prescription transmission slice.
  *
  * <p>The types here carry no persistence or transport concerns. Each clinically
  * significant fact (prescriber attestation, submission, delivery confirmation,
@@ -27,7 +27,7 @@ public final class RxContract {
      * version. Illegal transitions fail at the service and database boundaries.
      */
     public enum State {
-        /** Draft created by RX-01; not yet attested. */
+        /** Draft created by the prescribing workflow; not yet attested. */
         DRAFT("draft"),
         /** The prescriber attested and the prescription may be routed. */
         ATTESTED("attested"),
@@ -55,6 +55,7 @@ public final class RxContract {
         /**
          * Create a state with its stable wire key.
          *
+         * @param wire stable lowercase wire key
          */
         State(String wire) {
             this.wire = wire;
@@ -73,6 +74,7 @@ public final class RxContract {
         /**
          * Parse a stored state key.
          *
+         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -91,6 +93,7 @@ public final class RxContract {
          * a dispensed, rejected or cancelled prescription cannot silently move
          * to a positive clinical state.
          *
+         * @param next candidate state
          * @return {@code true} when the transition is permitted
          */
         public boolean canTransitionTo(State next) {
@@ -145,6 +148,7 @@ public final class RxContract {
         /**
          * Create an event type with its stable wire key.
          *
+         * @param wire stable lowercase wire key
          */
         EventType(String wire) {
             this.wire = wire;
@@ -163,6 +167,7 @@ public final class RxContract {
         /**
          * Parse a stored event key.
          *
+         * @param value stored key
          * @return the matching event type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -224,14 +229,14 @@ public final class RxContract {
     }
 
     /**
-     * Register an RX-02 transmission record for an RX-01 prescription draft.
+     * Register a transmission record for a prescription draft.
      *
      * <p>The draft id is supplied by the caller and is used as the local opaque
-     * id; V44 deliberately holds no foreign key to the RX-01 table so the two
+     * id; V44 deliberately holds no foreign key to the prescription table so the two
      * stories remain independently mergeable. The medication fields are a
      * bounded snapshot needed for attestation, not a new draft source.</p>
      *
-     * @param prescriptionId     identifier of the RX-01 draft being routed
+     * @param prescriptionId identifier of the prescription draft being routed
      * @param patientId          owning patient
      * @param medication         medication name
      * @param strength           medication strength

@@ -20,7 +20,7 @@ import com.aurevia.radflow.worklist.WorklistTypes.WorklistEventType;
 import com.aurevia.radflow.worklist.WorklistTypes.WorklistStatus;
 
 /**
- * RAD-01 performing-site worklist domain kernel.
+ * Performing-site worklist domain kernel.
  *
  * <p>The kernel owns append-only worklist revisions and immutable domain facts.
  * It deliberately has no HTTP, persistence or outbox dependency: a later story
@@ -32,8 +32,8 @@ import com.aurevia.radflow.worklist.WorklistTypes.WorklistStatus;
  * labels match the order, reusing the radiology patient-and-accession check. A
  * mismatch is recorded as a refused-link fact and changes no order revision.
  * Linking a valid study marks the order performed and emits the hand-off fact
- * that the reporting stage consumes. Orders are confined to both their tenant
- * and their performing site on every read and command.</p>
+ * that the reporting stage consumes. Tenant scoping applies to every read;
+ * site scoping is enforced by the site-aware read methods and commands.</p>
  */
 @Service
 public final class WorklistService {
@@ -52,7 +52,7 @@ public final class WorklistService {
     }
 
     /**
-     * Receive an imaging order onto the performing-site worklist (RAD-01).
+     * Receive an imaging order onto the performing-site worklist.
      *
      * @param command receive command with authenticated actor and matched patient
      * @return the initial {@code RECEIVED} order revision
@@ -88,7 +88,7 @@ public final class WorklistService {
     }
 
     /**
-     * Record the study time, an approved modality and the accession at scheduling (RAD-01).
+     * Record the study time, a supplied modality and the accession at scheduling.
      *
      * @param command schedule command with the expected order version
      * @return the new {@code SCHEDULED} order revision
@@ -125,7 +125,7 @@ public final class WorklistService {
     }
 
     /**
-     * Link an external study after the patient and accession labels match, marking it performed (RAD-01).
+     * Link an external study after the patient and accession labels match, marking it performed.
      *
      * <p>The caller supplies labels already verified upstream. A mismatch is
      * recorded as a refused-link fact and throws without changing the order
@@ -152,6 +152,8 @@ public final class WorklistService {
         requireSite(current, command.performingSiteId());
         requireVersion(current, command.expectedVersion());
         requireTransition(current, WorklistStatus.PERFORMED);
+        // A label mismatch is emitted as a refusal fact without changing the order
+        // revision, so a bad external link cannot advance the worklist.
         if (!matches(current, command.patientId(), command.accession())) {
             emit(current, WorklistEventType.STUDY_LINK_REFUSED, command.studyInstanceUid(), command.subject());
             throw new ApiException(422, "LABEL_MISMATCH", "patient and accession must match the order");
@@ -169,7 +171,7 @@ public final class WorklistService {
     }
 
     /**
-     * Hand a performed study off as reported once its study is linked (RAD-01).
+     * Hand a performed study off as reported once its study is linked.
      *
      * @param command report command with the expected order version
      * @return the new {@code REPORTED} order revision
@@ -200,7 +202,7 @@ public final class WorklistService {
     }
 
     /**
-     * Read the worklist of one performing site in the active tenant (RAD-01).
+     * Read the worklist of one performing site in the active tenant.
      *
      * <p>Both the tenant and the performing site are mandatory scopes: an order
      * is returned only when both match. An optional status narrows the result to
@@ -247,7 +249,7 @@ public final class WorklistService {
     }
 
     /**
-     * Read the current order revision only when it belongs to the given performing site (RAD-01).
+     * Read the current order revision only when it belongs to the given performing site.
      *
      * <p>This is the HTTP read entry point: both the tenant and the performing
      * site must match, so another site in the same tenant cannot see an order's
@@ -281,7 +283,7 @@ public final class WorklistService {
     }
 
     /**
-     * Return the immutable domain facts emitted for one tenant (ARC-02).
+     * Return the immutable domain facts emitted for one tenant.
      *
      * @param organizationId active tenant
      * @return that tenant's events in emission order, or an empty list
@@ -291,7 +293,7 @@ public final class WorklistService {
     }
 
     /**
-     * Read the domain facts of one performing site in the active tenant (RAD-01).
+     * Read the domain facts of one performing site in the active tenant.
      *
      * <p>Facts carry patient and accession identifiers, so they are scoped to the
      * performing site as well as the tenant. A caller cannot list another site's
@@ -346,6 +348,8 @@ public final class WorklistService {
         }
     }
 
+    // The worklist advances only forward and REPORTED is terminal; an older
+    // revision cannot be reopened by a late scheduling or reporting command.
     private static void requireTransition(WorklistOrder current, WorklistStatus target) {
         if (!current.status().canTransitionTo(target)) {
             throw new ApiException(409, "INVALID_TRANSITION", "the order cannot enter that status");

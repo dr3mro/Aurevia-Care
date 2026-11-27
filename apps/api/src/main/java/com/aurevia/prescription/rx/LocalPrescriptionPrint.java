@@ -10,7 +10,7 @@ import com.aurevia.prescription.rx.RxContract.State;
 import com.aurevia.prescription.rx.RxContract.View;
 
 /**
- * Builds a print-ready prescription from the immutable transmission trail (RX-02).
+ * Builds a print-ready prescription from the immutable transmission trail.
  *
  * <p>This unit decides only whether the prescription itself can be printed: it
  * must have taken the locally approved print channel and carry the prescriber's

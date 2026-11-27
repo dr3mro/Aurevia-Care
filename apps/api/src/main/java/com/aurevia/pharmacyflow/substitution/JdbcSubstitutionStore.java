@@ -24,7 +24,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Tenant-guarded JDBC implementation of the substitution read and decision ports (RX-01, RX-02, ARC-02).
+ * Tenant-guarded JDBC implementation of the substitution read and decision ports.
  *
  * <p>Every read runs in the shared tenant-guarded transaction, so forced row
  * level security confines the result to the active organization. The adapter is
@@ -58,26 +58,57 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
         this.jdbc = jdbc;
     }
 
+    /**
+     * Read the prescription draft through the tenant-guarded repository.
+     *
+     * @param prescriptionId tenant-local prescription identifier
+     * @return the draft, or {@code null} when it is not visible in the active tenant
+     */
     @Override
     public Draft draft(String prescriptionId) {
         return transactions.execute(status -> repository.find(prescriptionId).orElse(null));
     }
 
+    /**
+     * Load all stored catalog versions for the active tenant.
+     *
+     * @return every entry, including superseded and unapproved versions
+     */
     @Override
     public List<DrugEntry> entries() {
         return transactions.execute(status -> repository.loadCatalog());
     }
 
+    /**
+     * Fold the patient's verified allergy assessment.
+     *
+     * @param patientId owning patient
+     * @return the assessment, including unknown states, visible in this tenant
+     */
     @Override
     public AllergyAssessment allergies(String patientId) {
         return transactions.execute(status -> repository.allergyAssessment(patientId));
     }
 
+    /**
+     * Read the declared market route for one catalog entry version.
+     *
+     * @param entryId catalog entry key
+     * @param version approved entry version
+     * @return the route key, or the legacy sentinel {@code unspecified}
+     */
     @Override
     public String route(String entryId, int version) {
         return transactions.execute(status -> repository.catalogRoute(entryId, version));
     }
 
+    /**
+     * Read one proposal snapshot bound to the active tenant.
+     *
+     * @param organizationId active tenant
+     * @param proposalId     tenant-local proposal identifier
+     * @return the persisted proposal, or {@code null} when absent
+     */
     @Override
     public Proposal findProposal(String organizationId, String proposalId) {
         String snapshot = jdbc.query("""
@@ -88,6 +119,13 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
         return snapshot == null ? null : JSON.readValue(snapshot, Proposal.class);
     }
 
+    /**
+     * Read the tagged alternatives frozen with one proposal.
+     *
+     * @param organizationId active tenant
+     * @param proposalId     owning proposal
+     * @return frozen alternatives, or an empty list when none was recorded
+     */
     @Override
     public List<Alternative> findAlternatives(String organizationId, String proposalId) {
         String alternatives = jdbc.query("""
@@ -98,6 +136,13 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
         return alternatives == null ? List.of() : JSON.readValue(alternatives, ALTERNATIVES);
     }
 
+    /**
+     * Read the signed revision recorded for an approved proposal.
+     *
+     * @param organizationId active tenant
+     * @param proposalId     owning proposal
+     * @return the revision, or {@code null} when the proposal was declined
+     */
     @Override
     public SignedRevision findRevision(String organizationId, String proposalId) {
         String snapshot = jdbc.query("""
@@ -108,6 +153,14 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
         return snapshot == null ? null : JSON.readValue(snapshot, SignedRevision.class);
     }
 
+    /**
+     * Look up the proposal already decided under a composed retry key.
+     *
+     * @param organizationId active tenant
+     * @param command        command namespace, so approval and decline cannot collide
+     * @param idempotencyKey composed retry key
+     * @return the winning proposal identifier, or {@code null} for a new key
+     */
     @Override
     public String findReplayProposalId(String organizationId, String command, String idempotencyKey) {
         return jdbc.query("""
@@ -118,6 +171,18 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
                 (resultSet, rowNumber) -> resultSet.getString(1)).stream().findFirst().orElse(null);
     }
 
+    /**
+     * Claim a retry key atomically for one proposal.
+     *
+     * <p>The insert with conflict-do-nothing is a compare-and-set: only one
+     * retry can win the claim, so a duplicate submission cannot decide twice.</p>
+     *
+     * @param organizationId active tenant
+     * @param command        command namespace
+     * @param idempotencyKey composed retry key
+     * @param proposalId     proposal bound to the claim
+     * @return {@code true} for the winning caller, {@code false} on replay
+     */
     @Override
     public boolean claim(String organizationId, String command, String idempotencyKey, String proposalId) {
         List<String> claimed = jdbc.query("""
@@ -132,6 +197,12 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
         return !claimed.isEmpty();
     }
 
+    /**
+     * Append a pending proposal with the alternatives frozen at proposal time.
+     *
+     * @param proposal     the pending proposal
+     * @param alternatives tagged alternatives shown side by side
+     */
     @Override
     public void insertProposal(Proposal proposal, List<Alternative> alternatives) {
         jdbc.update("""
@@ -155,6 +226,12 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
                 .addValue("alternatives", JSON.writeValueAsString(alternatives)));
     }
 
+    /**
+     * Append the immutable signed revision of an approval.
+     *
+     * @param organizationId active tenant
+     * @param revision       signed revision with full provenance
+     */
     @Override
     public void insertRevision(String organizationId, SignedRevision revision) {
         jdbc.update("""
@@ -174,6 +251,16 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
                 .addValue("snapshot", JSON.writeValueAsString(revision)));
     }
 
+    /**
+     * Close a pending proposal with its single decision.
+     *
+     * <p>The update is conditional on the pending state and the version just
+     * read, so a competing decision fails closed instead of being overwritten.</p>
+     *
+     * @param closed    approved or declined proposal
+     * @param decidedAt decision instant
+     * @throws com.aurevia.api.ApiException when the row was already closed or changed
+     */
     @Override
     public void closeProposal(Proposal closed, Instant decidedAt) {
         int updated = jdbc.update("""
@@ -196,6 +283,13 @@ public final class JdbcSubstitutionStore implements SubstitutionCatalog, Substit
         }
     }
 
+    /**
+     * Allocate the next durable revision number for a prescription.
+     *
+     * @param organizationId active tenant
+     * @param prescriptionId owning prescription
+     * @return one plus the number of revisions already recorded
+     */
     @Override
     public int nextRevisionNumber(String organizationId, String prescriptionId) {
         Integer next = jdbc.queryForObject("""

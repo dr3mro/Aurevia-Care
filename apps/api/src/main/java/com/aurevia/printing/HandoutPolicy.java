@@ -12,11 +12,12 @@ import com.aurevia.printing.HandoutContract.HandoutSource;
 import com.aurevia.radiology.RadTypes.OrderState;
 
 /**
- * Gate deciding whether a source revision may become a patient handout (CLN-07).
+ * Gate deciding whether a source revision may become a patient handout.
  *
  * <p>The allowed state sets are built from the owning domain vocabularies so a
- * rule is not copied as a free-text string. A prescription must be beyond draft
- * and ambiguous and carry an approved BUILD-10 print channel. An order must be
+ * rule is not copied as a free-text string. A prescription must be in a
+ * printable state and carry a channel whose wire key is one of the declared
+ * channel families. An order must be
  * placed, and signed content must carry a signature. Every refusal is a
  * machine-readable conflict with a non-sensitive message.</p>
  */
@@ -85,6 +86,8 @@ public final class HandoutPolicy {
                 || kind == HandoutKind.SIGNED_REPORT;
     }
 
+    // This check is membership in the declared channel vocabulary; the tenant's
+    // channel approval is verified by the prescribing workflow before printing.
     private static boolean approvedPrintChannel(String channel) {
         if (channel == null) {
             return false;

@@ -20,7 +20,7 @@ import com.aurevia.staff.StaffRepository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for pharmacy substitution proposals (RX-01, RX-02).
+ * Thin HTTP adapter for pharmacy substitution proposals.
  *
  * <p>This controller only binds paths, headers and command bodies. Tenant and
  * actor come from the request context and active roles from freshly resolved

@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import com.aurevia.documents.PdfRenderer;
 
 /**
- * Spring wiring for the printing module (CLN-07).
+ * Spring wiring for the printing module.
  *
  * <p>The service is a plain domain object so its policy and versioning can be
  * tested without a container. This configuration is the only place that

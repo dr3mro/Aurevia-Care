@@ -11,7 +11,7 @@ import com.aurevia.prescription.PrescriptionContract.DrugEntry;
 import com.aurevia.prescription.rx.RxRepository;
 
 /**
- * Applies an approved pharmacy substitution through the RX-01 prescription workflow.
+ * Applies an approved pharmacy substitution through the prescription workflow.
  *
  * <p>This is the authoritative write that was missing when decisions lived only
  * in memory: the signed replacement becomes the draft's selected medication via
@@ -33,14 +33,29 @@ public final class PrescriptionSubstitutionService implements SubstitutionApplic
     /**
      * Create the substitution applier over the authoritative prescription boundaries.
      *
-     * @param repository  version-guarded RX-01 draft repository
-     * @param prescribing market entitlement fold of the RX-02 repository
+     * @param repository version-guarded prescription draft repository
+     * @param prescribing market entitlement fold of the controlled prescription repository
      */
     public PrescriptionSubstitutionService(PrescriptionRepository repository, RxRepository prescribing) {
         this.repository = repository;
         this.prescribing = prescribing;
     }
 
+    /**
+     * Apply an approved replacement through the version-guarded prescription write.
+     *
+     * <p>The locked draft, prescriber ownership and market entitlement are
+     * re-derived inside the caller's transaction, so a revocation after the
+     * proposal cannot leak into the authoritative prescription.</p>
+     *
+     * @param organizationId active tenant
+     * @param subject        approving prescriber
+     * @param prescriptionId authoritative prescription identifier
+     * @param expectedVersion version used as the application precondition
+     * @param replacement     replacement catalog entry
+     * @throws com.aurevia.api.ApiException on denial, a stale version, missing
+     *         entitlement or an invisible prescription
+     */
     @Override
     public void apply(String organizationId, String subject, String prescriptionId, int expectedVersion,
                       DrugEntry replacement) {

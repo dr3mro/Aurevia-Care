@@ -23,13 +23,13 @@ import com.aurevia.pharmacyflow.clarify.ClarificationContract.ThreadView;
 import com.aurevia.prescription.rx.RxService;
 
 /**
- * RX-02 / MSG-04 clarification thread domain kernel.
+ * Clarification thread domain kernel.
  *
  * <p>The kernel owns the tenant-scoped thread trails and the idempotency
- * records. It has no HTTP or persistence dependency: every command is supplied
- * with verified membership roles, the active tenant and an {@code If-Match}
- * precondition, all of which the caller must re-derive. The prescriber address
- * is resolved from the prescription through the tenant-bound prescription
+ * records. It has no HTTP or persistence dependency: commands are supplied
+ * with verified membership roles and the active tenant, which the caller must
+ * re-derive; an {@code If-Match} precondition is checked only on an answer. The
+ * prescriber subject is resolved from the prescription through the tenant-bound prescription
  * service, never accepted from the request body. An {@code Idempotency-Key}
  * replays the original result so a retried action records once.</p>
  *
@@ -198,6 +198,8 @@ public final class ClarificationService {
         if (current == null) {
             throw new ApiException(404, "NOT_FOUND", "clarification thread not found");
         }
+        // Every party and role denial uses the same 404 as an absent thread: an
+        // outsider cannot learn who opened a clarification or whether it exists.
         if (subject.equals(current.requesterSubject())) {
             if (!ClarificationRules.mayOpen(roles)) {
                 throw new ApiException(404, "NOT_FOUND", "clarification thread not found");

@@ -5,7 +5,7 @@ import java.time.Instant;
 import com.aurevia.radflow.report.ReportTypes.ReportEventType;
 
 /**
- * One immutable fact produced by the RAD-01 report delivery kernel (ARC-05, OPS-02).
+ * One immutable fact produced by the report delivery kernel.
  *
  * <p>The event carries only identifiers and the actor. The destination names the
  * referring clinician who received a delivery, so the fact proves that a signed

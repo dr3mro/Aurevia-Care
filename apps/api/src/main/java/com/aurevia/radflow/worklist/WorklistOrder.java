@@ -7,7 +7,7 @@ import com.aurevia.radiology.RadTypes.Urgency;
 import com.aurevia.radflow.worklist.WorklistTypes.WorklistStatus;
 
 /**
- * One immutable performing-site worklist revision (RAD-01, ARC-01).
+ * One immutable performing-site worklist revision.
  *
  * <p>Every command appends a new revision sharing the tenant-local order
  * identifier; the prior snapshot is never edited. The performing site is carried

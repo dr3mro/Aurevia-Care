@@ -5,7 +5,7 @@ import java.util.Set;
 import com.aurevia.radiology.Interpretation;
 
 /**
- * Command bodies for the RAD-01 report delivery kernel.
+ * Command bodies for the report delivery kernel.
  *
  * <p>Organization, actor and roles are supplied by the caller from the active
  * tenant context and freshly resolved membership; none is inferred from the
@@ -35,7 +35,7 @@ public interface ReportCommands {
     }
 
     /**
-     * Command that links a signed addendum revision and reopens acknowledgment.
+     * Command that links a signed addendum revision and opens a fresh acknowledgment receipt.
      *
      * @return this record
      */

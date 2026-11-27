@@ -6,7 +6,7 @@ import com.aurevia.radiology.Interpretation;
 import com.aurevia.radiology.RadRules;
 
 /**
- * Pure guard rules for RAD-01 report delivery and addendum acknowledgment.
+ * Pure guard rules for report delivery and addendum acknowledgment.
  *
  * <p>Roles and identity are supplied by the caller from the active tenant
  * membership and authenticated context, and are re-derived on every protected

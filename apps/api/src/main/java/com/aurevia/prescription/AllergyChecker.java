@@ -15,7 +15,7 @@ import com.aurevia.prescription.PrescriptionContract.FindingKind;
 import com.aurevia.prescription.PrescriptionContract.Ingredient;
 
 /**
- * Pure RX-01 allergy decision support over structured substance identities.
+ * Pure allergy decision support over structured substance identities.
  *
  * <p>Only verified assertions participate in matching. A verified exact
  * ingredient match is a conflict, a shared approved cross-reactivity group is a

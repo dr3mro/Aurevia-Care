@@ -3,7 +3,7 @@ package com.aurevia.pharmacyflow.substitution;
 import java.util.Set;
 
 /**
- * Command bodies for the two substitution transitions (RX-02, ARC-03).
+ * Command bodies for the two substitution transitions.
  *
  * <p>The organization, actor and active roles are supplied by the caller from
  * the active tenant context and freshly resolved membership. Each command

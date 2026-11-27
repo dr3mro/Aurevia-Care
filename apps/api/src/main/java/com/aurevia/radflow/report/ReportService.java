@@ -22,7 +22,7 @@ import com.aurevia.radflow.report.ReportTypes.AcknowledgmentState;
 import com.aurevia.radflow.report.ReportTypes.ReportEventType;
 
 /**
- * RAD-01 report delivery and addendum acknowledgment domain kernel.
+ * Report delivery and addendum acknowledgment domain kernel.
  *
  * <p>The kernel owns append-only report revisions, immutable acknowledgment
  * receipts and immutable delivery facts. It deliberately has no HTTP, persistence
@@ -34,8 +34,9 @@ import com.aurevia.radflow.report.ReportTypes.ReportEventType;
  * <p>An initial signed interpretation is delivered once to its referring clinician.
  * Every addendum is a new revision that is delivered again, opens a fresh receipt
  * and stays open until that exact revision is acknowledged by the same referrer.
- * An unsigned or unattested interpretation is refused before any delivery fact is
- * recorded. Reports are confined to their tenant on every read and command, and
+ * An unsigned revision emits a refusal fact and is rejected before any positive
+ * delivery fact; the initial report checks the interpreter role first. Reports
+ * are confined to their tenant on every read and command, and
  * referrer-facing reads and queues are confined to the verified referrer as well.</p>
  */
 @Service
@@ -59,7 +60,7 @@ public final class ReportService {
     }
 
     /**
-     * Deliver a signed initial interpretation to the referring clinician (RAD-01).
+     * Deliver a signed initial interpretation to the referring clinician.
      *
      * @param command publish command with authenticated actor and verified referrer
      * @return the initial delivered report revision
@@ -94,13 +95,15 @@ public final class ReportService {
                 interpretation.patientId(), command.referrer(), interpretation.version(),
                 List.of(interpretation), List.of());
         tenant.put(command.orderId(), delivery);
+        // Delivery and notification are separate facts emitted in that order, so
+        // the trail records both stages of the hand-off.
         emit(delivery, ReportEventType.INTERPRETATION_DELIVERED, command.subject());
         emit(delivery, ReportEventType.REFERRER_NOTIFIED, command.subject());
         return delivery;
     }
 
     /**
-     * Link a signed addendum revision, deliver it and open its acknowledgment receipt (RAD-01).
+     * Link a signed addendum revision, deliver it and open its acknowledgment receipt.
      *
      * <p>The caller supplies the revision the addendum supersedes. The kernel binds
      * it to the current revision so an acknowledgment can never vouch for a stale
@@ -115,6 +118,8 @@ public final class ReportService {
         requireText(command.subject(), "INVALID_ACTOR", "actor is required");
         requireText(command.orderId(), "INVALID_ORDER", "order identifier is required");
         ReportDelivery current = load(command.organizationId(), command.orderId());
+        // An unsigned addendum becomes a refusal fact before it is rejected; the
+        // initial report emits the same refusal fact after its role check.
         if (!ReportRules.isSigned(command.addendum())) {
             emitRefusal(command.organizationId(), command.orderId(), current.referrer(), command.subject());
             throw new ApiException(422, "UNSIGNED_REPORT", "an unsigned addendum is never sent");
@@ -152,7 +157,7 @@ public final class ReportService {
     }
 
     /**
-     * Record the referring clinician's acknowledgment of one exact addendum revision (RAD-01).
+     * Record the referring clinician's acknowledgment of one exact addendum revision.
      *
      * @param command acknowledgment command binding the addendum version
      * @return the updated delivered report with the receipt closed
@@ -196,7 +201,7 @@ public final class ReportService {
     }
 
     /**
-     * Read the report only when the caller is its verified referrer (RAD-01).
+     * Read the report only when the caller is its verified referrer.
      *
      * @param organizationId active tenant
      * @param subject        authenticated subject
@@ -215,7 +220,7 @@ public final class ReportService {
     }
 
     /**
-     * Read the interpretation revisions only when the caller is the verified referrer (RAD-01).
+     * Read the interpretation revisions only when the caller is the verified referrer.
      *
      * @param organizationId active tenant
      * @param subject        authenticated subject
@@ -234,7 +239,7 @@ public final class ReportService {
     }
 
     /**
-     * List the referring clinician's addenda that still await acknowledgment (ADM-02).
+     * List the referring clinician's addenda that still await acknowledgment.
      *
      * @param organizationId active tenant
      * @param subject        authenticated referring clinician
@@ -247,7 +252,7 @@ public final class ReportService {
     }
 
     /**
-     * List the referring clinician's open addenda that aged past the acknowledgment window (ADM-02).
+     * List the referring clinician's open addenda that aged past the acknowledgment window.
      *
      * @param organizationId active tenant
      * @param subject        authenticated referring clinician
@@ -261,7 +266,7 @@ public final class ReportService {
     }
 
     /**
-     * Return the immutable delivery facts emitted for one tenant (ARC-02).
+     * Return the immutable delivery facts emitted for one tenant.
      *
      * @param organizationId active tenant
      * @return that tenant's events in emission order, or an empty list

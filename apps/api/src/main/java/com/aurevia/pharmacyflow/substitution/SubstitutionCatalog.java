@@ -7,9 +7,9 @@ import com.aurevia.prescription.PrescriptionContract.Draft;
 import com.aurevia.prescription.PrescriptionContract.DrugEntry;
 
 /**
- * Pharmacy-authorized read boundary for the data a substitution review needs (RX-01, RX-02).
+ * Pharmacy-authorized read boundary for the data a substitution review needs.
  *
- * <p>The RX-01 action matrix reserves catalog search and allergy decision
+ * <p>The prescription action matrix reserves catalog search and allergy decision
  * support for prescribing roles, so a pharmacy-only propose flow cannot call
  * those services. This port exposes only the narrow reads a substitution needs,
  * implemented over the tenant-guarded repository; it never writes and never

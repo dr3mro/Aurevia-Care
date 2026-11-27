@@ -26,7 +26,7 @@ import com.aurevia.prescription.rx.RxContract.VerifyRequest;
 import com.aurevia.prescription.rx.RxContract.View;
 
 /**
- * Thin HTTP adapter for RX-02 prescription transmission (ARC-03, ARC-04).
+ * Thin HTTP adapter for prescription transmission.
  *
  * <p>Every irreversible command requires an {@code If-Match} version, parsed at
  * this boundary. Authorization, attestation, entitlement, channel approval and
@@ -48,7 +48,7 @@ public class RxController {
     }
 
     /**
-     * Register a transmission record for an RX-01 draft.
+     * Register a transmission record for a prescription draft.
      *
      * @param request registration command
      * @return HTTP 201 with the created draft

@@ -3,7 +3,7 @@ package com.aurevia.prescription.rx;
 import org.springframework.stereotype.Component;
 
 /**
- * Bounded action matrix for the RX-02 slice.
+ * Bounded action matrix for the controlled prescription slice.
  *
  * <p>Prescribing and transmission reconciliation are clinician duties; a
  * pharmacy response and dispensing evidence belong to pharmacy staff and can

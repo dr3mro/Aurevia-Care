@@ -8,7 +8,7 @@ import com.aurevia.api.ApiException;
 import com.aurevia.api.contract.CanonicalUuid;
 
 /**
- * Pure, total validation of every RX-02 command field.
+ * Pure, total validation of every command field.
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * with a stable code before any SQL runs, so a malformed identifier, channel or

@@ -1,7 +1,7 @@
 package com.aurevia.printing;
 
 /**
- * The five patient handout kinds produced by the printing module (CLN-07).
+ * The five patient handout kinds produced by the printing module.
  *
  * <p>The wire key is the stable subject type stamped into a rendered PDF. The
  * English and Arabic titles are the approved handout labels; the rendering
@@ -9,7 +9,7 @@ package com.aurevia.printing;
  */
 public enum HandoutKind {
 
-    /** A locally printable prescription from an attested RX-02 record. */
+    /** A locally printable prescription from an attested record. */
     PRESCRIPTION("prescription", "Prescription", "وصفة طبية"),
     /** A placed laboratory order requisition. */
     LAB_ORDER("lab_order", "Laboratory order", "طلب تحليل"),

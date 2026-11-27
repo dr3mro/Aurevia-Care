@@ -6,7 +6,7 @@ import com.aurevia.authz.specialty.SpecialtyRoles;
 import com.aurevia.pharmacyflow.substitution.SubstitutionContract.Proposal;
 
 /**
- * Bounded permission and party policy for substitution proposals (RX-02, IAM-01).
+ * Bounded permission and party policy for substitution proposals.
  *
  * <p>The checks reuse the shared specialty role vocabulary so the substitution
  * API cannot drift into a second permission model. Roles are supplied by the

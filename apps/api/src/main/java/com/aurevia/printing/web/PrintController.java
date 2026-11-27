@@ -28,16 +28,17 @@ import com.aurevia.tenancy.FacilityRepository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for patient handout printing and mediated download (CLN-07, RX-02, ARC-06).
+ * Thin HTTP adapter for patient handout printing and mediated download.
  *
  * <p>Identity is rebuilt from the bound tenant context and the current active
- * membership on every command; no role, facility or patient identifier is read
- * from the request. The source revision is validated by the injected handout
+ * membership on every command; no role claim is read from the request. The
+ * caller-supplied source projection is validated by the injected handout
  * service and the permission decision is re-derived by
- * {@link com.aurevia.printing.web.PrintPolicy}. Every print, reprint,
- * download and refusal writes one sanitized OPS-02 fact through
- * {@link com.aurevia.printing.web.PrintAuditTrail} inside the same
- * tenant-guarded transaction. Handout bytes never enter a log, URL or audit fact.</p>
+ * {@link com.aurevia.printing.web.PrintPolicy}. Identity and permission
+ * refusals are appended through {@link com.aurevia.printing.web.PrintAuditTrail}
+ * inside the same tenant-guarded transaction before the error is returned; a
+ * refusal raised by the handout service is not audited here. Handout bytes never
+ * enter a log, URL or audit fact.</p>
  *
  * <p>The reprint marker is process-local and best-effort: a durable audit read
  * model is a separate delivery slice. It only chooses the audit action label and
@@ -103,6 +104,8 @@ public final class PrintController {
             String key = context.organizationId() + ":" + source.kind().wire() + ":" + source.sourceId()
                     + ":" + source.revisionVersion() + ":" + source.contentChecksum() + ":"
                     + request.language();
+            // The marker is keyed by source revision and language, not by actor or
+            // reason, so another request for the same unchanged source reuses bytes.
             String action = printed.putIfAbsent(key, Boolean.TRUE) == null ? ACTION_PRINT : ACTION_REPRINT;
             auditTrail.record(success(context, source, result.metadata(), reason, action));
             return result;

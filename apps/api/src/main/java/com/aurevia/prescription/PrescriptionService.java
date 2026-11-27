@@ -27,7 +27,7 @@ import com.aurevia.prescription.PrescriptionContract.SelectMedicationRequest;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * RX-01 prescription-draft workflow.
+ * Prescription-draft workflow.
  *
  * <p>Every command runs in one tenant-guarded transaction: authorization is
  * re-derived from the database folds, the version precondition is checked on a
@@ -234,7 +234,7 @@ public class PrescriptionService {
     }
 
     /**
-     * Reject a route that contradicts the market-approved catalog route (RX-01).
+     * Reject a route that contradicts the market-approved catalog route.
      *
      * <p>Legacy entries carry the sentinel {@code unspecified} because they were
      * recorded before the route column existed; they cannot be checked here and
