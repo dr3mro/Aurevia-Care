@@ -55,7 +55,11 @@ TASK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 # A worker note is a claim, not proof. The canonical line is the only field
 # used as a compare query; a SHA anywhere else in a log must not count.
-TESTED_REVISION = re.compile(r"^Tested revision:[ \t]*([0-9a-f]{40})[ \t]*$", re.M)
+# A canonical line may carry a trailing explanation, but it must hold exactly
+# one revision token. Parsing the line first keeps a bare SHA in prose from ever
+# becoming a tested revision; the trusted compare API still proves ancestry.
+CANONICAL_LINE = re.compile(r"^Tested revision:[ \t]*(.*)$", re.M)
+SHA_TOKEN = re.compile(r"(?<![0-9A-Za-z_])[0-9a-f]{40}(?![0-9A-Za-z_])")
 # Anchor to the filename suffix: an eight-digit task ID followed by a date
 # would otherwise be read as a timestamp and select a stale note.
 NOTE_STAMP = re.compile(r"(\d{8}-\d{6})(?:-[A-Za-z0-9_-]+)?\.md$")
@@ -171,15 +175,35 @@ def _matches(path, patterns):
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
 
 
+def parse_note_revision(text):
+    """Return ``(sha, error)`` for one note's canonical tested revision.
+
+    ``sha`` is the sole lowercase 40-hex token on the sole canonical line, or
+    empty when the shape is invalid. ``error`` is an actionable explanation for
+    a local validator and is empty on success. This reads note shape only: it
+    never contacts GitHub or reads a token, so a local call cannot mark a check
+    passed. The trusted compare API proves ancestry later in ``evaluate``.
+    """
+    lines = CANONICAL_LINE.findall(text or "")
+    if len(lines) != 1:
+        return "", f"note revision requires exactly one 'Tested revision:' line, found {len(lines)}"
+    tokens = SHA_TOKEN.findall(lines[0])
+    if len(tokens) != 1:
+        return "", (f"note revision requires exactly one 40-character lowercase SHA "
+                    f"on that line, found {len(tokens)}")
+    return tokens[0], ""
+
+
 def extract_note_revision(text):
     """Return the single canonical ``Tested revision`` SHA, or empty when absent.
 
-    Worker notes are untrusted data. More than one field is rejected instead
-    of choosing one, so a stale or repeated line cannot satisfy the binding by
-    accident.
+    Worker notes are untrusted data. A second canonical line or a second
+    revision token is rejected instead of choosing one, so a stale or repeated
+    claim cannot satisfy the binding by accident. Trailing explanation is
+    allowed because the token is still proven in the pull request ancestry.
     """
-    values = TESTED_REVISION.findall(text or "")
-    return values[0] if len(values) == 1 else ""
+    sha, _ = parse_note_revision(text)
+    return sha
 
 
 def _note_key(path):
@@ -631,11 +655,18 @@ def refresh_event(event_path, head_sha, original_sha, output_path):
 
 
 def main(argv=None):
-    """Evaluate one event or refresh a moved head; exit 0 only on success."""
+    """Evaluate an event, refresh a moved head or validate a note locally.
+
+    Exit 0 only when the requested operation succeeds; malformed input and
+    unavailable verification data return 2 so a CI reader can act on them.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", nargs="?", default="evaluate",
-                        choices=("evaluate", "refresh-event"))
-    parser.add_argument("--event-path", required=True)
+                        choices=("evaluate", "refresh-event", "validate-note"))
+    # The event is required only for the two event-driven commands; validate-note
+    # works on a single note and must not need a GitHub event or a token.
+    parser.add_argument("--event-path", default="")
+    parser.add_argument("--note-path", default="")
     parser.add_argument("--event-name")
     parser.add_argument("--root", default=".")
     # The verifier runs from the trusted base checkout, but the manifest and
@@ -648,6 +679,24 @@ def main(argv=None):
     parser.add_argument("--output", default="")
     args = parser.parse_args(argv)
     try:
+        if args.command == "validate-note":
+            if not args.note_path:
+                raise ValueError("note revision validation requires --note-path")
+            try:
+                note_text = Path(args.note_path).read_text(encoding="utf-8")
+            except OSError as read_error:
+                print(f"Swarm gate: note validation error: {args.note_path}: {read_error}",
+                      file=sys.stderr)
+                return 2
+            sha, error = parse_note_revision(note_text)
+            if error:
+                print(f"Swarm gate: note validation error: {args.note_path}: {error}",
+                      file=sys.stderr)
+                return 2
+            print(f"Swarm gate: note revision valid: {sha}")
+            return 0
+        if not args.event_path:
+            raise ValueError("evaluate and refresh-event require --event-path")
         if args.command == "refresh-event":
             refresh_event(args.event_path, args.head_sha, args.original_sha, args.output)
             return 0
