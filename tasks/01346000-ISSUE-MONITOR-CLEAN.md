@@ -1,6 +1,7 @@
-- [-] ISSUE-MONITOR-CLEAN · Keep triage artifacts out of the checked-out worktree
+- [x] ISSUE-MONITOR-CLEAN · Keep triage artifacts out of the checked-out worktree
   - agent: orca
   - attempts: 0
+  - pr: #1797
   - requirements: OPS-06
   - scope: .github/workflows/swarm-issue-monitor.yml, scripts/agent-run.sh, scripts/tests/test_agent_run.py, scripts/tests/test_workflow_concurrency.py, tasks/01346000-ISSUE-MONITOR-CLEAN.md
   - evidence:

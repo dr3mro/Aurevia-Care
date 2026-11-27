@@ -1,6 +1,7 @@
-- [-] DEFECT-FIX-BATCH · Fix unrelated CI defects found in the 2026-11-27 sweep
+- [x] DEFECT-FIX-BATCH · Fix unrelated CI defects found in the 2026-11-27 sweep
   - agent: orca
   - attempts: 1
+  - pr: #1799
   - scope: scripts/swarm_gate.py, scripts/tests/test_swarm_gate.py, scripts/tests/test_notes_files.py, tasks/01347000-DEFECT-FIX-BATCH.md
   - evidence:
     Test evidence: `python3 -I -m unittest discover -s scripts/tests -p test_swarm_gate.py` -> `Ran 79 tests ... OK`; `COVERAGE_BASE=1e6e33be REQUIRE_PY_COVERAGE=1 bash scripts/python-coverage.sh` -> `Ran 2431 tests ... OK`, `python coverage: every changed script line is covered`. Tested revision: 1e6e33be (HEAD when checks ran).

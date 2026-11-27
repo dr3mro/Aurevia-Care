@@ -1,6 +1,7 @@
-- [-] CI-ROOT-CAUSES · Repair reconcile truncation and Pages rerun artifact visibility
+- [x] CI-ROOT-CAUSES · Repair reconcile truncation and Pages rerun artifact visibility
   - agent: orca
   - attempts: 1
+  - pr: #1795
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm.py, scripts/tests/test_swarm_schedule_coverage.py, .github/workflows/pages.yml, scripts/tests/test_pages_workflow.py, tasks/01343000-CI-ROOT-CAUSE-REPAIRS.md
   - evidence:

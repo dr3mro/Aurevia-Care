@@ -1,6 +1,7 @@
-- [-] OPTIONAL-FOLLOWUPS · Close the remaining non-gating review findings
+- [x] OPTIONAL-FOLLOWUPS · Close the remaining non-gating review findings
   - agent: orca
   - attempts: 0
+  - pr: #1800
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm_schedule_coverage.py, scripts/tests/test_swarm_integrator_coverage.py, scripts/tests/test_notes_files.py, scripts/agent-run.sh, .agents/notes/01343000-20261127.md, tasks/01348000-OPTIONAL-FOLLOWUPS.md
   - evidence:

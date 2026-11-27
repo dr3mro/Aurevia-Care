@@ -1,6 +1,7 @@
-- [-] NOTES-ARCHIVE-TEST · Stop the notes policy test from rejecting policy-mandated archives
+- [x] NOTES-ARCHIVE-TEST · Stop the notes policy test from rejecting policy-mandated archives
   - agent: orca
   - attempts: 0
+  - pr: #1796
   - requirements: OPS-06
   - scope: scripts/tests/test_notes_files.py, tasks/01345000-NOTES-ARCHIVE-TEST.md
   - evidence:

@@ -1,6 +1,7 @@
-- [-] INTEGRATOR-BASE-ADVANCE-RECOVERY · Recover the integrator batch when main advances before publish
+- [x] INTEGRATOR-BASE-ADVANCE-RECOVERY · Recover the integrator batch when main advances before publish
   - agent: orca
   - attempts: 0
+  - pr: #1798
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm_integrator_coverage.py, scripts/tests/test_swarm_cli_coverage.py, scripts/tests/test_delivery_workflow_gates.py, scripts/tests/test_agent_run.py, .github/workflows/swarm-integrator.yml, scripts/tests/test_workflow_concurrency.py, tasks/01344000-INTEGRATOR-BASE-ADVANCE-RECOVERY.md
   - evidence:
