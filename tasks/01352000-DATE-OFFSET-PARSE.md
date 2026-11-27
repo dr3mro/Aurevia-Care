@@ -1,6 +1,7 @@
-- [-] DATE-OFFSET-PARSE · Parse PostgreSQL hour-only timezone offsets in instant assertions
+- [x] DATE-OFFSET-PARSE · Parse PostgreSQL hour-only timezone offsets in instant assertions
   - agent: orca
   - attempts: 0
+  - pr: #1807
   - requirements: OPS-06
   - scope: apps/api/src/test/java/com/aurevia/lab/clauses/RecordSpecimenTypeSiteCollectorCollectionReceiptTest.java, tasks/01352000-DATE-OFFSET-PARSE.md
   - evidence:
