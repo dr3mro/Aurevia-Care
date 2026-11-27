@@ -22,7 +22,7 @@ import com.aurevia.exchange.response.ExchangeResponseCommands.ReasonRequest;
 import com.aurevia.exchange.response.ExchangeResponseCommands.RevokeRequest;
 
 /**
- * Thin HTTP adapter for XCH-03 order responses (ARC-03, ARC-04).
+ * Thin HTTP adapter for recipient order responses.
  *
  * <p>Every irreversible command requires an {@code If-Match} version, parsed here
  * into a machine-readable failure before the domain service compares it.
@@ -38,7 +38,7 @@ public class ExchangeResponseController {
     /**
      * Create the controller.
      *
-     * @param service XCH-03 domain service
+     * @param service recipient-response domain service
      */
     public ExchangeResponseController(ExchangeResponseService service) {
         this.service = service;
@@ -49,6 +49,7 @@ public class ExchangeResponseController {
      *
      * @param id order identifier
      * @return the order view
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     @GetMapping("/{id}")
     public OrderView get(@PathVariable String id) {
@@ -60,6 +61,7 @@ public class ExchangeResponseController {
      *
      * @param id order identifier
      * @return the append-only events
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     @GetMapping("/{id}/history")
     public java.util.List<ExchangeEvent> history(@PathVariable String id) {
@@ -71,6 +73,7 @@ public class ExchangeResponseController {
      *
      * @param id order identifier
      * @return the released revision
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or revocation
      */
     @GetMapping("/{id}/retrieve")
     public Revision retrieve(@PathVariable String id) {
@@ -84,6 +87,7 @@ public class ExchangeResponseController {
      * @param request accept command
      * @param ifMatch expected version
      * @return the accepted order
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/accept")
     public ExchangeOrder accept(@PathVariable String id, @RequestBody AcceptRequest request,
@@ -98,6 +102,7 @@ public class ExchangeResponseController {
      * @param request reason
      * @param ifMatch expected version
      * @return the rejected order
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/reject")
     public ExchangeOrder reject(@PathVariable String id, @RequestBody ReasonRequest request,
@@ -112,6 +117,7 @@ public class ExchangeResponseController {
      * @param request question
      * @param ifMatch expected version
      * @return the order awaiting clarification
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/clarify")
     public ExchangeOrder clarify(@PathVariable String id, @RequestBody ClarifyRequest request,
@@ -126,6 +132,7 @@ public class ExchangeResponseController {
      * @param request change summary and checksum
      * @param ifMatch expected version
      * @return the order with a change awaiting response
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/propose-change")
     public ExchangeOrder proposeChange(@PathVariable String id, @RequestBody ProposeChangeRequest request,
@@ -140,6 +147,7 @@ public class ExchangeResponseController {
      * @param request decision and optional reason
      * @param ifMatch expected version
      * @return the resolved order
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/change-response")
     public ExchangeOrder changeResponse(@PathVariable String id,
@@ -155,6 +163,7 @@ public class ExchangeResponseController {
      * @param request reason
      * @param ifMatch expected version
      * @return the order with a cancellation awaiting response
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/request-cancellation")
     public ExchangeOrder requestCancellation(@PathVariable String id, @RequestBody ReasonRequest request,
@@ -169,6 +178,7 @@ public class ExchangeResponseController {
      * @param request decision and optional reason
      * @param ifMatch expected version
      * @return the resolved order
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/cancellation-response")
     public ExchangeOrder cancellationResponse(@PathVariable String id,
@@ -184,6 +194,7 @@ public class ExchangeResponseController {
      * @param request reason, policy and notification details
      * @param ifMatch expected version
      * @return the revoked order
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/revoke")
     public ExchangeOrder revoke(@PathVariable String id, @RequestBody RevokeRequest request,

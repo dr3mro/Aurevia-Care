@@ -1,7 +1,7 @@
 package com.aurevia.exchange.order;
 
 /**
- * Command that records the sending organization's approval for a bounded exchange (XCH-01).
+ * Command that records the sending organization's approval for a bounded exchange.
  *
  * @param orderCode          order code the authorization covers
  * @param destinationOrg     the only receiving organization the authorization covers

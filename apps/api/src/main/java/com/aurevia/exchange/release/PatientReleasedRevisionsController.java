@@ -7,12 +7,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Patient-scoped read of currently released report revisions (PAT-02, XCH-06).
+ * Patient-scoped read of currently released report revisions.
  *
  * <p>This endpoint lives under the {@code patients} resource family rather than
  * {@code releases}, because it is a patient-scoped query. The service verifies the
  * caller's active, verified chart link to the exact path patient (or a care-team
- * clinician role), then folds the currently visible revisions. This adapter only
+ * clinician or tenant administrator role), then folds the currently visible revisions. This adapter only
  * maps the path and delegates; it never trusts the path identifier on its own.</p>
  */
 @RestController
@@ -34,6 +34,7 @@ public class PatientReleasedRevisionsController {
      *
      * @param patientId tenant-local patient identifier
      * @return currently visible revision identifiers in no defined order
+     * @throws com.aurevia.api.ApiException on invalid input, missing context or denial
      */
     @GetMapping("/api/v1/patients/{patientId}/released-revisions")
     public List<String> visibleRevisions(@PathVariable String patientId) {

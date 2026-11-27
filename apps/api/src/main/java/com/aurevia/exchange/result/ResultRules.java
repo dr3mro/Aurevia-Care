@@ -13,10 +13,10 @@ import com.aurevia.exchange.result.ResultModel.ResultKind;
 import com.aurevia.exchange.result.ResultModel.Routing;
 
 /**
- * Pure XCH-04 decision rules: five-facet identifier matching and result routing.
+ * Pure decision rules: five-facet identifier matching and result routing.
  *
- * <p>No I/O or framework dependency lives here, so every branch is covered by
- * the fast unit tier. A result is imported only when all five identifiers agree
+ * <p>No I/O or framework dependency lives here, so every decision is reproducible
+ * from its arguments. A result is imported only when all five identifiers agree
  * with the locally registered expectation; every disposition is routed to the
  * owner and coverage queue recorded on that expectation.</p>
  */
@@ -67,9 +67,9 @@ public final class ResultRules {
     /**
      * Route an imported result to a named owner and coverage queue.
      *
-     * <p>Critical findings carry an explicit marker for the downstream
-     * escalation story; delivery and clinical acknowledgment are separate facts
-     * owned by XCH-05 and are not performed here.</p>
+     * <p>Critical findings carry an explicit critical-routing marker; delivery
+     * and clinical acknowledgment are separate facts
+     * owned by the critical-result workflow and are not performed here.</p>
      *
      * @param order the matched local expectation owning the routing policy
      * @param kind  the result disposition

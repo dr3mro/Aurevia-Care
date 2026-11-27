@@ -6,9 +6,9 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * Bounded, in-scope action policy for XCH-04 (IAM-01, IAM-06).
+ * Bounded action policy for result routing.
  *
- * <p>The shared {@code ActionPolicy} is not modified by this story. Clinical
+ * <p>The shared {@code ActionPolicy} is not modified here. Clinical
  * result content is limited to the laboratory verifier and clinician roles;
  * tenant administrators own order registration and reconciliation, and a
  * privacy auditor may review the reconciliation queue but not clinical
@@ -42,7 +42,7 @@ public class ResultActionPolicy {
     /**
      * Decide whether an active role may perform an action.
      *
-     * @param action action key such as {@code XCH04_RESULT_IMPORT}
+     * @param action action key such as the result-import action
      * @param role   role key active in the current organization
      * @return {@code true} only for an explicitly allowed pair
      */

@@ -3,7 +3,7 @@ package com.aurevia.exchange.release;
 import java.time.Instant;
 
 /**
- * Append-only decision record for one release authorization (XCH-06, OPS-02).
+ * Append-only decision record for one release authorization.
  *
  * <p>Withdrawal and correction never erase the original authorization; each
  * transition appends a new event inside the same transaction as the state change.</p>

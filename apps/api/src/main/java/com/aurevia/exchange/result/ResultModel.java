@@ -7,13 +7,12 @@ import java.util.Locale;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Public value contracts for the XCH-04 result-routing slice (S-G2-04).
+ * Public value contracts for the result-routing slice.
  *
  * <p>All types are immutable value objects with no persistence or framework
  * dependency, so identifier matching, routing and state decisions stay in pure
- * Java and can be exercised without a database. Grouping the slice's contracts
- * in one file keeps this bounded story reviewable and inside the swarm PR size
- * limit; each nested type still has a single responsibility.</p>
+ * Java and can be exercised without a database. Each nested type has a single
+ * responsibility and carries no framework or persistence dependency.</p>
  */
 public final class ResultModel {
 
@@ -131,11 +130,10 @@ public final class ResultModel {
     }
 
     /**
-     * Authoritative projection this story owns for a released order.
+     * Authoritative projection for a released order.
      *
-     * <p>Sibling exchange stories are not present on this branch, so the matching
-     * expectation is registered explicitly and is isolated by a unique table
-     * prefix. It carries the named owner and coverage queue used for routing.</p>
+     * <p>The matching expectation is registered explicitly and isolated by
+     * tenant-scoped keys. It carries the named owner and coverage queue used for routing.</p>
      *
  * @return this record
  */

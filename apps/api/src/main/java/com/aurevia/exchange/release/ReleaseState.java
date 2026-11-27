@@ -3,11 +3,11 @@ package com.aurevia.exchange.release;
 import java.time.Instant;
 
 /**
- * Lifecycle of one patient release authorization (XCH-06).
+ * Lifecycle of one patient release authorization.
  *
- * <p>Terminal states are retained for history and never re-open. Only a held or
- * authorized release can be withdrawn or corrected, so a retracted document stops
- * serving future access while its disclosure history remains intact.</p>
+ * <p>Terminal states are retained for history and never re-open. A held release can be
+ * lifted or withdrawn; only an authorized release can be corrected, so a retracted
+ * document stops serving future access while its disclosure history remains intact.</p>
  */
 public enum ReleaseState {
     /** Authorized but withheld pending an explicit reviewer decision. */

@@ -26,7 +26,7 @@ import com.aurevia.exchange.result.ResultModel.Review;
 import com.aurevia.exchange.result.ResultModel.ReviewState;
 
 /**
- * Thin SQL boundary for XCH-04 (ARC-01, ARC-02).
+ * Thin SQL boundary for result routing.
  *
  * <p>Every statement runs inside the tenant-guarded transaction, so forced RLS
  * confines it to the active organization and a foreign tenant's identifiers

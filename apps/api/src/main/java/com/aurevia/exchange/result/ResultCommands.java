@@ -1,7 +1,7 @@
 package com.aurevia.exchange.result;
 
 /**
- * Command payloads for the XCH-04 result-routing slice (S-G2-04).
+ * Command payloads for the result-routing slice.
  *
  * <p>Commands are intentionally narrow and contain only values that the service
  * validates at the trust boundary before any persistence is attempted.</p>
@@ -15,7 +15,8 @@ public final class ResultCommands {
      * Register the identifiers a released order is expected to produce.
      *
      * <p>This is the synthetic stand-in for the order projection owned by the
-     * exchange stories that are not present on this branch.</p>
+     * order exchange package. The expectation is registered explicitly so a result
+     * can be matched and routed without granting access to an order.</p>
      *
      * @param orderId       tenant-local order identifier
      * @param patientId     local patient identifier

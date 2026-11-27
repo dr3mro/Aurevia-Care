@@ -16,7 +16,7 @@ import com.aurevia.api.ApiException;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * XCH-06 release decisions: authorize, timed/hold visibility, withdrawal and correction.
+ * Patient release decisions: authorize, timed/hold visibility, withdrawal and correction.
  *
  * <p>Every command re-derives membership and roles inside a guarded transaction,
  * uses an optimistic version precondition for irreversible transitions, and commits
@@ -318,7 +318,7 @@ public class ReleaseService {
     }
 
     /**
-     * List the revision identifiers a caller may currently access for one patient (PAT-02).
+     * List the revision identifiers a caller may currently access for one patient.
      *
      * <p>This is a patient-scoped query, not a staff directory. The caller is either
      * the verified patient whose active chart link points at {@code patientId}, or

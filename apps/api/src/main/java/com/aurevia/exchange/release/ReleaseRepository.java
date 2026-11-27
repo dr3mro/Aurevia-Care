@@ -15,7 +15,7 @@ import org.springframework.stereotype.Repository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * The single SQL boundary for patient release commands (XCH-06, ARC-02).
+ * The single SQL boundary for patient release commands.
  *
  * <p>Every statement runs inside the tenant-guarded transaction. V24 applies
  * forced RLS to all three tables, derives authors and actors from {@code app.actor},
@@ -24,9 +24,9 @@ import com.aurevia.tenant.TenantContext;
 @Repository
 public class ReleaseRepository {
 
-    /** Business purpose stamped on release audit events (OPS-02). */
+    /** Business purpose stamped on release audit events. */
     public static final String PURPOSE = "RELEASE_ADMIN";
-    /** Audit resource scope for release events (OPS-02). */
+    /** Audit resource scope for release events. */
     public static final String SCOPE = "RELEASE";
 
     private static final String COLUMNS = """
@@ -75,7 +75,7 @@ public class ReleaseRepository {
     }
 
     /**
-     * Check the live, verified account-to-chart link fold for one patient-scoped read (IAM-05, PAT-02).
+     * Check the live, verified account-to-chart link for one patient-scoped read.
      *
      * <p>The rule lives once in the V10 {@code public.has_chart_access} fold over the
      * append-only {@code account_chart_link} ledger. Forced RLS and the transaction-local
@@ -304,7 +304,7 @@ public class ReleaseRepository {
     }
 
     /**
-     * Append one OPS-02 audit event inside the caller's transaction.
+     * Append one audit event inside the caller's transaction.
      *
      * @param context    active tenant context
      * @param action     release action key

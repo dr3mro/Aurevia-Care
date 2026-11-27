@@ -12,7 +12,7 @@ import com.aurevia.exchange.result.ReconciliationModel.ResolveRequest;
 import com.aurevia.exchange.result.ReconciliationModel.Resolution;
 
 /**
- * Thin HTTP adapter for resolving unmatched XCH-04 results (ARC-03, ARC-04).
+ * Thin HTTP adapter for resolving unmatched results.
  *
  * <p>No domain decision lives here: the action, reason and optional new owner
  * are validated by the injected service inside one tenant-guarded transaction.
@@ -40,6 +40,7 @@ public class ReconciliationController {
      * @param id      queue entry identifier
      * @param request action, reason and optional new owner
      * @return the recorded resolution
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a resolved entry
      */
     @PostMapping("/{id}/resolve")
     public Resolution resolve(@PathVariable String id, @RequestBody ResolveRequest request) {
@@ -51,6 +52,7 @@ public class ReconciliationController {
      *
      * @param id queue entry identifier
      * @return the resolution, or 404 when this entry has not been resolved
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     @GetMapping("/{id}/resolution")
     public ResponseEntity<Resolution> resolution(@PathVariable String id) {

@@ -33,7 +33,7 @@ import com.aurevia.exchange.result.ResultModel.Routing;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * XCH-04 result routing, matching, reconciliation and correction commands.
+ * Result routing, matching, reconciliation and correction commands.
  *
  * <p>Each command runs in one tenant-guarded transaction: authorization is
  * re-derived from active membership and roles, identifiers are matched before
@@ -43,7 +43,7 @@ import com.aurevia.tenant.TenantContext;
  * never rewritten. A retry under an existing key returns the stored revision
  * only when its clinical payload agrees; a divergent payload yields 409 so a
  * distinct finding is never silently discarded. Critical is a routing marker
- * only - due-time escalation and critical acknowledgment belong to XCH-05.</p>
+ * only - due-time escalation and critical acknowledgment belong to the critical-result workflow.</p>
  */
 @Service
 public class ResultRoutingService {

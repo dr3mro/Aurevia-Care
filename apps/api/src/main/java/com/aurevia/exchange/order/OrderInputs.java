@@ -7,7 +7,7 @@ import java.util.UUID;
 import com.aurevia.api.ApiException;
 
 /**
- * Pure validation at the order-exchange trust boundary (XCH-01).
+ * Pure validation at the order-exchange trust boundary.
  *
  * <p>Every method is total: it either returns a normalized value or raises a
  * machine-readable 422 before any database work begins. Identifiers are opaque;

@@ -6,10 +6,10 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Recipient-side lifecycle of one exchanged order work item (XCH-03).
+ * Recipient-side lifecycle of one exchanged order work item.
  *
- * <p>Transitions are legal only when enforced here and in the guarded command
- * service; a transmission event never moves this state machine. {@code rejected},
+ * <p>Legal transitions are enforced by the guarded command service; this enum only
+ * classifies terminal states. A transmission event never moves this state machine. {@code rejected},
  * {@code cancelled} and {@code revoked} are terminal. A change or cancellation
  * after acceptance always passes through a pending state that needs an explicit
  * recipient response.</p>
@@ -51,7 +51,7 @@ public enum ExchangeState {
      *
      * @param value lower-case state name
      * @return the matching state
-     * @throws IllegalArgumentException when the value is unknown
+     * @throws java.lang.IllegalArgumentException when the value is unknown
      */
     public static ExchangeState from(String value) {
         return valueOf(value.toUpperCase(Locale.ROOT));
