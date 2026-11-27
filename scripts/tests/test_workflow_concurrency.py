@@ -246,6 +246,63 @@ def gate_contract_violations(gate):
     return violations
 
 
+class IntegratorRecoveryContractTest(unittest.TestCase):
+    """The base-advance retry is bounded, allow-listed and token-isolated."""
+
+    def setUp(self):
+        self.workflow = load(WORKFLOWS / "swarm-integrator.yml")
+
+    def triggers(self):
+        return self.workflow.get(True) or self.workflow["on"]
+
+    def test_dispatch_inputs_and_publish_retry_outputs_are_declared(self):
+        triggers = self.triggers()
+        for trigger in ("workflow_dispatch", "workflow_call"):
+            inputs = triggers[trigger]["inputs"]
+            self.assertEqual(inputs["recovery_attempt"]["default"], "0")
+            self.assertEqual(inputs["recovery_prs"]["default"], "")
+            self.assertIs(inputs["ignore_red_main"]["default"], False)
+        publish = self.workflow["jobs"]["publish"]
+        self.assertEqual(
+            publish["outputs"]["integration_retry"],
+            "${{ steps.push.outputs.integration_retry }}",
+        )
+        push = next(step for step in publish["steps"] if step.get("id") == "push")
+        self.assertIn("--recovery-attempt", push["run"])
+
+    def test_recovery_job_is_signal_gated_and_holds_no_write_token(self):
+        resolve = self.workflow["jobs"]["resolve"]
+        self.assertIn("needs.publish.outputs.integration_retry != ''", resolve["if"])
+        self.assertIn("needs.publish.outputs.recovery_attempt < 1", resolve["if"])
+        self.assertEqual(set(resolve["permissions"].values()), {"read"})
+        self.assertNotIn("GH_TOKEN: ${{ secrets.SWARM_TOKEN",
+                         "\n".join(
+                             str(step.get("env", {})) for step in resolve["steps"]
+                         ))
+
+    def test_retry_pick_is_allow_listed_and_redispatch_carries_only_ids(self):
+        pick = self.workflow["jobs"]["pick"]
+        queue = next(step for step in pick["steps"] if step.get("id") == "queue")
+        self.assertEqual(queue["env"]["SWARM_RECOVERY_PRS"], "${{ inputs.recovery_prs }}")
+        republish = self.workflow["jobs"]["resolve-publish"]
+        self.assertIn("publish", republish["needs"])
+        redispatch = next(
+            step for step in republish["steps"]
+            if "Re-dispatch the bounded base-advance retry" in step.get("name", "")
+        )
+        self.assertIn("--field recovery_attempt", redispatch["run"])
+        self.assertIn("--field recovery_prs", redispatch["run"])
+        self.assertIn("--field ignore_red_main", redispatch["run"])
+        self.assertIn('^[01]$', redispatch["run"])
+        self.assertNotIn("--force", redispatch["run"])
+        push_step = next(
+            step for step in republish["steps"]
+            if "Push the resolved branches" in step.get("name", "")
+        )
+        self.assertIn("--no-dispatch", push_step["env"]["DISPATCH_FLAG"])
+        self.assertIn('args+=("$DISPATCH_FLAG")', push_step["run"])
+
+
 class DeliveryGateContractTest(unittest.TestCase):
     """Branch protection waits for one exact context on every pull-request head."""
 
