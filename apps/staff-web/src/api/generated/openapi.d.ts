@@ -1196,7 +1196,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post a reply to a conversation at an expected version */
+        /**
+         * Post a reply to a conversation at an expected version
+         * @description The Idempotency-Key is durable; a retry returns the accepted reply and reusing the key with a different body conflicts.
+         */
         post: operations["replyToConversation"];
         delete?: never;
         options?: never;
@@ -8916,7 +8919,7 @@ export interface components {
         ConfigKey: string;
         /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
         IfMatch: string;
-        /** @description Opaque key that makes a retried placement produce a single order. */
+        /** @description Opaque key that makes a retried command produce a single accepted effect. */
         IdempotencyKey: string;
         /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
         IdempotencyKeyOptional: string;
@@ -11382,7 +11385,7 @@ export interface operations {
                 "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
                 /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
                 "If-Match": components["parameters"]["IfMatch"];
-                /** @description Opaque key that makes a retried placement produce a single order. */
+                /** @description Opaque key that makes a retried command produce a single accepted effect. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
             };
             path: {
@@ -12245,8 +12248,8 @@ export interface operations {
                 "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
                 /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
                 "If-Match": components["parameters"]["IfMatch"];
-                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
-                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Opaque key that makes a retried command produce a single accepted effect. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
             };
             path: {
                 /** @description Tenant-local conversation identifier */
@@ -12275,7 +12278,7 @@ export interface operations {
             409: components["responses"]["StateConflict"];
             412: components["responses"]["StaleVersion"];
             422: components["responses"]["InvalidRequest"];
-            /** @description If-Match precondition required */
+            /** @description If-Match or Idempotency-Key precondition required */
             428: {
                 headers: {
                     [name: string]: unknown;
@@ -12716,7 +12719,7 @@ export interface operations {
                 "X-Active-Organization": components["parameters"]["ActiveOrganization"];
                 /** @description Generated and echoed when absent. */
                 "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
-                /** @description Opaque key that makes a retried placement produce a single order. */
+                /** @description Opaque key that makes a retried command produce a single accepted effect. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
             };
             path: {
@@ -13002,7 +13005,7 @@ export interface operations {
                 "X-Active-Organization": components["parameters"]["ActiveOrganization"];
                 /** @description Generated and echoed when absent. */
                 "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
-                /** @description Opaque key that makes a retried placement produce a single order. */
+                /** @description Opaque key that makes a retried command produce a single accepted effect. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
             };
             path: {

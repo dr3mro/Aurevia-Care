@@ -11,6 +11,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.UUID;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -181,6 +182,7 @@ class AuditOpeningViewingSendingAssigningDownloadingAcknowledgingTest {
         headers.set("X-Active-Organization", org);
         headers.set("X-Correlation-Id", correlation);
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Idempotency-Key", java.util.UUID.randomUUID().toString());
         RestClient.RequestBodySpec spec = rest.method(method).uri(uri)
                 .headers(httpHeaders -> httpHeaders.addAll(headers));
         RestClient.RequestHeadersSpec<?> headerSpec = body == null ? spec : spec.body(body);
@@ -307,7 +309,7 @@ class AuditOpeningViewingSendingAssigningDownloadingAcknowledgingTest {
         for (String[] testCase : cases) {
             String action = testCase[0];
             String subject = testCase[1];
-            String correlation = "audit-" + action;
+            String correlation = UUID.randomUUID().toString();
             ResponseEntity<String> response = postAction(action, RESOURCE_WORKFLOW, "unit-a",
                     subject, ORG_A, correlation);
             assertEquals(HttpStatus.OK, response.getStatusCode(), response.getBody());

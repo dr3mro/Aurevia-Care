@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aurevia.api.IfMatch;
+import com.aurevia.api.contract.IdempotencyKey;
 import com.aurevia.messaging.conversations.ConversationContract.AssignRequest;
 import com.aurevia.messaging.conversations.ConversationContract.CloseRequest;
 import com.aurevia.messaging.conversations.ConversationContract.Conversation;
@@ -93,13 +94,15 @@ public class ConversationController {
      *
      * @param id          conversation identifier
      * @param request     reply command
-     * @param ifMatch     expected version
+     * @param ifMatch         expected version
+     * @param idempotencyKey  durable client key, required on every reply
      * @return the updated thread
      */
     @PostMapping("/{id}/reply")
     public View reply(@PathVariable String id, @RequestBody ReplyRequest request,
-                      @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        return service.reply(id, request, IfMatch.parse(ifMatch));
+                      @RequestHeader(value = "If-Match", required = false) String ifMatch,
+                      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        return service.reply(id, request, IfMatch.parse(ifMatch), IdempotencyKey.parse(idempotencyKey));
     }
 
     /**

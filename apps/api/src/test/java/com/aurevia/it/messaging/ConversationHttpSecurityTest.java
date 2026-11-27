@@ -229,6 +229,7 @@ class ConversationHttpSecurityTest {
             headers.set("If-Match", ifMatch);
         }
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Idempotency-Key", java.util.UUID.randomUUID().toString());
         return headers;
     }
 

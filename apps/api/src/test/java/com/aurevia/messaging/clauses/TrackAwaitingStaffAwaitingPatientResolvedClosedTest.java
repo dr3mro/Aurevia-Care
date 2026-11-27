@@ -36,6 +36,7 @@ import com.aurevia.messaging.conversations.ConversationContract.State;
 import com.aurevia.messaging.conversations.ConversationContract.UnitKey;
 import com.aurevia.messaging.conversations.ConversationContract.View;
 import com.aurevia.messaging.conversations.ConversationRepository;
+import com.aurevia.api.contract.IdempotencyKey;
 import com.aurevia.messaging.conversations.ConversationService;
 import com.aurevia.messaging.units.CareUnitDirectoryService;
 import com.aurevia.messaging.units.InMemoryMessagingStore;
@@ -62,6 +63,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @ExtendWith(MockitoExtension.class)
 class TrackAwaitingStaffAwaitingPatientResolvedClosedTest {
+    private static final IdempotencyKey KEY = IdempotencyKey.parse("reply-key-1");
 
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
     private static final String PATIENT_ID = "22222222-2222-2222-2222-222222222222";
@@ -91,6 +93,9 @@ class TrackAwaitingStaffAwaitingPatientResolvedClosedTest {
         CareUnitDirectoryService directory = new CareUnitDirectoryService(unitStore, new MessagingActions(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         service = new ConversationService(repository, new ConversationActions(), transactions, audit, directory);
+        lenient().when(repository.findMessageByClientId(any(), any())).thenReturn(Optional.empty());
+        lenient().when(repository.insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
         lenient().when(transactions.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(null);
@@ -161,7 +166,7 @@ class TrackAwaitingStaffAwaitingPatientResolvedClosedTest {
         when(repository.messages(ID)).thenReturn(List.of());
         when(repository.events(ID)).thenReturn(List.of());
 
-        View replied = service.reply(ID, new ReplyRequest("please arrive early"), 1);
+        View replied = service.reply(ID, new ReplyRequest("please arrive early"), 1, KEY);
         assertEquals(State.AWAITING_PATIENT, replied.conversation().state());
         verify(repository).updateState(ID, 1, "awaiting_patient");
 
@@ -187,7 +192,7 @@ class TrackAwaitingStaffAwaitingPatientResolvedClosedTest {
         when(repository.messages(ID)).thenReturn(List.of());
         when(repository.events(ID)).thenReturn(List.of());
 
-        View reopened = service.reply(ID, new ReplyRequest("one more question"), 2);
+        View reopened = service.reply(ID, new ReplyRequest("one more question"), 2, KEY);
 
         assertEquals(State.AWAITING_STAFF, reopened.conversation().state());
         verify(repository).updateState(ID, 2, "awaiting_staff");
@@ -204,11 +209,11 @@ class TrackAwaitingStaffAwaitingPatientResolvedClosedTest {
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(false);
 
         ApiException failure = assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 2));
+                () -> service.reply(ID, new ReplyRequest("hello"), 2, KEY));
 
         assertEquals(404, failure.status());
         assertEquals("NOT_FOUND", failure.code());
-        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
         verify(repository, never()).updateState(any(), anyInt(), any());
         verify(repository, never()).appendEvent(any(), anyInt(), any(), any(), any(), any(), any());
     }
@@ -220,11 +225,11 @@ class TrackAwaitingStaffAwaitingPatientResolvedClosedTest {
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(closed));
 
         ApiException failure = assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 2));
+                () -> service.reply(ID, new ReplyRequest("hello"), 2, KEY));
 
         assertEquals(409, failure.status());
         assertEquals("CLOSED_THREAD", failure.code());
-        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
         verify(repository, never()).updateState(any(), anyInt(), any());
         verify(repository, never()).appendEvent(any(), anyInt(), any(), any(), any(), any(), any());
 
@@ -282,7 +287,7 @@ class TrackAwaitingStaffAwaitingPatientResolvedClosedTest {
                 conversation(State.AWAITING_STAFF, 1, "patient-b", "lab")));
 
         ApiException failure = assertThrows(ApiException.class,
-                () -> service.reply(ID, new ReplyRequest("hello"), 1));
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY));
 
         assertEquals(404, failure.status());
         assertEquals("NOT_FOUND", failure.code());

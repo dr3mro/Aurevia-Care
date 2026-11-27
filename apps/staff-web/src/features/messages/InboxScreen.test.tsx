@@ -22,7 +22,7 @@ function wrap(ui: ReactElement, locale: Locale = 'en') {
 /** Own the drafts exactly as the page does, so every callback is observable. */
 function Harness({
   view = alphaInboxView,
-  onSend = vi.fn(),
+  onSend = vi.fn<(draft: SendDraft) => void>(),
   onWorkSubmit = vi.fn(),
   onDiscardDraft = vi.fn(),
 }: {
@@ -37,6 +37,7 @@ function Harness({
     <InboxScreen
       view={view}
       replyText={replyText}
+      clientMessageId="synthetic-reply-key"
       workDraft={workDraft}
       reasonError={undefined}
       onReplyTextChange={setReplyText}
@@ -195,6 +196,7 @@ describe('InboxScreen send and work commands', () => {
     fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
     expect(onSend).toHaveBeenCalledWith({
       threadId: 'thread-001',
+      clientMessageId: 'synthetic-reply-key',
       version: 3,
       recipientName: 'Synthetic Grace Okafor',
       recipientId: 'synthetic-patient-001',

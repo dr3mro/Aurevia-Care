@@ -20,6 +20,7 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.aurevia.api.ApiException;
+import com.aurevia.observability.CorrelationIdFilter;
 import com.aurevia.tenant.TenantContext;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -90,11 +91,26 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
             value = "HRS_REQUEST_PARAMETER_TO_HTTP_HEADER",
             justification = "Correlation id is allowlist-validated before being echoed")
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String correlation = request.getHeader("X-Correlation-Id");
-        if (correlation == null || correlation.isBlank()) {
-            correlation = UUID.randomUUID().toString();
-        } else if (!CORRELATION_PATTERN.matcher(correlation).matches()) {
-            throw new ApiException(422, "INVALID_CORRELATION_ID", "correlation id has invalid characters");
+        // A caller-supplied non-UUID correlation is still a valid application
+        // correlation here and is used by the audit trail, so preserve it. When
+        // the header is absent or blank the servlet filter has already minted
+        // one id for the log and this request must consume that same id.
+        String header = request.getHeader("X-Correlation-Id");
+        String correlation;
+        if (header != null && !header.isBlank()
+                && CORRELATION_PATTERN.matcher(header).matches()) {
+            correlation = header;
+        } else {
+            Object resolved = request.getAttribute(CorrelationIdFilter.CORRELATION_ATTRIBUTE);
+            correlation = resolved instanceof String value ? value : null;
+            if (correlation == null) {
+                if (header == null || header.isBlank()) {
+                    correlation = UUID.randomUUID().toString();
+                } else {
+                    throw new ApiException(422, "INVALID_CORRELATION_ID",
+                            "correlation id has invalid characters");
+                }
+            }
         }
         response.setHeader("X-Correlation-Id", correlation);
         // WEB-06: publish the validated correlation id so the structured console
