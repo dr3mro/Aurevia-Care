@@ -1,6 +1,7 @@
-- [-] NOTE-REVISION-PARSING · Accept one canonical revision with trailing prose and validate notes locally
+- [x] NOTE-REVISION-PARSING · Accept one canonical revision with trailing prose and validate notes locally
   - agent: orca
   - attempts: 0
+  - pr: #1819
   - requirements: OPS-06
   - scope: scripts/swarm_gate.py, scripts/tests/test_swarm_gate.py, scripts/tests/test_quality_gate.py, scripts/quality-gate.sh, tasks/01355000-NOTE-REVISION-PARSING.md
   - details:
