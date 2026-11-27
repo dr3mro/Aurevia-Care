@@ -1,3 +1,4 @@
+[![Delivery](https://github.com/dr3mro/Aurevia-Care/actions/workflows/delivery.yml/badge.svg)](https://github.com/dr3mro/Aurevia-Care/actions/workflows/delivery.yml) 
 # Aurevia Care
 
 Aurevia Care (Aurevia Cloud V1) is a multi-tenant healthcare platform: a Spring Boot API, a React staff web app and a React Native patient app, built by a team of OpenCode agents through GitHub Actions. The product specification is in `.opencode/config/PROJECT_V1_SPEC.md`, the task files in `tasks/`, and setup details in `.opencode/config/README-SETUP.md`.
