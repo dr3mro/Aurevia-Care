@@ -229,7 +229,10 @@ class RecordActualChannelTest {
         assertEquals(403, failure.status());
         assertEquals("FORBIDDEN", failure.code());
         assertTrue(failure.getMessage().contains("only the prescribing clinician may attest or route"));
-        verify(audit, never()).append(any(), any(), any(), any(), any(), any(), eq("DENIED"));
+        // Ownership refusal is a durable, tenant-bound DENIED audit event even
+        // though no domain row is written: the refused attempt must be provable.
+        verify(audit).append(any(), eq(RxActions.TRANSMIT), eq(RxActions.TRANSMIT),
+                eq("PRESCRIPTION"), eq("PRESCRIPTION_TRANSMISSION"), eq(ID), eq("DENIED"));
         verifyNoWrites();
     }
 

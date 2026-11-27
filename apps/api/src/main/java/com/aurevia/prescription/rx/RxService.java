@@ -422,7 +422,17 @@ public class RxService {
                 sink.failure = denial;
                 return null;
             }
-            return work.apply(sink);
+            try {
+                return work.apply(sink);
+            } catch (ApiException refusal) {
+                // Preconditions raise before any row mutation, so the only
+                // committed write on this refusal is the DENIED audit event.
+                // Carry the original failure out on the sink: throwing here
+                // would roll the audit row back with the failed command.
+                audit.append(context, action, action, RESOURCE_TYPE, SCOPE, resourceId, "DENIED");
+                sink.failure = refusal;
+                return null;
+            }
         });
         if (sink.failure != null) {
             throw sink.failure;

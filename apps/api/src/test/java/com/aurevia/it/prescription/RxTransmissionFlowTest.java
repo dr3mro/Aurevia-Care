@@ -402,6 +402,14 @@ class RxTransmissionFlowTest {
                 "the other tenant's id is concealed");
         assertEquals("NOT_FOUND", code(post(ORG_B, "clinician-2222", aOnlyId + "/attest", 1,
                 "{\"note\":\"cross tenant\"}")));
+        // A concealed id still produces a durable refusal in the caller's own
+        // tenant, attributed to the caller. Nothing is written in the owner's
+        // tenant, so the audit row is never an existence oracle.
+        assertEquals(1, auditOutcomeCount(ORG_B, aOnlyId, "RX_ATTEST", "DENIED"));
+        assertEquals(actorId(ORG_B, "clinician-2222"),
+                auditRow(ORG_B, aOnlyId, "RX_ATTEST", "DENIED").actorId());
+        assertEquals(0, auditOutcomeCount(ORG_A, aOnlyId, "RX_ATTEST", "DENIED"),
+                "no denial for the foreign id is recorded in the resource owner's tenant");
         assertEquals("NOT_FOUND", code(get(ORG_A, "clinician-1111", UUID.randomUUID().toString())));
         assertEquals("NOT_FOUND", code(create(ORG_A, "clinician-1111", newId(), "clinician-1111",
                 UUID.randomUUID().toString())));
@@ -498,6 +506,105 @@ class RxTransmissionFlowTest {
                 + "prescription_id, channel) VALUES (public.app_org(), gen_random_uuid(), CAST('"
                 + id + "' AS uuid), 'E_PRESCRIBE')";
         assertThrowsSql(() -> execute(org, prescriber, duplicate));
+    }
+
+    @Test
+    void deniedCommandsLeaveDurableAuditRowsWithoutChangingState() {
+        String org = ORG_A;
+        String prescriber = "clinician-1111";
+
+        String wrongOwnerId = newId();
+        create(org, prescriber, wrongOwnerId, prescriber);
+        ResponseEntity<String> wrongOwner = post(org, "other-1111", wrongOwnerId + "/attest", 1,
+                "{\"note\":\"synthetic attestation\"}");
+        assertEquals(HttpStatus.FORBIDDEN, wrongOwner.getStatusCode(), wrongOwner.getBody());
+        assertEquals("FORBIDDEN", code(wrongOwner));
+        assertEquals(1, auditOutcomeCount(org, wrongOwnerId, "RX_ATTEST", "DENIED"),
+                "a wrong-owner refusal commits exactly one durable DENIED row");
+        AuditRow wrongOwnerRow = auditRow(org, wrongOwnerId, "RX_ATTEST", "DENIED");
+        assertEquals(actorId(org, "other-1111"), wrongOwnerRow.actorId(),
+                "the actor is the denied caller, not the prescription owner");
+        assertEquals("RX_ATTEST", wrongOwnerRow.purpose());
+        assertEquals("PRESCRIPTION_TRANSMISSION", wrongOwnerRow.scope());
+        assertEquals("draft", field(get(org, prescriber, wrongOwnerId), "/prescription/state"));
+        assertEquals("1", field(get(org, prescriber, wrongOwnerId), "/prescription/version"));
+
+        String roleDeniedId = newId();
+        create(org, prescriber, roleDeniedId, prescriber);
+        ResponseEntity<String> roleDenied = post(org, "pharmacy-1111", roleDeniedId + "/attest", 1,
+                "{\"note\":\"synthetic attestation\"}");
+        assertEquals(HttpStatus.FORBIDDEN, roleDenied.getStatusCode(), roleDenied.getBody());
+        assertEquals(1, auditOutcomeCount(org, roleDeniedId, "RX_ATTEST", "DENIED"),
+                "an authorize denial still writes exactly one row, never two");
+        assertEquals(actorId(org, "pharmacy-1111"),
+                auditRow(org, roleDeniedId, "RX_ATTEST", "DENIED").actorId());
+
+        String staleId = newId();
+        create(org, prescriber, staleId, prescriber);
+        ResponseEntity<String> stale = post(org, prescriber, staleId + "/attest", 9,
+                "{\"note\":\"synthetic attestation\"}");
+        assertEquals(412, stale.getStatusCode().value());
+        assertEquals("STALE_VERSION", code(stale));
+        assertEquals(1, auditOutcomeCount(org, staleId, "RX_ATTEST", "DENIED"));
+        assertEquals(actorId(org, prescriber), auditRow(org, staleId, "RX_ATTEST", "DENIED").actorId());
+        assertEquals("draft", field(get(org, prescriber, staleId), "/prescription/state"));
+        assertEquals("1", field(get(org, prescriber, staleId), "/prescription/version"));
+
+        String twiceId = newId();
+        create(org, prescriber, twiceId, prescriber);
+        ResponseEntity<String> attested = post(org, prescriber, twiceId + "/attest", 1,
+                "{\"note\":\"synthetic attestation\"}");
+        assertEquals(HttpStatus.OK, attested.getStatusCode(), attested.getBody());
+        assertEquals(1, auditOutcomeCount(org, twiceId, "RX_ATTEST", "SUCCESS"));
+        assertEquals(0, auditOutcomeCount(org, twiceId, "RX_ATTEST", "DENIED"),
+                "an allowed attestation must not write a denial");
+        AuditRow successRow = auditRow(org, twiceId, "RX_ATTEST", "SUCCESS");
+        assertEquals(actorId(org, prescriber), successRow.actorId());
+        assertEquals("RX_ATTEST", successRow.purpose());
+        assertEquals("PRESCRIPTION_TRANSMISSION", successRow.scope());
+
+        ResponseEntity<String> twice = post(org, prescriber, twiceId + "/attest", 2,
+                "{\"note\":\"second attestation\"}");
+        assertEquals(409, twice.getStatusCode().value());
+        assertEquals("INVALID_TRANSITION", code(twice));
+        assertEquals(1, auditOutcomeCount(org, twiceId, "RX_ATTEST", "DENIED"),
+                "a refused second attestation adds exactly one denial");
+        assertEquals("attested", field(get(org, prescriber, twiceId), "/prescription/state"));
+        assertEquals("2", field(get(org, prescriber, twiceId), "/prescription/version"));
+
+        String unentitledId = newId();
+        create(org, "unentitled-1111", unentitledId, "unentitled-1111");
+        ResponseEntity<String> unentitled = post(org, "unentitled-1111", unentitledId + "/attest", 1,
+                "{\"note\":\"synthetic attestation\"}");
+        assertEquals(422, unentitled.getStatusCode().value());
+        assertEquals("NO_ENTITLEMENT", code(unentitled));
+        assertEquals(1, auditOutcomeCount(org, unentitledId, "RX_ATTEST", "DENIED"),
+                "a domain-policy refusal is audited by the same catch");
+        assertEquals(actorId(org, "unentitled-1111"),
+                auditRow(org, unentitledId, "RX_ATTEST", "DENIED").actorId());
+
+        String terminalId = newId();
+        create(org, prescriber, terminalId, prescriber);
+        post(org, prescriber, terminalId + "/attest", 1, "{\"note\":\"synthetic attestation\"}");
+        ResponseEntity<String> transmitted = transmit(org, prescriber, terminalId, 2,
+                "E_PRESCRIBE", "submitted");
+        String sid = field(transmitted, "/submissionId");
+        confirm(org, prescriber, terminalId, 3, sid);
+        pharmacy(org, "pharmacy-1111", terminalId, 4, sid, "accepted", "synthetic");
+        dispense(org, "pharmacy-1111", terminalId, 5, sid, "synthetic evidence");
+        ResponseEntity<String> cancelled = post(org, prescriber, terminalId + "/cancel", 6,
+                "{\"reason\":\"after dispensing\"}");
+        assertEquals(409, cancelled.getStatusCode().value());
+        assertEquals("INVALID_TRANSITION", code(cancelled));
+        assertEquals(1, auditOutcomeCount(org, terminalId, "RX_CANCEL", "DENIED"),
+                "a refused cancellation commits exactly one DENIED row");
+        AuditRow cancelRow = auditRow(org, terminalId, "RX_CANCEL", "DENIED");
+        assertEquals(actorId(org, prescriber), cancelRow.actorId());
+        assertEquals("RX_CANCEL", cancelRow.purpose());
+        assertEquals("PRESCRIPTION_TRANSMISSION", cancelRow.scope());
+        assertEquals("dispensed", field(get(org, prescriber, terminalId), "/prescription/state"));
+        assertEquals("6", field(get(org, prescriber, terminalId), "/prescription/version"));
+        assertAuditChainOk(org);
     }
 
     // ---------- helpers ----------
@@ -694,6 +801,72 @@ class RxTransmissionFlowTest {
         } catch (Exception exception) {
             throw new IllegalStateException(exception);
         }
+    }
+
+    private static int auditOutcomeCount(String org, String resourceId, String action, String outcome) {
+        return count("SELECT COUNT(*) FROM public.audit_event WHERE resource_id = '" + resourceId
+                + "' AND action = '" + action + "' AND outcome = '" + outcome + "'", org);
+    }
+
+    private static AuditRow auditRow(String org, String resourceId, String action, String outcome) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, org, "clinician-" + suffix(org));
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT actor_id, purpose, scope FROM public.audit_event "
+                            + "WHERE resource_id = ? AND action = ? AND outcome = ?")) {
+                statement.setString(1, resourceId);
+                statement.setString(2, action);
+                statement.setString(3, outcome);
+                try (ResultSet result = statement.executeQuery()) {
+                    assertTrue(result.next());
+                    return new AuditRow(result.getString(1), result.getString(2), result.getString(3));
+                }
+            } finally {
+                connection.rollback();
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private static String actorId(String org, String subject) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, org, "clinician-" + suffix(org));
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT id::text FROM public.user_identity WHERE subject = ?")) {
+                statement.setString(1, subject);
+                try (ResultSet result = statement.executeQuery()) {
+                    assertTrue(result.next());
+                    return result.getString(1);
+                }
+            } finally {
+                connection.rollback();
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private static void assertAuditChainOk(String org) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, org, "clinician-" + suffix(org));
+            try (Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery(
+                         "SELECT count(*) FROM public.audit_verify_chain('" + org + "') WHERE NOT ok")) {
+                assertTrue(result.next());
+                assertEquals(0, result.getInt(1), "every audit row keeps the append-only hash chain");
+            } finally {
+                connection.rollback();
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private record AuditRow(String actorId, String purpose, String scope) {
     }
 
     private static void bind(Connection connection, String org, String subject) throws Exception {
