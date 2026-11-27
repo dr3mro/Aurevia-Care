@@ -3,7 +3,7 @@ package com.aurevia.exchange.critical;
 import org.springframework.stereotype.Component;
 
 /**
- * Bounded action matrix for the XCH-05 slice.
+ * Bounded action matrix for critical-result commands.
  *
  * <p>Lab verification, clinical acknowledgment and administrative release are
  * deliberately separated: a verifier cannot acknowledge, an administrator

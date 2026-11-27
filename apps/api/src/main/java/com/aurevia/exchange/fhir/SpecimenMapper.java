@@ -12,7 +12,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Maps an accessioned specimen to and from a FHIR R4 Specimen (LAB-01, XCH-04).
+ * Maps an accessioned specimen to and from a FHIR R4 Specimen.
  *
  * <p>Patient, accession and source-order identifiers are all required on import.
  * The mapper never invents a specimen from a partial resource: a missing identifier

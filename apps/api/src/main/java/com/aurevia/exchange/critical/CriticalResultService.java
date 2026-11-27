@@ -27,7 +27,7 @@ import com.aurevia.exchange.critical.CriticalContract.View;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * XCH-05 critical-result workflow.
+ * Critical-result workflow.
  *
  * <p>Each command runs in one tenant-guarded transaction: authorization is
  * re-derived, the state precondition is checked, the row change and its
@@ -150,7 +150,7 @@ public class CriticalResultService {
      * @param request         verification command
      * @param expectedVersion version read by the caller
      * @return the activated result
-     * @throws ApiException when the finding is unverified prerequisites or state are missing
+     * @throws ApiException when prerequisites (owner and due time) or state are missing
      */
     public Result verify(String id, VerifyRequest request, int expectedVersion) {
         CriticalInputs.uuid(id, "id");
@@ -267,6 +267,8 @@ public class CriticalResultService {
             Result current = repository.loadForUpdate(id).orElseThrow(notFound());
             requireVersion(current, expectedVersion);
             requireState(current, State.AWAITING_ACK);
+            // Delivery is a fact, not consent: even a delivered attempt cannot
+            // close an alert without an authorized clinician acknowledgment.
             if (!repository.hasDeliveredAttempt(id, current.version())) {
                 throw new ApiException(409, "NO_DELIVERED_ATTEMPT",
                         "delivery alone is not a clinical acknowledgment");
@@ -348,7 +350,7 @@ public class CriticalResultService {
     /**
      * Build the operational report of overdue alerts, roster gaps and failed notifications.
      *
-     * @return the XCH-05 report
+     * @return the operational report
      * @throws ApiException when the caller lacks read permission
      */
     public Report report() {
@@ -371,6 +373,8 @@ public class CriticalResultService {
             }
             return work.apply(sink);
         });
+        // Throw only after commit so the audit and roster-gap facts survive the
+        // error response instead of being rolled back with the denial.
         if (sink.failure != null) {
             throw sink.failure;
         }
@@ -378,6 +382,8 @@ public class CriticalResultService {
     }
 
     private ApiException authorize(TenantContext context, String action, String resourceId) {
+        // Re-derive membership and roles inside the transaction: a revoked grant
+        // takes effect on the next protected request, not at login time.
         if (!repository.hasActiveMembership(context.subject())) {
             audit.append(context, action, action, RESOURCE_TYPE, SCOPE, resourceId, "DENIED");
             return new ApiException(403, "FORBIDDEN", "no active membership");

@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  * acknowledgments, specimen collection, reported and corrected results,
  * critical read-back, patient release, observation comparability and the three
  * delivery hazards the gates require: duplicates, corrections and partial
- * outages (XCH-01 to XCH-07, LAB-01, LAB-02, ARC-05). Every scenario is
+ * outages. Every scenario is
  * deterministic and replayable without a live partner, database or credential.
  * Identifier bindings are issuer-scoped and type-qualified by prefix, and are
  * scoped to the local aggregate so a valid identifier on the wrong order is
@@ -58,7 +58,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * All named synthetic scenarios.
+     * The synthetic scenarios in the replay catalog.
      *
      * @return immutable fixture catalog
      */
@@ -77,7 +77,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * XCH-01 to XCH-04 and LAB-01 to LAB-02: a released order travels through
+     * A released order travels through
      * acceptance, a transport acknowledgment, collection, a reported result and
      * a clinical acknowledgment.
      *
@@ -97,7 +97,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * ARC-05 and XCH-01: replaying an immutable event identifier produces a
+     * Replaying an immutable event identifier produces a
      * single downstream effect.
      *
      * @return duplicate-delivery fixture
@@ -112,7 +112,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * XCH-04 and LAB-02: a correction appends a new revision and reopens a
+     * A correction appends a new revision and reopens a
      * review that a clinical acknowledgment had closed.
      *
      * @return correction fixture
@@ -131,10 +131,10 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * XCH-02 and XCH-05: a transport acknowledgment cannot close a critical
-     * review; the named owner's clinical read-back can. Deadline and escalation
-     * attempt evidence is delivered by S-G2-05; this fixture proves only the
-     * acknowledgment distinction.
+     * A transport acknowledgment cannot close a critical
+     * review; the named owner's clinical read-back can. This fixture proves only
+     * the acknowledgment distinction; deadline and escalation evidence belongs
+     * to the escalation workflow tests.
      *
      * @return critical-result fixture
      */
@@ -152,7 +152,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * ARC-05: a partial outage fails the first two deliveries and succeeds on
+     * A partial outage fails the first two deliveries and succeeds on
      * the third with one applied revision.
      *
      * @return partial-outage fixture
@@ -171,7 +171,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * ARC-05: a sustained outage exhausts the retry budget and dead-letters the
+     * A sustained outage exhausts the retry budget and dead-letters the
      * event without creating an effect.
      *
      * @return dead-letter fixture
@@ -186,7 +186,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * ARC-05 and XCH-04: an event that dead-lettered during an outage is
+     * An event that dead-lettered during an outage is
      * reprocessable when the partner recovers; the immutable id is not
      * consumed by the failed delivery.
      *
@@ -206,7 +206,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * XCH-04 and LAB-01: a result with an unmatched identifier waits in the
+     * A result with an unmatched identifier waits in the
      * reconciliation queue instead of linking to the wrong patient.
      *
      * @return reconciliation fixture
@@ -221,7 +221,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * XCH-04 and LAB-01: an issuer-scoped identifier that is valid elsewhere
+     * An issuer-scoped identifier that is valid elsewhere
      * but not bound to this aggregate is a conflict, not a match.
      *
      * @return wrong-aggregate identifier fixture
@@ -236,7 +236,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * ARC-05 and XCH-04: a reordered event is held without overwriting a newer
+     * A reordered event is held without overwriting a newer
      * applied revision.
      *
      * @return out-of-order fixture
@@ -253,7 +253,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * ARC-05 and XCH-04: an event that dead-lettered during a partial outage is
+     * An event that dead-lettered during a partial outage is
      * replayed with an authorized reason and keeps its immutable event identity.
      *
      * @return replay-with-reason fixture
@@ -272,7 +272,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * XCH-06: patient release is bound to the immutable original revision, so
+     * Patient release is bound to the immutable original revision, so
      * a later correction cannot silently change what the patient can obtain.
      *
      * @return release fixture
@@ -291,7 +291,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * LAB-01: a recollected specimen keeps a linked revision and its own
+     * A recollected specimen keeps a linked revision and its own
      * issuer-scoped identifier instead of overwriting the rejected specimen.
      *
      * @return specimen recollection fixture
@@ -308,7 +308,7 @@ public final class ConformanceFixtures {
     }
 
     /**
-     * XCH-07 and LAB-02: numeric observations share a test and unit while
+     * Numeric observations share a test and unit while
      * qualified and differently typed observations stay visible but incomparable.
      *
      * @return trending fixture

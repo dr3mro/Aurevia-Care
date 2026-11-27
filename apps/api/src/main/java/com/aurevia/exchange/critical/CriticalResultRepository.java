@@ -19,7 +19,7 @@ import com.aurevia.exchange.critical.CriticalContract.Result;
 import com.aurevia.exchange.critical.CriticalContract.State;
 
 /**
- * The single SQL boundary for XCH-05 critical results.
+ * The single SQL boundary for critical results.
  *
  * <p>Every statement runs inside the tenant-guarded transaction, so forced
  * row-level security confines it to the active organization. The event ledger is

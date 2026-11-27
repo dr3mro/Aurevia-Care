@@ -8,7 +8,7 @@ package com.aurevia.exchange.hl7;
  * {@code \T\}. A hexadecimal form {@code \Xhhhh\} carries characters that
  * cannot appear directly, and {@code \H\}/\N\ are highlighting markers that are
  * discarded on parse. Carriage return and line feed are always encoded as hex
- * so a field value can never inject a new segment (XCH-01, XCH-04).</p>
+ * so a field value can never inject a new segment.</p>
  */
 public final class Hl7Escape {
 

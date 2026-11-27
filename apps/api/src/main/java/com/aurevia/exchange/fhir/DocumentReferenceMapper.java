@@ -13,7 +13,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Maps a retained original document to and from a FHIR R4 DocumentReference (CLN-07).
+ * Maps a retained original document to and from a FHIR R4 DocumentReference.
  *
  * <p>The retained SHA-256 digest is carried as an attachment checksum, the immutable
  * document version as {@code meta.versionId}, and the void state as the FHIR document
@@ -63,6 +63,7 @@ public final class DocumentReferenceMapper {
         identifiers.add(FhirSupport.identifier(FhirSupport.DOCUMENT_IDENTIFIER_SYSTEM, data.documentId()));
         node.set("identifier", identifiers);
 
+        // A voided association must never be presented as current clinical content.
         boolean voided = "voided".equals(data.status());
         node.put("status", voided ? "entered-in-error" : "current");
         node.set("subject", FhirSupport.reference("Patient", data.patientId()));

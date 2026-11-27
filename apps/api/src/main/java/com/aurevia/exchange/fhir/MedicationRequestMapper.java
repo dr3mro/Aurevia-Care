@@ -11,7 +11,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Maps a prescription draft to and from a FHIR R4 MedicationRequest (RX-01).
+ * Maps a prescription draft to and from a FHIR R4 MedicationRequest.
  *
  * <p>Only the medication the clinician selected crosses this boundary: the catalog entry
  * id is the drug code and the dose, route, frequency, quantity, prescriber and destination

@@ -13,7 +13,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Maps an associated external study to and from a FHIR R4 ImagingStudy (RAD-01).
+ * Maps an associated external study to and from a FHIR R4 ImagingStudy.
  *
  * <p>The Study Instance UID and accession are typed identifiers, the modality is a DICOM
  * coding and the imaging order is a {@code ServiceRequest} reference. Import rejects a

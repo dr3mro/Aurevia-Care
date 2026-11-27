@@ -18,18 +18,32 @@ import tools.jackson.databind.node.ObjectNode;
  * same JSON primitives as the exchange FHIR mappers. The immutable event
  * identity, sender, aggregate, revision, identifier and payload are preserved
  * in extensions so a fixture replay through this adapter reaches the same
- * ledger outcome as a direct apply (ARC-05, XCH-04).</p>
+ * ledger outcome as a direct apply.</p>
  */
 public final class FhirPartnerEventAdapter implements PartnerEventAdapter {
 
     private static final String PROFILE = "synthetic-partner-conformance-r4";
     private static final String RESOURCE_TYPE = "Observation";
 
+    /**
+     * Identify this adapter by its wire format.
+     *
+     * @return the stable adapter name {@code fhir}
+     */
     @Override
     public String name() {
         return "fhir";
     }
 
+    /**
+     * Encode an event as a conformance FHIR Observation.
+     *
+     * <p>The immutable identity and every ordering field are carried as extensions so a
+     * round trip reaches the same ledger outcome as a direct apply.</p>
+     *
+     * @param event event to encode
+     * @return FHIR R4 JSON text carrying all event fields
+     */
     @Override
     public String encode(PartnerEvent event) {
         ObjectNode resource = FhirSupport.JSON.objectNode();
@@ -49,6 +63,13 @@ public final class FhirPartnerEventAdapter implements PartnerEventAdapter {
         return resource.toString();
     }
 
+    /**
+     * Decode a conformance FHIR Observation into an event.
+     *
+     * @param wire FHIR R4 JSON text previously produced by {@code encode}
+     * @return the reconstructed immutable event
+     * @throws IllegalArgumentException when the wire payload is not a conformance Observation
+     */
     @Override
     public PartnerEvent decode(String wire) {
         JsonNode resource = new ObjectMapper().readTree(wire);

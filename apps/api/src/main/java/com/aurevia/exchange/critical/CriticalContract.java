@@ -6,7 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Domain contract for the XCH-05 critical-result workflow.
+ * Domain contract for the critical-result workflow.
  *
  * <p>The types here carry no persistence or transport concerns. Each clinically
  * significant fact (verification, assignment, escalation attempt, read-back,
@@ -37,6 +37,7 @@ public final class CriticalContract {
         /**
          * Create a state with its stable wire key.
          *
+         * @param wire stable lowercase key persisted with the result
          */
         State(String wire) {
             this.wire = wire;
@@ -55,6 +56,7 @@ public final class CriticalContract {
         /**
          * Parse a stored state key.
          *
+         * @param value stored state key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -70,6 +72,11 @@ public final class CriticalContract {
         /**
          * Decide whether a transition is permitted.
          *
+         *
+         * <p>This describes the legal forward edges; the workflow service checks an
+         * exact current state instead of consulting this predicate.</p>
+         *
+         * @param next candidate state
          * @return {@code true} for the three forward transitions or a no-op
          */
         public boolean canTransitionTo(State next) {
@@ -111,6 +118,7 @@ public final class CriticalContract {
         /**
          * Create an event type with its stable wire key.
          *
+         * @param wire stable lowercase key persisted with the fact
          */
         EventType(String wire) {
             this.wire = wire;
@@ -129,6 +137,7 @@ public final class CriticalContract {
         /**
          * Parse a stored event key.
          *
+         * @param value stored event key
          * @return the matching event type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -143,10 +152,9 @@ public final class CriticalContract {
     }
 
     /**
-     * Current, mutable projection of one critical result.
+     * Immutable projection of one critical result.
      *
-     * @return the immutable value
-     */
+         */
     public record Result(String id, int version, String patientId, String sourceSystem, String sourceId,
                          String orderReference, String accession, String resultSummary,
                          String observedValue, String unit, boolean readBackRequired, State state,
@@ -158,8 +166,7 @@ public final class CriticalContract {
     /**
      * One immutable fact in a critical-result trail.
      *
-     * @return the immutable value
-     */
+         */
     public record Event(String id, String criticalResultId, int criticalResultVersion,
                         EventType eventType, String actorId, String recipient, String channel,
                         String outcome, String detail, Instant occurredAt) {
@@ -168,12 +175,12 @@ public final class CriticalContract {
     /**
      * One result together with its complete event trail.
      *
-     * @return the immutable value
-     */
+         */
     public record View(Result result, List<Event> events) {
         /**
-         * Defensively copy the event trail.
+         * Defensively copy the event trail so a caller cannot mutate the view.
          *
+         * @param events caller-supplied facts, copied before storage
          */
         public View {
             events = List.copyOf(events);
@@ -183,12 +190,14 @@ public final class CriticalContract {
     /**
      * Operational report of overdue alerts, roster gaps and failed notifications.
      *
-     * @return the immutable value
-     */
+         */
     public record Report(List<Result> overdue, List<Event> rosterGaps, List<Event> failedNotifications) {
         /**
          * Defensively copy every reported list.
          *
+         * @param overdue overdue alerts to copy
+         * @param rosterGaps roster-gap facts to copy
+         * @param failedNotifications failed-notification facts to copy
          */
         public Report {
             overdue = List.copyOf(overdue);
@@ -209,9 +218,7 @@ public final class CriticalContract {
      * @param observedValue    observed value
      * @param unit             observation unit
      * @param readBackRequired whether a read-back is required
-     * @return the registration command
-     * @return the immutable value
-     */
+         */
     public record RegisterRequest(String patientId, String sourceSystem, String sourceId,
                                   String orderReference, String accession, String resultSummary,
                                   String observedValue, String unit, Boolean readBackRequired) {
@@ -222,9 +229,7 @@ public final class CriticalContract {
      *
      * @param ownerSubject responsible clinician subject
      * @param dueAt        ISO-8601 acknowledgment deadline
-     * @return the assignment command
-     * @return the immutable value
-     */
+         */
     public record AssignRequest(String ownerSubject, String dueAt) {
     }
 
@@ -232,9 +237,7 @@ public final class CriticalContract {
      * Record the verifier's confirmation.
      *
      * @param note non-sensitive verification note
-     * @return the verification command
-     * @return the immutable value
-     */
+         */
     public record VerifyRequest(String note) {
     }
 
@@ -246,9 +249,7 @@ public final class CriticalContract {
      * @param outcome    {@code delivered} or {@code failed}
      * @param detail     non-sensitive detail
      * @param systemDown whether the primary channel is unavailable
-     * @return the escalation command
-     * @return the immutable value
-     */
+         */
     public record EscalateRequest(String channel, String recipient, String outcome,
                                   String detail, Boolean systemDown) {
     }
@@ -257,9 +258,7 @@ public final class CriticalContract {
      * Record a verbatim read-back of the critical value.
      *
      * @param repeatedValue value repeated by the receiver
-     * @return the read-back command
-     * @return the immutable value
-     */
+         */
     public record ReadBackRequest(String repeatedValue) {
     }
 
@@ -267,9 +266,7 @@ public final class CriticalContract {
      * Acknowledge the alert as an authorized clinician.
      *
      * @param note non-sensitive acknowledgment note
-     * @return the acknowledgment command
-     * @return the immutable value
-     */
+         */
     public record AcknowledgeRequest(String note) {
     }
 
@@ -277,9 +274,7 @@ public final class CriticalContract {
      * Record clinical follow-up and close the alert.
      *
      * @param note non-sensitive follow-up note
-     * @return the follow-up command
-     * @return the immutable value
-     */
+         */
     public record FollowUpRequest(String note) {
     }
 
@@ -287,9 +282,7 @@ public final class CriticalContract {
      * Record that the patient release was issued. This never acknowledges the alert.
      *
      * @param note non-sensitive release note
-     * @return the release command
-     * @return the immutable value
-     */
+         */
     public record ReleaseRequest(String note) {
     }
 }

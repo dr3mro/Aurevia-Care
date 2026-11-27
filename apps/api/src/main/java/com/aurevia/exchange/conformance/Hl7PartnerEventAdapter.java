@@ -12,7 +12,7 @@ import com.aurevia.exchange.hl7.Hl7Escape;
  * HL7 delimiters and the same escape codec as the exchange HL7 adapters. Every
  * event field, including the immutable identifier and per-aggregate revision,
  * survives the wire round trip so a replay through this adapter produces the
- * same ledger outcome as a direct apply (ARC-05, XCH-04).</p>
+ * same ledger outcome as a direct apply.</p>
  */
 public final class Hl7PartnerEventAdapter implements PartnerEventAdapter {
 
@@ -20,11 +20,25 @@ public final class Hl7PartnerEventAdapter implements PartnerEventAdapter {
     private static final String FIELD = String.valueOf(DELIMITERS.field());
     private static final Pattern FIELD_PATTERN = Pattern.compile(FIELD, Pattern.LITERAL);
 
+    /**
+     * Identify this adapter by its wire format.
+     *
+     * @return the stable adapter name {@code hl7}
+     */
     @Override
     public String name() {
         return "hl7";
     }
 
+    /**
+     * Encode an event in a custom HL7 v2 ZEV segment.
+     *
+     * <p>Values are escaped with the shared HL7 codec so a separator inside a field
+     * cannot become wire structure and change the replayed identity.</p>
+     *
+     * @param event event to encode
+     * @return HL7 v2 text carrying all event fields
+     */
     @Override
     public String encode(PartnerEvent event) {
         StringBuilder wire = new StringBuilder();
@@ -42,6 +56,13 @@ public final class Hl7PartnerEventAdapter implements PartnerEventAdapter {
         return wire.toString();
     }
 
+    /**
+     * Decode an HL7 v2 ZEV segment into an event.
+     *
+     * @param wire HL7 v2 text previously produced by {@code encode}
+     * @return the reconstructed immutable event
+     * @throws IllegalArgumentException when the ZEV segment is missing
+     */
     @Override
     public PartnerEvent decode(String wire) {
         String segment = null;

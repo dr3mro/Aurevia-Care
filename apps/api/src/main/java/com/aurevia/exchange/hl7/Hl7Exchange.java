@@ -12,9 +12,9 @@ import com.aurevia.exchange.result.ResultCommands.ImportResultRequest;
  * message to an internal command, returning the matching acknowledgment.
  *
  * <p>No command is produced for a malformed, partial or duplicate message; the
- * acknowledgment carries the reason instead. A message only consumes its
- * control identifier after a command has been produced, so a corrected retry
- * of a rejected message is accepted (XCH-01, XCH-04, ARC-05).</p>
+ * acknowledgment carries the reason instead. The control identifier is reserved
+ * before mapping and released when mapping fails, so a corrected retry of a
+ * rejected message is accepted.</p>
  *
  * <p>The duplicate ledger is process-local in this bounded slice; durable
  * replay protection belongs to the exchange store and is outside this scope.</p>
@@ -74,6 +74,8 @@ public final class Hl7Exchange {
         if (controlId.isEmpty()) {
             return rejected(Hl7Ack.ERROR, "MISSING_CONTROL_ID", "");
         }
+        // Reserve the id before mapping: a rejected message must not poison a
+        // corrected retry of the same control id (released below on failure).
         if (!processedControlIds.add(controlId)) {
             return rejected(Hl7Ack.REJECT, "DUPLICATE_MESSAGE", controlId);
         }
@@ -87,6 +89,7 @@ public final class Hl7Exchange {
                 result = Hl7Mapper.mapResult(parsed);
             }
         } catch (Hl7ParseException exception) {
+            // Mapping failed after reservation; free the id for a corrected retry.
             processedControlIds.remove(controlId);
             return rejected(Hl7Ack.ERROR, exception.reason(), controlId);
         }

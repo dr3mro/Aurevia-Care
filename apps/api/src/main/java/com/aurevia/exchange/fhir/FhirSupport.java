@@ -10,7 +10,7 @@ import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Shared FHIR R4 JSON primitives for the exchange and laboratory mappers (XCH-01, XCH-04, LAB-01, LAB-02).
+ * Shared FHIR R4 JSON primitives for the exchange and laboratory mappers.
  *
  * <p>All identifier checks live here so a mapper cannot quietly accept a resource without a
  * patient, accession or order identifier. A missing identifier is rejected with a stable
@@ -33,25 +33,25 @@ public final class FhirSupport {
     /** UCUM system used by FHIR Quantity values. */
     public static final String UCUM_SYSTEM = "http://unitsofmeasure.org";
 
-    /** Synthetic identifier system for the DICOM Study Instance UID (RAD-01). */
+    /** Synthetic identifier system for the DICOM Study Instance UID. */
     public static final String STUDY_UID_IDENTIFIER_SYSTEM = "urn:aurevia:fhir:identifier:study-instance-uid";
 
-    /** Synthetic identifier system for an issuer-scoped imaging accession (RAD-01). */
+    /** Synthetic identifier system for an issuer-scoped imaging accession. */
     public static final String ACCESSION_IDENTIFIER_SYSTEM = "urn:aurevia:fhir:identifier:accession";
 
-    /** Synthetic identifier system for a retained document identifier (CLN-07). */
+    /** Synthetic identifier system for a retained document identifier. */
     public static final String DOCUMENT_IDENTIFIER_SYSTEM = "urn:aurevia:fhir:identifier:document";
 
-    /** Synthetic code system for DICOM imaging modality codes (RAD-01). */
+    /** Synthetic code system for DICOM imaging modality codes. */
     public static final String DICOM_MODALITY_SYSTEM = "urn:aurevia:fhir:dicom:modality";
 
-    /** Extension carrying the recorded void reason of a document (CLN-07). */
+    /** Extension carrying the recorded void reason of a document. */
     public static final String VOID_REASON_EXTENSION = "urn:aurevia:fhir:void-reason";
 
-    /** Extension carrying the instant a document was voided (CLN-07). */
+    /** Extension carrying the instant a document was voided. */
     public static final String VOIDED_AT_EXTENSION = "urn:aurevia:fhir:voided-at";
 
-    /** Extension carrying the intended pharmacy destination of a medication request (RX-01). */
+    /** Extension carrying the intended pharmacy destination of a medication request. */
     public static final String DESTINATION_EXTENSION = "urn:aurevia:fhir:medication-destination";
 
     private FhirSupport() {
@@ -160,11 +160,13 @@ public final class FhirSupport {
      * @param resource  FHIR resource holding an {@code identifier} array
      * @param system    identifier system to match exactly
      * @param errorCode stable error code for the enclosing resource
-     * @return the non-blank value of the identifier with that system
-     * @throws ApiException when no identifier with the system carries a non-blank value
+     * @return the value of the first identifier with that system
+     * @throws ApiException when the first identifier with that system is missing or blank
      */
     public static String identifierValue(JsonNode resource, String system, String errorCode) {
         String value = "";
+        // Match on the declared system: FHIR identifier arrays are not ordered by
+        // business meaning, and position cannot identify a safety-relevant id.
         for (JsonNode identifier : resource.path("identifier")) {
             if (system.equals(identifier.path("system").asString())) {
                 value = identifier.path("value").asString();
