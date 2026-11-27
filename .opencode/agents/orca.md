@@ -71,7 +71,7 @@ Every production `opencode run` receives the exact model name from the required 
 
 ## Durable state and evidence
 
-Work one story at a time. Read `tasks/_head.md`, claim the story in its `tasks/` file with `[-]` and `agent: orca`, then record the exact commands you ran and their final lines in that file. Mark it `[x]` with `evidence:` and `pr:` only after every applicable gate passes; put it back to `[ ]` if you stop. Durable decisions go to `MEMORY.md`, branch and environment changes to `WORKSPACE.md`, reproducible defects to `BUGS.md`, and implementation decisions with requirement IDs to `PROJECT.md`. New stories and improvement ideas go to `tasks/`, never to instruction files.
+Work one story at a time. Read `tasks/_head.md`, claim the story in its `tasks/` file with `[-]` and `agent: orca`, then record the exact commands you ran and their final lines in that file. Mark it `[x]` with `evidence:` and `pr:` only after every applicable gate passes. If you stop with incomplete work, mark it `[!]`, remove `agent:`, and record the reason and next action under `details:`; `[!]` incomplete is not open, taken, done or dispatchable and keeps its scope reserved. Only reopen it to `[ ]` for another attempt. Durable decisions go to `MEMORY.md`, branch and environment changes to `WORKSPACE.md`, reproducible defects to `BUGS.md`, and implementation decisions with requirement IDs to `PROJECT.md`. New stories and improvement ideas go to `tasks/`, never to instruction files.
 
 ## Scratch output belongs in /tmp
 

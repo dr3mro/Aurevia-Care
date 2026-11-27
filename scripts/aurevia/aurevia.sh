@@ -31,7 +31,7 @@
 #
 # Swarm
 #   monitor [args]     Open the swarm dashboard (scripts/monitor.sh).
-#   todo               Count open, taken and done tasks in TODO.md.
+#   todo               Count open, taken, incomplete and done tasks in tasks/.
 #
 # Tool
 #   doctor             Check that the required tools are installed.
@@ -321,12 +321,13 @@ cmd_monitor() { need_repo; run bash "$ROOT/scripts/monitor.sh" "$@"; }
 
 cmd_todo() {
   need_repo
-  local open taken done_
+  local open taken incomplete done_
   # Tasks live one per file in tasks/; a single TODO.md no longer exists.
   open=$({ grep -h '^- \[ \]' "$ROOT"/tasks/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
   taken=$({ grep -h '^- \[-\]' "$ROOT"/tasks/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+  incomplete=$({ grep -h '^- \[!\]' "$ROOT"/tasks/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
   done_=$({ grep -h '^- \[x\]' "$ROOT"/tasks/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
-  printf 'open %s · taken %s · done %s\n' "$open" "$taken" "$done_"
+  printf 'open %s · taken %s · incomplete %s · done %s\n' "$open" "$taken" "$incomplete" "$done_"
 }
 
 cmd_doctor() {

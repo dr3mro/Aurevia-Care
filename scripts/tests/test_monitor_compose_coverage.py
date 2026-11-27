@@ -91,6 +91,7 @@ TODO = "\n".join([
     "  - agent: swarm-1",
     "[-] TAKEN-002 · Another in progress",
     "  - agent: swarm-2",
+    "- [!] INCOMPLETE-001 · Waiting for owner input",
     "",
 ])
 
@@ -131,7 +132,7 @@ class ComposeTests(unittest.TestCase):
             self.assertIn(label.upper(), joined)
         panel_text = titles(left) + titles(right)
         for title in ("In Progress", "Recent Runs", "Failed 24h", "Swarm Tasks Taken",
-                      "Next Up", "Merged PRs 24h", "Open PRs", "Open Issues"):
+                      "Swarm Tasks Incomplete", "Next Up", "Merged PRs 24h", "Open PRs", "Open Issues"):
             self.assertIn(title, panel_text)
         self.assertIn("(none)", panel_text)
 
@@ -168,6 +169,8 @@ class ComposeTests(unittest.TestCase):
         self.assertIn("1 failed", titles(top))
         joined = titles(top) + titles(left) + titles(right)
         self.assertIn("TASK-001", joined)
+        self.assertIn("INCOMPLETE-001", joined)
+        self.assertIn("Swarm Tasks Incomplete", joined)
         self.assertIn("Bump", joined)
         self.assertIn("needs-human", joined)
         self.assertIn("needs-fix", joined)
@@ -176,6 +179,20 @@ class ComposeTests(unittest.TestCase):
         self.assertIn("*", titles(top))  # busy clock marker
 
     # -- narrow / short screens: card dropping, flat meters, clipped columns -------
+    def test_incomplete_tasks_are_counted_separately_and_not_offered_as_next_up(self):
+        todo = ("- [x] DONE-1 · Finished\n"
+                "- [!] INCOMPLETE-1 · Waiting\n"
+                "- [ ] OPEN-1 · Ready\n")
+        top, left, right, _ = self.compose(data(todo=todo), W=180, H=None)
+        pipeline = titles(top)
+        self.assertIn("1/3 done", pipeline)
+        self.assertIn("1 incomplete", pipeline)
+        self.assertIn("INCOMPLETE-1", titles(right))
+        right_text = titles(right)
+        next_up = right_text.split("Next Up", 1)[1]
+        self.assertNotIn("INCOMPLETE-1", next_up)
+        self.assertIn("OPEN-1", next_up)
+
     def test_short_screen_uses_narrow_cards_and_flat_meters(self):
         runs = [run(1, status="in_progress", conclusion=None, workflow="Agent swarm"),
                 run(2, conclusion="success"), run(3, conclusion="failure", updated=10)]
@@ -294,6 +311,24 @@ class ComposeTests(unittest.TestCase):
         joined = titles(top) + titles(left) + titles(right)
         self.assertIn("…", joined)
         self.assertIn("loading", joined + titles(top))
+
+    def test_each_task_and_issue_panel_tracks_its_own_loading_source(self):
+        cases = (
+            ("Swarm Tasks Incomplete", {"todo"}),
+            ("Next Up", {"todo"}),
+            ("Open PRs", {"prs"}),
+            ("Open Issues", {"issues"}),
+        )
+        for title, loading in cases:
+            with self.subTest(title=title):
+                _, _, right, _ = self.compose(data(todo=TODO), W=200, H=None, loading=loading)
+                text = titles(right)
+                panel = text.split(title, 1)[1].split("╭", 1)[0]
+                self.assertIn("loading…", panel)
+        _, _, right, _ = self.compose(data(issues=[issue(7)]), W=200, H=None)
+        panel = titles(right).split("Open Issues", 1)[1].split("╭", 1)[0]
+        self.assertIn("Issue 7", panel)
+        self.assertNotIn("loading…", panel)
 
     # -- task loading with no runs mirrors the todo-only placeholder --------------
     def test_todo_only_loading_meter(self):

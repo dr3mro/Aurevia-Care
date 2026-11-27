@@ -111,8 +111,8 @@ TRACKERS = [
     ".opencode/config/PROJECT.md",
     "docs/swarm/*",
 ]
-# TODO.md marks: [ ] open, [-] taken by an agent, [x] done.
-BOXES = {"todo": " ", "taken": "-", "done": "x"}
+# Task marks: [ ] open, [-] taken by an agent, [!] incomplete, [x] done.
+BOXES = {"todo": " ", "taken": "-", "incomplete": "!", "done": "x"}
 STATUS = {box: name for name, box in BOXES.items()}
 # Read-only Git commands must not refresh or write the index opportunistically.
 READ_ONLY_GIT_COMMANDS = frozenset(
@@ -134,8 +134,19 @@ READ_ONLY_GIT_COMMANDS = frozenset(
         "remote",
     }
 )
-ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · (.*)$")
+ENTRY = re.compile(r"^- \[([ x!-])\] (\S+) · (.*)$")
 FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
+
+
+def details_state(line, in_details):
+    """Return whether an entry line is inside its four-space details body.
+
+    Only a two-space ``details:`` field enters the body. Every other two-space
+    field, including an unknown field, ends it; prose and blank lines retain the
+    current state.
+    """
+    field = FIELD.match(line)
+    return field.group(1) == "details" if field else in_details
 
 
 # Tasks live in tasks/<sequence>-<ID>.md. A caller may pass an explicit path for a
@@ -1375,7 +1386,7 @@ def new_york_hour(now=None):
 
 
 def issue_tasks(text):
-    """Open and done ISS-<n> tasks of TODO.md by issue number."""
+    """Open, taken, incomplete and done ISS-<n> tasks of TODO.md by issue number."""
     return {
         issue_number_of(t["id"]): t
         for t in parse_tasks(text)
@@ -1624,7 +1635,8 @@ def monitor_select(mode, text, out_dir, now=None):
 
     Returns {"triage": [n], "prs": [(n, pr)], "nudge": [n], "reset": [(n, task_id)],
     "close": [n], "exhausted": [n]}. A task whose attempts are used up gets them back once
-    per requeue (daily only), so a stuck task is retried without a person."""
+    per requeue (daily only), so a stuck task is retried without a person. Incomplete tasks
+    stay held: they are never nudged, reset, closed or sent to a fix worker."""
     if not swarm_enabled():
         return {
             "triage": [],
@@ -1635,7 +1647,9 @@ def monitor_select(mode, text, out_dir, now=None):
             "exhausted": [],
         }
     _COMMENTS.clear()  # one fetch per issue per run, never stale across runs
-    by_id = {t["id"]: t for t in parse_tasks(text)}
+    tasks = parse_tasks(text)
+    by_id = task_lookup(text)
+    canonical = {task["id"]: task for task in tasks}
     open_tasks = {n: t for n, t in issue_tasks(text).items() if t["status"] != "done"}
     try:
         live = set(live_workers())
@@ -1682,11 +1696,17 @@ def monitor_select(mode, text, out_dir, now=None):
         ) or ever_assigned(n):
             continue
         pr, task_id = latest_pr_marker(issue), marker_of(issue, "task")
-        task = by_id.get(f"ISS-{n}") or by_id.get(task_id)
-        if (task_id and task_id in live) or f"ISS-{n}" in live:
+        task = canonical.get(f"ISS-{n}") or by_id.get(task_id)
+        if (
+            (task_id and task_id in live)
+            or f"ISS-{n}" in live
+            or (task and task["id"] in live)
+        ):
             continue
         if task and task["status"] == "done":
             chosen["close"].append(n)
+        elif task and task["status"] == "incomplete":
+            continue
         elif requeue_count(n) >= MAX_REQUEUES and mode == "daily":
             chosen["exhausted"].append(n)
         elif pr.isdigit():
@@ -1776,6 +1796,10 @@ def stamp_now():
 
 def reset_attempts(text, task_id):
     """Set one entry's attempts field to 0. Its details and every other entry are untouched."""
+    task = task_lookup(text).get(task_id)
+    if task is None:
+        return text
+    task_id = task["id"]
     lines = text.splitlines()
     start = next(
         (
@@ -1785,15 +1809,13 @@ def reset_attempts(text, task_id):
         ),
         None,
     )
-    if start is None:
-        return text
+    in_details = False
     for i in range(start + 1, len(lines)):
         if not lines[i].startswith(" ") and lines[i]:
             break
         field = FIELD.match(lines[i])
-        if field and field.group(1) == "details":
-            break
-        if field and field.group(1) == "attempts":
+        in_details = details_state(lines[i], in_details)
+        if field and not in_details and field.group(1) == "attempts":
             lines[i] = "  - attempts: 0"
     return "\n".join(lines) + "\n"
 
@@ -2331,7 +2353,7 @@ def split_list(value):
 def parse_tasks(text):
     """Read the task entries of TODO.md.
 
-    An entry is `- [ ] ID · title` (`[-]` taken, `[x]` done) followed by indented
+    An entry is `- [ ] ID · title` (`[-]` taken, `[!]` incomplete, `[x]` done) followed by indented
     `  - key: value` fields and an optional indented `details:` body."""
     tasks, current, body, in_details = [], None, [], False
 
@@ -2370,9 +2392,9 @@ def parse_tasks(text):
             current = None
         elif current is not None:
             field = FIELD.match(line)
-            if field and not in_details:
+            in_details = details_state(line, in_details)
+            if field:
                 if field.group(1) == "details":
-                    in_details = True
                     if field.group(2):
                         body.append(field.group(2))
                 elif field.group(1) in current:
@@ -2381,6 +2403,33 @@ def parse_tasks(text):
                 body.append(line[4:] if line.startswith("    ") else line.strip())
     close()
     return tasks
+
+
+def task_lookup(text):
+    """Map canonical task IDs and unambiguous aliases to task records.
+
+    Canonical IDs always win over aliases, regardless of file order. Missing IDs
+    stay absent; duplicate canonical IDs or aliases claimed by multiple tasks
+    fail closed with :class:`ReconciliationError` instead of selecting arbitrary
+    work. Four-space detail-body lines never become fields.
+    """
+    tasks = parse_tasks(text)
+    by_id = {}
+    for task in tasks:
+        task_id = task["id"]
+        if task_id in by_id:
+            raise ReconciliationError(f"task {task_id} appears more than once")
+        by_id[task_id] = task
+    aliases = {}
+    for task in tasks:
+        for alias in task["aliases"]:
+            if alias in by_id:
+                continue
+            if alias in aliases and aliases[alias] is not task:
+                raise ReconciliationError(f"task alias {alias} is ambiguous")
+            aliases[alias] = task
+    by_id.update(aliases)
+    return by_id
 
 
 ARCHIVE = ""  # Finished tasks live in tasks/done; no separate archive file remains.
@@ -2393,9 +2442,8 @@ def archived_done_ids(path=ARCHIVE):
         text += "\n" + store().archived()
     return {
         name
-        for t in parse_tasks(text)
-        if t["status"] == "done"
-        for name in (t["id"], *t["aliases"])
+        for name, task in task_lookup(text).items()
+        if task["status"] == "done"
     }
 
 
@@ -2403,7 +2451,7 @@ def archive_done(text):
     """Split finished entries out of TODO.md text: returns `(remaining_text, archived_blocks)`.
 
     An entry is its `- [x]` line plus the indented lines and blank lines up to the next entry or
-    heading. Open and taken entries, headings and prose stay where they are."""
+    heading. Open, taken and incomplete entries, headings and prose stay where they are."""
     keep, moved, block, lines = [], [], None, text.splitlines(keepends=True)
     for line in lines:
         entry = ENTRY.match(line.rstrip("\n"))
@@ -2918,14 +2966,16 @@ def strategy_publish(findings_path, path=""):
 
 
 def task_field(task_id, field, path=""):
-    """Title or full task text of one TODO.md entry; empty when it is not there."""
+    """Title, status or full task text of one entry; empty when it is not there."""
     try:
-        tasks = parse_tasks(todo_read(path))
+        tasks = todo_read(path)
     except OSError:
         return ""
-    task = next((t for t in tasks if t["id"] == task_id), None)
+    task = task_lookup(tasks).get(task_id)
     if task is None:
         return ""
+    if field == "status":
+        return task["status"]
     return task["task"] if field == "title" else task_text(task)
 
 
@@ -2935,7 +2985,15 @@ def attempts_of(task):
 
 
 def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
-    """Change one entry's mark and its agent, pr and evidence fields. Other entries are untouched."""
+    """Change one entry's mark and its agent, pr and evidence fields. Other entries are untouched.
+
+    Incomplete work keeps its details and attempt history but drops stale completion evidence;
+    an explicit retry returns to todo through the existing trusted release paths.
+    """
+    task = task_lookup(text).get(task_id)
+    if task is None:
+        return text
+    task_id = task["id"]
     lines = text.splitlines()
     start = next(
         (
@@ -2945,8 +3003,6 @@ def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
         ),
         None,
     )
-    if start is None:
-        return text
     lines[start] = (
         f"- [{BOXES[status]}] {task_id} · {ENTRY.match(lines[start]).group(3)}"
     )
@@ -2957,17 +3013,21 @@ def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
         end -= 1
     drop = (
         {"agent", "pr"}
-        | ({"evidence"} if evidence else set())
+        | ({"evidence"} if evidence or status == "incomplete" else set())
         | ({"attempts"} if status == "taken" else set())
     )
-    kept, in_details, tries = [], False, 0
+    kept, in_details, tries, dropping = [], False, 0, False
     for line in lines[start + 1 : end]:
         field = FIELD.match(line)
-        if field and field.group(1) == "details":
-            in_details = True
-        if field and not in_details and field.group(1) == "attempts":
-            tries = attempts_of({"attempts": field.group(2)})
-        if field and not in_details and field.group(1) in drop:
+        in_details = details_state(line, in_details)
+        if field:
+            dropping = not in_details and field.group(1) in drop
+            if not in_details and field.group(1) == "attempts":
+                tries = attempts_of({"attempts": field.group(2)})
+            if dropping:
+                continue
+        elif dropping:
+            # Indented continuations and blank lines belong to the removed field.
             continue
         kept.append(line)
     fresh = [
@@ -2975,7 +3035,7 @@ def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
         for k, v in (
             ("agent", agent if status == "taken" else ""),
             ("pr", pr if status == "done" else ""),
-            ("evidence", evidence),
+            ("evidence", evidence if status != "incomplete" else ""),
             ("attempts", tries + 1 if status == "taken" else 0),
         )
         if v
@@ -3005,8 +3065,15 @@ def reclaim(text, prs, live=()):
     A claim with only a merged pull request was merged by a person, so it is done;
     one with no pull request, or only closed ones, goes back to open. A claim whose
     worker is still running (`live`: task ids) has no pull request yet and must
-    stay: waves overlap, and releasing it started a second worker on the same task."""
-    live = set(live)
+    stay: waves overlap, and releasing it started a second worker on the same task.
+    Incomplete entries are held work, not stale claims, and remain untouched."""
+    lookup = task_lookup(text)
+
+    def canonical_id(task_id):
+        task = lookup.get(task_id)
+        return task["id"] if task else task_id
+
+    live_ids = {canonical_id(task_id) for task_id in live}
     for task in parse_tasks(text):
         # `opencode-` claims come from the older dispatch system; with no pull request
         # behind them they would hold their scope (and block repairs) forever.
@@ -3014,9 +3081,9 @@ def reclaim(text, prs, live=()):
             ("swarm", "opencode")
         ):
             continue
-        if live & {task["id"], *task["aliases"]}:
+        if task["id"] in live_ids:
             continue
-        mine = [p for p in prs if pr_task_id(p) in {task["id"], *task["aliases"]}]
+        mine = [p for p in prs if canonical_id(pr_task_id(p)) == task["id"]]
         # An open PR still in progress keeps the claim. A needs-human PR is a
         # failure the swarm gave up on: return the task to the open pool.
         if any(
@@ -3033,11 +3100,17 @@ def reclaim(text, prs, live=()):
 
 
 def release_claim(task_id, reason):
-    """Return one swarm claim to the open pool. Trusted caller only."""
-    return update_todo(
-        lambda text: set_task_status(text, task_id, "todo"),
-        f"Release {task_id}: {reason}",
-    )
+    """Return one taken swarm claim to the open pool. Trusted caller only.
+
+    Open, done, incomplete and missing entries are never reopened by cleanup.
+    """
+    def edit(text):
+        task = task_lookup(text).get(task_id)
+        if task is None or task["status"] != "taken":
+            return text
+        return set_task_status(text, task["id"], "todo")
+
+    return update_todo(edit, f"Release {task_id}: {reason}")
 
 
 def stale_retry(task_id):
@@ -3048,7 +3121,11 @@ def stale_retry(task_id):
     planner can offer the task again to a worker that merges main first.
     """
     def edit(text):
-        return set_task_status(reset_attempts(text, task_id), task_id, "todo")
+        task = task_lookup(text).get(task_id)
+        if task is None or task["status"] != "taken":
+            return text
+        canonical = task["id"]
+        return set_task_status(reset_attempts(text, canonical), canonical, "todo")
     return update_todo(edit, f"Retry {task_id}: stale candidate")
 
 
@@ -3087,20 +3164,39 @@ def update_todo(edit, message, path="", attempts=8):
 def claim_open(text, claims, force=False):
     """Mark the still-open tasks in `claims` ({id: agent}) taken.
 
-    Returns `(new_text, granted_ids)`. A task that is already taken or done in
+    Returns `(new_text, granted_ids)`. A task that is already taken, incomplete or done in
     `text` is left alone and not granted: two plan jobs that read TODO.md a few
     seconds apart (two pushes) must not both start a worker for it. ``force``
     is the operator's safety override: it re-grants a stale taken claim so the
     wave is not silently emptied by a claim another run left behind.
     """
-    status = {t["id"]: t["status"] for t in parse_tasks(text)}
+    lookup = task_lookup(text)
     granted = set()
     for task_id, agent in claims.items():
-        state = status.get(task_id)
-        if state == "todo" or (force and state == "taken"):
-            text = set_task_status(text, task_id, "taken", agent=agent)
-            granted.add(task_id)
+        task = lookup.get(task_id)
+        if task and (
+            task["status"] == "todo"
+            or (force and task["status"] == "taken")
+        ):
+            text = set_task_status(text, task["id"], "taken", agent=agent)
+            granted.add(task["id"])
     return text, granted
+
+
+def dispatchable_plan(include, fresh_plan, claimed=()):
+    """Keep planned jobs still eligible in the fresh plan and successfully claimed.
+
+    Stories require a successful fresh claim; fixes and other non-story kinds
+    require the same kind and id to remain in the freshly recomputed plan.
+    """
+    fresh = {(task["kind"], task["id"]): task for task in fresh_plan}
+    claimed = set(claimed)
+    return [
+        fresh[(task["kind"], task["id"])]
+        for task in include
+        if (task["kind"], task["id"]) in fresh
+        and (task["kind"] != "story" or task["id"] in claimed)
+    ]
 
 
 def prefix(pattern):
@@ -3223,10 +3319,8 @@ def archived_task_scope(task_id):
     text = ""
     if store().active():
         text += "\n" + store().archived()
-    for t in parse_tasks(text):
-        if task_id in (t["id"], *t["aliases"]):
-            return t["scope"]
-    return []
+    task = task_lookup(text).get(task_id)
+    return task["scope"] if task and task["status"] == "done" else []
 
 
 def plan_workers(
@@ -3244,13 +3338,16 @@ def plan_workers(
 ):
     """Main repairs, then fixes, then ready tasks whose scope is free.
 
-    While main is red, only repair work is eligible and unrelated scopes do not block it.
+    While main is red, only repair work is eligible. Ordinary taken scopes do not block it;
+    incomplete scopes always do.
     Repairs and fixes come first and may use every slot. Then stories by priority (high, normal,
     low; ties keep file order) fill every free slot, `story_wave` per wave. A story waits only
     when its scope overlaps a running task or a pull request in the fix loop, so no slot idles
     while a ready task exists. Low-priority backlog tasks fill spare slots.
     `focus` is a task id a person asked to launch: it is planned first, ignores the attempt limit and
     the waiting-pull-request gate, but still needs open status, a scope, met dependencies and a free scope.
+    Incomplete tasks are never planned, including as repairs or fixes, and keep their scope reserved
+    even under `force`; tracked and untracked repair arguments cannot overlap them.
     ``force`` is the workflow's scheduling override: it relaxes claim, dependency, attempt and
     waiting-wave limits so a wave can start, but never weakens a verification or merge gate."""
     if not swarm_enabled():
@@ -3266,23 +3363,37 @@ def plan_workers(
         # before anything else is planned.
         if any(t.get("status") == "taken" for t in tasks) or (open_prs or []):
             return []
-    by_id = {t["id"]: t for t in tasks}
-    for t in tasks:
-        for alias in t["aliases"]:
-            by_id.setdefault(alias, t)
-    # Scopes of tasks other agents already took stay off limits.
+    by_id = task_lookup(text)
+    focus_ids = {
+        by_id[item]["id"]
+        for item in focus_ids
+        if item in by_id
+    }
+    if repair and by_id.get(repair["id"], {}).get("status") == "incomplete":
+        repair = None
+    incomplete_busy = [
+        t["scope"]
+        for t in tasks
+        if t["status"] == "incomplete"
+    ]
+    repair_record = by_id.get(repair["id"]) if repair else None
+    if repair:
+        repair_scope = repair_record["scope"] if repair_record else ["*"]
+        if any(overlaps(repair_scope, scope) for scope in incomplete_busy):
+            repair = None
     plan = (
         [repair]
         if repair and (not red or not other_pipeline_repair(repair["title"]))
         else []
     )
+    # Ordinary taken scopes yield to force; deliberate incomplete scopes do not.
     busy = [
         t["scope"]
         for t in tasks
         if not force
         and t["status"] == "taken"
         and (not red or main_repair_id(t["id"], t["task"]))
-    ]
+    ] + incomplete_busy
     # The safety override ignores live claims so a stale claim cannot keep
     # the wave at zero workers.
     assigned = set() if force else set(live)
@@ -3327,7 +3438,9 @@ def plan_workers(
             and "needs-human" not in label_names(pr)
             and not pr["isCrossRepository"]
             and task
+            and task.get("status") != "incomplete"
             and task["id"] not in assigned
+            and not any(overlaps(task["scope"], scope) for scope in incomplete_busy)
             and (force or not any(overlaps(task["scope"], scope) for scope in fix_busy))
         ):
             assigned.add(task["id"])
@@ -3345,13 +3458,8 @@ def plan_workers(
                 }
             )
     in_flight = {pr_task_id(p) for p in open_prs}
-    done = {
-        name
-        for t in tasks
-        if t["status"] == "done"
-        for name in (t["id"], *t["aliases"])
-    }
-    done |= archived_done_ids()
+    done = {name for name, task in by_id.items() if task["status"] == "done"}
+    done |= archived_done_ids() - set(by_id)
     # Repairs of main come first: a red main blocks every other merge.
     for task in sorted(
         tasks,
@@ -3373,7 +3481,7 @@ def plan_workers(
             continue
         if not force and not set(task["depends"]) <= done:
             continue
-        if not force and any(overlaps(task["scope"], other) for other in busy):
+        if any(overlaps(task["scope"], other) for other in (busy if not force else incomplete_busy)):
             continue
         busy.append(task["scope"])
         plan.append(
@@ -4648,9 +4756,13 @@ def plan_integration(red=False):
         "number,title,labels,isCrossRepository,isDraft,headRefOid",
     )
     blocked = {"needs-fix", "needs-human", "needs-debug"}
+    tasks = task_lookup(todo_read())
     queue = []
     for p in sorted(prs, key=lambda p: p["number"]):
         number = p["number"]
+        task = tasks.get(task_id_of_title(p.get("title", "")))
+        if task and task["status"] == "incomplete":
+            continue
         if red and not main_repair_id(
             p.get("title", "").partition(":")[0], p.get("title", "")
         ):
@@ -6081,10 +6193,12 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
         raise ReconciliationError(
             "pull request no longer matches the task being completed"
         )
-    tasks = [t for t in parse_tasks(todo_read()) if t["id"] == task_id]
-    if len(tasks) != 1:
-        raise ReconciliationError(f"task {task_id} is missing or duplicated")
-    task = tasks[0]
+    lookup = task_lookup(todo_read())
+    task = lookup.get(task_id)
+    if task is None or task["id"] != task_id:
+        raise ReconciliationError(f"task {task_id} is missing, duplicated or ambiguous")
+    if task["status"] == "incomplete":
+        raise ReconciliationError(f"incomplete task {task_id} cannot be completed")
     prior = task.get("pr", "").strip()
     if prior and prior not in {str(pr), f"#{pr}"}:
         raise ReconciliationError(f"task {task_id} is already bound to PR {prior}")
@@ -7086,7 +7200,7 @@ def main(argv=None):
     p.add_argument("--out", default=".agent/issue-context.md")
     p = sub.add_parser("task-field")
     p.add_argument("--id", required=True)
-    p.add_argument("--field", choices=("title", "body"), required=True)
+    p.add_argument("--field", choices=("title", "body", "status"), required=True)
     p.add_argument("--file", default="")
     p = sub.add_parser("continue")
     p.add_argument("--file", default="")
@@ -7248,19 +7362,34 @@ def main(argv=None):
             # A red main still gates merges in the integrator; this override only
             # lets the planner offer ordinary work, so log it.
             print("planner: ignore-red-main override active; main was not checked")
-        include = plan_workers(
-            room,
-            worker_slots(load_slots(a.slots), busy),
-            text,
-            prs,
-            repair,
-            live,
-            story_wave=clamp_wave_workers(a.max),
-            focus=a.task,
-            red=red,
-            force=override,
-            task_count=clamp_wave_workers(a.max),
-        )
+        slot_table = load_slots(a.slots)
+        slots = worker_slots(slot_table, busy)
+
+        def plan_current(current, current_prs, current_live, refresh=False, wave_count=waves):
+            current_busy = len(current_live)
+            current_room = (
+                scheduler_room(a.capacity, current_busy, override, wave_count)
+                if refresh else room
+            )
+            current_slots = (
+                worker_slots(slot_table, current_busy)
+                if refresh else slots
+            )
+            return plan_workers(
+                current_room,
+                current_slots,
+                current,
+                current_prs,
+                repair,
+                current_live,
+                story_wave=clamp_wave_workers(a.max),
+                focus=a.task,
+                red=red,
+                force=override,
+                task_count=clamp_wave_workers(a.max),
+            )
+
+        include = plan_current(text, prs, live)
         if not include:
             # An empty wave is a normal outcome, but the old log gave no reason:
             # operators could not tell a red-main repair lock from a full pool.
@@ -7278,16 +7407,65 @@ def main(argv=None):
         claims = {
             t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"
         }
-
         granted = set()
+        fresh_plan = include
 
         def mark(current):
-            # Re-evaluated on every push retry against the newest TODO.md, so a
-            # task another plan job claimed meanwhile is not started twice.
-            current = reclaim(current, everything, live)
-            current, won = claim_open(current, claims, force=override)
+            nonlocal fresh_plan, skip_reason
+            fresh_prs = gh_json(
+                "pr",
+                "list",
+                "--state",
+                "open",
+                "--label",
+                "swarm",
+                "--limit",
+                "100",
+                "--json",
+                "number,title,headRefName,isCrossRepository,labels,comments",
+            ) or []
+            fresh_everything = gh_json(
+                "pr",
+                "list",
+                "--state",
+                "all",
+                "--label",
+                "swarm",
+                "--limit",
+                "200",
+                "--json",
+                "number,headRefName,state,labels",
+            ) or []
+            try:
+                fresh_live = live_workers()
+                fresh_admit, fresh_waves, _ = active_waves(
+                    os.environ.get("GITHUB_RUN_ID", "")
+                )
+            except CapacityUnavailable:
+                fresh_live = []
+                fresh_admit = False
+                skip_reason = "capacity_unavailable"
+            if not fresh_admit:
+                fresh_plan = []
+            else:
+                current = reclaim(current, fresh_everything, fresh_live)
+                fresh_plan = plan_current(
+                    current, fresh_prs, fresh_live, refresh=True,
+                    wave_count=fresh_waves,
+                )
+            planned_story_ids = {
+                task["id"] for task in include if task["kind"] == "story"
+            }
+            fresh_claims = {
+                task["id"]: f"swarm-{task['slot']}"
+                for task in fresh_plan
+                if task["kind"] == "story" and task["id"] in planned_story_ids
+            }
+            current, won = claim_open(current, fresh_claims, force=override)
             granted.clear()
-            granted.update(won)
+            granted.update(
+                task["id"] for task in dispatchable_plan(include, fresh_plan, won)
+            )
             return current
 
         try:
@@ -7300,7 +7478,7 @@ def main(argv=None):
             emit("count", 0)
             emit("reason", exc.reason)
             return 0
-        include = [t for t in include if t["kind"] != "story" or t["id"] in granted]
+        include = dispatchable_plan(include, fresh_plan, granted)
         if not include and not skip_reason:
             skip_reason = "claims_lost"
         note_claims(include)

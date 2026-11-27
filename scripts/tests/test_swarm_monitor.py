@@ -168,6 +168,80 @@ class SelectTests(unittest.TestCase):
         chosen, _ = select("hourly", Gh(issues=[aged(6, 90)]), used)
         self.assertEqual(chosen["reset"], [])
 
+    def test_an_incomplete_issue_task_is_not_nudged_or_reset(self):
+        text = TODO + "\n- [!] ISS-6 · Incomplete\n  - attempts: 0\n  - scope: apps/api/x\n"
+        cases = (
+            ("", {}),
+            ("<!-- swarm-pr:77 -->", {"state": "OPEN", "labels": [{"name": "needs-fix"}]}),
+        )
+        for mode in ("hourly", "daily"):
+            for body, pr_info in cases:
+                with self.subTest(mode=mode, body=body):
+                    fake = Gh(issues=[aged(6, 3000, 1500, body=body)], pr_info=pr_info)
+                    chosen, _ = select(mode, fake, text)
+                    self.assertEqual(chosen["nudge"], [])
+                    self.assertEqual(chosen["reset"], [])
+                    self.assertEqual(chosen["prs"], [])
+
+    def test_an_incomplete_task_alias_is_not_nudged_reset_or_fixed(self):
+        text = (
+            TODO
+            + "\n- [!] ORCA-INFRASTRUCTURE-REFACTOR · Incomplete parent\n"
+            + "  - aliases: 01300000-ORCA-INFRASTRUCTURE-REFACTOR\n"
+            + f"  - attempts: {swarm.MAX_ATTEMPTS}\n"
+            + "  - scope: docs/orca\n"
+        )
+        marker = "<!-- swarm-task:01300000-ORCA-INFRASTRUCTURE-REFACTOR -->"
+        cases = (
+            (marker, {}),
+            (marker + "<!-- swarm-pr:77 -->",
+             {"state": "OPEN", "labels": [{"name": "needs-fix"}]}),
+        )
+        for mode in ("hourly", "daily"):
+            for body, pr_info in cases:
+                with self.subTest(mode=mode, body=body):
+                    fake = Gh(issues=[aged(6, 3000, 1500, body=body)], pr_info=pr_info)
+                    chosen, _ = select(mode, fake, text)
+                    self.assertEqual(chosen["nudge"], [])
+                    self.assertEqual(chosen["reset"], [])
+                    self.assertEqual(chosen["prs"], [])
+
+        live_issue = aged(6, 3000, 1500, body=marker)
+        chosen, _ = select(
+            "hourly", Gh(issues=[live_issue]), text,
+            live=["ORCA-INFRASTRUCTURE-REFACTOR"],
+        )
+        self.assertEqual(chosen["nudge"], [])
+        self.assertEqual(chosen["reset"], [])
+        self.assertEqual(chosen["prs"], [])
+
+    def test_a_canonical_task_id_takes_precedence_over_another_tasks_alias(self):
+        text = (
+            "- [!] PARENT-1 · Incomplete parent\n"
+            "  - aliases: CW-001\n"
+            f"  - attempts: {swarm.MAX_ATTEMPTS}\n"
+            "  - scope: docs/orca\n"
+            "- [ ] CW-001 · Canonical open task\n"
+            "  - attempts: 0\n"
+            "  - scope: apps/api/staff\n"
+        )
+        issue = aged(6, 3000, 1500, body="<!-- swarm-task:CW-001 -->")
+        chosen, _ = select("hourly", Gh(issues=[issue]), text)
+        self.assertEqual(chosen["nudge"], [6])
+        self.assertEqual(chosen["reset"], [])
+        self.assertEqual(chosen["prs"], [])
+
+    def test_canonical_issue_task_takes_precedence_over_another_tasks_alias(self):
+        text = ("- [!] PARENT-1 · Incomplete parent\n  - aliases: ISS-6\n"
+                "  - attempts: 3\n  - scope: docs/orca\n"
+                "- [ ] ISS-6 · Canonical issue task\n  - attempts: 0\n"
+                "  - scope: apps/api/issue\n")
+        issue = aged(6, 3000, 1500)
+        chosen, _ = select("hourly", Gh(issues=[issue]), text)
+        self.assertEqual(chosen["nudge"], [6])
+        self.assertEqual(chosen["reset"], [])
+        self.assertEqual(chosen["prs"], [])
+
     def test_a_handoff_for_a_stuck_story_task_gets_its_attempts_back(self):
         used = TODO.replace(
             "  - scope: apps/api/staff",

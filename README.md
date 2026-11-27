@@ -39,7 +39,7 @@ On a clean stop (`aurevia stop`) the database is saved to `~/.local/share/aurevi
 | `aurevia check [quick\|worker\|full]` | Run the repository quality gates. |
 | `aurevia test [api\|web\|mobile]` | Run one application's tests. |
 | `aurevia monitor` | Open the swarm dashboard. |
-| `aurevia todo` | Count open, taken and done tasks. |
+| `aurevia todo` | Count open, taken, incomplete and done tasks. |
 | `aurevia doctor` | Check that the needed tools are installed. |
 | `aurevia install` / `uninstall` | Update or remove the tool. |
 

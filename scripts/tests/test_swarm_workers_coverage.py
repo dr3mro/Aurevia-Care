@@ -42,6 +42,90 @@ class WorkerCoverageTests(unittest.TestCase):
         task = swarm.parse_tasks(text)[0]
         self.assertEqual(task["details"], "Full tooling suite passes.")
 
+    def test_incomplete_tasks_parse_and_keep_details_when_marked(self):
+        text = ("- [-] CW-001 · Staff\n"
+                "  - agent: swarm-1\n"
+                "  - scope: apps/api/staff\n"
+                "  - details:\n    Waiting for owner input.\n"
+                "  - attempts: 2\n"
+                "  - evidence: stale completion evidence\n"
+                "  - pr: #7\n")
+        task = swarm.parse_tasks(text)[0]
+        self.assertEqual(task["status"], "taken")
+        self.assertEqual(task["details"], "Waiting for owner input.")
+        self.assertEqual(task["attempts"], "2")
+        self.assertEqual(task["evidence"], "stale completion evidence")
+        marked = swarm.set_task_status(text, "CW-001", "incomplete", evidence="must not be emitted")
+        incomplete = swarm.parse_tasks(marked)[0]
+        self.assertEqual(incomplete["status"], "incomplete")
+        self.assertEqual(incomplete["agent"], "")
+        self.assertEqual(incomplete["pr"], "")
+        self.assertEqual(incomplete["evidence"], "")
+        self.assertEqual(incomplete["attempts"], "2")
+        self.assertEqual(incomplete["details"], "Waiting for owner input.")
+        self.assertIn("- [!] CW-001 · Staff\n", marked)
+        self.assertNotIn("evidence:", marked)
+
+    def test_incomplete_status_removes_multiline_evidence_before_and_after_details(self):
+        cases = (
+            ("- [-] CW-001 · Staff\n"
+             "  - evidence: stale first line\n    stale continuation\n"
+             "  - details:\n    Keep this body.\n"
+             "  - scope: apps/api/staff\n"),
+            ("- [-] CW-001 · Staff\n"
+             "  - details:\n    Keep this body.\n"
+             "  - evidence: stale first line\n    stale continuation\n"
+             "  - scope: apps/api/staff\n"),
+        )
+        for text in cases:
+            with self.subTest(text=text):
+                marked = swarm.set_task_status(text, "CW-001", "incomplete", evidence="new stale value")
+                task = swarm.parse_tasks(marked)[0]
+                self.assertNotIn("stale", marked)
+                self.assertNotIn("evidence:", marked)
+                self.assertEqual(task["details"], "Keep this body.")
+                self.assertEqual(task["scope"], ["apps/api/staff"])
+
+    def test_any_two_space_field_ends_details_but_four_space_lines_remain_body(self):
+        text = ("- [ ] CW-001 · Staff\n"
+                "  - details:\n    First body line.\n"
+                "    Second body line.\n"
+                "  - mystery: unknown field\n"
+                "  - scope: apps/api/staff\n")
+        task = swarm.parse_tasks(text)[0]
+        self.assertEqual(task["details"], "First body line.\nSecond body line.")
+        self.assertEqual(task["scope"], ["apps/api/staff"])
+        self.assertNotIn("mystery", task)
+
+    def test_task_lookup_prefers_canonical_ids_and_resolves_unique_aliases(self):
+        text = ("- [!] PARENT-1 · Parent\n"
+                "  - aliases: SHARED, PARENT-ALIAS\n"
+                "- [ ] SHARED · Canonical\n"
+                "- [ ] CHILD-1 · Child\n"
+                "  - aliases: CHILD-ALIAS\n")
+        lookup = swarm.task_lookup(text)
+        self.assertEqual(lookup["SHARED"]["id"], "SHARED")
+        self.assertEqual(lookup["PARENT-ALIAS"]["id"], "PARENT-1")
+        self.assertEqual(lookup["CHILD-ALIAS"]["id"], "CHILD-1")
+        self.assertNotIn("MISSING-1", lookup)
+
+    def test_task_lookup_allows_a_repeated_alias_on_one_task(self):
+        lookup = swarm.task_lookup(
+            "- [ ] TASK-1 · Work\n  - aliases: SHARED, SHARED\n"
+        )
+        self.assertEqual(lookup["SHARED"]["id"], "TASK-1")
+
+    def test_task_lookup_fails_closed_on_duplicate_ids_and_ambiguous_aliases(self):
+        cases = (
+            "- [ ] SAME-1 · First\n- [ ] SAME-1 · Duplicate\n",
+            "- [ ] ONE-1 · First\n  - aliases: SHARED\n"
+            "- [ ] TWO-2 · Second\n  - aliases: SHARED\n",
+        )
+        for text in cases:
+            with self.subTest(text=text):
+                with self.assertRaises(swarm.ReconciliationError):
+                    swarm.task_lookup(text)
+
     def test_redact_secrets_returns_text_when_the_checker_cannot_load(self):
         """If check-secrets.py is missing or broken, text is returned unchanged.
 

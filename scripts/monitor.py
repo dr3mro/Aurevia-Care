@@ -281,16 +281,16 @@ SYM = {"success": ("+", "green"), "failure": ("x", "red"), "timed_out": ("x", "r
        "pending": ("~", "yellow"), "requested": ("~", "yellow"), "cancelled": ("-", "gray"),
        "skipped": ("-", "gray"), "action_required": ("!", "red")}
 
-ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · (.*)$")
+ENTRY = re.compile(r"^- \[([ x!-])\] (\S+) · (.*)$")
 
 
 def parse_tasks(text):
-    """Task-file entries as dicts with status (todo, taken, done), id, title and agent."""
+    """Task-file entries as dicts with status (todo, taken, incomplete, done), id, title and agent."""
     tasks, cur = [], None
     for line in (text or "").splitlines():
         m = ENTRY.match(line)
         if m:
-            cur = {"status": {" ": "todo", "-": "taken", "x": "done"}[m.group(1)], "id": m.group(2),
+            cur = {"status": {" ": "todo", "-": "taken", "!": "incomplete", "x": "done"}[m.group(1)], "id": m.group(2),
                    "title": m.group(3), "agent": "", "priority": ""}
             tasks.append(cur)
         elif cur is not None and line.startswith("  - agent:"):
@@ -486,8 +486,9 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     n_done = sum(1 for t in todo if t["status"] == "done") + len(re.findall(r"^- \[x\] ", data.get("archive") or "", re.M))
     n_open = sum(1 for t in todo if t["status"] == "todo")
     taken = [t for t in todo if t["status"] == "taken"]
+    incomplete = [t for t in todo if t["status"] == "incomplete"]
     busy_workers, queued_workers = worker_counts(live, jobs)
-    n_all = n_done + n_open + len(taken)
+    n_all = n_done + n_open + len(taken) + len(incomplete)
     hot = sum(1 for x in issues + prs for l in x.get("labels", []) if l["name"] == "needs-human")
     day_ok = (len(runs_day) - len(failed_day)) / len(runs_day) if runs_day else 1.0
 
@@ -573,7 +574,8 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     if todo:
         share = n_done / n_all if n_all else 0.0
         meters.append(meter("tasks", share, "cyan", f"{n_done}/{n_all} done ({share * 100:.0f}%)",
-                            [(f"{len(taken)} taken", "b_yellow"), (f"   {n_open} open", "gray")],
+                            [(f"{len(taken)} taken", "b_yellow"), (f"   {n_open} open", "gray"),
+                              (f"   {len(incomplete)} incomplete", "b_red" if incomplete else "gray")],
                             [(f"pace {pace:.1f}/h  ETA ", "gray"), (eta, "b_cyan")],
                             [(f"   {len(merged_day)} merged 24h", "green" if merged_day else "gray"),
                              (f"   {sum(1 for x in prs if any(l['name'] == 'needs-fix' for l in x.get('labels', [])))} needs-fix", "gray"),
@@ -745,6 +747,9 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     right = [dict(title="Swarm Tasks Taken", total=len(taken), col="cyan", border="gray", prio=2,
                   items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"] + "  ", "b_cyan", len(t["id"]) + 2), (t["title"], "", None))
                          for t in taken]),
+             dict(title="Swarm Tasks Incomplete", total=len(incomplete), col="red", border="gray", prio=2,
+                  items=[cells(iw, ("!", "red", 1), (t["id"] + "  ", "b_cyan", len(t["id"]) + 2), (t["title"], "", None))
+                         for t in incomplete]),
              dict(title="Next Up", total=len(queue), col="blue", border="gray", prio=1,
                   items=[cells(iw, mark.get(priority_of(t), ("-", "gray")) + (1,), (t["id"] + "  ", "b_cyan", len(t["id"]) + 2), (t["title"], "", None))
                          for t in sorted((t for t in todo if t["status"] == "todo"), key=lambda t: PRIORITY_RANK[priority_of(t)])[:12]]),
@@ -758,11 +763,11 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
                                (f"#{i['number']}", "", 5), (i["title"], "", None), (age(i["createdAt"]), "dim", 10, "r"))
                          for i in issues])]
     for panel, keys in ((left[0], {"runs", "jobs"}), (left[1], {"runs"}), (left[2], {"runs", "jobs"}), (right[0], {"todo", "archive"}),
-                        (right[1], {"todo"}), (right[2], {"merged"}), (right[3], {"prs"}), (right[4], {"issues"})):
+                        (right[1], {"todo"}), (right[2], {"todo"}), (right[3], {"merged"}), (right[4], {"prs"}), (right[5], {"issues"})):
         if keys & loading:
             panel["loading"] = True
     body = None if H is None else max(H - len(top) - 1, 0)
-    right = [right[i] for i in (3, 4, 0, 1, 2)]  # open PRs and issues first
+    right = [right[i] for i in (4, 5, 0, 1, 2, 3)]  # open PRs and issues first, then task panels and merges
     return top, fit_col(left, body, iw), fit_col(right, body, iw), cw
 
 
@@ -812,7 +817,10 @@ def once():
 
 # ---- live TUI ---------------------------------------------------------------------------------------
 def swarm_idle(data):
-    """True when no Agent swarm run is live and tasks/ still has open tasks (None until both are known)."""
+    """True when no Agent swarm run is live and tasks/ still has open tasks (None until both are known).
+
+    Incomplete-only trackers return false so autostart cannot turn held work into another wave.
+    """
     runs, todo = data.get("runs"), data.get("todo")
     if not runs or not todo:
         return None
