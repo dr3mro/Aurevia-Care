@@ -256,6 +256,9 @@ describe('InboxPage commands', () => {
     fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'retryCommand') }));
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
     expect(descriptorAt(2).url).toBe('/api/v1/conversations/thread-001/reply');
+    expect(descriptorAt(2).headers['Idempotency-Key']).toBe(
+      descriptorAt(1).headers['Idempotency-Key'],
+    );
   });
 
   it('re-runs a failed reply through the shared Retry action', async () => {
@@ -268,6 +271,23 @@ describe('InboxPage commands', () => {
     fireEvent.click(screen.getByRole('button', { name: stateViewText('en', 'retry') }));
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
     expect(descriptorAt(2).url).toBe('/api/v1/conversations/thread-001/reply');
+    expect(descriptorAt(2).headers['Idempotency-Key']).toBe(
+      descriptorAt(1).headers['Idempotency-Key'],
+    );
+  });
+
+  it('rotates the reply key after a successful send', async () => {
+    wrap();
+    await screen.findByRole('button', { name: /Synthetic Grace Okafor: Appointment change/ });
+    fireEvent.change(composer(), { target: { value: 'first reply' } });
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
+    const firstKey = descriptorAt(1).headers['Idempotency-Key'];
+
+    fireEvent.change(composer(), { target: { value: 'second reply' } });
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(5));
+    expect(descriptorAt(3).headers['Idempotency-Key']).not.toBe(firstKey);
   });
 
 });

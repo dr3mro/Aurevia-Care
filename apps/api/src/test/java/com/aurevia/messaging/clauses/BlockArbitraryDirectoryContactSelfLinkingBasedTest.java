@@ -37,6 +37,8 @@ import com.aurevia.messaging.conversations.ConversationContract.ReplyRequest;
 import com.aurevia.messaging.conversations.ConversationContract.State;
 import com.aurevia.messaging.conversations.ConversationContract.View;
 import com.aurevia.messaging.conversations.ConversationRepository;
+import static org.mockito.Mockito.lenient;
+import com.aurevia.api.contract.IdempotencyKey;
 import com.aurevia.messaging.conversations.ConversationService;
 import com.aurevia.messaging.conversations.PatientConnectionVerifier;
 import com.aurevia.messaging.conversations.PatientConnectionVerifier.VerifiedConnection;
@@ -61,6 +63,7 @@ import com.aurevia.tenant.TenantContext;
  * status and code and the absence of a persisted connection, message, state change or work item.
  */
 class BlockArbitraryDirectoryContactSelfLinkingBasedTest {
+    private static final IdempotencyKey KEY = IdempotencyKey.parse("reply-key-1");
 
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
     private static final String OTHER_ORG = "22222222-2222-2222-2222-222222222222";
@@ -103,6 +106,9 @@ class BlockArbitraryDirectoryContactSelfLinkingBasedTest {
             return callback.doInTransaction(null);
         });
         service = new ConversationService(repository, new ConversationActions(), transactions, audit, directory);
+        lenient().when(repository.findMessageByClientId(any(), any())).thenReturn(Optional.empty());
+        lenient().when(repository.insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
 
         bind(SUBJECT);
         store.addMember(ORG, SUBJECT, "patient", true);
@@ -165,7 +171,7 @@ class BlockArbitraryDirectoryContactSelfLinkingBasedTest {
     /** Assert that no denial in a test left a durable conversation, message, work item or state change. */
     private void assertNoConversationWrites() {
         verify(repository, never()).insertConversation(any(), any(), any(), any(), any(), any(), any());
-        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
         verify(repository, never()).updateState(any(), anyInt(), any());
         verify(repository, never()).appendEvent(any(), anyInt(), any(), any(), any(), any(), any());
     }
@@ -277,7 +283,7 @@ class BlockArbitraryDirectoryContactSelfLinkingBasedTest {
         when(repository.loadForUpdate(CONVERSATION)).thenReturn(Optional.of(
                 conversation(State.AWAITING_STAFF, 1, SUBJECT, "clinic", CONNECTION_ID)));
         ApiException wrongUnit = assertThrows(ApiException.class,
-                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 1));
+                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 1, KEY));
         assertEquals(403, wrongUnit.status());
         assertEquals("FORBIDDEN", wrongUnit.code());
         assertNoConversationWrites();
@@ -289,20 +295,20 @@ class BlockArbitraryDirectoryContactSelfLinkingBasedTest {
         when(repository.loadForUpdate(CONVERSATION)).thenReturn(Optional.of(
                 conversation(State.AWAITING_STAFF, 1, SUBJECT, "lab", CONNECTION_ID)));
         ApiException wrongRole = assertThrows(ApiException.class,
-                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 1));
+                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 1, KEY));
         assertEquals(403, wrongRole.status());
         assertEquals("FORBIDDEN", wrongRole.code());
 
         asPatient(SUBJECT);
         ApiException stale = assertThrows(ApiException.class,
-                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 2));
+                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 2, KEY));
         assertEquals(412, stale.status());
         assertEquals("STALE_VERSION", stale.code());
 
         when(repository.loadForUpdate(CONVERSATION)).thenReturn(Optional.of(
                 conversation(State.CLOSED, 1, SUBJECT, "lab", CONNECTION_ID)));
         ApiException closed = assertThrows(ApiException.class,
-                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 1));
+                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 1, KEY));
         assertEquals(409, closed.status());
         assertEquals("CLOSED_THREAD", closed.code());
 
@@ -345,10 +351,10 @@ class BlockArbitraryDirectoryContactSelfLinkingBasedTest {
         when(repository.messages(CONVERSATION)).thenReturn(List.of());
         when(repository.events(CONVERSATION)).thenReturn(List.of());
 
-        View view = service.reply(CONVERSATION, new ReplyRequest("hello"), 1);
+        View view = service.reply(CONVERSATION, new ReplyRequest("hello"), 1, KEY);
 
         assertEquals(State.AWAITING_PATIENT, view.conversation().state());
-        verify(repository).insertMessage(CONVERSATION, 2, "staff", "lab-a", "lab_verifier", "hello");
+        verify(repository).insertMessageIfAbsent(CONVERSATION, 2, "staff", "lab-a", "lab_verifier", "hello", KEY.value());
         verify(repository).updateState(CONVERSATION, 1, "awaiting_patient");
         verify(repository, never()).appendEvent(eq(CONVERSATION), eq(2), eq("reopened"),
                 any(), any(), any(), any());

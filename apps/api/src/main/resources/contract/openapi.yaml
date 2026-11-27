@@ -1849,12 +1849,13 @@ paths:
     post:
       operationId: replyToConversation
       summary: Post a reply to a conversation at an expected version
+      description: The Idempotency-Key is durable; a retry returns the accepted reply and reusing the key with a different body conflicts.
       tags: [conversations]
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/CorrelationId'
         - $ref: '#/components/parameters/IfMatch'
-        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IdempotencyKey'
         - { name: id, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
       requestBody:
         required: true
@@ -1873,7 +1874,7 @@ paths:
         '409': { $ref: '#/components/responses/StateConflict' }
         '412': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
-        '428': { description: If-Match precondition required }
+        '428': { description: If-Match or Idempotency-Key precondition required }
   /api/v1/conversations/{id}/assign:
     post:
       operationId: assignConversation
@@ -10098,7 +10099,7 @@ components:
       name: Idempotency-Key
       in: header
       required: true
-      description: Opaque key that makes a retried placement produce a single order.
+      description: Opaque key that makes a retried command produce a single accepted effect.
       schema: { type: string, minLength: 1, maxLength: 255 }
     IdempotencyKeyOptional:
       name: Idempotency-Key

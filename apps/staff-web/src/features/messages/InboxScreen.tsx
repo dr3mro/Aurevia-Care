@@ -26,6 +26,7 @@ import type { Attachment, InboxView, Message, SendDraft, Thread, UnitProfile, Wo
 export interface InboxScreenProps {
   readonly view: InboxView;
   readonly replyText: string;
+  readonly clientMessageId: string;
   readonly workDraft: WorkDraft | undefined;
   readonly reasonError: string | undefined;
   readonly onReplyTextChange: (text: string) => void;
@@ -285,6 +286,7 @@ interface ComposerProps {
   readonly pendingFiles: readonly string[];
   readonly locale: Locale;
   readonly replyText: string;
+  readonly clientMessageId: string;
   readonly onReplyTextChange: (text: string) => void;
   readonly onSend: (draft: SendDraft) => void;
 }
@@ -296,6 +298,7 @@ function Composer({
   pendingFiles,
   locale,
   replyText,
+  clientMessageId,
   onReplyTextChange,
   onSend,
 }: ComposerProps) {
@@ -325,6 +328,7 @@ function Composer({
           onClick={() =>
             onSend({
               threadId: thread.id,
+              clientMessageId,
               version: thread.version,
               recipientName: thread.patientName.latinName,
               recipientId: thread.patientId,
@@ -412,6 +416,7 @@ export function InboxScreen({
   reasonError,
   onReplyTextChange,
   onSend,
+  clientMessageId,
   onWorkDraftChange,
   onWorkSubmit,
   onDiscardDraft,
@@ -530,6 +535,7 @@ export function InboxScreen({
             pendingFiles={view.pendingFileNames}
             locale={locale}
             replyText={replyText}
+            clientMessageId={clientMessageId}
             onReplyTextChange={onReplyTextChange}
             onSend={onSend}
           />

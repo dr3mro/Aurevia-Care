@@ -48,7 +48,7 @@ export async function sendReply(draft: SendDraft, organizationId: string): Promi
       {
         activeOrganization: organizationId,
         ifMatch: draft.version,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: draft.clientMessageId,
       },
       {
         body: draft.draft,

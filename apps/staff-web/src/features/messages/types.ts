@@ -74,6 +74,8 @@ export interface InboxView {
 /** A reply explicitly naming its recipient and staged files. */
 export interface SendDraft {
   readonly threadId: string;
+  /** Stable across retries of one reply so the server can deduplicate it. */
+  readonly clientMessageId: string;
   readonly version: number;
   readonly recipientName: string;
   readonly recipientId: string;

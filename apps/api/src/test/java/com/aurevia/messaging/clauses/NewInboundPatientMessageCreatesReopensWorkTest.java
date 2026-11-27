@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,6 +92,9 @@ class NewInboundPatientMessageCreatesReopensWorkTest {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));
         }).when(transactions).execute(any());
+        lenient().when(repository.findMessageByClientId(any(), any())).thenReturn(Optional.empty());
+        lenient().when(repository.insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
         ConversationService service = new ConversationService(repository, new ConversationActions(),
                 transactions, audit, connections);
         mvc = MockMvcBuilders.standaloneSetup(new ConversationController(service))
@@ -160,13 +165,14 @@ class NewInboundPatientMessageCreatesReopensWorkTest {
         return mvc.perform(post("/api/v1/conversations/" + CONVERSATION_ID + "/reply")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("If-Match", "\"" + version + "\"")
+                .header("Idempotency-Key", UUID.randomUUID().toString())
                 .content(json.getBytes(StandardCharsets.UTF_8)));
     }
 
     /** Assert that a refusal wrote nothing to the conversation, message or work ledgers. */
     private void assertNoConversationWrites() {
         verify(repository, never()).insertConversation(any(), any(), any(), any(), any(), any(), any());
-        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+        verify(repository, never()).insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any());
         verify(repository, never()).appendEvent(any(), anyInt(), any(), any(), any(), any(), any());
         verify(repository, never()).updateState(any(), anyInt(), any());
     }
@@ -219,7 +225,7 @@ class NewInboundPatientMessageCreatesReopensWorkTest {
                 .andExpect(jsonPath("$.conversation.state").value("awaiting_staff"));
 
         verify(connections).requireActive(PATIENT_ID, "clinic", CONNECTION_ID);
-        verify(repository).insertMessage(CONVERSATION_ID, 2, "patient", PATIENT, "patient", BODY);
+        verify(repository).insertMessageIfAbsent(eq(CONVERSATION_ID), eq(2), eq("patient"), eq(PATIENT), eq("patient"), eq(BODY), anyString());
         verify(repository).updateState(CONVERSATION_ID, 1, "awaiting_staff");
         verify(repository).appendEvent(CONVERSATION_ID, 2, "reopened", PATIENT,
                 "resolved", "awaiting_staff", "reply reopened the work item");
@@ -235,7 +241,7 @@ class NewInboundPatientMessageCreatesReopensWorkTest {
         reply(1).andExpect(status().isOk())
                 .andExpect(jsonPath("$.conversation.state").value("awaiting_staff"));
 
-        verify(repository).insertMessage(CONVERSATION_ID, 2, "patient", PATIENT, "patient", BODY);
+        verify(repository).insertMessageIfAbsent(eq(CONVERSATION_ID), eq(2), eq("patient"), eq(PATIENT), eq("patient"), eq(BODY), anyString());
         verify(repository).updateState(CONVERSATION_ID, 1, "awaiting_staff");
         verify(repository, never()).appendEvent(any(), anyInt(), any(), any(), any(), any(), any());
     }

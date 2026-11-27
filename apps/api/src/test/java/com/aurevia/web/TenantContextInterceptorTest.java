@@ -15,6 +15,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import com.aurevia.api.ApiException;
+import com.aurevia.observability.CorrelationIdFilter;
 import com.aurevia.tenant.TenantContext;
 
 class TenantContextInterceptorTest {
@@ -82,6 +83,32 @@ class TenantContextInterceptorTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         assertTrue(interceptor.preHandle(request("admin", ORG, "corr-1"), response, new Object()));
         assertEquals("corr-1", response.getHeader("X-Correlation-Id"));
+    }
+
+    @Test
+    void consumesTheFilterCorrelationIdWhenHeaderIsAbsent() throws Exception {
+        MockHttpServletRequest request = request("admin", ORG, null);
+        request.setAttribute(CorrelationIdFilter.CORRELATION_ATTRIBUTE, "filter-id");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(interceptor.preHandle(request, response, new Object()));
+
+        assertEquals("filter-id", response.getHeader("X-Correlation-Id"));
+        assertEquals("filter-id", MDC.get("correlationId"));
+        assertEquals("filter-id", TenantContext.current().correlationId());
+    }
+
+    @Test
+    void consumesTheFilterCorrelationIdWhenHeaderIsBlank() throws Exception {
+        MockHttpServletRequest request = request("admin", ORG, "   ");
+        request.setAttribute(CorrelationIdFilter.CORRELATION_ATTRIBUTE, "filter-id-blank");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(interceptor.preHandle(request, response, new Object()));
+
+        assertEquals("filter-id-blank", response.getHeader("X-Correlation-Id"));
+        assertEquals("filter-id-blank", MDC.get("correlationId"));
+        assertEquals("filter-id-blank", TenantContext.current().correlationId());
     }
 
     @Test

@@ -248,6 +248,7 @@ class KeepMessagesAuthenticatedAppPortalIncludingNotificationsTest {
         headers.set("X-Synthetic-Subject", subject);
         headers.set("X-Active-Organization", organization);
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Idempotency-Key", java.util.UUID.randomUUID().toString());
         extra.forEach(headers::set);
         return headers;
     }

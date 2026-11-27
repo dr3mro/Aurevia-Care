@@ -1,6 +1,7 @@
 package com.aurevia.web;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -38,6 +39,10 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public final class IdempotencyFilter implements HandlerInterceptor, WebMvcConfigurer {
 
+    /** Routes whose owning service re-derives live resource access on every retry. */
+    private static final Set<String> SELF_MANAGED_ROUTES =
+            Set.of("POST /api/v1/conversations/{id}/reply");
+
     private final IdempotencyResponseStore store;
     private final ReplayAuthorization authorization;
 
@@ -68,6 +73,12 @@ public final class IdempotencyFilter implements HandlerInterceptor, WebMvcConfig
         }
         Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
         if (!(pattern instanceof String route)) {
+            return true;
+        }
+        // A conversation reply owns its replay: thread access, patient link and
+        // writable state must be re-derived from live data on every retry, so a
+        // frozen response must never bypass the domain service for this route.
+        if (SELF_MANAGED_ROUTES.contains("POST " + route)) {
             return true;
         }
         IdempotencyKey key = IdempotencyKey.parse(header);

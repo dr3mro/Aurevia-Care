@@ -1,6 +1,7 @@
-- [-] RECONCILE-AMBIGUOUS · Let explicit PR references reconcile past repeated task titles
+- [x] RECONCILE-AMBIGUOUS · Let explicit PR references reconcile past repeated task titles
   - agent: orca
   - attempts: 0
+  - pr: #1806
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm_schedule_coverage.py, scripts/tests/test_swarm.py, tasks/01351000-RECONCILE-AMBIGUOUS.md
   - evidence:
