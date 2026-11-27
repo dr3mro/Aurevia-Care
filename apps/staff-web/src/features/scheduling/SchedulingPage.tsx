@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { useApi } from '../../api/useApi';
+import type { ApiResult } from '../../api/useApi';
 import { Button } from '../../components/Button';
 import { defined } from '../../components/invariant';
 import { EmptyState, LoadingState, StateView } from '../../components/StateViews';
@@ -38,6 +40,44 @@ function toTransportError(failure: unknown): TransportError {
 /** The civil date the worklist is anchored to; today when none is supplied. */
 function resolveAnchor(anchorCivilDate: string | undefined): string {
   return anchorCivilDate ?? new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Render the inline notice for a failed page, or nothing when no error exists.
+ * Only the typed error and its correlation id are shown; already loaded rows
+ * stay mounted, so a later-page failure never discards visit data (CLN-01).
+ *
+ * @param error The active request error, or `undefined` on a healthy request.
+ * @param onRetry Re-attempts the failed page with the same cursor.
+ * @returns The localized notice, or `null` when there is no error to show.
+ */
+function pageErrorNotice(error: TransportError | undefined, onRetry: () => void): ReactNode {
+  return error === undefined ? null : (
+    <div data-testid="scheduling-page-error">
+      {StateView.forTransportError(error, { onRetry })}
+    </div>
+  );
+}
+
+/**
+ * Resolve what a Load more press means for the current request state. Setting
+ * the same cursor again changes no request dependency, so a failed page is
+ * retried through the generation bump instead of silently doing nothing.
+ *
+ * @param status State of the current appointment page request.
+ * @param onRetry Re-issues the failed page request.
+ * @param onAdvance Advances the cursor to the next page.
+ */
+function activateNextPage(
+  status: ApiResult<AppointmentPageResponse>['status'],
+  onRetry: () => void,
+  onAdvance: () => void,
+): void {
+  if (status === 'error') {
+    onRetry();
+    return;
+  }
+  onAdvance();
 }
 
 /**
@@ -147,8 +187,17 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
     setCommandError(undefined);
   }
 
+  /**
+   * Re-request the current page without clearing the accumulated rows. Only
+   * the useApi generation changes: the cursor, loaded rows and next cursor all
+   * survive so the recovered page is appended exactly once.
+   */
+  function handleRetryPage() {
+    result.reload();
+  }
+
   function handleLoadMore() {
-    setCursor(nextCursor);
+    activateNextPage(result.status, handleRetryPage, () => setCursor(nextCursor));
   }
 
   // The page utility caps prose at the reading width, but the worklist is a
@@ -176,6 +225,7 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
           {/* An empty day is a notice, not a replacement for the worklist:
               the screen owns the range controls and the first-booking form. */}
           {loaded.length === 0 ? <EmptyState /> : null}
+          {pageErrorNotice(result.error, handleRetryPage)}
           <SchedulingScreen
             appointments={loaded}
             organizationId={organizationId}
