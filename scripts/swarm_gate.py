@@ -413,9 +413,18 @@ def evaluate(ctx):
         ctx.evidence_text, kind, ctx.note_sha, ctx.revision_evidence, ctx.cross_repo_head))
     checks.extend(validate_check_results(ctx.check_runs, ctx.required_checks))
     checks.extend(validate_integration_manifest(ctx.manifest, ctx.ancestors, ctx.base_sha, kind))
-    checks.append(_check("tested_revision",
-                         bool(ctx.head_sha and ctx.tested_sha and ctx.head_sha == ctx.tested_sha),
-                         "the verified revision is the current GitHub head"))
+    # The event head is frozen when the run is triggered; the live headRefOid
+    # can move while it queues. Naming both lets a CI reader tell a stale
+    # verdict from a malformed API response without re-running the gate.
+    event_head = (ctx.head_sha or "")[:12] or "missing"
+    live_head = (ctx.tested_sha or "")[:12] or "missing"
+    current = bool(ctx.head_sha and ctx.tested_sha and ctx.head_sha == ctx.tested_sha)
+    reason = "the verified revision is the current GitHub head"
+    if not current:
+        reason = f"event head {event_head} vs live headRefOid {live_head}"
+        if ctx.head_sha and ctx.tested_sha:
+            reason += "; head moved after the event; a newer run will supersede this one"
+    checks.append(_check("tested_revision", current, reason))
     failures = tuple(f"{c.name}: {c.reason}" for c in checks if c.state in (FAILED, ERROR))
     timestamp = ctx.verified_at or datetime.datetime.now(datetime.timezone.utc).isoformat()
     return GateResult(ctx.pr_number, task_id, kind, ctx.head_sha, ctx.tested_sha,
