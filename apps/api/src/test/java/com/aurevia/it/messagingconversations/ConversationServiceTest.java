@@ -348,6 +348,23 @@ class ConversationServiceTest {
     }
 
     @Test
+    void concurrentDuplicateWithNoStoredMessageConflicts() {
+        asPatient("patient-a");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(
+                conversation(State.AWAITING_STAFF, 1, "patient-a", "lab", null)));
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
+        when(repository.nextSequence(ID)).thenReturn(2);
+        when(repository.insertMessageIfAbsent(eq(ID), eq(2), any(), any(), any(), eq("hello"), eq(KEY.value())))
+                .thenReturn(false);
+        when(repository.findMessageByClientId(ID, KEY.value()))
+                .thenReturn(Optional.empty(), Optional.empty());
+
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> service.reply(ID, new ReplyRequest("hello"), 1, KEY)).status());
+        verify(repository, never()).updateState(any(), anyInt(), any());
+    }
+
+    @Test
     void patientReplyRejectsAConnectionBoundToAnotherUnit() {
         asPatient("patient-a");
         seedConnection(RADIOLOGY_CONNECTION_ID, PATIENT_ID, UnitKey.RADIOLOGY, ConnectionState.ACTIVE);
