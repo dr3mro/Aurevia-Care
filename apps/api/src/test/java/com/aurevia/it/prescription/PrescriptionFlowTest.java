@@ -539,6 +539,105 @@ class PrescriptionFlowTest {
                 "a rejected direct update left the row unchanged");
     }
 
+    @Test
+    void staleVersionAndConflictOutcomesKeepTheirDistinctAuditRecords() {
+        String org = ORG_A;
+        String clinician = "clinician-1111";
+        String id = text(create(org, clinician, patientId(org)), "/id");
+
+        ResponseEntity<String> stale = select(org, clinician, id, 9, CIPRO, null);
+        assertEquals(412, stale.getStatusCode().value());
+        assertEquals("STALE_VERSION", text(stale, "/code"));
+        assertEquals(1, auditOutcomeCount(org, id, "RX_SELECT_MEDICATION", "DENIED"),
+                "a refused selection commits exactly one durable DENIED row");
+        AuditRow denied = auditRow(org, id, "RX_SELECT_MEDICATION", "DENIED");
+        assertEquals(actorId(org, clinician), denied.actorId());
+        assertEquals("RX_SELECT_MEDICATION", denied.purpose());
+        assertEquals("PRESCRIPTION_DRAFT", denied.scope());
+        assertEquals("1", text(get(org, clinician, id), "/draft/version"),
+                "the refusal leaves the draft version unchanged");
+        assertAuditChainOk(org);
+
+        ResponseEntity<String> selected = select(org, clinician, id, 1, CIPRO, null);
+        assertEquals(HttpStatus.OK, selected.getStatusCode(), selected.getBody());
+        assertEquals(1, auditOutcomeCount(org, id, "RX_SELECT_MEDICATION", "SUCCESS"));
+        assertEquals(1, auditOutcomeCount(org, id, "RX_SELECT_MEDICATION", "DENIED"),
+                "the allowed retry adds no denial");
+
+        // A documented allergy override refusal is a CONFLICT, not a denial.
+        String conflictId = text(create(org, clinician, patientId(org)), "/id");
+        ResponseEntity<String> conflict = select(org, clinician, conflictId, 1, AMOX500, null);
+        assertEquals(409, conflict.getStatusCode().value());
+        assertEquals("ALLERGY_OVERRIDE_REQUIRED", text(conflict, "/code"));
+        assertEquals(1, auditOutcomeCount(org, conflictId, "RX_SELECT_MEDICATION", "CONFLICT"));
+        assertEquals(0, auditOutcomeCount(org, conflictId, "RX_SELECT_MEDICATION", "DENIED"),
+                "a documented conflict is not relabelled as a denial");
+    }
+
+    private long auditOutcomeCount(String org, String resourceId, String action, String outcome) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, org, "clinician-" + suffix(org));
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT count(*) FROM public.audit_event "
+                            + "WHERE resource_id = ? AND action = ? AND outcome = ?")) {
+                statement.setString(1, resourceId);
+                statement.setString(2, action);
+                statement.setString(3, outcome);
+                try (ResultSet result = statement.executeQuery()) {
+                    assertTrue(result.next());
+                    return result.getLong(1);
+                }
+            } finally {
+                connection.rollback();
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private AuditRow auditRow(String org, String resourceId, String action, String outcome) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, org, "clinician-" + suffix(org));
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT actor_id, purpose, scope FROM public.audit_event "
+                            + "WHERE resource_id = ? AND action = ? AND outcome = ?")) {
+                statement.setString(1, resourceId);
+                statement.setString(2, action);
+                statement.setString(3, outcome);
+                try (ResultSet result = statement.executeQuery()) {
+                    assertTrue(result.next());
+                    return new AuditRow(result.getString(1), result.getString(2), result.getString(3));
+                }
+            } finally {
+                connection.rollback();
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private void assertAuditChainOk(String org) {
+        try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, org, "clinician-" + suffix(org));
+            try (Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery(
+                         "SELECT count(*) FROM public.audit_verify_chain('" + org + "') WHERE NOT ok")) {
+                assertTrue(result.next());
+                assertEquals(0, result.getInt(1), "every audit row keeps the append-only hash chain");
+            } finally {
+                connection.rollback();
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private record AuditRow(String actorId, String purpose, String scope) {
+    }
+
     private long auditCount(String org, String resourceId, String action) {
         try (Connection connection = DriverManager.getConnection(URL, "aurevia_migrate", "")) {
             connection.setAutoCommit(false);
