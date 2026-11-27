@@ -67,14 +67,190 @@ class GateTests(unittest.TestCase):
     def test_missing_job_fails_the_gate(self):
         data = results()
         del data["script-tests"]
-        code, _, err = check(data)
+        code, out, err = check(data)
         self.assertEqual(code, 1)
         self.assertIn("missing job results: script-tests", err)
+        self.assertNotIn("script-tests:", out)
 
     def test_unknown_job_fails_the_gate(self):
-        code, _, err = check(results(**{"new-job": "success"}))
+        code, out, err = check(results(**{
+            "new-job": "success",
+            "another-job": "success",
+        }))
         self.assertEqual(code, 1)
-        self.assertIn("unexpected job results: new-job", err)
+        self.assertIn("unexpected job results: another-job, new-job", err)
+        self.assertEqual(out.splitlines()[-2:], [
+            "another-job: success",
+            "new-job: success",
+        ])
+
+    def test_script_tests_failure_precedes_dependent_skips(self):
+        data = results(**{
+            "script-tests": "failure",
+            "frontend": "skipped",
+            "java-verify": "skipped",
+            "docs": "skipped",
+            "verify": "skipped",
+            "release": "skipped",
+        })
+        code, out, err = check(data, event_name="workflow_dispatch", ref_type="branch")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(out.splitlines(), [
+            "policy: success",
+            "script-tests: failure",
+            "frontend: skipped",
+            "java-verify: skipped",
+            "docs: skipped",
+            "verify: skipped",
+            "release: skipped",
+        ])
+        self.assertEqual(err.splitlines(), [
+            "delivery gate: dependency root cause: script-tests is failure; "
+            "downstream jobs were skipped",
+            "delivery gate: mandatory job script-tests is failure, expected success",
+            "delivery gate: mandatory job frontend is skipped, expected success",
+            "delivery gate: mandatory job java-verify is skipped, expected success",
+            "delivery gate: mandatory job docs is skipped, expected success",
+            "delivery gate: job verify was skipped but workflow_dispatch/branch requires it",
+        ])
+
+    def test_each_failed_dependency_precedes_its_downstream_skips(self):
+        cases = (
+            ("policy", {
+                "script-tests": "skipped", "frontend": "skipped",
+                "java-verify": "skipped", "docs": "skipped",
+                "verify": "skipped", "release": "skipped",
+            }),
+            ("script-tests", {
+                "frontend": "skipped", "java-verify": "skipped",
+                "docs": "skipped", "verify": "skipped", "release": "skipped",
+            }),
+            ("frontend", {
+                "docs": "skipped", "verify": "skipped", "release": "skipped",
+            }),
+            ("java-verify", {
+                "docs": "skipped", "verify": "skipped", "release": "skipped",
+            }),
+            ("docs", {"verify": "skipped", "release": "skipped"}),
+            ("verify", {"release": "skipped"}),
+        )
+        for root, skips in cases:
+            with self.subTest(root=root):
+                code, _, err = check(
+                    results(**{root: "failure", **skips}),
+                    event_name="push", ref_type="tag")
+                self.assertEqual(code, 1)
+                self.assertEqual(
+                    err.splitlines()[0],
+                    f"delivery gate: dependency root cause: {root} is failure; "
+                    "downstream jobs were skipped")
+
+    def test_multiple_failed_dependencies_are_named_in_workflow_order(self):
+        data = results(**{
+            "frontend": "failure",
+            "java-verify": "failure",
+            "docs": "skipped",
+            "verify": "skipped",
+            "release": "skipped",
+        })
+        code, _, err = check(data, event_name="push", ref_type="tag")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(
+            err.splitlines()[0],
+            "delivery gate: dependency root causes: frontend is failure, "
+            "java-verify is failure; downstream jobs were skipped")
+
+    def test_only_the_transitive_root_blocker_is_named(self):
+        data = results(**{
+            "script-tests": "failure",
+            "frontend": "failure",
+            "docs": "skipped",
+            "verify": "skipped",
+            "release": "skipped",
+        })
+        code, _, err = check(data, event_name="push", ref_type="tag")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(
+            err.splitlines()[0],
+            "delivery gate: dependency root cause: script-tests is failure; "
+            "downstream jobs were skipped")
+        self.assertIn("mandatory job frontend is failure", err)
+
+    def test_legal_optional_skips_do_not_create_a_dependency_diagnosis(self):
+        data = results(**{
+            "script-tests": "failure",
+            "frontend": "skipped",
+            "java-verify": "skipped",
+            "docs": "skipped",
+            "verify": "skipped",
+            "release": "skipped",
+        })
+        code, _, err = check(data, event_name="pull_request", ref_type="branch")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(err.splitlines(), [
+            "delivery gate: dependency root cause: script-tests is failure; "
+            "downstream jobs were skipped",
+            "delivery gate: mandatory job script-tests is failure, expected success",
+            "delivery gate: mandatory job frontend is skipped, expected success",
+            "delivery gate: mandatory job java-verify is skipped, expected success",
+            "delivery gate: mandatory job docs is skipped, expected success",
+        ])
+
+    def test_independent_failure_or_skip_has_no_root_cause_summary(self):
+        code, _, err = check(results(frontend="skipped"))
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "delivery gate: mandatory job frontend is skipped, expected success\n")
+
+        code, _, err = check(results(**{"java-verify": "failure"}))
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "delivery gate: mandatory job java-verify is failure, expected success\n")
+
+    def test_unrelated_failure_and_skip_have_no_root_cause_summary(self):
+        code, _, err = check(results(**{
+            "frontend": "skipped",
+            "java-verify": "failure",
+        }))
+        self.assertEqual(code, 1)
+        self.assertNotIn("dependency root cause", err)
+        self.assertIn("mandatory job frontend is skipped", err)
+        self.assertIn("mandatory job java-verify is failure", err)
+
+    def test_cancelled_and_unknown_blockers_are_named_first(self):
+        for value, displayed in (("cancelled", "cancelled"), (None, "unknown")):
+            with self.subTest(result=value):
+                data = results(**{
+                    "script-tests": value,
+                    "frontend": "skipped",
+                    "java-verify": "skipped",
+                    "docs": "skipped",
+                    "verify": "skipped",
+                    "release": "skipped",
+                })
+                code, _, err = check(data, event_name="workflow_dispatch", ref_type="branch")
+                self.assertEqual(code, 1)
+                self.assertEqual(
+                    err.splitlines()[0],
+                    f"delivery gate: dependency root cause: script-tests is {displayed}; "
+                    "downstream jobs were skipped")
+
+    def test_missing_result_is_not_inferred_as_a_dependency_root(self):
+        data = results(**{
+            "frontend": "skipped",
+            "java-verify": "skipped",
+            "docs": "skipped",
+            "verify": "skipped",
+            "release": "skipped",
+        })
+        del data["script-tests"]
+        code, _, err = check(data, event_name="workflow_dispatch", ref_type="branch")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(err.splitlines()[0], "delivery gate: missing job results: script-tests")
+        self.assertNotIn("dependency root cause", err)
 
     def test_verify_may_be_skipped_only_on_a_pull_request(self):
         code, _, err = check(results(verify="skipped"), event_name="pull_request")
