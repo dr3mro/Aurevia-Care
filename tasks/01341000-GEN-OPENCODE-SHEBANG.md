@@ -1,5 +1,4 @@
-- [-] GEN-OPENCODE-SHEBANG · Add the standard shebang to scripts/gen-opencode.py
-  - agent: orca
+- [x] GEN-OPENCODE-SHEBANG · Add the standard shebang to scripts/gen-opencode.py
   - scope: scripts/gen-opencode.py, scripts/tests/test_gen_opencode_coverage.py, tasks/01341000-GEN-OPENCODE-SHEBANG.md
   - requirements: OPS-06
   - details:
@@ -11,4 +10,7 @@
 
     Fix (tool): one comment line `#!/usr/bin/env python3` added at scripts/gen-opencode.py:1; file mode unchanged at `100644`; generated profiles untouched.
 
-    Green (tool): targeted test `Ran 1 test ... OK`; `python3 -I -m unittest discover -s scripts/tests -p test_gen_opencode_coverage.py -q` -> `Ran 24 tests ... OK`; `python3 -I -m unittest discover -s scripts/tests -p test_check_ownership.py -q` -> `Ran 34 tests ... OK`; `python3 -I scripts/gen-opencode.py --check` exit 0; check-docs, check-secrets, check-names, check-wiring, check-pack, check-constraints --base origin/main --require-base and `git diff --check` all exit 0. Coverage: the added line is a shebang comment, not an executable statement, so no production line or branch needs a coverage assertion; the named test locks the text. Full suite and coverage gate pending on the final tree.
+    Green (tool): targeted test `Ran 1 test ... OK`; `python3 -I -m unittest discover -s scripts/tests -p test_gen_opencode_coverage.py -q` -> `Ran 24 tests ... OK`; `python3 -I -m unittest discover -s scripts/tests -p test_check_ownership.py -q` -> `Ran 34 tests ... OK`; `python3 -I scripts/gen-opencode.py --check` exit 0; check-docs, check-secrets, check-names, check-wiring, check-pack, check-constraints --base origin/main --require-base and `git diff --check` all exit 0. Coverage: the added line is a shebang comment, not an executable statement, so no production line or branch needs a coverage assertion; the named test locks the text.
+
+    Final gates (tool, on stable tree `732e4fa72a8d37b50fc34507627e571db534964c`): `PATH=/opt/homebrew/bin:$PATH python3 -I -m unittest discover -s scripts/tests -q` -> `Ran 2425 tests in 318.872s ... OK`; `PATH=/opt/homebrew/bin:$PATH bash scripts/python-coverage.sh` -> `Ran 2425 tests in 255.802s ... OK`, `python coverage: every changed script line is covered`, both exit 0. Evidence source: owner directive (human), tool commands; no simulated-user feedback.
+  - pr: direct commit `d44b4fe74931e98422971268d6d9cf9b160dcfac` on `main`; no pull request was opened for this story.

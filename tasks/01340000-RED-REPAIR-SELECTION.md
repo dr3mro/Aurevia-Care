@@ -1,5 +1,4 @@
-- [-] RED-REPAIR-SELECTION · PO and SM select investigated red-state repairs before backlog work
-  - agent: orca
+- [x] RED-REPAIR-SELECTION · PO and SM select investigated red-state repairs before backlog work
   - scope: .github/workflows/swarm.yml, scripts/tests/test_swarm.py, docs/SWARM.md, tasks/01340000-RED-REPAIR-SELECTION.md
   - requirements: OPS-06
   - details:
@@ -28,3 +27,8 @@
     - coverage-auditor: GO (all five scenarios have named assertions; no production line or branch changed; no suppression or threshold change).
     - devsecops: GO (read-only agent jobs and output guards unchanged; no new token, PHI or bypass).
     - github-workflow: GO (YAML and prompt expansion valid; repair creation and claims stay in the trusted plan job; only pre-existing actionlint `queue: max`).
+
+    Final gates (tool, on stable tree `732e4fa72a8d37b50fc34507627e571db534964c` after concurrent merges settled): `PATH=/opt/homebrew/bin:$PATH python3 -I -m unittest discover -s scripts/tests -q` -> `Ran 2425 tests in 318.872s ... OK`; `PATH=/opt/homebrew/bin:$PATH bash scripts/python-coverage.sh` -> `Ran 2425 tests in 255.802s ... OK`, `python coverage: every changed script line is covered`, both exit 0. An intermediate run at `d44b4fe7` was red only because another session merged `fix/ownership-script-resolution` mid-run and left a transient syntax error in `scripts/check-ownership.py`; the settled tree compiles and its 67 tests pass.
+
+    Unverified: no live two-repair wave was dispatched; PO/SM behavior is guided by prompt text and locked by structural and shell-expansion tests. Evidence source: tool commands and read-only reviewers; no simulated-user or authorized-human feedback.
+  - pr: direct commit `aa8f1716d1800f3c766e933fc6d0702cff24378c` on `main`; no pull request was opened for this story.
