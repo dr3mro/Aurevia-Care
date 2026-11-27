@@ -305,6 +305,32 @@ class RevisionBindingTests(unittest.TestCase):
                 self.assertEqual(result.check("revision_binding").state, gate.PASSED)
                 self.assertEqual(result.check("tested_revision").state, expected)
 
+    def test_tested_revision_failure_names_both_head_shas_and_supersession(self):
+        """A stale event head must be diagnosable from the gate reason alone."""
+        result = run(tested_sha=DIVERGED)
+        check = result.check("tested_revision")
+        self.assertEqual(check.state, gate.FAILED)
+        self.assertIn(f"event head {HEAD[:12]}", check.reason)
+        self.assertIn(f"live headRefOid {DIVERGED[:12]}", check.reason)
+        self.assertIn("head moved after the event; a newer run will supersede this one",
+                      check.reason)
+        self.assertIn(f"tested_revision: {check.reason}", result.failures)
+
+    def test_tested_revision_equal_shas_still_pass(self):
+        """An unchanged head must keep the original passing reason."""
+        check = run(tested_sha=HEAD).check("tested_revision")
+        self.assertEqual(check.state, gate.PASSED)
+        self.assertEqual(check.reason, "the verified revision is the current GitHub head")
+
+    def test_tested_revision_missing_sha_fails_without_supersession_claim(self):
+        for head, tested, missing in (("", DIVERGED, "event head"),
+                                      (HEAD, "", "live headRefOid")):
+            with self.subTest(head=head, tested=tested):
+                check = run(head_sha=head, tested_sha=tested).check("tested_revision")
+                self.assertEqual(check.state, gate.FAILED)
+                self.assertIn(f"{missing} missing", check.reason)
+                self.assertNotIn("head moved after the event", check.reason)
+
     def test_compare_api_error_and_bad_payload_fail_closed(self):
         for effect in (subprocess.CalledProcessError(1, "gh"), ValueError("bad json"),
                        OSError("gh unavailable"), []):
