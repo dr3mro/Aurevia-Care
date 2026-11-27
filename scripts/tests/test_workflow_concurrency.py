@@ -246,6 +246,30 @@ def gate_contract_violations(gate):
     return violations
 
 
+class IssueMonitorWorkflowTest(unittest.TestCase):
+    """The tokenless triage job must not dirty the checkout before it starts."""
+
+    def test_triage_inputs_are_collected_outside_the_checkout(self):
+        workflow = load(WORKFLOWS / "swarm-issue-monitor.yml")
+        steps = workflow["jobs"]["triage"]["steps"]
+        download = next(
+            step for step in steps
+            if step.get("uses", "").startswith("actions/download-artifact@")
+        )
+        self.assertIn("runner.temp", download["with"]["path"])
+        copy = next(
+            step for step in steps
+            if "Make the issue files" in step.get("name", "")
+        )
+        self.assertIn("${RUNNER_TEMP}", copy["run"])
+        triage = next(
+            step for step in steps
+            if step.get("name", "").startswith("Triage the issues")
+        )
+        self.assertIn("runner.temp", triage["env"]["TRIAGE_IN"])
+        self.assertNotIn("GH_TOKEN", triage["env"])
+
+
 class DeliveryGateContractTest(unittest.TestCase):
     """Branch protection waits for one exact context on every pull-request head."""
 
