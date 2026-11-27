@@ -62,3 +62,5 @@ Record reporter role and distinguish simulated, human pilot and automated eviden
 ## 2026-11-27 CI sweep defect register
 
 Full list with status and run IDs is in `tasks/01347000-DEFECT-FIX-BATCH.md`. The only deferred item not already assigned to tasks 01343000, 01344000, 01345000 or 01346000 is the advisory Swarm gate misclassification of repair PR #1783 (run 45931809131): a `FIX-` repair PR was treated as a worker and rejected for protected `docs/swarm/*`. Tool evidence: `gh run view --log-failed` and repository reads. It will be fixed in a dedicated batch branch at the end of the current queue; no gate threshold or protected-path rule is to be weakened.
+
+New defect from run 46003224655 (13:44 UTC): `reconcile: merged pull-request task identity is duplicated`. Paginated full-history merged-PR evidence exposes repeated verification/re-dispatch PRs with the same `<TASK-ID>:` title prefix; `scripts/swarm.py` aborted the entire batch. Fix in task `01351000` on branch `fix/reconcile-ambiguous` (tool evidence: failed-step log and source read).
