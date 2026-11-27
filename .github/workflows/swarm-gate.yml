@@ -44,13 +44,58 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           path: tested
+      # A pull_request event freezes head.sha when it is created. If the worker
+      # pushes again while this run queues, refresh to the trusted live PR head
+      # and re-evaluate ancestry there instead of reporting a stale verdict.
+      - name: Resolve live PR head
+        id: head
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          live=$(gh pr view --repo "$GITHUB_REPOSITORY" "${{ github.event.pull_request.number }}" --json headRefOid --jq .headRefOid)
+          if [[ ! "$live" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::live headRefOid is missing or malformed" >&2
+            exit 1
+          fi
+          event_sha=$(jq -r '.pull_request.head.sha' "$GITHUB_EVENT_PATH")
+          if [[ "$live" != "$event_sha" ]]; then
+            echo "moved=true" >> "$GITHUB_OUTPUT"
+            echo "original=$event_sha" >> "$GITHUB_OUTPUT"
+          else
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Refresh tested checkout
+        if: steps.head.outputs.moved == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/head
+          fetch-depth: 0
+          persist-credentials: false
+          path: tested
+      - name: Refresh event head
+        id: event
+        if: steps.head.outputs.moved == 'true'
+        env:
+          ORIGINAL_SHA: ${{ steps.head.outputs.original }}
+        run: |
+          sha=$(git -C tested rev-parse HEAD)
+          python3 -I base/scripts/swarm_gate.py refresh-event \
+            --event-path "$GITHUB_EVENT_PATH" \
+            --head-sha "$sha" \
+            --original-sha "$ORIGINAL_SHA" \
+            --output "$RUNNER_TEMP/swarm-gate-event.json"
       - name: Verify the swarm contract
         env:
           GH_TOKEN: ${{ github.token }}
           SWARM_GATE_REQUIRED_CHECKS: ${{ vars.SWARM_GATE_REQUIRED_CHECKS || '' }}
         run: |
+          event_path="$GITHUB_EVENT_PATH"
+          if [[ "${{ steps.head.outputs.moved }}" == "true" ]]; then
+            event_path="$RUNNER_TEMP/swarm-gate-event.json"
+          fi
           python3 -I base/scripts/swarm_gate.py evaluate \
-            --event-path "$GITHUB_EVENT_PATH" \
+            --event-path "$event_path" \
             --event-name "$GITHUB_EVENT_NAME" \
             --root base \
             --head-root tested

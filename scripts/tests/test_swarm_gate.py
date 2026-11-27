@@ -888,5 +888,172 @@ class TrustedVerifierCheckoutTests(unittest.TestCase):
         self.assertNotIn("github.event.pull_request.base.sha", workflow)
 
 
+class RefreshEventTests(unittest.TestCase):
+    """The pure event rewrite used after a trusted live-head checkout."""
+
+    def event(self, **overrides):
+        data = {"pull_request": {"number": 42, "head": {"sha": HEAD, "ref": "swarm/TASK-01-7"}},
+                "action": "synchronize"}
+        data.update(overrides)
+        return data
+
+    def write_event(self, data):
+        path = Path(tempfile.mkdtemp()) / "event.json"
+        path.write_text(json.dumps(data))
+        return path
+
+    def test_refresh_rewrites_head_and_records_provenance(self):
+        source = self.write_event(self.event())
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 0)
+        refreshed = json.loads(output.read_text())
+        self.assertEqual(refreshed["pull_request"]["head"]["sha"], DIVERGED)
+        self.assertEqual(refreshed["action"], "synchronize")
+        self.assertEqual(refreshed["swarm_gate_head_refresh"],
+                         {"from": HEAD, "to": DIVERGED})
+
+    def test_refresh_rejects_malformed_sha(self):
+        source = self.write_event(self.event())
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", "not-a-sha", "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_a_malformed_original_sha(self):
+        source = self.write_event(self.event())
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", "not-a-sha",
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_a_malformed_event_head(self):
+        source = self.write_event(self.event(pull_request={
+            "number": 42, "head": {"sha": "not-a-sha", "ref": "swarm/TASK-01-7"}}))
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_an_original_sha_that_is_not_the_event_head(self):
+        source = self.write_event(self.event())
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", ANCESTOR,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_a_non_mapping_event_shape(self):
+        source = self.write_event(["not", "an", "event"])
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_a_head_that_is_not_an_object(self):
+        source = self.write_event(self.event(pull_request={"head": "not-an-object"}))
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_evaluate_still_requires_an_event_name(self):
+        source = self.write_event(self.event())
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(gate.main(["evaluate", "--event-path", str(source)]), 2)
+
+    def test_refresh_rejects_a_non_pull_request_event(self):
+        source = self.write_event({"merge_group": {"head_sha": HEAD}})
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+
+class RefreshedHeadEvaluationTests(unittest.TestCase):
+    """A refreshed head cannot silently accept stale or second-move evidence."""
+
+    def test_refresh_is_audited_in_the_currency_reason(self):
+        check = run(head_sha=DIVERGED, tested_sha=DIVERGED, refresh_from=HEAD) \
+            .check("tested_revision")
+        self.assertEqual(check.state, gate.PASSED)
+        self.assertIn(f"refreshed from {HEAD[:12]}", check.reason)
+
+    def test_collect_context_propagates_the_refresh_marker(self):
+        """A refreshed event must reach both binding and the currency reason."""
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: refreshed",
+                                      "head": {"sha": DIVERGED, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []},
+                     "swarm_gate_head_refresh": {"from": HEAD, "to": DIVERGED}}
+            details = {"title": "TASK-01: refreshed", "labels": [], "commits": [],
+                       "headRefOid": DIVERGED}
+            checker = mock.Mock(return_value=compare_result("ahead", ANCESTOR))
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "owner/repo"}), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base),
+                                           head_root=str(head), ancestry_checker=checker)
+            checker.assert_called_once_with(ANCESTOR, DIVERGED, "owner/repo")
+            self.assertEqual(ctx.refresh_from, HEAD)
+            result = gate.evaluate(ctx)
+            self.assertEqual(result.check("revision_binding").state, gate.PASSED)
+            self.assertEqual(result.check("tested_revision").state, gate.PASSED)
+            self.assertIn(f"refreshed from {HEAD[:12]}",
+                          result.check("tested_revision").reason)
+
+    def test_second_head_move_still_fails_currency(self):
+        check = run(head_sha=DIVERGED, tested_sha=STALE, refresh_from=HEAD,
+                    note_sha=HEAD, revision_evidence=compare_result("ahead", HEAD)) \
+            .check("tested_revision")
+        self.assertEqual(check.state, gate.FAILED)
+        self.assertIn("head moved after the event", check.reason)
+
+
+class RefreshedCheckoutWorkflowTests(unittest.TestCase):
+    """The verifier boundary and live-head validation stay in trusted code."""
+
+    def setUp(self):
+        self.workflow = (ROOT / ".github" / "workflows" / "swarm-gate.yml").read_text(
+            encoding="utf-8")
+
+    def test_live_head_step_validates_sha_and_has_a_read_token(self):
+        step = self.workflow.split("- name: Resolve live PR head", 1)[1].split("\n      - ", 1)[0]
+        self.assertIn("github.event_name == 'pull_request'", step)
+        self.assertIn("^[0-9a-f]{40}$", step)
+        self.assertIn("exit 1", step)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", step)
+        self.assertIn('gh pr view --repo "$GITHUB_REPOSITORY"', step)
+
+    def test_refresh_uses_a_trusted_pr_head_checkout(self):
+        step = self.workflow.split("- name: Refresh tested checkout", 1)[1].split("\n      - ", 1)[0]
+        self.assertIn("path: tested", step)
+        self.assertIn("refs/pull/${{ github.event.pull_request.number }}/head", step)
+        self.assertIn("fetch-depth: 0", step)
+        self.assertIn("persist-credentials: false", step)
+
+    def test_gate_still_runs_base_verifier_against_both_roots(self):
+        self.assertIn("python3 -I base/scripts/swarm_gate.py evaluate", self.workflow)
+        self.assertIn("--root base", self.workflow)
+        self.assertIn("--head-root tested", self.workflow)
+        self.assertIn("RUNNER_TEMP/swarm-gate-event.json", self.workflow)
+
+
 if __name__ == "__main__":
     unittest.main()
