@@ -34,6 +34,8 @@ import com.aurevia.messaging.conversations.ConversationContract.ReplyRequest;
 import com.aurevia.messaging.conversations.ConversationContract.State;
 import com.aurevia.messaging.conversations.ConversationContract.UnitKey;
 import com.aurevia.messaging.conversations.ConversationRepository;
+import static org.mockito.Mockito.lenient;
+import com.aurevia.api.contract.IdempotencyKey;
 import com.aurevia.messaging.conversations.ConversationService;
 import com.aurevia.messaging.units.CareUnitDirectoryService;
 import com.aurevia.messaging.units.InMemoryMessagingStore;
@@ -55,6 +57,7 @@ import com.aurevia.tenant.TenantContext;
  */
 @SuppressWarnings("unchecked")
 class PatientConversationAcceptanceTest {
+    private static final IdempotencyKey KEY = IdempotencyKey.parse("reply-key-1");
 
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
     private static final String PATIENT = "22222222-2222-2222-2222-222222222222";
@@ -84,6 +87,9 @@ class PatientConversationAcceptanceTest {
         directory = new CareUnitDirectoryService(unitStore, new MessagingActions(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         service = new ConversationService(repository, new ConversationActions(), transactions, audit, directory);
+        lenient().when(repository.findMessageByClientId(any(), any())).thenReturn(Optional.empty());
+        lenient().when(repository.insertMessageIfAbsent(any(), anyInt(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
         when(transactions.execute(any(TransactionCallback.class))).thenAnswer(invocation ->
                 ((TransactionCallback<Object>) invocation.getArgument(0)).doInTransaction(null));
 
@@ -188,11 +194,11 @@ class PatientConversationAcceptanceTest {
         directory.revoke(connection.id());
 
         ApiException denial = assertThrows(ApiException.class,
-                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 1));
+                () -> service.reply(CONVERSATION, new ReplyRequest("hello"), 1, KEY));
         assertEquals(403, denial.status());
         assertEquals("FORBIDDEN", denial.code());
-        verify(repository, never()).insertMessage(anyString(), anyInt(), anyString(), anyString(),
-                anyString(), anyString());
+        verify(repository, never()).insertMessageIfAbsent(anyString(), anyInt(), anyString(),
+                anyString(), anyString(), anyString(), anyString());
     }
 
     private void bind(String subject) {

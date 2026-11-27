@@ -253,6 +253,7 @@ class CommitPublicationAuditQueueUpdateNotificationOutboxTest {
                     httpHeaders.set("X-Active-Organization", organization);
                     httpHeaders.set("X-Correlation-Id", UUID.randomUUID().toString());
                     httpHeaders.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+                    httpHeaders.set("Idempotency-Key", java.util.UUID.randomUUID().toString());
                     extra.forEach(httpHeaders::set);
                 });
         RestClient.RequestHeadersSpec<?> headerSpec = body == null ? spec : spec.body(body);

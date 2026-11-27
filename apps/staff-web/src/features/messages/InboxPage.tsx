@@ -37,6 +37,8 @@ export function InboxPage() {
   const { locale } = useI18n();
   const breakpoint = useBreakpoint();
   const [replyText, setReplyText] = useState('');
+  // Stable for one logical reply; a failed send keeps it so a retry deduplicates.
+  const [replyKey, setReplyKey] = useState(() => crypto.randomUUID());
   const [workDraft, setWorkDraft] = useState<WorkDraft | undefined>(undefined);
   const [reasonError, setReasonError] = useState<string | undefined>(undefined);
   const [commandError, setCommandError] = useState<TransportError | undefined>(undefined);
@@ -54,6 +56,7 @@ export function InboxPage() {
   if (draftOrganization !== organizationId) {
     setDraftOrganization(organizationId);
     setReplyText('');
+    setReplyKey(crypto.randomUUID());
     setWorkDraft(undefined);
     setReasonError(undefined);
     setCommandError(undefined);
@@ -86,6 +89,7 @@ export function InboxPage() {
         return;
       }
       setReplyText('');
+      setReplyKey(crypto.randomUUID());
       setCommandError(undefined);
       setRetry(undefined);
       reload();
@@ -165,6 +169,7 @@ export function InboxPage() {
             <InboxScreen
               view={view}
               replyText={replyText}
+              clientMessageId={replyKey}
               workDraft={workDraft}
               reasonError={reasonError}
               onReplyTextChange={setReplyText}

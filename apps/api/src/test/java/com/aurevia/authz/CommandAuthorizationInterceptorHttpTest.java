@@ -2,6 +2,7 @@ package com.aurevia.authz;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -17,6 +18,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -41,6 +45,8 @@ import com.aurevia.api.authorization.CommandAuthorization.MembershipResolver;
 import com.aurevia.api.authorization.CommandAuthorization.ServerIdentity;
 import com.aurevia.api.authorization.CommandCatalog;
 import com.aurevia.api.authorization.InMemoryDecisionSink;
+import com.aurevia.observability.CorrelationIdFilter;
+import com.aurevia.observability.RequestLogCapture;
 import com.aurevia.tenant.TenantContext;
 import com.aurevia.web.CommandAuthorizationInterceptor;
 import com.aurevia.web.TenantContextInterceptor;
@@ -50,6 +56,7 @@ import com.aurevia.web.TenantContextInterceptor;
  * through the injected sink and maps the gate's machine-readable failures to the shared error body.
  * All subjects, tenants and command payloads here are synthetic.
  */
+@ExtendWith(OutputCaptureExtension.class)
 class CommandAuthorizationInterceptorHttpTest {
 
     private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
@@ -156,6 +163,29 @@ class CommandAuthorizationInterceptorHttpTest {
         assertEquals(ORG_A, decision.organizationId());
         assertEquals(SUBJECT, decision.subject());
         assertEquals("corr-allow", decision.correlationId());
+    }
+
+    @Test
+    void oneCorrelationIdJoinsResponseLedgerAndRequestLogWithoutAHeader(CapturedOutput output)
+            throws Exception {
+        InMemoryDecisionSink sink = new InMemoryDecisionSink();
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("synthetic-auth");
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new ProbeController())
+                .setControllerAdvice(new ApiErrorHandler())
+                .addFilters(new CorrelationIdFilter(CLOCK))
+                .addInterceptors(new TenantContextInterceptor(environment),
+                        interceptor(new Resolver("tenant_admin"), sink))
+                .build();
+
+        String echoed = mvc.perform(postCommand("/api/v1/facilities", ORG_A, SUBJECT, null))
+                .andExpect(status().isCreated()).andReturn().getResponse()
+                .getHeader("X-Correlation-Id");
+
+        assertNotNull(echoed);
+        assertEquals(1, sink.decisions().size());
+        assertEquals(echoed, sink.decisions().get(0).correlationId());
+        assertEquals(echoed, RequestLogCapture.requestLog(output).get("correlationId").asString());
     }
 
     @Test

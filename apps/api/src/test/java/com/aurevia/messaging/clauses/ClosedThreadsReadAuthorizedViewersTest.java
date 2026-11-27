@@ -39,6 +39,7 @@ import com.aurevia.messaging.conversations.ConversationContract.View;
 import com.aurevia.messaging.conversations.ConversationContract.WorkEventType;
 import com.aurevia.messaging.conversations.ConversationContract.WorkItemEvent;
 import com.aurevia.messaging.conversations.ConversationRepository;
+import com.aurevia.api.contract.IdempotencyKey;
 import com.aurevia.messaging.conversations.ConversationService;
 import com.aurevia.messaging.conversations.PatientConnectionVerifier;
 import com.aurevia.tenant.TenantContext;
@@ -53,6 +54,7 @@ import com.aurevia.tenant.TenantContext;
  * patient data, credential or persistent store is involved.
  */
 class ClosedThreadsReadAuthorizedViewersTest {
+    private static final IdempotencyKey KEY = IdempotencyKey.parse("reply-key-1");
 
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
     private static final String ID = "33333333-3333-3333-3333-333333333333";
@@ -156,7 +158,7 @@ class ClosedThreadsReadAuthorizedViewersTest {
 
     /** Assert that neither conversation state nor either append-only trail was written. */
     private void assertNoWrites() {
-        verify(repository, never()).insertMessage(anyString(), anyInt(), anyString(), anyString(), anyString(), anyString());
+        verify(repository, never()).insertMessageIfAbsent(anyString(), anyInt(), anyString(), anyString(), anyString(), anyString(), anyString());
         verify(repository, never()).updateState(anyString(), anyInt(), anyString());
         verify(repository, never()).assign(anyString(), anyInt(), anyString());
         verify(repository, never()).appendEvent(anyString(), anyInt(), anyString(), anyString(),
@@ -204,7 +206,7 @@ class ClosedThreadsReadAuthorizedViewersTest {
         asLabStaff(LAB_STAFF);
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(closedConversation()));
 
-        ApiException failure = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 2));
+        ApiException failure = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 2, KEY));
 
         assertEquals(409, failure.status());
         assertEquals("CLOSED_THREAD", failure.code());
@@ -220,7 +222,7 @@ class ClosedThreadsReadAuthorizedViewersTest {
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(closedConversation()));
         when(repository.patientLinkActive(PATIENT_A, PATIENT_ID)).thenReturn(true);
 
-        ApiException failure = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 2));
+        ApiException failure = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 2, KEY));
 
         assertEquals(409, failure.status());
         assertEquals("CLOSED_THREAD", failure.code());
@@ -257,7 +259,7 @@ class ClosedThreadsReadAuthorizedViewersTest {
         ApiException wrongUnitRead = reject(() -> service.get(ID));
         assertEquals(403, wrongUnitRead.status());
         assertEquals("FORBIDDEN", wrongUnitRead.code());
-        ApiException wrongUnitReply = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 2));
+        ApiException wrongUnitReply = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 2, KEY));
         assertEquals(403, wrongUnitReply.status());
         assertEquals("FORBIDDEN", wrongUnitReply.code());
 
@@ -265,7 +267,7 @@ class ClosedThreadsReadAuthorizedViewersTest {
         ApiException wrongPatientRead = reject(() -> service.get(ID));
         assertEquals(404, wrongPatientRead.status());
         assertEquals("NOT_FOUND", wrongPatientRead.code());
-        ApiException wrongPatientReply = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 2));
+        ApiException wrongPatientReply = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 2, KEY));
         assertEquals(404, wrongPatientReply.status());
         assertEquals("NOT_FOUND", wrongPatientReply.code());
 
@@ -278,7 +280,7 @@ class ClosedThreadsReadAuthorizedViewersTest {
         asLabStaff(LAB_STAFF);
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(closedConversation()));
 
-        ApiException failure = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 1));
+        ApiException failure = reject(() -> service.reply(ID, new ReplyRequest("synthetic body"), 1, KEY));
 
         assertEquals(412, failure.status());
         assertEquals("STALE_VERSION", failure.code());

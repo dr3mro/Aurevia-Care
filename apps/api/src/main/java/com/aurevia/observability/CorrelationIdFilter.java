@@ -42,6 +42,9 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
     public static final String CORRELATION_HEADER = "X-Correlation-Id";
     /** SLF4J MDC key under which the correlation id is published. */
     public static final String MDC_KEY = "correlationId";
+    /** Request attribute carrying the single correlation id resolved for this request. */
+    public static final String CORRELATION_ATTRIBUTE =
+            CorrelationIdFilter.class.getName() + ".correlationId";
     /** Route label used when no handler pattern was matched. */
     public static final String UNMATCHED_ROUTE = "UNMATCHED";
 
@@ -63,6 +66,9 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
         String correlationId = resolveCorrelationId(request.getHeader(CORRELATION_HEADER));
+        // The interceptor, authorization ledger and error body must use this same
+        // value; a second mint there would split one request into two audit ids.
+        request.setAttribute(CORRELATION_ATTRIBUTE, correlationId);
         MDC.put(MDC_KEY, correlationId);
         response.setHeader(CORRELATION_HEADER, correlationId);
         long start = clock.millis();

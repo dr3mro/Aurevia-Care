@@ -185,7 +185,29 @@ public class ConversationRepository {
     }
 
     /**
-     * Append one immutable message to a conversation.
+     * Find the message accepted for a client id, confined by row-level security.
+     *
+     * @param conversationId owning conversation
+     * @param clientMessageId durable client key from the reply request
+     * @return the first matching message, or an empty result when this is a new reply
+     */
+    public Optional<Message> findMessageByClientId(String conversationId, String clientMessageId) {
+        List<Message> found = jdbc.query(MESSAGE_SELECT + """
+                WHERE conversation_id = CAST(:conversationId AS uuid)
+                  AND client_message_id = :clientMessageId
+                """, new MapSqlParameterSource()
+                .addValue("conversationId", conversationId)
+                .addValue("clientMessageId", clientMessageId), MESSAGE_MAPPER);
+        return found.stream().findFirst();
+    }
+
+    /**
+     * Append a message once for a durable client id.
+     *
+     * <p>{@code ON CONFLICT DO NOTHING RETURNING} is used instead of catching a
+     * unique violation: a failed statement would abort the surrounding
+     * transaction and make the subsequent replay lookup impossible. An empty
+     * result means a concurrent request already accepted that client id.</p>
      *
      * @param conversationId owning conversation
      * @param sequence       per-conversation sequence
@@ -193,20 +215,27 @@ public class ConversationRepository {
      * @param senderSubject  authenticated author subject
      * @param senderRole     role active at publication
      * @param body           non-sensitive message text
-     * @return number of inserted rows
+     * @param clientMessageId durable client key
+     * @return {@code true} when this call inserted the message
      */
-    public int insertMessage(String conversationId, int sequence, String senderKind,
-                             String senderSubject, String senderRole, String body) {
-        return jdbc.update("""
+    public boolean insertMessageIfAbsent(String conversationId, int sequence, String senderKind,
+                                         String senderSubject, String senderRole, String body,
+                                         String clientMessageId) {
+        String inserted = jdbc.query("""
                 INSERT INTO public.conversation_message
                     (organization_id, conversation_id, sequence, sender_kind, sender_subject,
-                     sender_role, body)
+                     sender_role, body, client_message_id)
                 VALUES (public.app_org(), CAST(:conversationId AS uuid), :sequence, :senderKind,
-                        :senderSubject, :senderRole, :body)
-                """, new MapSqlParameterSource().addValue("conversationId", conversationId)
+                        :senderSubject, :senderRole, :body, :clientMessageId)
+                ON CONFLICT (organization_id, conversation_id, client_message_id) DO NOTHING
+                RETURNING id::text
+                """, new MapSqlParameterSource()
+                .addValue("conversationId", conversationId)
                 .addValue("sequence", sequence).addValue("senderKind", senderKind)
                 .addValue("senderSubject", senderSubject).addValue("senderRole", senderRole)
-                .addValue("body", body));
+                .addValue("body", body).addValue("clientMessageId", clientMessageId),
+                results -> results.next() ? results.getString(1) : null);
+        return inserted != null;
     }
 
     /**

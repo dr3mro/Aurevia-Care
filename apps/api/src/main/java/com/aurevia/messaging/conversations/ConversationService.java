@@ -3,12 +3,15 @@ package com.aurevia.messaging.conversations;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.api.ApiException;
+import com.aurevia.api.contract.ApiErrorCode;
+import com.aurevia.api.contract.IdempotencyKey;
 import com.aurevia.audit.AuditAppender;
 import com.aurevia.messaging.conversations.ConversationContract.AssignRequest;
 import com.aurevia.messaging.conversations.ConversationContract.CloseRequest;
@@ -139,10 +142,11 @@ public class ConversationService {
      * @param id              conversation identifier
      * @param request         reply command
      * @param expectedVersion version read by the caller
+     * @param key             durable client key; a matching retry returns the original reply
      * @return the conversation and both trails
      * @throws ApiException on denial, stale version, a closed thread or invalid input
      */
-    public View reply(String id, ReplyRequest request, int expectedVersion) {
+    public View reply(String id, ReplyRequest request, int expectedVersion, IdempotencyKey key) {
         String conversationId = ConversationInputs.uuid(id, "id");
         String body = ConversationInputs.body(request.body());
         return execute(ConversationActions.CONVERSATION_REPLY, conversationId, caller -> {
@@ -150,6 +154,13 @@ public class ConversationService {
             // Authorize before version/state checks so a foreign thread is never
             // distinguished by a 412 or 409 (ARC-04 concealment).
             requireAccess(caller, current);
+            // Replay before the version check: a retry may carry the version the
+            // caller saw before the first reply, and must still return the outcome
+            // it already owns rather than a stale-version error.
+            Optional<Message> accepted = repository.findMessageByClientId(conversationId, key.value());
+            if (accepted.isPresent()) {
+                return replayOrConflict(accepted.get(), body, conversationId);
+            }
             requireVersion(current, expectedVersion);
             requireWritable(current);
             // Every reply is new messaging, from either side. MSG-02 reopens a
@@ -168,7 +179,13 @@ public class ConversationService {
             SenderKind kind = caller.patient() ? SenderKind.PATIENT : SenderKind.STAFF;
             State next = caller.patient() ? State.AWAITING_STAFF : State.AWAITING_PATIENT;
             int sequence = repository.nextSequence(conversationId);
-            repository.insertMessage(conversationId, sequence, kind.wire(), caller.subject(), caller.role(), body);
+            if (!repository.insertMessageIfAbsent(conversationId, sequence, kind.wire(),
+                    caller.subject(), caller.role(), body, key.value())) {
+                // A concurrent request accepted this client id after our lookup.
+                Message raced = repository.findMessageByClientId(conversationId, key.value())
+                        .orElseThrow(() -> ApiErrorCode.IDEMPOTENCY_CONFLICT.exception());
+                return replayOrConflict(raced, body, conversationId);
+            }
             repository.updateState(conversationId, expectedVersion, next.wire());
             if (current.state() == State.RESOLVED) {
                 repository.appendEvent(conversationId, expectedVersion + 1, WorkEventType.REOPENED.wire(),
@@ -177,6 +194,22 @@ public class ConversationService {
             success(ConversationActions.CONVERSATION_REPLY, conversationId);
             return view(conversationId);
         });
+    }
+
+    /**
+     * Return the authoritative thread view for an accepted reply, or reject a
+     * reused client key carrying a different body.
+     *
+     * @param accepted       message already stored for the client key
+     * @param body           body of the retried command
+     * @param conversationId owning conversation
+     * @return the current thread view, with no second write
+     */
+    private View replayOrConflict(Message accepted, String body, String conversationId) {
+        if (!Objects.equals(accepted.body(), body)) {
+            throw ApiErrorCode.IDEMPOTENCY_CONFLICT.exception();
+        }
+        return view(conversationId);
     }
 
     /**
