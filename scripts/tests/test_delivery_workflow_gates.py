@@ -12,11 +12,12 @@ import unittest
 
 import yaml
 
-from helpers import ROOT
+from helpers import ROOT, load
 
 WORKFLOWS = ROOT / ".github" / "workflows"
 AUTO_MERGE = WORKFLOWS / "dependabot-auto-merge.yml"
 DELIVERY = WORKFLOWS / "delivery.yml"
+gate = load("check-delivery-gate")
 TRUSTED_NVD_EXPRESSION = (
     "${{ (github.event_name == 'push' || "
     "(github.event_name == 'workflow_dispatch' && "
@@ -309,6 +310,28 @@ class WorkflowGateWiringTest(unittest.TestCase):
         workflow = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))
         runs = commands(workflow["jobs"]["script-tests"]["steps"])
         self.assertFalse(lacks(runs, "scripts/python-coverage.sh"))
+
+    def test_delivery_dependency_chain_matches_gate_diagnostic_order(self):
+        jobs = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))["jobs"]
+        self.assertEqual(
+            gate.JOB_ORDER,
+            tuple(name for name in jobs if name != "gate"))
+        self.assertNotIn("needs", jobs["policy"])
+        self.assertEqual(jobs["script-tests"]["needs"], "policy")
+        self.assertEqual(jobs["frontend"]["needs"], "script-tests")
+        self.assertEqual(jobs["java-verify"]["needs"], "script-tests")
+        self.assertEqual(jobs["docs"]["needs"], ["frontend", "java-verify"])
+        self.assertEqual(jobs["verify"]["needs"], "docs")
+        self.assertEqual(jobs["release"]["needs"], "verify")
+        self.assertEqual(gate.DEPENDENCIES, {
+            "policy": (),
+            "script-tests": ("policy",),
+            "frontend": ("script-tests",),
+            "java-verify": ("script-tests",),
+            "docs": ("frontend", "java-verify"),
+            "verify": ("docs",),
+            "release": ("verify",),
+        })
 
 
 class IntegratorPublicationCoverageTest(unittest.TestCase):
