@@ -4752,7 +4752,24 @@ def confirm_pr_ready(pr, head):
     )
 
 
-def plan_integration(red=False):
+def recovery_pr_ids(raw):
+    """Parse the allow-listed pull request numbers carried into a bounded retry.
+
+    A malformed list fails closed: the retry must never re-plan the whole queue
+    and publish unrelated candidate code on the recovered base.
+    """
+    if not raw:
+        return None
+    ids = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not re.fullmatch(r"[1-9][0-9]*", part):
+            raise SystemExit("SWARM_RECOVERY_PRS must be a comma-separated list of PR ids")
+        ids.append(int(part))
+    return ids
+
+
+def plan_integration(red=False, recovery_prs=None):
     """Pull requests ready to integrate, oldest first. While main is red only
     repair pull requests (FIX-, DLV-) may merge, so ordinary work is not blamed for it.
 
@@ -4777,6 +4794,8 @@ def plan_integration(red=False):
     queue = []
     for p in sorted(prs, key=lambda p: p["number"]):
         number = p["number"]
+        if recovery_prs is not None and number not in recovery_prs:
+            continue
         task = tasks.get(task_id_of_title(p.get("title", "")))
         if task and task["status"] == "incomplete":
             continue
@@ -6156,14 +6175,55 @@ def merge_local(pr):
 # Integration helpers otherwise return a nonnegative merge count; keep failure
 # distinct so one successful merge cannot be mistaken for a failing exit code.
 INTEGRATION_FAILED = -1
+# A publish race with a newer main is recoverable by a fresh, tokenless validation
+# cycle. It still exits nonzero: only the emitted allow-listed signal authorises a
+# retry, so an untrusted log reader cannot turn a failure into a merge.
+INTEGRATION_RETRY = -2
+RETRY_ID = "base_advanced"
+SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 
 
 class BranchMoved(SystemExit):
     """The pull request branch changed after its merge was tested."""
 
 
+class BaseAdvanced(RuntimeError):
+    """The trusted base moved with non-tracker changes before publication.
+
+    Carries only a verified base SHA and pull request numbers so a fresh runner
+    can rebase and re-gate those exact candidates. Task text, notes and secrets
+    never travel with the signal.
+    """
+
+    def __init__(self, base, prs):
+        super().__init__("base advanced during publication")
+        self.base = base
+        self.prs = tuple(prs)
+
+
+def integration_retry_payload(reason, base, prs, attempt=0):
+    """Return the allow-listed recovery signal, or an empty string if unsafe.
+
+    A malformed signal must never be read as a retry request: the base must be a
+    40-hex SHA, ids must be positive integers, and only the first attempt may be
+    retried in a single chain.
+    """
+    if reason != RETRY_ID or not isinstance(base, str) or not SHA40.fullmatch(base):
+        return ""
+    if not isinstance(attempt, int) or isinstance(attempt, bool) or attempt != 0:
+        return ""
+    if not isinstance(prs, (list, tuple)) or not prs or any(
+        not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0 for pr in prs
+    ):
+        return ""
+    return json.dumps(
+        {"id": RETRY_ID, "new_base": base, "prs": list(prs), "attempt": attempt},
+        separators=(",", ":"),
+    )
+
+
 def integration_exit_code(result):
-    """Map a nonnegative merge count or negative failure sentinel to a process status."""
+    """Map a merge count or a terminal/recoverable failure sentinel to a status."""
     return 1 if result < 0 else 0
 
 
@@ -6855,13 +6915,40 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     return integrate_finalize(merged, gates, gate)
 
 
-def integrate_finalize(merged, gates, gate):
+def handoff_blocked_batch(merged, reason, detail):
+    """Send every candidate to a person after a terminal publication failure.
+
+    The trusted job owns these labels and comments; the agent never holds a write
+    token. Only pull request numbers and fixed text are used, never task bodies.
+    """
+    print(f"integrator: {reason}; batch was not merged", file=sys.stderr)
+    for pr, _, _ in merged:
+        remove_label(pr, "needs-fix")
+        # A label API failure must not hide the terminal failure: the human handoff
+        # and tracker restore still have to happen.
+        try:
+            add_labels(pr, "needs-human")
+        except subprocess.CalledProcessError as label_error:
+            print(
+                f"integrator: could not label PR {pr} needs-human: {label_error}",
+                file=sys.stderr,
+            )
+        comment_best_effort(
+            pr,
+            f"Integration could not push to main: {detail} A person must take over.",
+        )
+        report_pr_stuck(pr, reason, detail)
+
+
+def integrate_finalize(merged, gates, gate, attempt=0):
     """Record merges, commit, push once with concurrency reconciliation, report.
 
     Trusted: the caller has already gated this exact tree and verified every
-    head SHA. Returns the number of pull requests pushed, or
-    :data:`INTEGRATION_FAILED` when no batch was published. Every pre-push
-    failure restores the latest task snapshot and the original note bytes.
+    head SHA. Returns the number of pull requests pushed,
+    :data:`INTEGRATION_FAILED` when no batch was published, or
+    :data:`INTEGRATION_RETRY` when a newer main requires a fresh tokenless
+    validation cycle. Every failure restores the latest task snapshot and the
+    original note bytes. ``attempt`` caps recovery at one cycle per chain.
     """
 
     def snapshot_records(items):
@@ -6912,87 +6999,83 @@ def integrate_finalize(merged, gates, gate):
         # onto fresh main with --soft (keeping the already-gated tree staged),
         # adopt the fresh shared trackers, re-apply our merge records, re-gate and
         # retry. No commit replay means no committer identity or rebase conflicts.
-        for attempt in range(3):
-            try:
-                authed_git("push", "origin", "HEAD:main")
-                break
-            except subprocess.CalledProcessError as exc:
-                if repo_rule_rejection(exc.stderr):
-                    # Policy rejection is terminal. Restore local completion records
-                    # before telling a person; no PR is merged and no follow-up runs.
-                    restore_records(before_tasks, before_notes)
-                    print(
-                        "integrator: protected-main push rejected by repository rules; "
-                        "batch was not merged",
-                        file=sys.stderr,
-                    )
-                    for pr, _, _ in merged:
-                        remove_label(pr, "needs-fix")
-                        # A label API failure must not hide the terminal push rejection:
-                        # the human handoff and tracker restore still have to happen.
-                        try:
-                            add_labels(pr, "needs-human")
-                        except subprocess.CalledProcessError as label_error:
-                            print(
-                                f"integrator: could not label PR {pr} needs-human: {label_error}",
-                                file=sys.stderr,
-                            )
-                        comment_best_effort(
-                            pr,
-                            "Integration could not push to main: repository rules rejected "
-                            "the protected-branch write. A person must take over.",
-                        )
-                        report_pr_stuck(
-                            pr,
-                            "protected-main push rejected",
-                            "Repository rules blocked the write.",
-                        )
-                    emit("merged", 0)
-                    return INTEGRATION_FAILED
-                if attempt == 2:
-                    raise
-                authed_git("fetch", "origin", "main")
-                # The staged tree was gated on the old main. `reset --soft` keeps that tree, so any
-                # other path that changed on main since (a person's push, a workflow or script fix)
-                # would be silently reverted by the next commit. Only the trackers restored below are
-                # safe to differ; anything else means this batch must be retried from the new main.
-                old_base = git("merge-base", "HEAD", "origin/main").strip()
-                moved_paths = git(
-                    "diff", "--no-renames", "--name-only", "-z", old_base, "origin/main"
+        try:
+            authed_git("push", "origin", "HEAD:main")
+        except subprocess.CalledProcessError as exc:
+            if repo_rule_rejection(exc.stderr):
+                # Policy rejection is terminal, even when recovery is enabled.
+                restore_records(before_tasks, before_notes)
+                handoff_blocked_batch(
+                    merged,
+                    "protected-main push rejected by repository rules",
+                    "Repository rules blocked the write.",
                 )
-                if any(
-                    not path.startswith(TRACKER_PATHS)
-                    for path in moved_paths.split("\0")
-                    if path
-                ):
-                    print(
-                        "Main advanced with non-tracker changes; retry this batch from the new base.",
-                        file=sys.stderr,
-                    )
-                    raise
-                git("reset", "--soft", "origin/main")
-                restore_trackers()
-                # Keep the original note snapshot: restore_trackers may remove a
-                # note that this batch just tracked but that was already untracked
-                # before the batch. Only the task snapshot adopts fresh main.
-                before_tasks = todo_read()
-                merged, comments, newly_moved = record_merges(merged, gates)
-                moved += newly_moved
-                files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
-                git("add", *files)
-                git(
-                    *IDENTITY,
-                    "commit",
-                    "-qm",
-                    "Integrate swarm PRs (reconciled)",
-                    "--allow-empty",
+                emit("merged", 0)
+                return INTEGRATION_FAILED
+            if attempt >= 1:
+                # The single permitted recovery already ran; another advance needs a person.
+                restore_records(before_tasks, before_notes)
+                handoff_blocked_batch(
+                    merged,
+                    "base advanced again after the bounded recovery",
+                    "The retry budget was exhausted by a newer main.",
                 )
-                # Candidate code must never run in the write-token publication
-                # job. A changed trusted base requires a fresh tokenless
-                # validate/seal cycle so the new merge tree is gated first.
-                raise RuntimeError(
-                    "main advanced with non-tracker changes; retry batch from the new base"
+                emit("merged", 0)
+                return INTEGRATION_FAILED
+            authed_git("fetch", "origin", "main")
+            # The staged tree was gated on the old main. `reset --soft` keeps that tree, so any
+            # other path that changed on main since (a person's push, a workflow or script fix)
+            # would be silently reverted by the next commit. Only the trackers restored below are
+            # safe to differ; anything else means this batch must be retried from the new main.
+            old_base = git("merge-base", "HEAD", "origin/main").strip()
+            moved_paths = git(
+                "diff", "--no-renames", "--name-only", "-z", old_base, "origin/main"
+            )
+            if any(
+                not path.startswith(TRACKER_PATHS)
+                for path in moved_paths.split("\0")
+                if path
+            ):
+                # The staged tree was gated against the old base. Do not commit or
+                # push it here: a fresh tokenless cycle must re-gate on new main.
+                raise BaseAdvanced(
+                    git("rev-parse", "origin/main").strip(),
+                    [pr for pr, _, _ in merged],
                 )
+            git("reset", "--soft", "origin/main")
+            restore_trackers()
+            # Keep the original note snapshot: restore_trackers may remove a
+            # note that this batch just tracked but that was already untracked
+            # before the batch. Only the task snapshot adopts fresh main.
+            before_tasks = todo_read()
+            merged, comments, newly_moved = record_merges(merged, gates)
+            moved += newly_moved
+            files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
+            git("add", *files)
+            git(
+                *IDENTITY,
+                "commit",
+                "-qm",
+                "Integrate swarm PRs (reconciled)",
+                "--allow-empty",
+            )
+            # Candidate code must never run in the write-token publication
+            # job. Even a tracker-only advance needs a fresh tokenless cycle.
+            raise BaseAdvanced(
+                git("rev-parse", "origin/main").strip(),
+                [pr for pr, _, _ in merged],
+            )
+    except BaseAdvanced as advanced:
+        restore_records(before_tasks, before_notes)
+        emit("merged", 0)
+        signal = integration_retry_payload(
+            RETRY_ID, advanced.base, advanced.prs, attempt
+        )
+        if signal:
+            emit("integration_retry", signal)
+            emit("recovery_attempt", attempt)
+            return INTEGRATION_RETRY
+        return INTEGRATION_FAILED
     except Exception:
         restore_records(before_tasks, before_notes)
         raise
@@ -7014,13 +7097,16 @@ def integrate_finalize(merged, gates, gate):
     return len(merged)
 
 
-def integrate_publish(manifest_file, bundle_file, gate="scripts/integrator-gate.sh"):
+def integrate_publish(
+    manifest_file, bundle_file, gate="scripts/integrator-gate.sh", attempt=0
+):
     """Publish an already-gated batch on a fresh runner with the write token.
 
     Re-verifies the bundle tip and every accepted PR head against the manifest
     before any write. Runs no candidate code and checks out no candidate branch
-    until those checks pass. Returns the number of pull requests merged, or
-    :data:`INTEGRATION_FAILED` when publication is rejected.
+    until those checks pass. Returns the number of pull requests merged,
+    :data:`INTEGRATION_FAILED` when publication is rejected, or
+    :data:`INTEGRATION_RETRY` when a newer base needs a bounded recovery cycle.
     """
     manifest = json.loads(Path(manifest_file).read_text())
     git("fetch", "-q", str(bundle_file), "HEAD:refs/remotes/validated-batch")
@@ -7048,7 +7134,7 @@ def integrate_publish(manifest_file, bundle_file, gate="scripts/integrator-gate.
     git("checkout", "-q", "--detach", tip)
     merged = [(a["pr"], a["task_id"], a["merge_sha"]) for a in accepted]
     gates = {int(pr): tuple(env) for pr, env in manifest["gates"].items()}
-    return integrate_finalize(merged, gates, gate)
+    return integrate_finalize(merged, gates, gate, attempt=attempt)
 
 
 MAX_RESOLVE = 5
@@ -7061,11 +7147,13 @@ def resolve_attempts(pr):
     return sum(RESOLVE_MARK in c.get("body", "") for c in info.get("comments", []))
 
 
-def resolve_publish(directory):
+def resolve_publish(directory, dispatch=True):
     """Push every conflict resolution that worked and send the rest back to the workers.
 
     Trusted step in a fresh runner: `directory/<pr>` holds the outcome the token-less
-    resolver wrote and `directory/<pr>.bundle` its merge. Returns pushed PR numbers."""
+    resolver wrote and `directory/<pr>.bundle` its merge. ``dispatch`` is disabled
+    for a bounded base-advance recovery, where only the caller's allow-listed
+    re-dispatch may start the next integrator run. Returns pushed PR numbers."""
     pushed, failed = [], []
     for outcome_file in sorted(Path(directory).glob("*")):
         pr = outcome_file.name
@@ -7107,7 +7195,7 @@ def resolve_publish(directory):
             int(pr),
             f"Merge conflict with main could not be resolved automatically ({outcome})",
         )
-    if pushed:
+    if pushed and dispatch:
         # The resolved branches are mergeable now: run the integrator again.
         gh("workflow", "run", "swarm-integrator.yml", "--ref", "main", check=False)
     emit("pushed", json.dumps(pushed))
@@ -7175,8 +7263,16 @@ def main(argv=None):
     p.add_argument("--manifest", required=True)
     p.add_argument("--bundle", required=True)
     p.add_argument("--gate", default="scripts/integrator-gate.sh")
+    p.add_argument(
+        "--recovery-attempt", type=int, default=0,
+        help="bounded base-advance retry ordinal; 0 is the first publication",
+    )
     p = sub.add_parser("resolve-publish")
     p.add_argument("--dir", required=True)
+    p.add_argument(
+        "--no-dispatch", action="store_true",
+        help="push resolved branches without starting an unbounded integrator run",
+    )
     p = sub.add_parser("stale-retry")
     p.add_argument("--task", required=True, help="task id whose stale claim is released")
     p = sub.add_parser("slot-config")
@@ -7668,7 +7764,9 @@ def main(argv=None):
         print(why)
         emit("start", "true" if start else "false")
     elif a.cmd == "plan-integration":
-        queue = plan_integration(main_is_red())
+        queue = plan_integration(
+            main_is_red(), recovery_pr_ids(os.environ.get("SWARM_RECOVERY_PRS", ""))
+        )
         # Each PR is gated with the full check.sh (~10 min) and the integrator
         # pushes only once at the end. An unbounded batch exceeds the 120-min
         # job timeout, so no PR merges at all. Merge in bounded waves; the next
@@ -7713,9 +7811,13 @@ def main(argv=None):
         manifest = integrate_seal(a.base, a.payload, a.out)
         emit("conflicted", json.dumps(manifest["conflicted"]))
     elif a.cmd == "integrate-publish":
-        return integration_exit_code(integrate_publish(a.manifest, a.bundle, a.gate))
+        if not 0 <= a.recovery_attempt <= 1:
+            raise SystemExit("recovery attempt must be 0 or 1")
+        return integration_exit_code(
+            integrate_publish(a.manifest, a.bundle, a.gate, attempt=a.recovery_attempt)
+        )
     elif a.cmd == "resolve-publish":
-        resolve_publish(a.dir)
+        resolve_publish(a.dir, dispatch=not a.no_dispatch)
     elif a.cmd == "stale-retry":
         stale_retry(a.task)
     elif a.cmd == "guard":

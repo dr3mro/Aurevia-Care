@@ -15,6 +15,14 @@ on:
         description: 'Carry the wave-level red-main override into integration'
         type: boolean
         default: false
+      recovery_attempt:
+        description: 'Bounded base-advance retry ordinal (0 or 1)'
+        type: string
+        default: '0'
+      recovery_prs:
+        description: 'Comma-separated pull request ids allowed in a bounded retry'
+        type: string
+        default: ''
     secrets:
       # GITHUB_TOKEN is system-reserved: a workflow_call that declares it fails
       # GitHub validation. It is supplied automatically to the called workflow.
@@ -25,6 +33,19 @@ on:
       OPENCODE_API_KEY_3:
         required: false
   workflow_dispatch:
+    inputs:
+      ignore_red_main:
+        description: 'Carry the wave-level red-main override into a bounded retry'
+        type: boolean
+        default: false
+      recovery_attempt:
+        description: 'Bounded base-advance retry ordinal (0 or 1)'
+        type: string
+        default: '0'
+      recovery_prs:
+        description: 'Comma-separated pull request ids allowed in a bounded retry'
+        type: string
+        default: ''
 permissions:
   contents: read
 concurrency:
@@ -64,6 +85,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_IGNORE_RED_MAIN: ${{ inputs.ignore_red_main }}
+          SWARM_RECOVERY_PRS: ${{ inputs.recovery_prs }}
         run: python3 -I scripts/swarm.py plan-integration
 
   # Candidate code is merged and gated here with NO write token and NO secrets.
@@ -258,6 +280,9 @@ jobs:
       (needs.validate.outputs.accepted != '' && needs.validate.outputs.accepted != '[]')
       || (needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]')
       || (needs.validate.outputs.report != '' && needs.validate.outputs.report != '[]')
+    outputs:
+      integration_retry: ${{ steps.push.outputs.integration_retry }}
+      recovery_attempt: ${{ steps.push.outputs.recovery_attempt }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -293,9 +318,11 @@ jobs:
             fi
           done
       - name: Push only the exact validated commit SHAs
+        id: push
         env:
           GATE: scripts/integrator-gate.sh
-        run: python3 -I scripts/swarm.py integrate-publish --manifest validated/manifest.json --bundle validated/main.bundle --gate "$GATE"
+          RECOVERY_ATTEMPT: ${{ inputs.recovery_attempt || '0' }}
+        run: python3 -I scripts/swarm.py integrate-publish --manifest validated/manifest.json --bundle validated/main.bundle --gate "$GATE" --recovery-attempt "$RECOVERY_ATTEMPT"
 
   # Reconcile only after a successful publication, from a fresh trusted main
   # checkout. A rejected local integration commit must never become the base of
@@ -332,7 +359,11 @@ jobs:
   resolve:
     name: Resolve merge conflicts
     needs: [pick, validate, seal, publish]
-    if: always() && needs.publish.result == 'success' && needs.seal.outputs.conflicted != '' && needs.seal.outputs.conflicted != '[]'
+    if: >-
+      always() && (
+        (needs.publish.result == 'success' && needs.seal.outputs.conflicted != '' && needs.seal.outputs.conflicted != '[]')
+        || (needs.publish.outputs.integration_retry != '' && needs.publish.outputs.recovery_attempt < 1)
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 90
     container:
@@ -360,6 +391,18 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
+      - name: Select the branches to recover
+        env:
+          RETRY: ${{ needs.publish.outputs.integration_retry }}
+          SEALED: ${{ needs.seal.outputs.conflicted }}
+        run: |
+          # A recovery signal names only integer PR ids; a seal names the branches
+          # the tokenless validation found conflicting. No task text is carried.
+          if [[ -n "$RETRY" ]]; then
+            python3 -c 'import json,os; print("CONFLICTED=" + json.dumps(json.loads(os.environ["RETRY"])["prs"]))' >> "$GITHUB_ENV"
+          else
+            echo "CONFLICTED=$SEALED" >> "$GITHUB_ENV"
+          fi
       # The read-only token is used here, before the agent has run anything.
       - name: Fetch main and the conflicted branches
         env:
@@ -381,7 +424,7 @@ jobs:
           retention-days: 1
   resolve-publish:
     name: Push resolved branches
-    needs: [pick, resolve]
+    needs: [pick, resolve, publish]
     if: always() && needs.resolve.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -413,4 +456,33 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           GH_ISSUES_TOKEN: ${{ github.token }}
-        run: python3 -I scripts/swarm.py resolve-publish --dir resolved
+          # A base-advance recovery is capped by the signal-gated step below;
+          # ordinary conflict resolution keeps the historical re-dispatch.
+          DISPATCH_FLAG: ${{ needs.publish.outputs.integration_retry != '' && '--no-dispatch' || '' }}
+        run: |
+          args=(--dir resolved)
+          if [[ -n "$DISPATCH_FLAG" ]]; then args+=("$DISPATCH_FLAG"); fi
+          python3 -I scripts/swarm.py resolve-publish "${args[@]}"
+      # One bounded retry only: the fresh run re-plans just the signalled PRs and
+      # re-gates on the new main. Ordinary conflict resolution never dispatches a
+      # new integrator run because it carries no recovery signal.
+      - name: Re-dispatch the bounded base-advance retry
+        if: needs.publish.outputs.integration_retry != '' && needs.publish.outputs.recovery_attempt < 1
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          RETRY: ${{ needs.publish.outputs.integration_retry }}
+          ATTEMPT: ${{ needs.publish.outputs.recovery_attempt }}
+        run: |
+          prs=$(python3 -c 'import json,os; print(",".join(str(n) for n in json.loads(os.environ["RETRY"])["prs"]))')
+          if [[ ! "$ATTEMPT" =~ ^[01]$ ]]; then
+            echo "::error::invalid recovery attempt" >&2
+            exit 1
+          fi
+          attempt=$(( ATTEMPT + 1 ))
+          if [[ "$attempt" -gt 1 ]]; then
+            echo "::error::base-advance retry budget exhausted" >&2
+            exit 1
+          fi
+          gh workflow run swarm-integrator.yml \
+            --field recovery_attempt="$attempt" --field recovery_prs="$prs" \
+            --field ignore_red_main="${{ inputs.ignore_red_main }}"

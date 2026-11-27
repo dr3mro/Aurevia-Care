@@ -363,11 +363,11 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
     def test_follow_up_jobs_require_successful_publication(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         jobs = workflow["jobs"]
-        self.assertEqual(
-            jobs["resolve"]["if"],
-            "always() && needs.publish.result == 'success' && "
-            "needs.seal.outputs.conflicted != '' && needs.seal.outputs.conflicted != '[]'",
-        )
+        condition = jobs["resolve"]["if"]
+        self.assertIn("needs.publish.result == 'success'", condition)
+        self.assertIn("needs.seal.outputs.conflicted != ''", condition)
+        self.assertIn("needs.publish.outputs.integration_retry != ''", condition)
+        self.assertIn("needs.publish.outputs.recovery_attempt < 1", condition)
         self.assertNotIn("CONFLICTED", jobs["resolve"].get("env", {}))
         self.assertEqual(jobs["resolve-publish"]["if"], "always() && needs.resolve.result == 'success'")
         self.assertNotIn("continue-on-error", jobs["publish"])

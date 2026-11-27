@@ -748,7 +748,7 @@ class MainDispatchCoverageTests(CliTestCase):
         with mock.patch.object(swarm, "main_is_red", return_value=True), \
                 mock.patch.object(swarm, "plan_integration", return_value=[7, 8]) as plan:
             self.assertEqual(swarm.main(["plan-integration"]), 0)
-        plan.assert_called_once_with(True)
+        plan.assert_called_once_with(True, None)
         emitted = self.emitted()
         self.assertEqual(emitted.get("queue"), "[7, 8]")
         self.assertEqual(emitted.get("count"), "2")
@@ -762,6 +762,41 @@ class MainDispatchCoverageTests(CliTestCase):
         emitted = self.emitted()
         self.assertEqual(emitted.get("queue"), "[1, 2, 3]")
         self.assertEqual(emitted.get("count"), "3")
+
+    def test_recovery_pr_ids_accept_only_positive_integer_ids(self):
+        self.assertIsNone(swarm.recovery_pr_ids(""))
+        self.assertEqual(swarm.recovery_pr_ids("7, 9"), [7, 9])
+        for bad in ("7;DROP", "-1", "abc", "7,"):
+            with self.subTest(bad=bad), self.assertRaises(SystemExit):
+                swarm.recovery_pr_ids(bad)
+
+    def test_main_passes_the_allow_listed_retry_prs_to_the_planner(self):
+        with mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "plan_integration", return_value=[7]) as plan, \
+                mock.patch.dict(os.environ, {"SWARM_RECOVERY_PRS": "7"}):
+            self.assertEqual(swarm.main(["plan-integration"]), 0)
+        plan.assert_called_once_with(False, [7])
+
+    def test_plan_integration_restricts_a_retry_to_allow_listed_prs(self):
+        prs = [
+            {"number": 7, "title": "A: one", "labels": [],
+             "isCrossRepository": False, "isDraft": False, "headRefOid": "a" * 40},
+            {"number": 8, "title": "B: two", "labels": [],
+             "isCrossRepository": False, "isDraft": False, "headRefOid": "b" * 40},
+        ]
+        with mock.patch.object(swarm, "gh_json", return_value=prs), \
+                mock.patch.object(swarm, "todo_read", return_value=""):
+            queue = swarm.plan_integration(False, recovery_prs=[8])
+        self.assertEqual(queue, [8])
+
+    def test_main_caps_the_recovery_attempt(self):
+        with mock.patch.object(swarm, "integrate_publish") as publish:
+            with self.assertRaises(SystemExit):
+                swarm.main([
+                    "integrate-publish", "--manifest", "m", "--bundle", "b",
+                    "--recovery-attempt", "2",
+                ])
+        publish.assert_not_called()
 
     def test_integration_exit_code_rejects_non_integer_status(self):
         with self.assertRaises(TypeError):
@@ -781,7 +816,8 @@ class MainDispatchCoverageTests(CliTestCase):
                     mock.patch.object(swarm, "integrate_publish", return_value=result) as publish:
                 self.assertEqual(swarm.main(["integrate-publish", "--manifest", "m.json",
                                              "--bundle", "b.bundle", "--gate", "gate.sh"]), expected)
-            publish.assert_called_once_with("m.json", "b.bundle", "gate.sh")
+            publish.assert_called_once_with(
+                "m.json", "b.bundle", "gate.sh", attempt=0)
 
     def test_main_integrate_publish_rejection_emits_zero_and_skips_dispatch(self):
         manifest = self.dir / "manifest.json"
@@ -814,7 +850,13 @@ class MainDispatchCoverageTests(CliTestCase):
     def test_main_resolve_publish_routes_to_resolve_publish(self):
         with mock.patch.object(swarm, "resolve_publish") as resolve:
             self.assertEqual(swarm.main(["resolve-publish", "--dir", str(self.dir)]), 0)
-        resolve.assert_called_once_with(str(self.dir))
+        resolve.assert_called_once_with(str(self.dir), dispatch=True)
+
+    def test_main_resolve_publish_can_disable_the_unbounded_dispatch(self):
+        with mock.patch.object(swarm, "resolve_publish") as resolve:
+            self.assertEqual(
+                swarm.main(["resolve-publish", "--dir", str(self.dir), "--no-dispatch"]), 0)
+        resolve.assert_called_once_with(str(self.dir), dispatch=False)
 
     def test_main_guard_blocks_when_needed(self):
         with mock.patch.object(swarm, "guard", return_value=True) as guard:
