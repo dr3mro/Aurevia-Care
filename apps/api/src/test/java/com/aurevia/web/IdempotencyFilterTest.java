@@ -2,6 +2,7 @@ package com.aurevia.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -242,6 +243,36 @@ class IdempotencyFilterTest {
                 && request.getAttribute(IdempotencyBodyCaptureFilter.STORE_ATTRIBUTE) != null);
     }
 
+    /**
+     * The conversation reply route keeps replay inside its own service, which
+     * re-derives live thread access, the patient link and writable state on
+     * every retry. The interceptor must therefore let a repeated key reach the
+     * handler instead of freezing and replaying the first response.
+     */
+    @Test
+    void aSelfManagedReplyRouteNeverFreezesItsResponse() throws Exception {
+        String first = mvc.perform(post("/api/v1/conversations/{id}/reply", "conv-1")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"marker\":\"a\"}")
+                        .header("Idempotency-Key", "idem-key-self-managed")
+                        .header("X-Synthetic-Subject", SUBJECT)
+                        .header("X-Active-Organization", ORG))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String retry = mvc.perform(post("/api/v1/conversations/{id}/reply", "conv-1")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"marker\":\"a\"}")
+                        .header("Idempotency-Key", "idem-key-self-managed")
+                        .header("X-Synthetic-Subject", SUBJECT)
+                        .header("X-Active-Organization", ORG))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        // The handler stamps an incrementing call count into its body, so a frozen
+        // replay would repeat the first body instead of showing the second call.
+        assertNotEquals(first, retry, "a frozen replay would repeat the first body");
+        assertEquals(2, controller.calls.get(), "both calls must reach the self-managed handler");
+        assertTrue(store.rows.isEmpty(), "the reply route must not claim an idempotency key");
+    }
+
     @Test
     void anEmptySuccessfulResponseIsNotFrozenAsJson() throws Exception {
         mvc.perform(post("/api/v1/idempotency/empty")
@@ -431,6 +462,13 @@ class IdempotencyFilterTest {
 
         @PostMapping(path = "/api/v1/idempotency/{id}/variable", produces = MediaType.APPLICATION_JSON_VALUE)
         ResponseEntity<String> variable(@PathVariable String id) {
+            int count = calls.incrementAndGet();
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body("{\"calls\":" + count + ",\"id\":\"" + id + "\"}");
+        }
+
+        @PostMapping(path = "/api/v1/conversations/{id}/reply", produces = MediaType.APPLICATION_JSON_VALUE)
+        ResponseEntity<String> reply(@PathVariable String id) {
             int count = calls.incrementAndGet();
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body("{\"calls\":" + count + ",\"id\":\"" + id + "\"}");
