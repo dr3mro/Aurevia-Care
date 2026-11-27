@@ -38,6 +38,11 @@ def catch_all_deny():
 class BuildAndRenderCoverageTests(unittest.TestCase):
     """Cover build() and render(), including their zero-item and many-item loops."""
 
+    def test_generator_has_the_standard_python_shebang(self):
+        """A shebang keeps the script valid if its executable bit is restored."""
+        text = (ROOT / "scripts" / "gen-opencode.py").read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("#!/usr/bin/env python3\n"))
+
     def test_rule_returns_a_permission_mapping(self):
         self.assertEqual(
             gen.rule("read", "*.env", "deny"),

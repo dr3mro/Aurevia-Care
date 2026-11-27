@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Generate .opencode/opencode.json and .opencode/opencode.ci.json from the agent inventory in .opencode/agents.
 
 The committed file is generated so the 33 permission blocks cannot drift.
