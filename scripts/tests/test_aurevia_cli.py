@@ -27,11 +27,12 @@ class AureviaCliTests(unittest.TestCase):
         repo = self.make_repo({
             "00001000-OPEN.md": "- [ ] OPEN · work\n",
             "00002000-TAKEN.md": "- [-] TAKEN · work\n  - agent: orca\n",
+            "00002500-INCOMPLETE.md": "- [!] INCOMPLETE · work\n  - details: Needs owner input.\n",
             "00003000-DONE.md": "- [x] DONE · work\n  - evidence: tool\n",
         })
         result = self.run_cli(repo, "todo")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "open 1 · taken 1 · done 1")
+        self.assertEqual(result.stdout.strip(), "open 1 · taken 1 · incomplete 1 · done 1")
         self.assertFalse((repo / "TODO.md").exists())
 
     def test_find_repo_accepts_tasks_directory_from_a_clean_checkout(self):

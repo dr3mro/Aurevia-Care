@@ -8,8 +8,9 @@ index; no simulated-user or live-human walkthrough exists for this refactor.
 
 ## 1. Executive summary
 
-Stage A discovery and all 16 eligible child stories are green locally
-(`tasks/01300000`, read only for this slice): full Python suite
+Stage A discovery and 13 of 16 child stories are green locally
+(`tasks/01279000-WORKFLOW-AUDIT.md`, read only for this slice): two children are
+incomplete on trusted-runner/owner prerequisites and one has not started. Full Python suite
 `Ran 1920 tests in 126.800s`, `OK`; changed-line coverage
 `python coverage: every changed script line is covered`; policy checks exit 0;
 four verdicts GO per story. No commit, push or PR exists — the fixes are local
@@ -19,10 +20,10 @@ Git/GitHub evidence remains blocked by this session's runtime.
 
 ## 2. Requirement disposition
 
-- ORCA-001..150: disposition table and per-stage status in `tasks/01300000`
-  (source: tool + reviewer). Marked `[x]`, `[-]`, `[!]`, `[N/A]` or `[ ]` there.
+- ORCA-001..150: disposition table and per-stage status in `tasks/01279000-WORKFLOW-AUDIT.md`
+  (source: tool + reviewer). Marked `[x]`, `[-]`, `[!]` incomplete (including blocked), `[N/A]` or `[ ]` there.
   The live status legend in `orca-refactor.md` is the human-readable index.
-- AG-01..35: 35-item table in `tasks/01300000` sections "Stage A — security and
+- AG-01..35: 35-item table in `tasks/01279000-WORKFLOW-AUDIT.md` sections "Stage A — security and
   permissions"/"Stage A final AG dispositions" (source: read-only devsecops and
   context-optimizer reviewers).
 - WF-01..35: 35-item table in `docs/orca-refactor/08-workflow-disposition.md`

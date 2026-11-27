@@ -46,6 +46,14 @@ class ReadWriteTests(Work):
         self.assertIn("[-] A-01", Path("tasks/00001000-A-01.md").read_text())
         self.assertIn("[-] A-01", swarm.todo_read())
 
+    def test_an_incomplete_entry_survives_writes_and_is_not_archived(self):
+        text = TEXT + "- [!] A-04 · Incomplete\n  - scope: d\n  - details:\n    Needs owner input.\n"
+        swarm.todo_write("", text)
+        self.assertEqual(swarm.todo_read(), text)
+        self.assertEqual(swarm.archive_todo(), 1)
+        self.assertIn("- [!] A-04 · Incomplete\n", swarm.todo_read())
+        self.assertFalse((Path("tasks/done") / "A-04.md").exists())
+
     def test_tasks_and_config_trackers_are_protected(self):
         self.assertTrue(swarm.is_tracker("tasks/00001000-A-01.md"))
         self.assertTrue(swarm.is_tracker(".opencode/config/MEMORY.md"))

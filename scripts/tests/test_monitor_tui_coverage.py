@@ -298,6 +298,7 @@ class CommandTests(TuiCase):
         other = [{"workflowName": "Delivery", "status": "completed"}]
         self.assertTrue(m.swarm_idle({"runs": other, "todo": "- [ ] X-1 · work"}))
         self.assertFalse(m.swarm_idle({"runs": other, "todo": "- [x] X-1 · work"}))
+        self.assertFalse(m.swarm_idle({"runs": other, "todo": "- [!] X-1 · incomplete"}))
         idle_wave = [{"workflowName": "Agent swarm", "status": "completed"}]
         self.assertTrue(m.swarm_idle({"runs": idle_wave, "todo": "- [ ] X-1 · work"}))
 
@@ -543,6 +544,16 @@ class AutostartTests(TuiCase):
         with mock.patch.object(self.m, "start_swarm") as start:
             self.run_tui([(lambda: self.arrive(self.idle_payload()), -1), (None, ord("q"))])
         self.assertEqual(start.call_count, 0)
+
+    def test_incomplete_only_tasks_do_not_autostart_a_wave(self):
+        self.m.AUTOSTART = 10
+        incomplete = self.payload(
+            runs=[{"workflowName": "Delivery", "status": "completed", "conclusion": "success"}],
+            todo="- [!] X-1 · incomplete",
+        )
+        with mock.patch.object(self.m, "start_swarm") as start:
+            self.run_tui([(lambda: self.arrive(incomplete), -1), (None, ord("q"))])
+        start.assert_not_called()
 
 
 class DrawTests(TuiCase):

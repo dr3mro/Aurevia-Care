@@ -782,9 +782,149 @@ class PlanTests(unittest.TestCase):
         self.assertNotIn("CW-001", ids)
         self.assertNotIn("CW-003", ids)
 
+    def test_incomplete_tasks_are_not_planned_and_keep_scope_and_dependencies_blocked(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "incomplete")
+        ids = [t["id"] for t in swarm.plan_workers(10, SLOTS, text, [])]
+        self.assertNotIn("CW-001", ids)
+        self.assertNotIn("CW-003", ids)
+        self.assertNotIn("CW-004", ids)
+        self.assertIn("CW-002", ids)
+        self.assertIn("CW-006", ids)
+
+    def test_dispatchable_plan_requires_fresh_kind_eligibility_and_story_claims(self):
+        include = [{"id": "STORY-1", "kind": "story", "slot": 1},
+                   {"id": "FIX-1", "kind": "fix", "slot": 2}]
+        fresh = [{"id": "STORY-1", "kind": "story", "slot": 3},
+                 {"id": "FIX-1", "kind": "fix", "slot": 4}]
+        dispatched = swarm.dispatchable_plan(include, fresh, {"STORY-1"})
+        self.assertEqual([task["id"] for task in dispatched], ["STORY-1", "FIX-1"])
+        self.assertEqual([task["slot"] for task in dispatched], [3, 4])
+        self.assertEqual(swarm.dispatchable_plan(include, fresh[:1], {"STORY-1"}), fresh[:1])
+        self.assertEqual(swarm.dispatchable_plan(include, fresh, set()), fresh[1:])
+        changed_kind = [{"id": "STORY-1", "kind": "fix", "slot": 5}]
+        self.assertEqual(swarm.dispatchable_plan(include[:1], changed_kind, {"STORY-1"}), [])
+
+    def test_claim_open_resolves_a_unique_alias_to_its_canonical_id(self):
+        text = "- [ ] CW-001 · Staff\n  - aliases: STAFF-ALIAS\n  - scope: apps/api/staff\n"
+        marked, granted = swarm.claim_open(text, {"STAFF-ALIAS": "swarm-1"})
+        self.assertEqual(granted, {"CW-001"})
+        self.assertIn("- [-] CW-001 · Staff\n", marked)
+        self.assertIn("  - agent: swarm-1\n", marked)
+
+    def test_focus_resolves_a_unique_alias_before_ordering(self):
+        text = ("- [ ] OTHER-1 · Other\n  - scope: apps/other\n"
+                "- [ ] CW-001 · Staff\n  - aliases: STAFF-ALIAS\n  - scope: apps/api/staff\n")
+        plan = swarm.plan_workers(10, SLOTS, text, [], focus="STAFF-ALIAS")
+        self.assertEqual(plan[0]["id"], "CW-001")
+
+    def test_incomplete_tasks_are_never_granted_even_by_force(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "incomplete")
+        marked, granted = swarm.claim_open(text, {"CW-001": "swarm-9"}, force=True)
+        self.assertEqual(granted, set())
+        self.assertEqual(marked, text)
+
+    def test_focus_does_not_make_an_incomplete_task_eligible(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "incomplete")
+        ids = [t["id"] for t in swarm.plan_workers(10, SLOTS, text, [], focus="CW-001")]
+        self.assertNotIn("CW-001", ids)
+
+    def test_incomplete_tasks_are_not_reclaimed_to_open_or_done(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "incomplete")
+        prs = [{"number": 7, "headRefName": "swarm/CW-001-4", "state": "CLOSED"},
+               {"number": 8, "headRefName": "swarm/CW-001-5", "state": "MERGED"}]
+        self.assertEqual(swarm.reclaim(text, prs), text)
+
+    def test_an_incomplete_task_does_not_get_a_fix_worker(self):
+        text = swarm.set_task_status(TASKS, "CW-002", "incomplete")
+        waiting = pr(9, "swarm/CW-002-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"])
+        plan = swarm.plan_workers(10, SLOTS, text, [waiting])
+        self.assertNotIn("CW-002", [t["id"] for t in plan if t["kind"] == "fix"])
+
+    def test_an_incomplete_scope_blocks_overlapping_fix_workers_even_with_force(self):
+        text = ("- [!] INCOMPLETE-1 · Unfinished\n  - scope: apps/api/shared\n"
+                "  - details:\n    Partial work remains.\n"
+                "- [ ] FIX-2 · Broken pull request\n  - scope: apps/api/shared/deep\n"
+                "  - details:\n    Repair the pull request.\n")
+        waiting = pr(9, "swarm/FIX-2-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"])
+        for force in (False, True):
+            with self.subTest(force=force):
+                plan = swarm.plan_workers(1, [{"slot": 1}], text, [waiting], force=force)
+                self.assertNotIn("FIX-2", [task["id"] for task in plan if task["kind"] == "fix"])
+
+    def test_red_main_incomplete_repair_scope_blocks_overlapping_fix(self):
+        text = ("- [!] FIX-1 · Incomplete repair\n  - scope: apps/api/shared\n"
+                "  - details:\n    Partial repair remains.\n"
+                "- [ ] FIX-9 · Delivery failed on main\n  - scope: apps/api/shared/deep\n"
+                "  - details:\n    Repair main.\n")
+        waiting = pr(9, "swarm/FIX-9-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"])
+        plan = swarm.plan_workers(1, [{"slot": 1}], text, [waiting], red=True)
+        self.assertNotIn("FIX-9", [task["id"] for task in plan if task["kind"] == "fix"])
+
+    def test_an_incomplete_repair_argument_is_not_planned(self):
+        text = "- [!] FIX-9 · Incomplete repair\n  - scope: *\n"
+        repair = {"kind": "story", "id": "FIX-9", "number": 0, "branch": "",
+                  "title": "Incomplete repair", "body": "body", "fix": ""}
+        self.assertEqual(swarm.plan_workers(1, [{"slot": 1}], text, [], repair=repair), [])
+
+    def test_a_repair_argument_cannot_overlap_a_different_incomplete_scope(self):
+        text = ("- [!] OLD-1 · Incomplete ordinary work\n  - scope: apps/api/shared\n"
+                "- [ ] FIX-9 · Repair main\n  - scope: apps/api/shared/deep\n")
+        repair = {"kind": "story", "id": "FIX-9", "number": 0, "branch": "",
+                  "title": "Repair main", "body": "body", "fix": ""}
+        self.assertEqual(swarm.plan_workers(1, [{"slot": 1}], text, [], repair=repair), [])
+
+    def test_an_untracked_repair_argument_reserves_every_incomplete_scope(self):
+        text = "- [!] OLD-1 · Incomplete ordinary work\n  - scope: apps/api/shared\n"
+        repair = {"kind": "story", "id": "FIX-404", "number": 0, "branch": "",
+                  "title": "Repair main: Delivery failed", "body": "body", "fix": ""}
+        self.assertEqual(swarm.plan_workers(1, [{"slot": 1}], text, [], repair=repair, red=True), [])
+
+    def test_an_incomplete_scope_blocks_a_red_main_repair_argument(self):
+        text = ("- [!] OLD-1 · Incomplete ordinary work\n  - scope: apps/api/shared\n"
+                "- [ ] FIX-9 · Open repair\n  - scope: apps/api/shared/deep\n")
+        repair = {"kind": "story", "id": "FIX-9", "number": 0, "branch": "",
+                  "title": "Delivery failed on main", "body": "body", "fix": ""}
+        self.assertEqual(swarm.plan_workers(1, [{"slot": 1}], text, [], repair=repair, red=True), [])
+
     def test_an_alias_of_a_done_story_satisfies_dependencies_across_sections(self):
         plan = swarm.plan_workers(10, SLOTS, ALIASED, [])
         self.assertEqual([t["id"] for t in plan], ["CW-011"])
+
+    def test_an_incomplete_parent_satisfies_neither_its_id_nor_its_alias(self):
+        text = ("- [!] ORCA-INFRASTRUCTURE-REFACTOR · Incomplete parent\n"
+                "  - aliases: 01300000-ORCA-INFRASTRUCTURE-REFACTOR\n"
+                "  - scope: docs/orca\n"
+                "- [ ] CHILD-1 · Needs the sequenced id\n"
+                "  - depends: 01300000-ORCA-INFRASTRUCTURE-REFACTOR\n"
+                "  - scope: apps/child-one\n"
+                "- [ ] CHILD-2 · Needs the historical alias\n"
+                "  - depends: ORCA-INFRASTRUCTURE-REFACTOR\n"
+                "  - scope: apps/child-two\n")
+        self.assertEqual(swarm.plan_workers(10, SLOTS, text, []), [])
+        done = swarm.set_task_status(
+            text, "ORCA-INFRASTRUCTURE-REFACTOR", "done", pr="#7", evidence="CI green"
+        )
+        self.assertEqual(
+            [task["id"] for task in swarm.plan_workers(10, SLOTS, done, [])],
+            ["CHILD-1", "CHILD-2"],
+        )
+
+    def test_a_done_alias_cannot_satisfy_a_dependency_owned_by_a_canonical_task(self):
+        text = ("- [x] DONE-1 · Finished alias owner\n"
+                "  - aliases: SHARED\n"
+                "- [ ] SHARED · Canonical unfinished task\n"
+                "  - scope: apps/shared\n"
+                "- [ ] CHILD-1 · Needs the canonical task\n"
+                "  - depends: SHARED\n"
+                "  - scope: apps/child\n")
+        self.assertNotIn("CHILD-1", [task["id"] for task in swarm.plan_workers(10, SLOTS, text, [])])
+
+    def test_an_archived_done_alias_cannot_override_an_active_canonical_task(self):
+        text = ("- [ ] SHARED · Canonical unfinished task\n  - scope: apps/shared\n"
+                "- [ ] CHILD-1 · Needs the canonical task\n  - depends: SHARED\n"
+                "  - scope: apps/child\n")
+        with mock.patch.object(swarm, "archived_done_ids", return_value={"SHARED"}):
+            self.assertNotIn("CHILD-1", [task["id"] for task in swarm.plan_workers(10, SLOTS, text, [])])
 
     def test_each_claim_counts_an_attempt_and_the_last_one_stops_the_retries(self):
         text = TASKS
@@ -857,6 +997,37 @@ class PlanTests(unittest.TestCase):
         got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
         self.assertEqual(got["CW-001"]["status"], "taken")
 
+    def test_reclaim_resolves_pr_and_live_ids_to_canonical_owners(self):
+        text = ("- [-] ALIAS-OWNER · Taken alias owner\n  - agent: swarm-1\n"
+                "  - aliases: HELD-1\n  - scope: apps/alias-owner\n"
+                "- [!] HELD-1 · Incomplete canonical task\n  - scope: apps/held\n")
+        for state in ("OPEN", "CLOSED", "MERGED"):
+            with self.subTest(state=state):
+                colliding = {"number": 7, "headRefName": "swarm/HELD-1-1", "state": state}
+                got = {task["id"]: task for task in swarm.parse_tasks(swarm.reclaim(text, [colliding]))}
+                self.assertEqual(got["ALIAS-OWNER"]["status"], "todo")
+                self.assertEqual(got["HELD-1"]["status"], "incomplete")
+        live = {task["id"]: task for task in swarm.parse_tasks(swarm.reclaim(text, [], live=["HELD-1"]))}
+        self.assertEqual(live["ALIAS-OWNER"]["status"], "todo")
+        self.assertEqual(live["HELD-1"]["status"], "incomplete")
+
+    def test_reclaim_ignores_unknown_live_and_pr_ids(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="swarm-1")
+        prs = [{"number": 7, "headRefName": "swarm/UNKNOWN-1-1", "state": "MERGED"}]
+        got = {task["id"]: task for task in swarm.parse_tasks(swarm.reclaim(text, prs, live=["UNKNOWN-2"]))}
+        self.assertEqual(got["CW-001"]["status"], "todo")
+        self.assertNotIn("UNKNOWN-1", got)
+
+    def test_reclaim_keeps_an_alias_owner_with_its_own_open_pr(self):
+        text = ("- [-] ALIAS-OWNER · Taken alias owner\n  - agent: swarm-1\n"
+                "  - aliases: HELD-1\n  - scope: apps/alias-owner\n"
+                "- [!] HELD-1 · Incomplete canonical task\n  - scope: apps/held\n")
+        prs = [{"number": 8, "headRefName": "swarm/ALIAS-OWNER-1", "state": "OPEN"},
+               {"number": 7, "headRefName": "swarm/HELD-1-1", "state": "MERGED"}]
+        got = {task["id"]: task for task in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual(got["ALIAS-OWNER"]["status"], "taken")
+        self.assertEqual(got["HELD-1"]["status"], "incomplete")
+
     def test_release_claim_returns_task_to_open(self):
         captured = {}
 
@@ -868,6 +1039,24 @@ class PlanTests(unittest.TestCase):
             self.assertTrue(swarm.release_claim("CW-001", "worker failed"))
         got = {t["id"]: t for t in swarm.parse_tasks(captured["text"])}
         self.assertEqual(got["CW-001"]["status"], "todo")
+
+    def test_release_claim_never_reopens_open_done_incomplete_or_missing_tasks(self):
+        cases = (
+            "- [ ] CW-001 · Open\n",
+            "- [x] CW-001 · Done\n",
+            "- [!] CW-001 · Incomplete\n  - attempts: 3\n",
+            "- [ ] OTHER-1 · Missing target\n",
+        )
+        for text in cases:
+            with self.subTest(text=text), \
+                    mock.patch.object(swarm, "todo_read", return_value=text), \
+                    mock.patch.object(swarm, "todo_write") as write, \
+                    mock.patch.object(swarm, "git") as git, \
+                    mock.patch.object(swarm, "authed_git") as authed:
+                self.assertFalse(swarm.release_claim("CW-001", "worker failed"))
+                write.assert_not_called()
+                git.assert_not_called()
+                authed.assert_not_called()
 
     def test_scope_overlap_uses_path_prefixes(self):
         self.assertTrue(swarm.overlaps(["a/b/**"], ["a/b/c"]))
@@ -1048,6 +1237,7 @@ class PlanTests(unittest.TestCase):
                 self.assertIn(agent, configured)
         self.assertIn("--agent product-owner", workflow)
         self.assertIn("--agent scrum-master", workflow)
+        self.assertIn("[!] incomplete", workflow)
         self.assertNotIn("--agent aurevia-product-owner", workflow)
         self.assertNotIn("--agent aurevia-scrum-master", workflow)
 
@@ -1283,10 +1473,55 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         for task in tasks:
             self.assertTrue(task["task"])
-            if task["status"] == "todo" and task["scope"]:
+            if task["status"] in ("todo", "incomplete") and task["scope"]:
                 self.assertTrue(task["details"], task["id"])
         reserved = [t["reserved"] for t in tasks if t["reserved"]]
         self.assertEqual(len(reserved), len(set(reserved)))
+
+
+class ArchivedLookupTests(unittest.TestCase):
+    def test_archived_done_ids_apply_canonical_precedence(self):
+        text = ("- [x] DONE-1 · Finished alias owner\n  - aliases: SHARED\n"
+                "- [ ] SHARED · Unfinished canonical task\n")
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as archive:
+            archive.write(text)
+            archive.flush()
+            done = swarm.archived_done_ids(archive.name)
+        self.assertIn("DONE-1", done)
+        self.assertNotIn("SHARED", done)
+
+    def test_archived_done_ids_fail_closed_on_ambiguous_aliases(self):
+        text = ("- [x] DONE-1 · First\n  - aliases: SHARED\n"
+                "- [x] DONE-2 · Second\n  - aliases: SHARED\n")
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as archive:
+            archive.write(text)
+            archive.flush()
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.archived_done_ids(archive.name)
+
+    def test_archived_task_scope_uses_canonical_alias_lookup(self):
+        class Store:
+            active = lambda self: True
+            archived = lambda self: "- [x] DONE-1 · Finished\n  - aliases: DONE-ALIAS\n  - scope: apps/done\n"
+
+        with mock.patch.object(swarm, "store", return_value=Store()):
+            self.assertEqual(swarm.archived_task_scope("DONE-ALIAS"), ["apps/done"])
+            self.assertEqual(swarm.archived_task_scope("MISSING-1"), [])
+            Store.archived = lambda self: (
+                "- [x] DONE-1 · First\n  - aliases: SHARED\n  - scope: apps/one\n"
+                "- [x] DONE-2 · Second\n  - aliases: SHARED\n  - scope: apps/two\n"
+            )
+            with self.assertRaises(swarm.ReconciliationError):
+                swarm.archived_task_scope("SHARED")
+
+
+    def test_archived_task_scope_rejects_non_done_record(self):
+        class Store:
+            active = lambda self: True
+            archived = lambda self: "- [ ] OPEN-1 · Not done\n  - scope: apps/open\n"
+
+        with mock.patch.object(swarm, "store", return_value=Store()):
+            self.assertEqual(swarm.archived_task_scope("OPEN-1"), [])
 
 
 class ForceSchedulingTests(unittest.TestCase):
@@ -1299,12 +1534,22 @@ class ForceSchedulingTests(unittest.TestCase):
             "  - details:\n    Unmet dependency\n\n"
             "- [ ] RETRY-1 · Too many tries\n  - scope: a/retry\n  - attempts: 9\n"
             "  - details:\n    Over the attempt cap\n\n"
+            "- [!] INCOMPLETE-1 · Unfinished\n  - scope: a/incomplete\n"
+            "  - details:\n    Waiting for owner input.\n"
         )
         slots = [{"slot": n} for n in range(1, 5)]
         self.assertEqual([t["id"] for t in swarm.plan_workers(4, slots, text, [])], [])
         ids = [t["id"] for t in swarm.plan_workers(4, slots, text, [], force=True)]
         self.assertEqual(ids, ["HELD-1", "BLOCKED-1", "RETRY-1"])
         self.assertNotIn("DONE-1", ids)
+        self.assertNotIn("INCOMPLETE-1", ids)
+
+    def test_force_keeps_an_incomplete_scope_reserved(self):
+        text = ("- [!] INCOMPLETE-1 · Unfinished\n  - scope: apps/api/shared\n"
+                "  - details:\n    Partial work remains.\n"
+                "- [ ] OTHER-1 · Overlapping work\n  - scope: apps/api/shared/deep\n")
+        ids = [t["id"] for t in swarm.plan_workers(1, [{"slot": 1}], text, [], force=True)]
+        self.assertEqual(ids, [])
 
     def test_force_plans_tasks_held_by_an_open_pull_request(self):
         text = "# TODO\n\n- [-] HELD-1 · Held claim\n  - scope: a/held\n  - details:\n    Stale claim\n\n"
@@ -1332,6 +1577,7 @@ class ForceSchedulingTests(unittest.TestCase):
         config = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())
         override = config[True]["workflow_dispatch"]["inputs"]["ignore_red_main"]
         self.assertIn("bypass", override["description"].lower())
+        self.assertIn("incomplete scope locks", override["description"].lower())
 
 
 class ReleaseTests(unittest.TestCase):
@@ -1372,6 +1618,13 @@ class TaskFieldTests(unittest.TestCase):
             todo.write_text(TODO_SAMPLE if "TODO_SAMPLE" in globals() else "")
             self.assertEqual(swarm.task_field("NOPE-1", "title", str(todo)), "")
             self.assertEqual(swarm.task_field("NOPE-1", "body", str(Path(tmp) / "missing.md")), "")
+
+    def test_status_resolves_a_unique_alias_and_missing_ids_are_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp) / "TODO.md"
+            todo.write_text("- [!] PARENT-1 · Incomplete\n  - aliases: PARENT-ALIAS\n")
+            self.assertEqual(swarm.task_field("PARENT-ALIAS", "status", str(todo)), "incomplete")
+            self.assertEqual(swarm.task_field("MISSING-1", "status", str(todo)), "")
 
 
 class FailTests(unittest.TestCase):
@@ -1831,6 +2084,25 @@ class IntegrationTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", FakeGh(prs=prs)), \
                 mock.patch.object(swarm, "draft_recovery", return_value=swarm.DRAFT_LEAVE):
             self.assertEqual(swarm.plan_integration(), [6])
+
+    def test_queue_rejects_incomplete_canonical_and_alias_tasks_before_draft_actions(self):
+        cases = (
+            ("TASK-1", "- [!] TASK-1 · Incomplete\n"),
+            ("TASK-ALIAS", "- [!] TASK-1 · Incomplete\n  - aliases: TASK-ALIAS\n"),
+            ("TASK-1", "- [x] DONE-1 · Finished alias owner\n  - aliases: TASK-1\n"
+                       "- [!] TASK-1 · Incomplete canonical\n"),
+        )
+        for task_id, text in cases:
+            with self.subTest(task_id=task_id):
+                pr = {"number": 5, "title": f"{task_id}: work", "labels": labels("swarm"),
+                      "isCrossRepository": False, "isDraft": True, "headRefOid": "abc"}
+                with mock.patch.object(swarm, "gh_json", return_value=[pr]), \
+                        mock.patch.object(swarm, "todo_read", return_value=text), \
+                        mock.patch.object(swarm, "draft_recovery") as recover, \
+                        mock.patch.object(swarm, "gh") as gh:
+                    self.assertEqual(swarm.plan_integration(), [])
+                    recover.assert_not_called()
+                    gh.assert_not_called()
 
     def test_guard_stops_protected_paths_for_a_human(self):
         fake = FakeGh(diff="apps/api/src/A.java\n.github/workflows/x.yml\nscripts/swarm.py\n")

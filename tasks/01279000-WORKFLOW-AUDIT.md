@@ -211,14 +211,7 @@
 - Still unavailable under the durable no-Git/GitHub directive: full Git-backed suite, canonical branch coverage, disposable repositories, live Actions/ruleset/rerun/race evidence, and the WF-36 atomic ledger implementation and mandatory live scenarios. Owner approval of the policy does not lift that execution constraint.
 
 ## Why this is not finished
-Audit has started; no checklist item is considered fixed without source evidence, reproduction where applicable, regression coverage and independent verification. The standing owner directive prohibits Git-using scripts/tests, so disposable-repository and full-suite evidence remain explicitly unrun.
-- [!] ORCA-INFRASTRUCTURE-REFACTOR · Coordinated ORCA infrastructure audit, refactoring and verification
-  - blocked: all 16 eligible child stories are `[x]`; remaining units need trusted Git/GitHub execution, an owner prefix-rename ruling, staff-web/Java/CI authority, or a non-competing ORCA-080 replacement. See `## Queue blocker`.
-  - evidence: full suite `Ran 1920 tests in 126.800s`, `OK`; `bash scripts/python-coverage.sh` → `python coverage: every changed script line is covered`; all six policy checks exit 0; four verdicts GO per child story. Evidence source: tool commands and read-only reviewers. No commit, push or PR in this session.
-  - requirements: ORCA-001..ORCA-150, AG-01..AG-35, WF-01..WF-35 (source: `orca-refactor.md`)
-  - scope: .opencode, .github, scripts, tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md, docs, .opencode/config
-  - depends: none
-  - details: Incremental, independently verifiable stages A–N from `orca-refactor.md` section 19. Do not attempt all requirements in one change. Preserve useful functionality, Git safety, branch protection, quality gates and clinical safety. Every disposition must cite tool/reviewer/simulated-user/human evidence and its source type. This task is the single authoritative checkpoint for the refactor; the 150 capability requirements are tracked as a disposition table inside this file rather than 150 duplicate tasks.
+Audit has started; no checklist item is considered fixed without source evidence, reproduction where applicable, regression coverage and independent verification. The standing owner directive prohibits Git-using scripts/tests, so disposable-repository and full-suite evidence remain explicitly unrun. The authoritative incomplete parent entry is now `tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md`.
 
 ## Loaded skills (matched by advertised description)
 - aurevia-delivery — mandatory for every story; persistent restartable loop.
@@ -236,11 +229,11 @@ Audit has started; no checklist item is considered fixed without source evidence
 - Model policy — RESOLVED: owner chose to keep direct `SWARM_MODEL` (`.opencode/config/MEMORY.md`, 2026-11-24 ruling). ORCA-032/033/069/141 are not applicable with that justification; no router, force flag, pricing registry or failover will be introduced.
 - Execution isolation — RESOLVED: owner chose to stay on `main` on this PC with no worktrees. Strict worktree clauses are not applicable; disposable copies are reserved for destructive and fault-injection tests only.
 - Git and GitHub operations — AUTHORISED BY OWNER BUT BLOCKED BY RUNTIME: the owner granted Git/GitHub execution, but this session's runtime authority denies `git`, `gh` and GitHub API calls. No commit, push, PR or live gate evidence can be produced here; hand off the tested source state to a trusted integrator.
-- Skill naming — OPEN: ORCA-081 requires removing the `aurevia-` prefix from every skill ID and directory. The advertised routing contract in this session uses the current `aurevia-*` IDs, and agent/config regeneration plus atomic reference updates would be required. Status: staged, not started; must be done atomically with a regenerated config and a discovery check.
+- Skill naming — RESOLVED: the owner chose to remove the `aurevia-` prefix from every skill ID and directory (2026-11-25, task 01315000). The atomic rename, reference updates and config regeneration are staged but not started.
 
 ## Stage status (section 19 execution order)
 
-Both checklists are updated after each stage: this `## Stage status` list and the ORCA item headings in `orca-refactor.md` (legend at its top). Marks: `[x]` verified, `[-]` in progress, `[!]` blocked, `[N/A]` ruled out by owner decision, `[ ]` not started.
+Both checklists are updated after each stage: this `## Stage status` list and the ORCA item headings in `orca-refactor.md` (legend at its top). Marks: `[x]` verified, `[-]` in progress, `[!]` incomplete (including blocked), `[N/A]` ruled out by owner decision, `[ ]` not started.
 - [x] Skills loaded and matched clauses recorded.
 - [x] Trackers read: WORKSPACE.md, MEMORY.md, `tasks/_head.md`, newest task files.
 - [x] Stage A read-only discovery and inventory (ORCA-001..003, AG/WF baseline) — four parallel read-only specialist passes returned; inventories and deliverable index written under `docs/orca-refactor/`.
@@ -251,7 +244,7 @@ Both checklists are updated after each stage: this `## Stage status` list and th
   - [x] Delivery tooling failures from run 45510650619: stale `gh.log`/daily fixtures and best-effort `needs-human` labelling (task 01302000; 119/119, 48/48, full suite 1741/1741).
   - [x] AG-34 untrusted context lines creating false annotations (task 01302100; `clean()` quotes `##[`/`::`, 362/362).
   - [x] AG-34 untrusted story title/body/comment in agent prompts (task 01302200; 123/123, full suite 1745/1745).
-  - [!] AG-22 reviewer provenance — BLOCKED: needs a trusted runner to produce review evidence outside the worker's write authority (tasks 01301000 released, 01301200 blocked); no code change was made.
+  - [!] AG-22 reviewer provenance — incomplete: blocked on a trusted runner to produce review evidence outside the worker's write authority (tasks 01301000 and 01301200); no code change was made.
 - [x] Stage C baseline benchmarking — reproducible commands and final lines recorded under `## Evidence log` and `docs/orca-refactor/01-inventory.md`; character/line proxies only, with token metrics explicitly unavailable (no tokeniser in this session).
 - [x] Offline ORCA core analysis module (01303000) — `scripts/orca_core.py` green with 24 tests and 100% module coverage; four reviewer verdicts GO; changed-line gate now green.
 - [x] Stage D validator slice (01304000) — `scripts/check-ownership.py` with declared manifest, 34 tests and 100% module coverage; four reviewer verdicts GO; changed-line gate now green. No scripts were moved.
@@ -273,7 +266,7 @@ Both checklists are updated after each stage: this `## Stage status` list and th
 
 ## Queue blocker (2026-11-25)
 
-Read-only scrum-master decision: all designed, locally verifiable passive slices are exhausted. No further story can reach `[x]` in this session. Unblock conditions: (1) trusted Git/GitHub runner for Stage H promotion, Stage K `check-doc-sync.py` base, exact-SHA verification and AG-22 provenance; (2) an owner ruling removing the `aurevia-` prefix before the atomic Stage E skill rename; (3) authority and toolchain for staff-web checks, Java parity tests and CI mutation wiring; (4) if ORCA-080 is still wanted, a non-competing extension of `readiness()`/`preflight()` rather than a second readiness entry point. Owner rulings on direct `SWARM_MODEL`, `main`-only work and no worktrees are unchanged.
+Read-only scrum-master decision: all designed, locally verifiable passive slices are exhausted. No further story can reach `[x]` in this session. Unblock conditions: (1) trusted Git/GitHub runner for Stage H promotion, Stage K `check-doc-sync.py` base, exact-SHA verification and AG-22 provenance; (2) authority and toolchain for staff-web checks, Java parity tests and CI mutation wiring; (3) if ORCA-080 is still wanted, a non-competing extension of `readiness()`/`preflight()` rather than a second readiness entry point. Owner rulings on direct `SWARM_MODEL`, `main`-only work, no worktrees and removing the skill prefix are unchanged.
 
 ## Requirement disposition table
 Template: `ID | Severity | Status | Evidence (source type) | Correction | Regression test | Confidence | Risk`.

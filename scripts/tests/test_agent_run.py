@@ -516,6 +516,84 @@ class AgentRunTests(unittest.TestCase):
         self.assertIn("load the full project context", prompts.read_text())
         self.assertNotIn("BRIEF-FOR-WORKER", prompts.read_text())
 
+    def test_tracker_rules_define_incomplete_for_interactive_and_swarm_prompts(self):
+        for label, env in (("interactive", {"STORY_ID": "incomplete-interactive"}),
+                           ("swarm", {"STORY_ID": "incomplete-swarm", "SWARM": "1", "BRIEF": "off"})):
+            with self.subTest(mode=label):
+                prompts = self.tmp / f"incomplete-{label}.log"
+                result = self.run_cmd("implement", FAKE_MODE="none", PROMPT_LOG=str(prompts), **env)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                text = prompts.read_text()
+                self.assertIn("[!] incomplete", text)
+                self.assertNotIn("put the task back to [ ]", text)
+
+    def test_incomplete_tasks_are_rejected_before_prompt_argv_config_or_auth_use(self):
+        for helper in ("swarm.py", "process_env.py", "swarm_flags.py"):
+            shutil.copy(ROOT / "scripts" / helper, self.repo / "scripts" / helper)
+        tasks = self.repo / "tasks"
+        tasks.mkdir()
+        for mode in ("story", "fix"):
+            with self.subTest(mode=mode):
+                story_id = f"incomplete-{mode}"
+                (tasks / f"00001000-{story_id}.md").write_text(
+                    f"- [!] {story_id} · Held\n  - aliases: {story_id}-alias\n"
+                    "  - scope: apps/held\n  - details:\n    Needs owner input.\n",
+                    encoding="utf-8",
+                )
+                prompts = self.tmp / f"guard-{mode}-prompt.log"
+                argv = self.tmp / f"guard-{mode}-argv.log"
+                seen = self.tmp / f"guard-{mode}-config.json"
+                config = self.repo / ".opencode/opencode.json"
+                before = config.read_bytes()
+                result = self.run_cmd(
+                    "implement", FAKE_MODE="none", MODE=mode, STORY_ID=f"{story_id}-alias",
+                    STORY_TITLE="Held", STORY_BODY="Held body", PROMPT_LOG=str(prompts),
+                    ARGV_LOG=str(argv), SEEN=str(seen),
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("incomplete", result.stderr.lower())
+                self.assertFalse(prompts.exists())
+                self.assertFalse(argv.exists())
+                self.assertFalse(seen.exists())
+                self.assertFalse((self.repo / ".agent/tasks.txt").exists())
+                self.assertEqual(config.read_bytes(), before)
+                self.assertEqual(self.gh_log.read_text(), "")
+
+        merge_prompts = self.tmp / "guard-merge-prompt.log"
+        resumed = self.run_cmd(
+            "merge-main", FAKE_MODE="none", MODE="story", STORY_ID="incomplete-story-alias",
+            SEGMENT="2", PROMPT_LOG=str(merge_prompts),
+        )
+        self.assertNotEqual(resumed.returncode, 0)
+        self.assertIn("incomplete", resumed.stderr.lower())
+        self.assertFalse(merge_prompts.exists())
+
+    def test_missing_task_status_fails_closed_before_the_model(self):
+        for helper in ("swarm.py", "process_env.py", "swarm_flags.py"):
+            shutil.copy(ROOT / "scripts" / helper, self.repo / "scripts" / helper)
+        (self.repo / "tasks").mkdir()
+        prompts = self.tmp / "missing-status-prompt.log"
+        result = self.run_cmd(
+            "implement", FAKE_MODE="none", STORY_ID="missing-task",
+            STORY_TITLE="Missing", STORY_BODY="Missing body", PROMPT_LOG=str(prompts),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("status", result.stderr.lower())
+        self.assertFalse(prompts.exists())
+
+    def test_task_status_command_failure_fails_closed_before_model(self):
+        (self.repo / "scripts/swarm.py").write_text("raise SystemExit(9)\n", encoding="utf-8")
+        (self.repo / "tasks").mkdir()
+        prompts = self.tmp / "status-error-prompt.log"
+        result = self.run_cmd(
+            "implement", FAKE_MODE="none", STORY_ID="broken-status",
+            STORY_TITLE="Broken", STORY_BODY="Broken body", PROMPT_LOG=str(prompts),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Cannot read task status", result.stderr)
+        self.assertFalse(prompts.exists())
+        self.assertFalse((self.repo / ".agent/tasks.txt").exists())
+
     def test_the_worker_prompt_asks_for_the_reviewers_and_their_verdicts(self):
         prompts = self.repo.parent / "prompts.log"
         self.run_cmd("implement", FAKE_MODE="commit", SWARM="1", PROMPT_LOG=str(prompts))

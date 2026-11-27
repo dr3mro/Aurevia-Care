@@ -2,7 +2,7 @@
 
 ## Live status of the ORCA items
 
-Marks added on 2026-11-24 from verified task evidence: `[x]` completed with green tests and reviewer verdicts, `[-]` partially evidenced or in progress, `[!]` blocked by runtime or authority, `[N/A]` not applicable under the owner's 2026-11-24 rulings. Empty `[ ]` items are not started. The authoritative disposition, exact commands and evidence source types are in `tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md`, with child stories `01301000` through `01302200`. Model-routing items are `[N/A]` because the owner chose direct `SWARM_MODEL` with no router or force/fallback; live Git/GitHub items stay `[!]` because this session denies Git-backed operations.
+Marks added on 2026-11-24 from verified task evidence: `[x]` completed with green tests and reviewer verdicts, `[-]` partially evidenced or in progress, `[!]` incomplete (including blocked by runtime or authority), `[N/A]` not applicable under the owner's 2026-11-24 rulings. Empty `[ ]` items are not started. The authoritative disposition, exact commands and evidence source types are in `tasks/01279000-WORKFLOW-AUDIT.md`; `tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md` is the high-level incomplete parent checkpoint, with child stories `01301000` through `01302200` and later ORCA slices. Model-routing items are `[N/A]` because the owner chose direct `SWARM_MODEL` with no router or force/fallback; live Git/GitHub items stay `[!]` because this session denies Git-backed operations.
 
 ## 1. Mission
 
@@ -3363,7 +3363,7 @@ Use statuses:
 - [-] In progress.
 - [x] Verified complete.
 - [N/A] Not applicable with justification.
-- [!] Blocked.
+- [!] Incomplete, including blocked.
 
 For each ORCA, AG, and WF requirement, record:
 
@@ -3778,7 +3778,7 @@ DIAGNOSIS ALREADY DONE — start from it, do not re-run broad triage:
    `python3 -I -m unittest discover -s scripts/tests -p 'test_agent_run.py' -q`
    → `Ran 119 tests in 128.557s`, `FAILED (failures=1, errors=4)`.
 
-WORK ONE STORY AT A TIME. For each story, claim its entry in the relevant tasks/ file by changing `[ ]` to `[-]` and adding `- agent: orca`. Record every command and its final line under the entry. Mark `[x]` with `evidence:` and `pr:` only after every gate passes; if you stop, put it back to `[ ]`.
+WORK ONE STORY AT A TIME. For each story, claim its entry in the relevant tasks/ file by changing `[ ]` to `[-]` and adding `- agent: orca`. Record every command and its final line under the entry. Mark `[x]` with `evidence:` and `pr:` only after every gate passes; if you stop unfinished, mark `[!]`, remove `agent:`, and record the reason and next action under `details:`. Only reopen it to `[ ]` for another attempt.
 
 STORY 1 — Repair the Delivery tooling tests (must fix first)
 

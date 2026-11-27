@@ -50,7 +50,7 @@ The core stack follows the included product specification. Select and pin compat
 
 Product Manager turns feedback into outcomes. Product Owner owns priority and story acceptance. Architect and Scrum Master order the work. Senior Software Engineer routes the slice to React, mobile, backend, database, integrations or another relevant expert. Tester defines executable tests, the primary agent runs them, QA reviews evidence independently, and Debugger diagnoses failures. UI/UX and synthetic clinician or unit reviewers exercise the relevant product flows and feed defects and ideas back into the next cycle. The System Designer owns deployment planning, load balancing and scaling. DevSecOps reviews defensive controls. The GitHub Workflow Expert owns delivery pipeline guidance.
 
-Use synthetic review for routine engineering. Record real clinical and unit feedback only from authorized people. Keep each stage's evidence in its `tasks/` file (`[ ]` open, `[-]` taken, `[x]` done), update WORKSPACE.md when the environment changes, and record defects in BUGS.md. Resume by reading these files and only the specification IDs needed. Track improvement ideas and acceptance in `tasks/`.
+Use synthetic review for routine engineering. Record real clinical and unit feedback only from authorized people. Keep each stage's evidence in its `tasks/` file (`[ ]` open, `[-]` taken, `[!]` incomplete, `[x]` done), update WORKSPACE.md when the environment changes, and record defects in BUGS.md. Resume by reading these files and only the specification IDs needed. Track improvement ideas and acceptance in `tasks/`.
 
 ## Checks, coverage and release
 

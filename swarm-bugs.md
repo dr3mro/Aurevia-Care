@@ -78,7 +78,7 @@ Maintain `bugs.md` with these status markers:
 - `[-]` Investigation or implementation in progress.
 - `[x]` Fixed and independently verified.
 - `[N/A]` Investigated and disproven.
-- `[!]` Blocked by an external dependency or human decision.
+- [!] Incomplete, including blocked by an external dependency or human decision.
 
 For each finding, record:
 

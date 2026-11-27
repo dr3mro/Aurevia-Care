@@ -5,21 +5,21 @@ This directory holds the evidence-backed artifacts of the staged refactor define
 ## Evidence source legend
 
 - **tool** — a command or file read executed in this checkout.
-- **reviewer** — a read-only specialist finding; its file and line citations are recorded in `tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md`.
+- **reviewer** — a read-only specialist finding; its file and line citations are recorded in `tasks/01279000-WORKFLOW-AUDIT.md`.
 - **simulated user** — a synthetic walkthrough; none has been run for the infrastructure refactor.
 - **human** — owner or clinical feedback; only the directives recorded in `.opencode/config/MEMORY.md` exist so far.
 
 ## Checkpoint checkmarks
 
-The authoritative stage checklist with per-item marks is in `tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md` under `## Stage status`. Completed since the first inventory:
+The authoritative stage checklist with per-item marks is in `tasks/01279000-WORKFLOW-AUDIT.md` under `## Stage status`; `tasks/01300000-ORCA-INFRASTRUCTURE-REFACTOR.md` is the high-level incomplete parent checkpoint. Completed since the first inventory:
 
 - [x] Stage A discovery and the 50-item deliverable index.
 - [x] AG-01/02/03 instruction paths, AG-14/18/21 policy contradictions, AG-19 review-gate bypass.
 - [x] Delivery tooling repair for run 45510650619 (01302000).
 - [x] AG-34 false annotations from untrusted context (01302100) and from untrusted story prompts (01302200).
 - [x] Stage C baseline measurements (proxy metrics; token counts unavailable).
-- [!] AG-22 reviewer provenance — blocked on a trusted runner; not code-fixed.
-- [-] Offline ORCA core analysis module (01303000): contracts, context budgets and manifest, preflight analysis, readiness scoring, blackboard, evidence freshness and checkpoints; 24 tests green and 100% module coverage, but runtime capabilities remain blocked and the changed-line gate is red on a stale base.
+- [!] AG-22 reviewer provenance — incomplete: blocked on a trusted runner; not code-fixed.
+- [x] Offline ORCA core analysis module (01303000): contracts, context budgets and manifest, preflight analysis, readiness scoring, blackboard, evidence freshness and checkpoints; 24 tests green and 100% module coverage. The changed-line gate is green; runtime capabilities remain blocked where noted.
 
 ## Deliverable map
 
