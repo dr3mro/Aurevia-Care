@@ -4685,7 +4685,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-1.md")
             path.write_text("- [-] X-1 · a story\n  - agent: swarm-1\n")
-            merged = '[{"number": 42, "title": "X-1: a story", "baseRefName": "main", "state": "MERGED"}]'
+            merged = '{"number": 42, "title": "X-1: a story", "baseRefName": "main", "state": "MERGED"}'
             with mock.patch.object(swarm.subprocess, "check_output", return_value=merged), \
                  mock.patch.object(swarm, "git") as git, \
                  mock.patch.object(swarm, "authed_git") as push, \
@@ -4703,7 +4703,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-9.md")
             path.write_text("- [ ] X-9 · story\n  - evidence: PR #12 merged\n  - pr: #12\n")
-            merged = '[{"number": 12, "title": "X-9: story", "baseRefName": "main", "state": "MERGED"}]'
+            merged = '{"number": 12, "title": "X-9: story", "baseRefName": "main", "state": "MERGED"}'
             with mock.patch.object(swarm.subprocess, "check_output", return_value=merged), \
                  mock.patch.object(swarm, "git") as git:
                 count = swarm.reconcile_tasks(directory=tmp)
@@ -4718,7 +4718,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-2.md")
             path.write_text("- [ ] X-2 · open\n")
-            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 9, "title": "X-1: done", "baseRefName": "main", "state": "MERGED"}]'), \
+            with mock.patch.object(swarm.subprocess, "check_output", return_value='{"number": 9, "title": "X-1: done", "baseRefName": "main", "state": "MERGED"}'), \
                  mock.patch.object(swarm, "git") as git:
                 count = swarm.reconcile_tasks(directory=tmp, persist=True)
             self.assertEqual(count, 0)
@@ -4729,15 +4729,16 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-1.md")
             path.write_text("- [ ] X-1 · story\n")
-            merged = '[{"number": 7, "title": "X-1: story", "baseRefName": "develop", "state": "MERGED"}]'
+            merged = '{"number": 7, "title": "X-1: story", "baseRefName": "develop", "state": "MERGED"}'
             with mock.patch.object(swarm.subprocess, "check_output", return_value=merged):
                 with self.assertRaises(swarm.ReconciliationError):
                     swarm.reconcile_tasks(directory=tmp)
             self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
 
     def test_malformed_or_duplicate_evidence_fails_before_write(self):
-        answers = ("not-json", '[{"number": 7, "title": "X-1: a", "baseRefName": "main", "state": "MERGED"},'
-                   '{"number": 8, "title": "X-1: b", "baseRefName": "main", "state": "MERGED"}]')
+        answers = ("not-json",
+                   '{"number": 7, "title": "X-1: a", "baseRefName": "main", "state": "MERGED"}\n'
+                   '{"number": 8, "title": "X-1: b", "baseRefName": "main", "state": "MERGED"}')
         for answer in answers:
             with self.subTest(answer=answer), tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp, "X-1.md")
@@ -4763,7 +4764,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-3.md")
             path.write_text("- [-] X-3 · story\n")
-            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 7, "title": "X-3: done", "baseRefName": "main", "state": "MERGED"}]'), \
+            with mock.patch.object(swarm.subprocess, "check_output", return_value='{"number": 7, "title": "X-3: done", "baseRefName": "main", "state": "MERGED"}'), \
                  mock.patch.object(swarm, "git"), \
                  mock.patch.object(swarm, "authed_git") as push, \
                  mock.patch.dict(os.environ, {"GH_TOKEN": ""}):

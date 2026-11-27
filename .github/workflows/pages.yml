@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -46,6 +47,25 @@ jobs:
           # A rerun keeps the previous attempt's artifact in this run. A fixed
           # name would leave two artifacts and break deploy-pages' exact lookup.
           name: github-pages-${{ github.run_attempt }}
+      # A rerun can upload the artifact seconds before deploy-pages queries the
+      # metadata API, which then reports zero artifacts. Poll this run's artifacts
+      # for the attempt-scoped name and fail closed if it never becomes visible;
+      # a canonical fixed name would leave two artifacts and break exact lookup.
+      - name: Wait for Pages artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            ids=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" \
+                --jq ".artifacts[] | select(.name == \"github-pages-${GITHUB_RUN_ATTEMPT}\") | .id")
+            if [[ -n "$ids" ]]; then
+              exit 0
+            fi
+            echo "Pages artifact metadata not visible yet (attempt ${attempt})" >&2
+            sleep 5
+          done
+          echo "::error::Pages artifact metadata never became visible" >&2
+          exit 1
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
