@@ -5,7 +5,9 @@ around the monitor selection, task status updates and slot-image readiness.
 All fixtures are synthetic and every ``gh`` call is replaced by a local fake,
 so the tests never touch the network or a real repository.
 """
+import contextlib
 import datetime
+import io
 import json
 import os
 import shlex
@@ -391,6 +393,32 @@ class ReconcileTasksCoverageTests(unittest.TestCase):
                 swarm.reconcile_tasks(directory=str(self.dir), file=str(path), persist=True)
         git.assert_not_called()
         self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
+
+    def test_ambiguous_task_id_without_explicit_pr_stays_open_with_a_warning(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n")
+        merged = [
+            {"number": 7, "title": "CW-001: first merge", "baseRefName": "main", "state": "MERGED"},
+            {"number": 8, "title": "CW-001: verification merge", "baseRefName": "main", "state": "MERGED"},
+        ]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            count = self.reconcile(merged, names=("one.md",))
+        self.assertEqual(count, 0)
+        self.assertEqual(path.read_text(), "- [ ] CW-001 · one\n")
+        self.assertIn("CW-001", stderr.getvalue())
+        self.assertIn("7", stderr.getvalue())
+        self.assertIn("8", stderr.getvalue())
+
+    def test_ambiguous_task_id_with_explicit_pr_closes_that_exact_merge(self):
+        path = self.write("one.md", "- [ ] CW-001 · one\n  - pr: #8\n")
+        merged = [
+            {"number": 7, "title": "CW-001: first merge", "baseRefName": "main", "state": "MERGED"},
+            {"number": 8, "title": "CW-001: verification merge", "baseRefName": "main", "state": "MERGED"},
+        ]
+        count = self.reconcile(merged, names=("one.md",))
+        self.assertEqual(count, 1)
+        self.assertIn("- [x] CW-001", path.read_text())
+        self.assertIn("PR #8", path.read_text())
 
     def test_duplicate_task_file_or_repeated_pr_field_fails_before_write(self):
         merged = [{"number": 7, "title": "CW-001: one", "baseRefName": "main", "state": "MERGED"}]

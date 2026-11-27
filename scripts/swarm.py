@@ -1488,11 +1488,13 @@ def paginated_merged_pull_requests(branch):
 
 
 def reconcile_tasks(directory="tasks", file="", persist=False):
-    """Complete tasks only from unique, authoritative merges into the default branch.
+    """Complete tasks from authoritative merges into the default branch.
 
-    Evidence/API failures raise :class:`ReconciliationError` before any task write;
-    Git write failures propagate to the caller. An explicit ``pr:`` must match both
-    the merged PR number and its task title.
+    A task title is used only when one merged PR owns that task id; repeated
+    verification merges make the id ambiguous and must be resolved by an explicit
+    ``pr:``. Evidence/API failures raise :class:`ReconciliationError` before any
+    task write; Git write failures propagate to the caller. An explicit ``pr:``
+    must match both the merged PR number and its task title.
     """
     branch = os.environ.get("DEFAULT_BRANCH", "main")
     try:
@@ -1503,7 +1505,7 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
         raise ReconciliationError(
             f"cannot read merged pull requests: {error}"
         ) from error
-    by_task, by_number = {}, {}
+    by_task, ambiguous, by_number = {}, set(), {}
     for item in merged:
         number, title = item.get("number"), item.get("title")
         if (
@@ -1526,8 +1528,13 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
             by_number[number] = item
             continue
         if task_id in by_task:
-            raise ReconciliationError("merged pull-request task identity is duplicated")
-        by_task[task_id] = item
+            # Full history contains repeated verification/re-dispatch merges for
+            # one task. The title is no longer authoritative, but the PR number
+            # still is when a task names it explicitly.
+            ambiguous.add(task_id)
+            by_task.pop(task_id)
+        if task_id not in ambiguous:
+            by_task[task_id] = item
         by_number[number] = item
     files = [file] if file else sorted(glob.glob(os.path.join(directory, "*.md")))
     updates, seen_tasks = [], set()
@@ -1558,6 +1565,16 @@ def reconcile_tasks(directory="tasks", file="", persist=False):
         else:
             item = by_task.get(tid)
             if item is None:
+                if tid in ambiguous:
+                    numbers = sorted(
+                        merged_pr["number"] for merged_pr in merged
+                        if task_id_of_title(merged_pr["title"]) == tid
+                    )
+                    print(
+                        f"reconcile: task {tid} is ambiguous in merged PRs {numbers}; "
+                        "add an explicit pr: field",
+                        file=sys.stderr,
+                    )
                 continue
         number = item["number"]
         line_start = text.rfind("\n", 0, match.start()) + 1
