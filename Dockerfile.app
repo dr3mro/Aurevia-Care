@@ -42,7 +42,6 @@ COPY infra/app/start.sh infra/app/nginx.conf /opt/aurevia/
 RUN mkdir -p /pgdata /dumps && chown postgres:postgres /pgdata /dumps && chmod 700 /pgdata
 USER postgres
 ENV AUREVIA_PERSIST=0 \
-    AUREVIA_PROFILE=synthetic-auth \
     JAVA_OPTS="-Xmx512m"
 VOLUME ["/dumps"]
 EXPOSE 3000 8080
