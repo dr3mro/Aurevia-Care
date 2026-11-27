@@ -4168,9 +4168,12 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")) as gate, \
              mock.patch.object(swarm, "git") as gitmock, \
-             mock.patch.object(swarm, "authed_git", side_effect=authed) as authedmock:
-            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
-                swarm.integrate_batch([1], "scripts/quick-check.sh")
+             mock.patch.object(swarm, "authed_git", side_effect=authed) as authedmock, \
+             mock.patch.object(swarm, "emit"):
+            gitmock.side_effect = lambda *a, **k: (
+                "a" * 40 + "\n" if a[:2] == ("rev-parse", "origin/main") else "")
+            result = swarm.integrate_batch([1], "scripts/quick-check.sh")
+        self.assertEqual(result, swarm.INTEGRATION_RETRY)
         self.assertEqual(push_attempts["n"], 1)
         self.assertTrue(any(c.args[:2] == ("fetch", "origin") for c in authedmock.call_args_list))
         self.assertEqual(gate.call_count, 1)
@@ -4213,6 +4216,8 @@ class TwoTierTests(unittest.TestCase):
                 return "oldbase\n"
             if args[0] == "diff" and "oldbase" in args:
                 return changed
+            if args[:2] == ("rev-parse", "origin/main"):
+                return "a" * 40 + "\n"
             return ""
 
         with mock.patch.object(swarm, "gh", Gh()), \
@@ -4221,21 +4226,20 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "git", side_effect=git) as gitmock, \
-             mock.patch.object(swarm, "authed_git", side_effect=authed):
-            try:
-                swarm.integrate_batch([1], "scripts/quick-check.sh")
-                raised = False
-            except (subprocess.CalledProcessError, RuntimeError):
-                raised = True
-        return raised, gitmock
+             mock.patch.object(swarm, "authed_git", side_effect=authed), \
+             mock.patch.object(swarm, "emit"):
+            result = swarm.integrate_batch([1], "scripts/quick-check.sh")
+        return result, gitmock
 
     def test_a_retry_never_reverts_what_main_gained_besides_trackers(self):
-        raised, gitmock = self.retry_after_main_moved("scripts/swarm.py\0tasks/0001-A.md\0")
-        self.assertTrue(raised)
+        result, gitmock = self.retry_after_main_moved("scripts/swarm.py\0tasks/0001-A.md\0")
+        self.assertEqual(result, swarm.INTEGRATION_RETRY)
         self.assertFalse(any(c.args[:2] == ("reset", "--soft") for c in gitmock.call_args_list))
 
     def test_a_retry_proceeds_when_main_gained_only_trackers(self):
-        raised, gitmock = self.retry_after_main_moved("tasks/0001-A.md\0docs/swarm/CW-002.md\0")
+        result, gitmock = self.retry_after_main_moved(
+            "tasks/0001-A.md\0docs/swarm/CW-002.md\0")
+        self.assertEqual(result, swarm.INTEGRATION_RETRY)
         self.assertTrue(any(c.args[:2] == ("reset", "--soft") for c in gitmock.call_args_list))
 
     def test_integrate_batch_retries_without_regating_after_main_drift(self):
@@ -4273,11 +4277,14 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")) as gate, \
-             mock.patch.object(swarm, "git"), \
+             mock.patch.object(swarm, "git") as gitmock, \
              mock.patch.object(swarm, "fail") as failed, \
-             mock.patch.object(swarm, "authed_git", side_effect=authed):
-            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
-                swarm.integrate_batch([1], "scripts/quick-check.sh")
+             mock.patch.object(swarm, "authed_git", side_effect=authed), \
+             mock.patch.object(swarm, "emit"):
+            gitmock.side_effect = lambda *a, **k: (
+                "a" * 40 + "\n" if a[:2] == ("rev-parse", "origin/main") else "")
+            result = swarm.integrate_batch([1], "scripts/quick-check.sh")
+        self.assertEqual(result, swarm.INTEGRATION_RETRY)
         gate.assert_called_once()
         failed.assert_not_called()
 
@@ -4318,6 +4325,8 @@ class TwoTierTests(unittest.TestCase):
                 return "tasks/01260000-CW-001.md\n"
             if args[:1] == ("merge-base",):
                 return "base\n"
+            if args[:2] == ("rev-parse", "origin/main"):
+                return "a" * 40 + "\n"
             return ""
 
         with mock.patch.object(swarm, "gh", Gh()), \
@@ -4326,9 +4335,10 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "git", side_effect=gitmock) as gitcalls, \
-             mock.patch.object(swarm, "authed_git", side_effect=authed):
-            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
-                swarm.integrate_batch([1], "scripts/quick-check.sh")
+             mock.patch.object(swarm, "authed_git", side_effect=authed), \
+             mock.patch.object(swarm, "emit"):
+            result = swarm.integrate_batch([1], "scripts/quick-check.sh")
+        self.assertEqual(result, swarm.INTEGRATION_RETRY)
         # Reconciliation adopts the fresh trackers rather than rebasing.
         self.assertTrue(any(c.args[:3] == ("checkout", "origin/main", "--")
                             for c in gitcalls.call_args_list))
@@ -4685,7 +4695,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-1.md")
             path.write_text("- [-] X-1 · a story\n  - agent: swarm-1\n")
-            merged = '[{"number": 42, "title": "X-1: a story", "baseRefName": "main", "state": "MERGED"}]'
+            merged = '{"number": 42, "title": "X-1: a story", "baseRefName": "main", "state": "MERGED"}'
             with mock.patch.object(swarm.subprocess, "check_output", return_value=merged), \
                  mock.patch.object(swarm, "git") as git, \
                  mock.patch.object(swarm, "authed_git") as push, \
@@ -4703,7 +4713,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-9.md")
             path.write_text("- [ ] X-9 · story\n  - evidence: PR #12 merged\n  - pr: #12\n")
-            merged = '[{"number": 12, "title": "X-9: story", "baseRefName": "main", "state": "MERGED"}]'
+            merged = '{"number": 12, "title": "X-9: story", "baseRefName": "main", "state": "MERGED"}'
             with mock.patch.object(swarm.subprocess, "check_output", return_value=merged), \
                  mock.patch.object(swarm, "git") as git:
                 count = swarm.reconcile_tasks(directory=tmp)
@@ -4718,7 +4728,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-2.md")
             path.write_text("- [ ] X-2 · open\n")
-            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 9, "title": "X-1: done", "baseRefName": "main", "state": "MERGED"}]'), \
+            with mock.patch.object(swarm.subprocess, "check_output", return_value='{"number": 9, "title": "X-1: done", "baseRefName": "main", "state": "MERGED"}'), \
                  mock.patch.object(swarm, "git") as git:
                 count = swarm.reconcile_tasks(directory=tmp, persist=True)
             self.assertEqual(count, 0)
@@ -4729,15 +4739,16 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-1.md")
             path.write_text("- [ ] X-1 · story\n")
-            merged = '[{"number": 7, "title": "X-1: story", "baseRefName": "develop", "state": "MERGED"}]'
+            merged = '{"number": 7, "title": "X-1: story", "baseRefName": "develop", "state": "MERGED"}'
             with mock.patch.object(swarm.subprocess, "check_output", return_value=merged):
                 with self.assertRaises(swarm.ReconciliationError):
                     swarm.reconcile_tasks(directory=tmp)
             self.assertEqual(path.read_text(), "- [ ] X-1 · story\n")
 
     def test_malformed_or_duplicate_evidence_fails_before_write(self):
-        answers = ("not-json", '[{"number": 7, "title": "X-1: a", "baseRefName": "main", "state": "MERGED"},'
-                   '{"number": 8, "title": "X-1: b", "baseRefName": "main", "state": "MERGED"}]')
+        answers = ("not-json",
+                   '{"number": 7, "title": "X-1: a", "baseRefName": "main", "state": "MERGED"}\n'
+                   '{"number": 8, "title": "X-1: b", "baseRefName": "main", "state": "MERGED"}')
         for answer in answers:
             with self.subTest(answer=answer), tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp, "X-1.md")
@@ -4763,7 +4774,7 @@ class ReconcileTasksTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "X-3.md")
             path.write_text("- [-] X-3 · story\n")
-            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 7, "title": "X-3: done", "baseRefName": "main", "state": "MERGED"}]'), \
+            with mock.patch.object(swarm.subprocess, "check_output", return_value='{"number": 7, "title": "X-3: done", "baseRefName": "main", "state": "MERGED"}'), \
                  mock.patch.object(swarm, "git"), \
                  mock.patch.object(swarm, "authed_git") as push, \
                  mock.patch.dict(os.environ, {"GH_TOKEN": ""}):
@@ -4867,4 +4878,4 @@ class IntegratorTwoTierDispatchTest(unittest.TestCase):
         with mock.patch.object(swarm, "integrate_publish", return_value=0) as publish:
             swarm.main(["integrate-publish", "--manifest", "m.json", "--bundle", "b.bundle",
                         "--gate", "gate.sh"])
-        publish.assert_called_once_with("m.json", "b.bundle", "gate.sh")
+        publish.assert_called_once_with("m.json", "b.bundle", "gate.sh", attempt=0)

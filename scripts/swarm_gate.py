@@ -225,7 +225,9 @@ def classify_pull_request(head_ref="", labels=(), title="", commit_authors=(),
     ``author_association`` is GitHub's trusted association of the PR author
     with the repository. A maintainer (OWNER/MEMBER/COLLABORATOR) may use any
     branch name for a manual PR; automation can never claim that association
-    by editing a label or branch name.
+    by editing a label or branch name. Watchdog repair PRs carry a FIX-/DLV-
+    title (or the autofix label) and may change protected files, so a trusted
+    repair is manual for this gate; an untrusted repair fails closed.
     """
     authors = tuple(a.lower() for a in commit_authors)
     swarm_author = any("swarm" in a or "github-actions" in a for a in authors)
@@ -240,6 +242,12 @@ def classify_pull_request(head_ref="", labels=(), title="", commit_authors=(),
     worker = SWARM_BRANCH.fullmatch(head_ref or "")
     if worker:
         return (WORKER, worker.group(1)) if TASK_ID.fullmatch(worker.group(1)) else (UNKNOWN, "")
+    if (title or "").startswith(("FIX-", "DLV-")):
+        # A repair PR is trusted by its author association or the watchdog's
+        # autofix label, not by a title any worker can write.
+        if trusted_human or "autofix" in set(labels):
+            return HUMAN, ""
+        return UNKNOWN, ""
     if (head_ref or "").startswith("swarm/"):
         return (UNKNOWN, "") if (automation or not trusted_human) else (HUMAN, "")
     if title_match and TASK_ID.fullmatch(title_match.group(1)):

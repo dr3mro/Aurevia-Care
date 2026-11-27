@@ -725,6 +725,8 @@ class IntegratorBatchTest(unittest.TestCase):
                 return "base\n"
             if args[:1] == ("diff",):
                 return ""
+            if args[:2] == ("rev-parse", "origin/main"):
+                return "a" * 40 + "\n"
             return "main-sha\n"
 
         pushes = iter([
@@ -748,9 +750,10 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "report_pr_stuck"), \
                 mock.patch.object(swarm, "dispatch_delivery"), \
                 mock.patch.object(swarm, "emit"):
-            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
+            self.assertEqual(
                 swarm.integrate_finalize(
-                    merged, {7: ("gate.sh", {})}, "gate.sh")
+                    merged, {7: ("gate.sh", {})}, "gate.sh"),
+                swarm.INTEGRATION_RETRY)
         self.assertEqual(original.read_text(), "original untracked note\n")
 
     def test_reconciled_commit_failure_restores_records_and_stops(self):
@@ -775,6 +778,8 @@ class IntegratorBatchTest(unittest.TestCase):
                 return "base\n"
             if args[:1] == ("diff",):
                 return ""
+            if args[:2] == ("rev-parse", "origin/main"):
+                return "a" * 40 + "\n"
             return "main-sha\n"
 
         pushes = iter([subprocess.CalledProcessError(1, ("push",), stderr="fetch first")])
@@ -831,6 +836,8 @@ class IntegratorBatchTest(unittest.TestCase):
                 return "base\n"
             if args[:1] == ("diff",):
                 return ""
+            if args[:2] == ("rev-parse", "origin/main"):
+                return "a" * 40 + "\n"
             return "main-sha\n"
 
         pushes = iter([subprocess.CalledProcessError(1, ("push",), stderr="fetch first")])
@@ -849,8 +856,9 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "authed_git", side_effect=authed), \
                 mock.patch.object(swarm, "run_gate") as gate, \
                 mock.patch.object(swarm, "dispatch_delivery") as dispatch:
-            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
-                swarm.integrate_finalize(merged, {7: ("gate.sh", {})}, "gate.sh")
+            self.assertEqual(
+                swarm.integrate_finalize(merged, {7: ("gate.sh", {})}, "gate.sh"),
+                swarm.INTEGRATION_RETRY)
         gate.assert_not_called()
         dispatch.assert_not_called()
 
@@ -883,7 +891,7 @@ class IntegratorBatchTest(unittest.TestCase):
         self.assertEqual(note.read_text(), "original\n")
         push.assert_not_called()
 
-    def test_third_push_failure_restores_records_and_stops(self):
+    def test_base_advance_restores_records_and_emits_the_retry_signal(self):
         self.repo()
         merged = [(7, "CW-001", "abc")]
         error = subprocess.CalledProcessError(1, ("push",), stderr="fetch first")
@@ -897,18 +905,25 @@ class IntegratorBatchTest(unittest.TestCase):
             swarm.todo_write("", "after\n")
             return items, ["comment"], []
 
+        def git(*args, **kwargs):
+            if args[:2] == ("rev-parse", "origin/main"):
+                return "a" * 40 + "\n"
+            return "main-sha\n"
+
         with mock.patch.object(swarm, "record_merges", side_effect=record), \
                 mock.patch.object(swarm, "todo_read", return_value="before\n"), \
                 mock.patch.object(swarm, "todo_write") as write, \
-                mock.patch.object(swarm, "git", return_value="main-sha"), \
+                mock.patch.object(swarm, "git", side_effect=git), \
                 mock.patch.object(swarm, "authed_git", side_effect=push) as pushed, \
                 mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
                 mock.patch.object(swarm, "dispatch_delivery") as dispatch, \
-                mock.patch.object(swarm, "emit"):
-            with self.assertRaises(subprocess.CalledProcessError):
-                swarm.integrate_finalize(merged, {7: ("gate.sh", {})}, "gate.sh")
-        # The loop raises before the third push when attempt == 2, so two writes are attempted.
-        self.assertEqual(pushed.call_count, 2)
+                mock.patch.object(swarm, "emit") as emitted:
+            self.assertEqual(
+                swarm.integrate_finalize(merged, {7: ("gate.sh", {})}, "gate.sh"),
+                swarm.INTEGRATION_RETRY)
+        self.assertTrue(any(c.args[0] == "integration_retry" for c in emitted.call_args_list))
+        pushes = [c for c in pushed.call_args_list if c.args[:2] == ("push", "origin")]
+        self.assertEqual(len(pushes), 1)
         write.assert_any_call("", "before\n")
         dispatch.assert_not_called()
 
@@ -927,6 +942,8 @@ class IntegratorBatchTest(unittest.TestCase):
                 return "base\n"
             if args[:1] == ("diff",):
                 return ""
+            if args[:2] == ("rev-parse", "origin/main"):
+                return "a" * 40 + "\n"
             return "main-sha\n"
 
         pushes = iter([subprocess.CalledProcessError(1, ("push",), stderr="fetch first")])
@@ -946,10 +963,11 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "fail"), \
                 mock.patch.object(swarm, "dispatch_delivery"), \
                 mock.patch.object(swarm, "emit"):
-            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
+            self.assertEqual(
                 swarm.integrate_finalize(
                     [(7, "CW-001", "abc")], {7: ("scripts/quick-check.sh", {"STORY_ID": "CW-001"})},
-                    "scripts/quick-check.sh")
+                    "scripts/quick-check.sh"),
+                swarm.INTEGRATION_RETRY)
         self.assertEqual(records, [1, 2])
         self.assertIn("fresh-main\n", writes)
         gate.assert_not_called()
@@ -1000,6 +1018,8 @@ class IntegratorBatchTest(unittest.TestCase):
                 return "oldbase\n"
             if args[:1] == ("diff",) and "oldbase" in args:
                 return "tasks/0001-A.md\0"
+            if args[:2] == ("rev-parse", "origin/main"):
+                return "a" * 40 + "\n"
             return "main-sha\n"
 
         with mock.patch.object(swarm, "gh"), \
@@ -1019,8 +1039,9 @@ class IntegratorBatchTest(unittest.TestCase):
                 mock.patch.object(swarm, "close_merged_issues"), \
                 mock.patch.object(swarm, "dispatch_delivery"), \
                 mock.patch.object(swarm, "emit"):
-            with self.assertRaisesRegex(RuntimeError, "retry batch from the new base"):
-                swarm.integrate_batch([7], check_delivery=False)
+            self.assertEqual(
+                swarm.integrate_batch([7], check_delivery=False),
+                swarm.INTEGRATION_RETRY)
         self.assertEqual(len(pushes), 1)
         gate.assert_called_once_with("custom-gate", {})
 
@@ -1055,6 +1076,25 @@ class IntegratorConflictPublishTest(unittest.TestCase):
             self.assertEqual(swarm.resolve_publish(str(root)), [])
         pushed.assert_not_called()
         self.assertIn("could not be read", failed.call_args.args[1])
+
+    def test_a_resolved_branch_can_be_pushed_without_a_second_dispatch(self):
+        root = self.outcomes()
+        (root / "5").unlink()
+        (root / "5.bundle").unlink()
+        (root / "7").write_text("merged")
+        (root / "7.bundle").write_text("synthetic bundle")
+        with mock.patch.object(swarm, "gh") as gh, \
+                mock.patch.object(swarm, "gh_json", return_value=self.info()), \
+                mock.patch.object(swarm, "git", return_value=""), \
+                mock.patch.object(swarm, "authed_git") as pushed, \
+                mock.patch.object(swarm, "fail"), \
+                mock.patch.object(swarm, "emit") as emitted:
+            self.assertEqual(swarm.resolve_publish(str(root), dispatch=False), ['7'])
+        pushed.assert_called_once()
+        emit = [c for c in emitted.call_args_list if c.args[0] == "pushed"]
+        self.assertEqual(json.loads(emit[0].args[1]), ['7'])
+        self.assertFalse(any(c.args[:2] == ("workflow", "run")
+                             for c in gh.call_args_list))
 
     def test_a_branch_that_moved_during_resolution_is_sent_back(self):
         root = self.outcomes()
@@ -1385,3 +1425,125 @@ class ValidatorReportTest(unittest.TestCase):
         accepted = [json.loads(call.args[1]) for call in emitted.call_args_list
                     if call.args[0] == "accepted"]
         self.assertEqual(accepted, [[1768, 1769]])
+
+
+class IntegratorBaseAdvanceRecoveryTest(unittest.TestCase):
+    """A publish race with a newer main is a bounded recovery signal, not a crash."""
+
+    NEW_BASE = "a" * 40
+
+    def repo(self):
+        root = scratch()
+        self.addCleanup(shutil.rmtree, root)
+        (root / "TODO.md").write_text("# TODO\n")
+        previous = Path.cwd()
+        os.chdir(root)
+        self.addCleanup(os.chdir, previous)
+        return root
+
+    def git_for_advance(self, *args, **kwargs):
+        if args[:1] == ("merge-base",):
+            return "old\n"
+        if args[:1] == ("diff",):
+            return "scripts/swarm.py\0"
+        if args[:2] == ("rev-parse", "origin/main"):
+            return self.NEW_BASE + "\n"
+        return "tip\n"
+
+    def run_publish(self, stderr, attempt=0, base=None):
+        self.repo()
+        merged = [(7, "CW-001", "abc")]
+        push_error = subprocess.CalledProcessError(1, ("push",), stderr=stderr)
+
+        def authed(*args, **kwargs):
+            if args[:2] == ("push", "origin"):
+                raise push_error
+            return ""
+
+        git_for_publish = self.git_for_advance
+        if base is not None:
+            def git_for_publish(*args, **kwargs):
+                if args[:2] == ("rev-parse", "origin/main"):
+                    return base + "\n"
+                return self.git_for_advance(*args, **kwargs)
+
+        with mock.patch.object(swarm, "record_merges",
+                               return_value=(merged, ["comment"], [])), \
+                mock.patch.object(swarm, "todo_read", return_value="before\n"), \
+                mock.patch.object(swarm, "todo_write") as write, \
+                mock.patch.object(swarm, "git", side_effect=git_for_publish), \
+                mock.patch.object(swarm, "authed_git", side_effect=authed), \
+                mock.patch.object(swarm, "gh") as gh, \
+                mock.patch.object(swarm, "report_pr_stuck"), \
+                mock.patch.object(swarm, "emit") as emit, \
+                contextlib.redirect_stderr(io.StringIO()):
+            result = swarm.integrate_finalize(
+                merged, {7: ("gate.sh", {})}, "gate.sh", attempt=attempt)
+        return result, emit, write, gh
+
+    def test_non_tracker_base_advance_emits_only_a_bounded_retry_signal(self):
+        result, emit, write, gh = self.run_publish(
+            "! [rejected] HEAD -> main (non-fast-forward)")
+        self.assertEqual(result, swarm.INTEGRATION_RETRY)
+        retry = [c for c in emit.call_args_list if c.args[0] == "integration_retry"]
+        self.assertEqual(len(retry), 1)
+        payload = json.loads(retry[0].args[1])
+        self.assertEqual(payload, {"id": "base_advanced", "new_base": self.NEW_BASE,
+                                   "prs": [7], "attempt": 0})
+        emit.assert_any_call("merged", 0)
+        write.assert_called_once_with("", "before\n")
+        self.assertFalse(any("needs-human" in str(arg)
+                            for call in gh.call_args_list for arg in call.args))
+
+    def test_repository_rule_rejection_stays_terminal_even_with_retry_enabled(self):
+        result, emit, _write, gh = self.run_publish(
+            "error: GH013: Repository rule violations found for refs/heads/main.")
+        self.assertEqual(result, swarm.INTEGRATION_FAILED)
+        self.assertFalse(any(c.args[0] == "integration_retry" for c in emit.call_args_list))
+        self.assertTrue(any("needs-human" in str(arg)
+                            for call in gh.call_args_list for arg in call.args))
+
+    def test_second_base_advance_at_the_cap_is_terminal(self):
+        result, emit, write, gh = self.run_publish(
+            "! [rejected] HEAD -> main (non-fast-forward)", attempt=1)
+        self.assertEqual(result, swarm.INTEGRATION_FAILED)
+        self.assertFalse(any(c.args[0] == "integration_retry" for c in emit.call_args_list))
+        self.assertTrue(any("needs-human" in str(arg)
+                            for call in gh.call_args_list for arg in call.args))
+        write.assert_called_once_with("", "before\n")
+
+    def test_retry_payload_rejects_malformed_or_secret_bearing_values(self):
+        self.assertEqual(
+            swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [7], 0),
+            json.dumps({"id": "base_advanced", "new_base": self.NEW_BASE,
+                        "prs": [7], "attempt": 0}, separators=(",", ":")))
+        self.assertEqual(swarm.integration_retry_payload("other", self.NEW_BASE, [7], 0), "")
+        self.assertEqual(swarm.integration_retry_payload("base_advanced", "short", [7], 0), "")
+        self.assertEqual(swarm.integration_retry_payload("base_advanced", self.NEW_BASE, ["7"], 0), "")
+        self.assertEqual(swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [7], 1), "")
+        self.assertEqual(swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [], 0), "")
+
+    def test_malformed_new_base_fails_closed_without_a_retry_signal(self):
+        result, emit, write, _gh = self.run_publish(
+            "! [rejected] HEAD -> main (non-fast-forward)", base="not-a-sha")
+        self.assertEqual(result, swarm.INTEGRATION_FAILED)
+        self.assertFalse(any(c.args[0] == "integration_retry" for c in emit.call_args_list))
+        write.assert_called_once_with("", "before\n")
+
+    def test_successful_push_breaks_the_reconciliation_loop(self):
+        self.repo()
+        merged = [(7, "CW-001", "abc")]
+        with mock.patch.object(swarm, "record_merges",
+                               return_value=(merged, ["comment"], [])), \
+                mock.patch.object(swarm, "todo_read", return_value="before\n"), \
+                mock.patch.object(swarm, "todo_write"), \
+                mock.patch.object(swarm, "git", return_value="tip\n"), \
+                mock.patch.object(swarm, "authed_git") as push, \
+                mock.patch.object(swarm, "gh"), \
+                mock.patch.object(swarm, "emit") as emit:
+            result = swarm.integrate_finalize(
+                merged, {7: ("gate.sh", {})}, "gate.sh")
+        self.assertEqual(result, 1)
+        push.assert_called_once_with("push", "origin", "HEAD:main")
+        emit.assert_any_call("merged", 1)
+
