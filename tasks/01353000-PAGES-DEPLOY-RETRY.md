@@ -1,6 +1,7 @@
-- [-] PAGES-DEPLOY-RETRY · Harden Pages deploy against artifact-metadata propagation lag
+- [x] PAGES-DEPLOY-RETRY · Harden Pages deploy against artifact-metadata propagation lag
   - agent: orca
   - attempts: 0
+  - pr: #1812
   - requirements: OPS-06
   - scope: .github/workflows/pages.yml, scripts/tests/test_pages_workflow.py, tasks/01353000-PAGES-DEPLOY-RETRY.md
   - evidence:
