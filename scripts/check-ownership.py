@@ -178,11 +178,34 @@ def find_duplicates(files, manifest):
     return sorted(set(duplicates))
 
 
-def check_references(root, refs, allowed_paths=()):
+def app_local_script_exists(root, path):
+    """Return whether a quoted `scripts/...` path resolves under an app.
+
+    Logs copied into documentation often quote a command run from an app
+    directory, where `scripts/foo.sh` names that app's scripts directory rather
+    than the repository root. Inputs are the root and a repo-style script path;
+    the output is True only when a real file exists under `apps/*/scripts`. The
+    invariant is that this widens documentation text only; script and workflow
+    references stay root-only.
+    """
+    relative = path[len("scripts/"):]
+    # A doc may quote `..` or a glob metacharacter; neither is a concrete script.
+    if ".." in relative.split("/"):
+        return False
+    for directory in (Path(root) / "apps").glob("*/scripts"):
+        if (directory / relative).is_file():
+            return True
+    return False
+
+
+def check_references(root, refs, allowed_paths=(), allow_app_local=False):
     """Return referenced paths that do not exist under the repository root.
 
     Documentation citations often append ``:line`` ranges and glob patterns;
     those are stripped or ignored here so only concrete paths are checked.
+    ``allow_app_local`` is set for documentation text, where a quoted command
+    may run from an app directory with its own ``scripts/``. Workflow steps run
+    from the repository root and keep the strict root-only rule.
     """
     targets = set()
     for values in refs.values() if isinstance(refs, dict) else refs:
@@ -199,7 +222,8 @@ def check_references(root, refs, allowed_paths=()):
         if path in allowed_paths:
             continue
         if path.startswith("scripts/") and not (Path(root) / path).exists():
-            missing.append(f"broken reference: {path}")
+            if not (allow_app_local and app_local_script_exists(root, path)):
+                missing.append(f"broken reference: {path}")
     return missing
 
 
@@ -292,16 +316,19 @@ def validate(root, manifest):
                 target for target in refs[rel]
                 if target not in DYNAMIC_HELPERS
             }
-    external = {}
-    for base in (".github/workflows", "docs"):
+    workflow_refs = {}
+    doc_refs = {}
+    for base, collected in ((".github/workflows", workflow_refs), ("docs", doc_refs)):
         for path in (Path(root) / base).rglob("*"):
             if path.is_file() and path.suffix in (".yml", ".yaml", ".md"):
-                external[path.relative_to(root).as_posix()] = parse_text_refs(
+                collected[path.relative_to(root).as_posix()] = parse_text_refs(
                     path.read_text(encoding="utf-8", errors="replace")
                 )
     allowed = {item.get("path") for item in manifest.get("exceptions", [])}
     violations.extend(check_references(root, refs, allowed))
-    violations.extend(check_references(root, external, allowed))
+    violations.extend(check_references(root, workflow_refs, allowed))
+    # A workflow runs from the repository root; only copied docs can be app-cwd.
+    violations.extend(check_references(root, doc_refs, allowed, allow_app_local=True))
     violations.extend(find_cycles(build_graph(refs)))
     violations.extend(find_duplicates(files, manifest))
     violations.extend(check_modes(files, root))

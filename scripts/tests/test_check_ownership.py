@@ -132,6 +132,41 @@ class ReferenceTests(unittest.TestCase):
         refs = check_ownership.parse_text_refs("see missing.md for details")
         self.assertEqual(check_ownership.check_references(root, refs), [])
 
+    def test_app_local_script_exists_matches_only_real_app_scripts(self):
+        root = temp_root()
+        self.assertFalse(
+            check_ownership.app_local_script_exists(root, "scripts/gen-api-types.sh"))
+        target = root / "apps" / "staff-web" / "scripts" / "gen-api-types.sh"
+        target.parent.mkdir(parents=True)
+        target.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+        self.assertTrue(
+            check_ownership.app_local_script_exists(root, "scripts/gen-api-types.sh"))
+        self.assertFalse(check_ownership.app_local_script_exists(root, "scripts/absent.sh"))
+
+    def test_app_local_script_exists_rejects_traversal_and_directories(self):
+        root = temp_root()
+        outside = root / "apps" / "staff-web" / "gen-api-types.sh"
+        outside.parent.mkdir(parents=True)
+        outside.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+        self.assertFalse(
+            check_ownership.app_local_script_exists(root, "scripts/../gen-api-types.sh"))
+        directory = root / "apps" / "staff-web" / "scripts" / "gen-api-types.sh"
+        directory.mkdir(parents=True)
+        self.assertFalse(
+            check_ownership.app_local_script_exists(root, "scripts/gen-api-types.sh"))
+
+    def test_app_local_reference_is_accepted_only_for_documentation(self):
+        root = temp_root()
+        target = root / "apps" / "staff-web" / "scripts" / "gen-api-types.sh"
+        target.parent.mkdir(parents=True)
+        target.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+        refs = {"docs/record.md": {"scripts/gen-api-types.sh"}}
+        self.assertEqual(
+            check_ownership.check_references(root, refs, allow_app_local=True), [])
+        self.assertEqual(
+            check_ownership.check_references(root, refs),
+            ["broken reference: scripts/gen-api-types.sh"])
+
 
 class RuleTests(unittest.TestCase):
     def test_find_duplicates_reports_new_and_accepts_exception(self):
@@ -227,6 +262,57 @@ class RuleTests(unittest.TestCase):
         data = manifest(files={"scripts/tool.py": "project"})
         self.assertNotIn("scripts/tool.py -> scripts/tool.py", check_ownership.validate(root, data))
         self.assertNotIn("scripts/tool.py -> scripts/gate.sh", check_ownership.validate(root, data))
+
+    def test_validate_accepts_an_app_local_script_reference_in_docs(self):
+        root = self._tree_with_gate_scripts()
+        target = root / "apps" / "staff-web" / "scripts" / "gen-api-types.sh"
+        target.parent.mkdir(parents=True)
+        target.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+        (root / "docs").mkdir()
+        (root / "docs" / "walkthrough.md").write_text(
+            "Canonical gate from apps/staff-web: `bash scripts/gen-api-types.sh --check`\n",
+            encoding="utf-8")
+        self.assertEqual(check_ownership.validate(root, self._gate_manifest(root)), [])
+
+    def test_validate_keeps_workflow_references_root_only(self):
+        root = self._tree_with_gate_scripts()
+        target = root / "apps" / "staff-web" / "scripts" / "gen-api-types.sh"
+        target.parent.mkdir(parents=True)
+        target.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+        (root / ".github" / "workflows").mkdir(parents=True)
+        (root / ".github" / "workflows" / "qa.yml").write_text(
+            "      - run: bash scripts/gen-api-types.sh --check\n", encoding="utf-8")
+        self.assertEqual(
+            check_ownership.validate(root, self._gate_manifest(root)),
+            ["broken reference: scripts/gen-api-types.sh"])
+
+    def test_validate_still_flags_a_missing_app_local_script_reference(self):
+        root = self._tree_with_gate_scripts()
+        (root / "apps" / "staff-web" / "scripts").mkdir(parents=True)
+        (root / "docs").mkdir()
+        (root / "docs" / "walkthrough.md").write_text(
+            "Canonical gate from apps/staff-web: `bash scripts/gen-api-types.sh --check`\n",
+            encoding="utf-8")
+        self.assertEqual(
+            check_ownership.validate(root, self._gate_manifest(root)),
+            ["broken reference: scripts/gen-api-types.sh"])
+
+    @staticmethod
+    def _tree_with_gate_scripts():
+        root = temp_root()
+        for name in ("check.sh", "quick-check.sh", "build-and-test.sh"):
+            path = root / "scripts" / name
+            path.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            path.chmod(0o755)
+        return root
+
+    @staticmethod
+    def _gate_manifest(root):
+        files = {
+            f"scripts/{name}": "project"
+            for name in ("check.sh", "quick-check.sh", "build-and-test.sh")
+        }
+        return manifest(files=files)
 
     def test_find_cycles_ignores_an_already_visited_child(self):
         graph = {"a": ["c"], "b": ["c"], "c": []}
