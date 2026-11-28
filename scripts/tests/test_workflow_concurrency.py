@@ -283,6 +283,7 @@ class IntegratorRecoveryContractTest(unittest.TestCase):
         for trigger in ("workflow_dispatch", "workflow_call"):
             inputs = triggers[trigger]["inputs"]
             self.assertEqual(inputs["recovery_attempt"]["default"], "0")
+            self.assertIn("0, 1 or 2", inputs["recovery_attempt"]["description"])
             self.assertEqual(inputs["recovery_prs"]["default"], "")
             self.assertIs(inputs["ignore_red_main"]["default"], False)
         publish = self.workflow["jobs"]["publish"]
@@ -296,7 +297,7 @@ class IntegratorRecoveryContractTest(unittest.TestCase):
     def test_recovery_job_is_signal_gated_and_holds_no_write_token(self):
         resolve = self.workflow["jobs"]["resolve"]
         self.assertIn("needs.publish.outputs.integration_retry != ''", resolve["if"])
-        self.assertIn("needs.publish.outputs.recovery_attempt < 1", resolve["if"])
+        self.assertIn("needs.publish.outputs.recovery_attempt < 2", resolve["if"])
         self.assertEqual(set(resolve["permissions"].values()), {"read"})
         self.assertNotIn("GH_TOKEN: ${{ secrets.SWARM_TOKEN",
                          "\n".join(
@@ -313,10 +314,13 @@ class IntegratorRecoveryContractTest(unittest.TestCase):
             step for step in republish["steps"]
             if "Re-dispatch the bounded base-advance retry" in step.get("name", "")
         )
+        self.assertIn("needs.publish.outputs.recovery_attempt < 2", redispatch["if"])
         self.assertIn("--field recovery_attempt", redispatch["run"])
         self.assertIn("--field recovery_prs", redispatch["run"])
         self.assertIn("--field ignore_red_main", redispatch["run"])
-        self.assertIn('^[01]$', redispatch["run"])
+        self.assertIn('^[012]$', redispatch["run"])
+        self.assertIn('attempt=$(( ATTEMPT + 1 ))', redispatch["run"])
+        self.assertIn('"$attempt" -gt 2', redispatch["run"])
         self.assertNotIn("--force", redispatch["run"])
         push_step = next(
             step for step in republish["steps"]

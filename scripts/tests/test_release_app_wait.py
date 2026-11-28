@@ -1,7 +1,7 @@
-"""Execute the release-app-image gate step against a stubbed GitHub API.
+"""Execute both release gate steps against a stubbed GitHub API.
 
-The release must not decide that main is red while its Delivery run is still
-in progress. These tests run the exact ``run:`` block of the workflow step with
+Neither release may decide that main is red while its Delivery run is still
+in progress. These tests run the exact ``run:`` block of each workflow step with
 a stub ``gh`` that returns synthetic runs, and a stub ``sleep`` so the bounded
 wait is fast. No network call, credential or patient data is used.
 """
@@ -19,13 +19,21 @@ from helpers import ROOT
 SHA = "a" * 40
 
 
-def gate_step():
-    """Return the exact ``run:`` script of the release gate step."""
-    doc = yaml.safe_load(
-        (ROOT / ".github/workflows/release-app-image.yml").read_text(encoding="utf-8")
-    )
+GATE_CALLERS = (
+    ("release-app-image.yml", "publish"),
+    ("delivery.yml", "release"),
+)
+
+
+def gate_doc(name):
+    """Load one release workflow document from the protected checkout."""
+    return yaml.safe_load((ROOT / ".github/workflows" / name).read_text(encoding="utf-8"))
+
+
+def gate_step(name, job):
+    """Return the exact ``run:`` script of one release gate step."""
     step = next(
-        item for item in doc["jobs"]["publish"]["steps"]
+        item for item in gate_doc(name)["jobs"][job]["steps"]
         if item.get("name") == "Require a green default-branch run for this commit"
     )
     return step["run"]
@@ -97,9 +105,11 @@ class ReleaseAppWaitTest(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def run_step(self):
+    def run_step(self, name="release-app-image.yml", job="publish"):
+        count = pathlib.Path(self.tmp.name) / "state" / "count"
+        count.unlink(missing_ok=True)
         return subprocess.run(
-            ["bash", "-c", gate_step()],
+            ["bash", "-c", gate_step(name, job)],
             cwd=ROOT,
             env=self.env,
             capture_output=True,
@@ -112,30 +122,43 @@ class ReleaseAppWaitTest(unittest.TestCase):
         return int(path.read_text(encoding="utf-8")) if path.exists() else 0
 
     def test_waits_for_an_in_progress_delivery_then_accepts_a_green_gate(self):
-        self.set_runs(run_record(status="in_progress", conclusion=None), run_record())
-        result = self.run_step()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("still running", result.stderr)
-        self.assertIn("1 green gate(s)", result.stdout)
-        self.assertGreaterEqual(self.call_count(), 3)
+        for name, job in GATE_CALLERS:
+            with self.subTest(workflow=name):
+                self.set_runs(run_record(status="in_progress", conclusion=None), run_record())
+                result = self.run_step(name, job)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("still running", result.stderr)
+                self.assertIn("1 green gate(s)", result.stdout)
+                self.assertGreaterEqual(self.call_count(), 3)
 
     def test_an_unfinished_run_never_becomes_a_green_gate(self):
-        self.set_runs(run_record(status="in_progress", conclusion=None))
-        result = self.run_step()
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("did not finish after 45 attempts", result.stderr)
-        self.assertIn("refusing to decide red or green", result.stderr)
-        self.assertNotIn("no green gate", result.stderr)
-        self.assertGreaterEqual(self.call_count(), 45)
-        self.assertEqual(result.stdout, "")
+        for name, job in GATE_CALLERS:
+            with self.subTest(workflow=name):
+                self.set_runs(run_record(status="in_progress", conclusion=None))
+                result = self.run_step(name, job)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("did not finish after 45 attempts", result.stderr)
+                self.assertIn("refusing to decide red or green", result.stderr)
+                self.assertNotIn("no green gate", result.stderr)
+                self.assertGreaterEqual(self.call_count(), 45)
+                self.assertEqual(result.stdout, "")
 
     def test_a_completed_red_run_fails_without_waiting(self):
-        self.set_runs(run_record(conclusion="failure"))
-        result = self.run_step()
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("no green gate", result.stderr)
-        self.assertNotIn("still running", result.stderr)
-        self.assertLessEqual(self.call_count(), 2)
+        for name, job in GATE_CALLERS:
+            with self.subTest(workflow=name):
+                self.set_runs(run_record(conclusion="failure"))
+                result = self.run_step(name, job)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("no green gate", result.stderr)
+                self.assertNotIn("still running", result.stderr)
+                self.assertLessEqual(self.call_count(), 2)
+
+    def test_job_timeout_covers_the_full_bounded_wait(self):
+        """A 45 x 60s poll needs a job timeout above 44 minutes in both callers."""
+        for name, job in GATE_CALLERS:
+            with self.subTest(workflow=name):
+                timeout = gate_doc(name)["jobs"][job]["timeout-minutes"]
+                self.assertGreaterEqual(timeout, 60)
 
 
 if __name__ == "__main__":
