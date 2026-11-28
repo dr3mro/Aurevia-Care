@@ -23,7 +23,7 @@ import com.aurevia.messaging.conversations.ConversationContract.WorkEventType;
 import com.aurevia.messaging.conversations.ConversationContract.WorkItemEvent;
 
 /**
- * The single SQL boundary for MSG-02 conversations.
+ * The single SQL boundary for conversations.
  *
  * <p>Every statement runs inside the tenant-guarded transaction, so forced
  * row-level security confines it to the active organization. The message and
@@ -121,7 +121,7 @@ public class ConversationRepository {
     }
 
     /**
-     * Insert a new conversation and its first message will be appended by the caller.
+     * Insert a new conversation; the caller appends its first work-item fact.
      *
      * @param id             new opaque identifier
      * @param patientId      owning patient

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import com.aurevia.messaging.conversations.ConversationContract.UnitKey;
 
 /**
- * Bounded action matrix for the MSG-02 conversation slice.
+ * Bounded action matrix for the conversation lifecycle.
  *
  * <p>Patient actions and staff work-item actions are deliberately separated: a
  * verified patient can open, reply, read and list an inbox, but cannot assign,
@@ -44,8 +44,8 @@ public class ConversationActions {
             CONVERSATION_OPEN, CONVERSATION_REPLY, CONVERSATION_READ, WORK_QUEUE_READ,
             WORK_ASSIGN, WORK_TRANSFER, WORK_RESOLVE, WORK_CLOSE);
 
-    // IAM-02: tenant administration carries no clinical authority. An admin may
-    // see the operational queue (ADM-02) but cannot open, reply to or write a
+    // Tenant administration carries no clinical authority. An admin may
+    // see the operational queue but cannot open, reply to or write a
     // patient work item; clinical access requires a separate clinical role.
     private static final Set<String> ADMIN_ACTIONS = Set.of(WORK_QUEUE_READ);
 

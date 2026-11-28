@@ -25,8 +25,8 @@ import com.aurevia.messaging.attachments.AttachmentContract.FileType;
 import com.aurevia.messaging.attachments.AttachmentContract.ScanVerdict;
 
 /**
- * PostgreSQL-backed persistence boundary for message attachments (MSG-03,
- * ARC-06, ARC-07).
+ * PostgreSQL-backed persistence boundary for message attachments. Every
+ * operation is confined to the active tenant.
  *
  * <p>V82 owns the three tenant tables and their forced row-level security.
  * Every operation runs in the tenant-guarded transaction, which binds
@@ -35,11 +35,11 @@ import com.aurevia.messaging.attachments.AttachmentContract.ScanVerdict;
  * argument identifies that same active tenant and is written explicitly on
  * inserts so the policy's {@code WITH CHECK} rejects a mismatch.</p>
  *
- * <p>A draft is bound to its uploader and conversation on its first insert.
- * The guarded upsert only advances lifecycle columns and returns no row when
- * an existing draft would be rebound, so a file accepted in one conversation
- * can never be reused in another. A database trigger enforces the same
- * invariant for every role, including the migration owner.</p>
+ * <p>A draft is bound to its uploader and verified connection on its first
+ * insert. The guarded upsert only advances lifecycle columns and returns no row
+ * when an existing draft would be rebound, so a file accepted under one
+ * connection can never be reused under another. A database trigger enforces the
+ * same invariant for every role, including the migration owner.</p>
  */
 @Repository
 public class JdbcAttachmentStore implements AttachmentStore {
@@ -62,6 +62,7 @@ public class JdbcAttachmentStore implements AttachmentStore {
         this.transactions = transactions;
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<ConnectionGrant> grant(String organizationId, String connectionId) {
         return transactions.execute(status -> jdbc.query("""
@@ -75,6 +76,7 @@ public class JdbcAttachmentStore implements AttachmentStore {
                 .stream().findFirst());
     }
 
+    /** {@inheritDoc} */
     @Override
     public void putGrant(ConnectionGrant grant) {
         transactions.execute(status -> jdbc.update("""
@@ -93,6 +95,7 @@ public class JdbcAttachmentStore implements AttachmentStore {
                         .addValue("active", grant.active())));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<Attachment> attachment(String organizationId, String id) {
         return transactions.execute(status -> jdbc.query("""
@@ -107,6 +110,7 @@ public class JdbcAttachmentStore implements AttachmentStore {
                 .stream().findFirst());
     }
 
+    /** {@inheritDoc} */
     @Override
     public void putAttachment(Attachment attachment) {
         List<String> rows = transactions.execute(status -> jdbc.query("""
@@ -155,6 +159,7 @@ public class JdbcAttachmentStore implements AttachmentStore {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Attachment> attachments(String organizationId) {
         return transactions.execute(status -> jdbc.query("""
@@ -168,6 +173,7 @@ public class JdbcAttachmentStore implements AttachmentStore {
                 ATTACHMENT_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public void appendEvent(AttachmentEvent event) {
         transactions.execute(status -> jdbc.update("""
@@ -188,6 +194,7 @@ public class JdbcAttachmentStore implements AttachmentStore {
                         .addValue("occurredAt", dateTime(event.occurredAt()))));
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<AttachmentEvent> events(String organizationId) {
         return transactions.execute(status -> jdbc.query("""

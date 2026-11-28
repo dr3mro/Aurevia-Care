@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Tenant-scoped device registry and invalid-token log (PAT-01, ARC-02, OPS-05).
+ * Tenant-scoped device registry and invalid-token log.
  * The token value is stored for delivery only and must never be written to an
  * audit or operational log.
  */

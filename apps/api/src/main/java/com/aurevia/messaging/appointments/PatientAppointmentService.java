@@ -7,17 +7,18 @@ import com.aurevia.api.ApiException;
 
 /**
  * Patient self-service for appointments, confirmation, generic status pushes
- * and device revocation (PAT-01, ARC-02, OPS-02).
+ * and device revocation.
  *
  * <p>Every command first re-checks a verified patient link for the authenticated
- * subject, then scopes all reads and writes by the verified patient. There is
- * no client-supplied patient scope and no staff role shortcut. Confirmation
+ * subject. A client-supplied patient identifier is used only after that fresh
+ * link check and is never trusted by itself; there is no staff role shortcut.
+ * Confirmation
  * requires a version precondition and uses a server timestamp; a push payload
  * is created from a fixed generic template that accepts no clinical input.
  * Revocation and invalid-token state are consulted at dispatch time.</p>
  *
  * <p>The class is intentionally free of Spring stereotypes: this slice has no
- * persistence adapter yet, so registering it as a bean would break context
+ * durable adapter yet, so registering it as a bean would break context
  * startup. Wiring is a follow-up once the verified-link and device tables
  * exist.</p>
  */

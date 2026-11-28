@@ -28,7 +28,7 @@ import com.aurevia.messaging.acknowledgment.InstructionFacts.ViewCommand;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * MSG-05 domain service: publication, notification dispatch, first in-app view
+ * Domain service for publication, notification dispatch, first in-app view
  * and explicit patient acknowledgment as four separate append-only facts.
  *
  * <p>Every protected action derives the active organization and subject from
@@ -41,9 +41,9 @@ import com.aurevia.tenant.TenantContext;
 @Service
 public class InstructionFactService {
 
-    /** Business purpose recorded on every MSG-05 audit fact (OPS-02). */
+    /** Business purpose recorded on every audit fact. */
     public static final String PURPOSE = "INSTRUCTION_FACT";
-    /** Audited scope for these patient-message facts (OPS-02). */
+    /** Audited scope for these patient-message facts. */
     public static final String SCOPE = "PATIENT_MESSAGE";
     /** Generic notification key: the only payload a dispatch fact may carry. */
     public static final String GENERIC_NOTIFICATION_KEY = "NEW_INSTRUCTION";
@@ -107,8 +107,8 @@ public class InstructionFactService {
                 throw deny(context, PUBLISH, id, 409, "INSTRUCTION_CONTEXT_CONFLICT",
                         "a revision cannot change the verified patient or owning unit");
             }
-            // Immutable revisions: a stale version is rejected and a duplicate
-            // version can never replace previously published content.
+            // An older revision is refused; an equal revision is accepted only
+            // when its content matches the stored revision exactly.
             if (latest != null && revision < latest.revision()) {
                 throw deny(context, PUBLISH, id, 409, "STALE_REVISION",
                         "a revision must not be older than the latest stored revision");
@@ -198,7 +198,7 @@ public class InstructionFactService {
      * or a critical-result acknowledgment. A stale revision fails closed and a
      * reused client key with a different revision conflicts. The receipt is
      * attributed to the authenticated patient account; several verified
-     * accounts may link to one chart (IAM-05), so each records its own fact.</p>
+     * accounts may link to one chart, so each records its own fact.</p>
      *
      * @param command validated acknowledgment command
      * @return the authoritative receipt-only acknowledgment
