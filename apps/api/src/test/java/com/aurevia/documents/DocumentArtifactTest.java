@@ -145,6 +145,16 @@ class DocumentArtifactTest {
     }
 
     @Test
+    void documentInputsFileNameRejectsTraversalAndAcceptsTheSharedLengthBound() {
+        assertDenied(422, "INVALID_FILE_NAME", () -> DocumentInputs.fileName(".."));
+        assertDenied(422, "INVALID_FILE_NAME", () -> DocumentInputs.fileName("a..b"));
+        assertEquals("a".repeat(180), DocumentInputs.fileName("a".repeat(180)));
+        assertEquals("a".repeat(181), DocumentInputs.fileName("a".repeat(181)));
+        assertEquals("a".repeat(200), DocumentInputs.fileName("a".repeat(200)));
+        assertDenied(422, "INVALID_FILE_NAME", () -> DocumentInputs.fileName("a".repeat(201)));
+    }
+
+    @Test
     void rejectsSizeOutsideBoundsAndAcceptsBoundaries() {
         assertDenied(422, "INVALID_SIZE_BYTES", () -> quarantine.upload(patientA,
                 new UploadRequest(CONTEXT, "notes.pdf", "application/pdf", "25504446", 0, CHECKSUM)));

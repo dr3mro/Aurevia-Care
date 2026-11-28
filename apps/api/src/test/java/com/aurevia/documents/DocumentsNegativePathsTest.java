@@ -239,12 +239,16 @@ class DocumentsNegativePathsTest {
         verifyNoInteractions(audit);
     }
 
-    /** A path-bearing or overlong file name cannot enter the retained-original store. */
+    /** A traversal, path-bearing or overlong file name cannot enter the retained-original store. */
     @Test
     void linkRefusesPathBearingAndOverlongFileNames() {
+        assertFailure(reject(() -> documents.link(linkWithFileName(".."))), 422,
+                "INVALID_FILE_NAME");
+        assertFailure(reject(() -> documents.link(linkWithFileName("a..b"))), 422,
+                "INVALID_FILE_NAME");
         assertFailure(reject(() -> documents.link(linkWithFileName("../x.pdf"))), 422,
                 "INVALID_FILE_NAME");
-        assertFailure(reject(() -> documents.link(linkWithFileName("x".repeat(181)))), 422,
+        assertFailure(reject(() -> documents.link(linkWithFileName("x".repeat(201)))), 422,
                 "INVALID_FILE_NAME");
         assertFailure(reject(() -> documents.link(linkWithFileName(null))), 422,
                 "INVALID_FILE_NAME");
