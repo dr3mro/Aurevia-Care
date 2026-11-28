@@ -11,9 +11,9 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * <p>A reference points at a patient, encounter, order or document without
  * copying any chart content into the message. The label is deliberately
  * non-identifying; the target and connection identifiers are opaque handles that
- * are only resolved after the recipient's access check passes. These are value
- * types only: persistence of the reference belongs to the message-content
- * boundary in a later slice.</p>
+ * are only resolved after the recipient's access check passes. These are
+ * immutable value types only: a reference is embedded in message content rather
+ * than stored as an independent row.</p>
  */
 public final class ReferenceContract {
 

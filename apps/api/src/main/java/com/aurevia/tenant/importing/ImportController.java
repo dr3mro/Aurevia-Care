@@ -33,7 +33,7 @@ public class ImportController {
      *
      * @param manifest versioned onboarding manifest
      * @return deterministic dry-run report
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/dry-run")
     public DryRunReport dryRun(@RequestBody ImportManifest manifest) {

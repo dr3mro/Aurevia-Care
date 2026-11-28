@@ -41,7 +41,7 @@ public class FollowUpController {
      *
      * @param request bounded suggestion fields
      * @return the stored suggestion
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/suggest")
     public FollowUpSuggestion suggest(@RequestBody SuggestRequest request) {
@@ -55,7 +55,7 @@ public class FollowUpController {
      * @param id      suggestion identifier
      * @param request replacement date and reason
      * @return the new suggestion version
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/{id}/override")
     public FollowUpSuggestion override(@PathVariable String id, @RequestBody OverrideRequest request) {
@@ -68,6 +68,7 @@ public class FollowUpController {
      * @param id      suggestion identifier
      * @param ifMatch version read by the caller
      * @return the confirmed suggestion with its booking identifier
+     * @throws com.aurevia.api.ApiException when authorization or validation fails or the supplied version is stale
      */
     @PostMapping("/{id}/confirm")
     public FollowUpSuggestion confirm(@PathVariable String id,
@@ -81,7 +82,7 @@ public class FollowUpController {
      * @param id      suggestion identifier
      * @param request owner, due date and instruction
      * @return the open task
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/{id}/tasks")
     public CareTeamTask createTask(@PathVariable String id, @RequestBody TaskRequest request) {
@@ -94,7 +95,7 @@ public class FollowUpController {
      * @param taskId  task identifier
      * @param request recorded outcome
      * @return the completed task
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/tasks/{taskId}/complete")
     public CareTeamTask completeTask(@PathVariable String taskId, @RequestBody CompleteRequest request) {
@@ -106,7 +107,7 @@ public class FollowUpController {
      *
      * @param id suggestion identifier
      * @return the visible tasks
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/{id}/tasks")
     public List<CareTeamTask> tasks(@PathVariable String id) {

@@ -21,9 +21,10 @@ import com.aurevia.tenant.importing.DryRunReport.MissingAttachment;
  * is a pure computation: it reports counts, unsupported fields, duplicate risk,
  * missing attachments and errors, and touches no store.
  * {@link com.aurevia.tenant.importing.OnboardingImportService#toImportedRecords(ImportManifest)}
- * only projects records with their provenance and original signature evidence; a
- * later, separately authorized story performs controlled commits. Canonical
- * hashing makes the report deterministic, and no operation mints a new attestation.</p>
+ * only projects records with their provenance and original signature evidence;
+ * controlled commits are a separate, separately authorized operation on the
+ * resulting manifest. Canonical hashing makes the report deterministic, and no
+ * operation mints a new attestation.</p>
  */
 @Service
 public class OnboardingImportService {

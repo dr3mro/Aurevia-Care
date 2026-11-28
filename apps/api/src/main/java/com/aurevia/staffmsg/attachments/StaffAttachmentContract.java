@@ -154,7 +154,7 @@ public final class StaffAttachmentContract {
 
     /**
      * Explicit send command naming the pending files, the recipients and the
-     * confirmation flag. requires the sender to see the recipient and the
+     * confirmation flag, which requires the sender to see the recipient and the
      * pending files and to confirm before publication.
      *
      * @return the send command

@@ -23,10 +23,9 @@ import com.aurevia.tenant.TenantContext;
  * Wiring for the notification ports using existing domain beans.
  *
  * <p>The notifier publishes identifier-free drafts through the durable outbox, mirroring
- * the reference notifier. The settings adapter is process-local because persistence is
- * outside this story's scope; a durable, RLS-protected implementation belongs to the
- * follow-up task recorded in the hand-off notes. No production HTTP route is added, so
- * route parity with the out-of-scope contract is unaffected.</p>
+ * the reference notifier. The settings adapter is process-local: it holds mute and
+ * auto-reply state for this JVM only and is not a durable store. No HTTP route is added
+ * here; the outbox is the only side effect.</p>
  */
 @Configuration
 public class NotificationConfiguration {

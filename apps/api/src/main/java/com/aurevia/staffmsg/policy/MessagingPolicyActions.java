@@ -19,8 +19,8 @@ import com.aurevia.tenant.TenantContext;
  * require an administrator. The organization and actor come from the bound
  * tenant context, and roles and facility scope from the authoritative actor
  * fold, so no client-supplied field can widen either boundary. The class is a
- * plain component with constructor injection: its adapters and route are a
- * separate follow-up task outside this kernel slice.</p>
+ * plain component with constructor injection: its persistence adapter and HTTP
+ * route are supplied by sibling components, never created here.</p>
  */
 public final class MessagingPolicyActions {
 
@@ -28,9 +28,8 @@ public final class MessagingPolicyActions {
     private static final String TENANT_ADMIN_ROLE = SpecialtyRoles.TENANT_ADMIN;
 
     /**
-     * Facility-scoped oversight key, the same key the service-profile slice
-     * uses for supervision. Facility ownership is enforced only by the actor
-     * fold's facility check, never inferred from the role key itself.
+     * Facility-scoped oversight key. Facility ownership is enforced only by the
+     * actor fold's facility check, never inferred from the role key itself.
      */
     private static final String FACILITY_ADMIN_ROLE = "unit_supervisor";
 

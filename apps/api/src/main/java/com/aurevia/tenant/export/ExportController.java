@@ -36,7 +36,7 @@ public class ExportController {
      * Start an export for the active organization.
      *
      * @return opaque job metadata including the manifest checksum and expiry
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping
     public ExportResult start() {
@@ -48,7 +48,7 @@ public class ExportController {
      *
      * @param jobId opaque job identifier
      * @return manifest bytes with a JSON content type
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/{jobId}")
     public ResponseEntity<byte[]> download(@PathVariable String jobId) {
@@ -60,7 +60,7 @@ public class ExportController {
      *
      * @param jobId opaque job identifier
      * @return no content
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/{jobId}/expire")
     public ResponseEntity<Void> expire(@PathVariable String jobId) {

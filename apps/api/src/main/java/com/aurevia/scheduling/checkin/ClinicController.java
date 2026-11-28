@@ -48,7 +48,7 @@ public class ClinicController {
      *
      * @param request verification command
      * @return HTTP 201 with the immutable verification
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/verifications")
     public ResponseEntity<Verification> verify(@RequestBody VerifyIdentity request) {
@@ -63,6 +63,7 @@ public class ClinicController {
      * @param id      appointment identifier
      * @param ifMatch expected appointment version
      * @return the worklist entry for the arrival
+     * @throws com.aurevia.api.ApiException when authorization or validation fails or the supplied version is stale
      */
     @PostMapping("/appointments/{id}/check-in")
     public WorklistItem checkIn(@PathVariable String id,
@@ -76,6 +77,7 @@ public class ClinicController {
      * @param id      appointment identifier
      * @param ifMatch expected appointment version
      * @return the in-progress appointment
+     * @throws com.aurevia.api.ApiException when authorization or validation fails or the supplied version is stale
      */
     @PostMapping("/appointments/{id}/open-encounter")
     public Appointment openEncounter(@PathVariable String id,
@@ -89,6 +91,7 @@ public class ClinicController {
      * @param facilityCode facility code
      * @param limit        optional bounded page size
      * @return the ordered items
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/worklist")
     public List<WorklistItem> worklist(@RequestParam String facilityCode,
@@ -103,6 +106,7 @@ public class ClinicController {
      * @param request assignee subject
      * @param ifMatch expected entry version
      * @return the assigned entry
+     * @throws com.aurevia.api.ApiException when authorization or validation fails or the supplied version is stale
      */
     @PostMapping("/worklist/{id}/assign")
     public WorklistItem assign(@PathVariable String id, @RequestBody Assign request,
@@ -117,6 +121,7 @@ public class ClinicController {
      * @param request receiving subject and reason
      * @param ifMatch expected entry version
      * @return the transferred entry
+     * @throws com.aurevia.api.ApiException when authorization or validation fails or the supplied version is stale
      */
     @PostMapping("/worklist/{id}/handoff")
     public WorklistItem handoff(@PathVariable String id, @RequestBody Handoff request,
@@ -129,7 +134,7 @@ public class ClinicController {
      *
      * @param request intake command
      * @return HTTP 201 with the new worklist entry
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/worklist/intake")
     public ResponseEntity<WorklistItem> intake(@RequestBody Intake request) {

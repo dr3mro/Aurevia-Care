@@ -9,14 +9,14 @@ import com.fasterxml.jackson.annotation.JsonValue;
 /**
  * Domain contract for staff-to-staff messaging records.
  *
- * <p>Staff messaging is a separate domain from the patient-to-unit conversations
- * of patient-to-unit conversations: a staff conversation is scoped to an
- * organization and a facility, never to a verified patient connection. Message content is immutable
- * once stored; a correction is a new, later message that points at the original.
- * Sequence allocation is strictly {@code last + 1} so a conversation has a
- * gap-free order, and mail folders belong to a participant rather than to the
- * This class owns only immutable value types; persistence and authorization
- * live in sibling packages of this domain.</p>
+ * <p>Staff messaging is a separate domain from patient-to-unit conversations:
+ * a staff conversation is scoped to an organization and a facility, never to a
+ * verified patient connection. Message content is immutable once stored; a
+ * correction is a new, later message that points at the original. Sequence
+ * allocation is strictly {@code last + 1} so a conversation has a gap-free
+ * order, and mail folders belong to a participant rather than to a patient
+ * conversation. This class owns only immutable value types; persistence and
+ * authorization live in sibling packages of this domain.</p>
  */
 public final class StaffMessagingContract {
 

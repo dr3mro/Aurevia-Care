@@ -12,7 +12,7 @@ package com.aurevia.tenant;
  */
 public record TenantContext(String organizationId, String subject, String purpose, String correlationId) {
 
-    /** Purpose recorded on G0 facility administration audit events. */
+    /** Purpose recorded on facility administration audit events. */
     public static final String PURPOSE = "FACILITY_ADMIN";
 
     // Request-thread storage: a pooled thread must not carry an organization into the

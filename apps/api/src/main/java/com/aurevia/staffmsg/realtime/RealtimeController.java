@@ -38,6 +38,7 @@ public final class RealtimeController {
      * @param facilityId  facility the caller must be allowed to use
      * @param lastEventId sequence of the last event the client received, or absent for zero
      * @return the SSE emitter installed for this subscription
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping(value = "/events/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestParam String facilityId,
@@ -52,6 +53,7 @@ public final class RealtimeController {
      * @param cursor     exclusive lower sequence bound, or absent for zero
      * @param limit      maximum number of events to return
      * @return the page and the next cursor
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/events")
     public EventPage events(@RequestParam String facilityId,

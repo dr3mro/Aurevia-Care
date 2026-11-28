@@ -39,7 +39,7 @@ public class ControlledImportController {
      *
      * @param request manifest and optional resumable checkpoint
      * @return per-batch outcomes and the new checkpoint
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/commit")
     public CommitReport commit(@RequestBody CommitRequest request) {
@@ -60,7 +60,7 @@ public class ControlledImportController {
      *
      * @param request manifest, checkpoint and named sign-off
      * @return acceptance or refusal with a reason
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/sign-off")
     public SignOffResult signOff(@RequestBody SignOffRequest request) {
@@ -78,7 +78,7 @@ public class ControlledImportController {
      *
      * @param request staging checkpoint to reverse
      * @return empty checkpoint for the same manifest version
-          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/reverse")
     public ImportProgress reverse(@RequestBody ReverseRequest request) {

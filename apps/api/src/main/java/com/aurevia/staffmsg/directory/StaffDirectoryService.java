@@ -69,7 +69,7 @@ public class StaffDirectoryService {
      *
      * <p>The browse API selects facilities by code, but stored drafts carry the
      * facility row id. This lookup uses the same forced-RLS repository and the same
-     * context guard as {@link com.aurevia.staffmsg.directory.StaffDirectoryService#findFacility(String)}:
+     * context guard as {@link com.aurevia.staffmsg.directory.StaffDirectoryService#findFacility(java.lang.String)}:
      * an id outside the active organization is invisible and fails closed.</p>
      *
      * @param facilityId tenant-local facility identifier, possibly null or unknown
