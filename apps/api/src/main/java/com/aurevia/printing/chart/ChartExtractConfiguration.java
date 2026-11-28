@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import com.aurevia.printing.HandoutService;
 
 /**
- * Spring wiring for the consolidated chart extract (CLN-03, CLN-05, CLN-07).
+ * Spring wiring for the consolidated chart extract.
  *
  * <p>The extractor is a plain domain object so its release rules and section
  * choices can be tested without a container. This configuration is the only

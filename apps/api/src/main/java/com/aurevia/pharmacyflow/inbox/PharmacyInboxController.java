@@ -10,7 +10,7 @@ import com.aurevia.pharmacyflow.inbox.PharmacyInboxContract.InboxItem;
 import com.aurevia.pharmacyflow.inbox.PharmacyInboxContract.InboxPage;
 
 /**
- * Thin HTTP adapter for the pharmacy prescription inbox (RX-02, XCH-01, ARC-03).
+ * Thin HTTP adapter for the pharmacy prescription inbox.
  *
  * <p>This controller only binds query parameters and paths. Routing, paging,
  * authorization, audit and the chart-free projection belong to the injected

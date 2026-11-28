@@ -9,7 +9,7 @@ import com.aurevia.pharmacyflow.clarify.ClarificationContract.State;
 import com.aurevia.pharmacyflow.clarify.ClarificationContract.Thread;
 
 /**
- * Bounded permission and overdue policy for clarification threads (RX-02, IAM-01).
+ * Bounded permission and overdue policy for clarification threads.
  *
  * <p>The checks reuse the shared specialty role vocabulary so the clarification
  * API cannot drift into a second permission model. Roles are supplied by the

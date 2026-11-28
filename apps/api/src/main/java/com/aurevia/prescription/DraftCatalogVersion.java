@@ -3,7 +3,7 @@ package com.aurevia.prescription;
 import com.aurevia.api.ApiException;
 
 /**
- * The catalog version a prescription draft was built from (RX-01).
+ * The catalog version a prescription draft was built from.
  *
  * <p>The version is stamped once when a medication is selected and never
  * rewritten by a later catalog publication, so an old draft keeps the version

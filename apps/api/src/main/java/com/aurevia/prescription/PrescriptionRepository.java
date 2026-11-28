@@ -24,7 +24,7 @@ import com.aurevia.prescription.PrescriptionContract.Ingredient;
 import com.aurevia.prescription.PrescriptionContract.OverrideRecord;
 
 /**
- * The single SQL boundary for RX-01 prescription drafts.
+ * The single SQL boundary for prescription drafts.
  *
  * <p>Every statement runs inside the tenant-guarded transaction, so forced
  * row-level security confines it to the active organization. Authors and

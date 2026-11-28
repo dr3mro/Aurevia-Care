@@ -7,7 +7,7 @@ import com.aurevia.audit.AuditAppender;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Writes print facts through the shared OPS-02 audit appender (CLN-07, OPS-02).
+ * Writes print facts through the shared audit appender.
  *
  * <p>The appender leaves {@code actor_id} to the database trigger, which derives
  * it from the transaction-local {@code app.actor} binding set by the tenant
@@ -27,14 +27,14 @@ public final class PrintAuditAppender implements PrintAuditTrail {
     /**
      * Create the trail over the shared audit appender.
      *
-     * @param audit transactional OPS-02 append boundary
+     * @param audit transactional append boundary
      */
     public PrintAuditAppender(AuditAppender audit) {
         this.audit = audit;
     }
 
     /**
-     * Append one sanitized fact using the request's tenant context.
+     * Append one sanitized audit fact using the request's tenant context.
      *
      * @param entry sanitized print facts
      * @throws ApiException when no tenant context is bound

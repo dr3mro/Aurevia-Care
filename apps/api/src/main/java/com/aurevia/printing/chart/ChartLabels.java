@@ -6,7 +6,7 @@ import java.util.Map;
 import com.aurevia.chart.record.PresenceState;
 
 /**
- * Approved English and Arabic labels for the consolidated chart extract (UX-01).
+ * Approved English and Arabic labels for the consolidated chart extract.
  *
  * <p>Labels are self-hosted strings keyed by a stable internal name, so a PDF
  * can be produced without a translation service. Only the fixed vocabulary used

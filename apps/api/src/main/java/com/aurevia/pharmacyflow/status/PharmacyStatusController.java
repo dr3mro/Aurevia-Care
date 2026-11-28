@@ -27,7 +27,7 @@ import com.aurevia.staff.StaffRepository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for pharmacy status facts (RX-02, ARC-03).
+ * Thin HTTP adapter for pharmacy status facts.
  *
  * <p>This controller only binds paths, headers and command bodies. Tenant and
  * actor come from the request context, active roles from freshly resolved

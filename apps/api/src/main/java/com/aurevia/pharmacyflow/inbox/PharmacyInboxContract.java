@@ -6,7 +6,7 @@ import java.util.List;
 import com.aurevia.prescription.rx.RxContract.State;
 
 /**
- * Read model for the pharmacy inbox (RX-02, XCH-01).
+ * Read model for the pharmacy inbox.
  *
  * <p>The projection holds only the bounded prescription snapshot a pharmacy needs
  * to review and dispense an explicitly routed item. It deliberately contains no

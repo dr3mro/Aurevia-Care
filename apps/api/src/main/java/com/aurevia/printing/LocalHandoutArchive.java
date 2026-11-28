@@ -8,7 +8,7 @@ import com.aurevia.printing.HandoutContract.Handout;
 import com.aurevia.printing.HandoutContract.RenderedHandout;
 
 /**
- * In-process handout registry for the rendering service (ARC-06).
+ * In-process handout registry for the rendering service.
  *
  * <p>State is keyed by tenant, kind and source, so two tenants using the same
  * local identifier never share a version or a rendering. A rendered handout is

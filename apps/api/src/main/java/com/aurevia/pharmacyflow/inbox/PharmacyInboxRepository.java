@@ -17,7 +17,7 @@ import com.aurevia.pharmacyflow.inbox.PharmacyInboxContract.InboxItem;
 import com.aurevia.prescription.rx.RxContract.State;
 
 /**
- * The single SQL boundary for the pharmacy inbox read model (RX-02, XCH-01).
+ * The single SQL boundary for the pharmacy inbox read model.
  *
  * <p>Every statement runs inside the tenant-guarded transaction, so forced row
  * level security confines it to the active organization. Routing is enforced by

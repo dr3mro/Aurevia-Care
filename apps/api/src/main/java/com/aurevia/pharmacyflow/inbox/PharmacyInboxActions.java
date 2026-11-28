@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import com.aurevia.authz.specialty.SpecialtyRoles;
 
 /**
- * Bounded action matrix for the pharmacy inbox read slice (RX-02, XCH-01).
+ * Bounded action matrix for the pharmacy inbox read slice.
  *
  * <p>Reviewing explicitly routed prescriptions belongs to pharmacy staff. A
  * prescribing clinician, administrator or auditor may not use this inbox to read

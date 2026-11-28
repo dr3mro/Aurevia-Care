@@ -8,11 +8,12 @@ import com.aurevia.printing.HandoutContract.HandoutSource;
 import com.aurevia.printing.HandoutKind;
 
 /**
- * Default-deny print decision for one freshly derived caller and one record (IAM-01, ARC-02).
+ * Default-deny print decision for one freshly derived caller and one record.
  *
  * <p>The named role-action is re-derived from active membership on every call,
- * never accepted from the request. The facility check uses the facility of the
- * record, not a caller-supplied facility selector. A record owned by another
+ * never accepted from the request. The facility comes from the selected source
+ * projection, not a separate selector, and must resolve in the active tenant.
+ * A record owned by another
  * tenant is concealed as not found so an existence probe reveals nothing.</p>
  */
 public final class PrintPolicy {

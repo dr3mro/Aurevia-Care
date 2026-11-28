@@ -7,7 +7,7 @@ import com.aurevia.api.ApiException;
 import com.aurevia.api.contract.CanonicalUuid;
 
 /**
- * Total, synthetic-safe validation of RX-01 request fields (ARC-03).
+ * Total, synthetic-safe validation of request fields.
  *
  * <p>Every method either returns a bounded, normalized value or throws a
  * machine-readable 422; no caller value reaches SQL or a domain object before

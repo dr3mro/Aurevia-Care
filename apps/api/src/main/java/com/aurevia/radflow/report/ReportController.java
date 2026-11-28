@@ -26,7 +26,7 @@ import com.aurevia.staff.StaffRepository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for RAD-01 report delivery and addendum acknowledgment.
+ * Thin HTTP adapter for report delivery and addendum acknowledgment.
  *
  * <p>The organization, actor and active roles are derived from the request tenant
  * context and freshly resolved membership; none is taken from a request body.

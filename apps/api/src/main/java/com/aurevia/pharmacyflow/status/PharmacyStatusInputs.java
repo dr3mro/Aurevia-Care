@@ -6,7 +6,7 @@ import java.util.UUID;
 import com.aurevia.api.ApiException;
 
 /**
- * Pure, total validation of every pharmacy status command field (RX-02, ARC-03).
+ * Pure, total validation of every pharmacy status command field.
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * before any state changes, so a malformed identifier, actor, reason or time can

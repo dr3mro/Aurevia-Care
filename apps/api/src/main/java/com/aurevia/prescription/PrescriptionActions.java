@@ -3,7 +3,7 @@ package com.aurevia.prescription;
 import org.springframework.stereotype.Component;
 
 /**
- * Bounded action matrix for the RX-01 slice.
+ * Bounded action matrix for the prescription slice.
  *
  * <p>Draft creation and medication selection are prescribing acts reserved to a
  * clinician. Catalog and allergy decision support are readable by clinical and

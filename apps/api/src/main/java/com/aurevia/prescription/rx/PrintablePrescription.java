@@ -3,7 +3,7 @@ package com.aurevia.prescription.rx;
 import java.time.Instant;
 
 /**
- * Immutable, print-ready prescription carrying the prescriber attestation (RX-02).
+ * Immutable, print-ready prescription carrying the prescriber attestation.
  *
  * <p>The document is derived only from a prescription that actually used the
  * locally approved print channel, so the recorded channel is copied verbatim and

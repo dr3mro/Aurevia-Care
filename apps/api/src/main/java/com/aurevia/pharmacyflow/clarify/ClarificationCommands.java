@@ -3,7 +3,7 @@ package com.aurevia.pharmacyflow.clarify;
 import java.util.Set;
 
 /**
- * Command bodies for the two clarification transitions (RX-02, ARC-03).
+ * Command bodies for the two clarification transitions.
  *
  * <p>The organization, actor and active roles are supplied by the caller from
  * the active tenant context and freshly resolved membership; none is inferred

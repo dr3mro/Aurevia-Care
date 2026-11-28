@@ -6,7 +6,7 @@ import java.time.Instant;
 import com.aurevia.radflow.report.ReportTypes.AcknowledgmentState;
 
 /**
- * The acknowledgment receipt of one delivered addendum revision (RAD-01, ADM-02).
+ * The acknowledgment receipt of one delivered addendum revision.
  *
  * <p>A receipt is created when an addendum is delivered and is replaced by an
  * acknowledged revision when the referring clinician confirms it. The receipt

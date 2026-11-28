@@ -5,7 +5,7 @@ import java.time.Instant;
 import com.aurevia.radflow.worklist.WorklistTypes.WorklistEventType;
 
 /**
- * One immutable fact produced by the RAD-01 worklist kernel (ARC-05, OPS-02).
+ * One immutable fact produced by the worklist kernel.
  *
  * <p>The event carries only identifiers and the actor. No clinical narrative or
  * image data is placed in an event, so an operational fact cannot disclose a

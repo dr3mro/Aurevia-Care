@@ -5,7 +5,7 @@ import java.util.UUID;
 import com.aurevia.api.ApiException;
 
 /**
- * Pure boundary validation for pharmacy substitution commands (RX-01, RX-02, ARC-03).
+ * Pure boundary validation for pharmacy substitution commands.
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * before any proposal or revision is recorded, so malformed identifiers,

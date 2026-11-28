@@ -29,7 +29,7 @@ import com.aurevia.staff.StaffRepository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for the RAD-01 performing-site worklist.
+ * Thin HTTP adapter for the performing-site worklist.
  *
  * <p>The organization, actor and active roles are derived from the request tenant
  * context and freshly resolved membership; none is taken from a command body.
@@ -105,7 +105,7 @@ public final class WorklistController {
     }
 
     /**
-     * Record the study time, an approved modality and the accession at scheduling.
+     * Record the study time, the supplied modality and the accession at scheduling.
      *
      * @param orderId tenant-local order identifier
      * @param request schedule fields plus the version the caller last read

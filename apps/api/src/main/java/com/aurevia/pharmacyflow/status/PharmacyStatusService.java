@@ -20,7 +20,7 @@ import com.aurevia.pharmacyflow.status.PharmacyStatusContract.StatusView;
 import com.aurevia.prescription.rx.RxContract.EventType;
 
 /**
- * RX-02 pharmacy status domain kernel.
+ * Pharmacy status domain kernel.
  *
  * <p>The kernel owns append-only status trails and immutable facts. It has no
  * HTTP or persistence dependency: a later story with a migration persists the
