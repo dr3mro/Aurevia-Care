@@ -11,7 +11,6 @@ import {
   placeholderFacts,
   placeholderInstructions,
   placeholderLockoutStrings,
-  placeholderNotice,
   placeholderNow,
   placeholderPatientId,
   placeholderPublicationAuthorized,
@@ -30,11 +29,6 @@ describe('placeholder providers', () => {
   });
 
   it('returns generic, non-clinical values for the remaining props', () => {
-    expect(placeholderNotice()).toEqual({
-      title: expect.any(String),
-      body: expect.any(String),
-    });
-    expect(placeholderNotice().title).not.toMatch(/diagnos|result|report/i);
     expect(placeholderPatientId()).toBeTruthy();
     expect(placeholderUnit().organizationId).toBeTruthy();
     expect(placeholderUnit().facilityCode).toBeTruthy();

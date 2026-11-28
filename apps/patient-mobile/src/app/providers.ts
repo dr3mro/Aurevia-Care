@@ -16,7 +16,6 @@ import type {
   Appointment,
   AppointmentStatus,
   DeviceToken,
-  GenericNotice,
   ZoneFormatter,
 } from '../features/appointments/types';
 import type { CareUnitRef, PendingAttachment } from '../features/attachments/domain';
@@ -279,14 +278,6 @@ export function placeholderFacts(): Readonly<Record<string, DeliveryFacts>> {
 /** Empty synthetic instruction projection. */
 export function placeholderInstructions(): readonly InstructionView[] {
   return [];
-}
-
-/** Generic notice with no clinical detail; never interpolates patient data. */
-export function placeholderNotice(): GenericNotice {
-  return {
-    title: 'Appointment update',
-    body: 'You have a new update. Open the app for details.',
-  };
 }
 
 /** Synthetic patient identifier used only to scope device rows in the list. */

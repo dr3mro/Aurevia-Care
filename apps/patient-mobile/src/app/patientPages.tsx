@@ -8,7 +8,7 @@
  * A shared layout frame keeps each page readable on compact, large and
  * right-to-left windows without changing data or exported names.
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import * as SafeArea from 'react-native-safe-area-context';
@@ -32,9 +32,12 @@ import {
   findEligibleDevice,
   refreshVisibleDevices,
 } from '../features/appointments/devices';
+import { GENERIC_NOTICE } from '../features/appointments/notifications';
 import { screenText } from '../features/appointments/patientDesign';
 import type { DeviceToken } from '../features/appointments/types';
 import { ConversationInbox } from '../features/conversations/ConversationInbox';
+import { triggerStatusNotice } from '../features/notifications/statusChangeTrigger';
+import type { StatusNoticeSeam } from '../features/notifications/statusChangeTrigger';
 import { SecureCredentialStore } from '../features/reports/credentials';
 import { createAlertConfirmer, downloadWithHandoff } from '../features/reports/downloadFlow';
 import type { Confirmer, DocumentHandoff } from '../features/reports/downloadFlow';
@@ -53,7 +56,6 @@ import {
   loadReports,
   PATIENT_API_BASE_URL,
   placeholderAction,
-  placeholderNotice,
 } from './providers';
 import type { ConversationInboxData } from './providers';
 import { screenMessages } from './screenStates';
@@ -88,6 +90,13 @@ export interface AppointmentListPageProps extends PatientPageProps {
    * refresh path a single deterministic projection rather than an extra effect.
    */
   readonly initialDevices?: readonly DeviceToken[];
+  /**
+   * Optional host seam for authoritative appointment status changes. A signed-in
+   * host emits through `subscribe` and injects the delivery boundaries; the page
+   * never polls the appointment list. Without a seam the tab only displays the
+   * approved generic notice, because no real push gateway exists in V1.
+   */
+  readonly statusNotices?: StatusNoticeSeam;
 }
 
 /** Stable emptiness test for a loaded list. */
@@ -195,6 +204,7 @@ export function AppointmentListPage({
   onSessionExpired,
   deviceClient,
   initialDevices,
+  statusNotices,
 }: AppointmentListPageProps): React.JSX.Element {
   const messages = useMemo(() => screenMessages(locale), [locale]);
   const formatter = useMemo(() => facilityZoneFormatter(), []);
@@ -228,6 +238,38 @@ export function AppointmentListPage({
   const [deviceError, setDeviceError] = useState<string | null>(null);
   /** Synchronous guard so two presses in one turn cannot issue two DELETEs. */
   const devicePendingRef = useRef<string | null>(null);
+  /** Status changes already dispatched; a ref survives re-renders without state. */
+  const dispatchedNotices = useRef(new Set<string>());
+
+  /**
+   * Subscribe to the host's status changes when it supplies a seam.
+   *
+   * The page contributes only verified ids, its ledger and its session callback
+   * to the trigger. No result is rendered: the notice text is the same fixed
+   * generic constant before and after a push, so no clinical value can reach
+   * the screen through this path. The returned unsubscribe is the effect
+   * cleanup, so no listener survives an unmount.
+   */
+  useEffect(() => {
+    if (statusNotices === undefined) {
+      return;
+    }
+    return statusNotices.subscribe((change) => {
+      void triggerStatusNotice(change, {
+        organizationId,
+        patientId,
+        auth: statusNotices.auth,
+        devices: statusNotices.devices,
+        inbox: statusNotices.inbox,
+        gateway: statusNotices.gateway,
+        logger: statusNotices.logger,
+        at: statusNotices.at,
+        fetchDetail: statusNotices.fetchDetail,
+        dispatched: dispatchedNotices.current,
+        onSessionExpired,
+      });
+    });
+  }, [statusNotices, organizationId, patientId, onSessionExpired]);
 
   const load = useCallback(
     () => loadAppointments(transport, patientId, organizationId),
@@ -386,7 +428,7 @@ export function AppointmentListPage({
           return (
             <AppointmentListScreen
               appointments={visible}
-              notice={placeholderNotice()}
+              notice={GENERIC_NOTICE}
               patientId={patientId}
               devices={devices}
               onConfirm={(row) => {

@@ -4,13 +4,17 @@
  * fake transport (PAT-01, PAT-02, PAT-03, WEB-09).
  */
 import { jest } from '@jest/globals';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { createElement } from 'react';
 import type { ReactElement } from 'react';
 
 import { clinicalCacheSize } from '../api/clinicalCache';
 import { TransportError } from '../api/transport';
 import type { Transport } from '../api/transport';
+import { tenantKey } from '../features/appointments/tenancy';
+import type { DeviceToken } from '../features/appointments/types';
+import type { StatusNoticeSeam, AppointmentStatusChange } from '../features/notifications/statusChangeTrigger';
+import type { GenericNotice, InboxItem, PushGateway } from '../features/notifications/types';
 import type { DownloadAuthorization, TokenStore } from '../features/reports/types';
 
 import {
@@ -431,5 +435,232 @@ describe('patient endpoint selection', () => {
     await render(<ConversationInboxPage {...baseProps} transport={conversations} onSessionExpired={() => undefined} />);
     expect(reports.get).toHaveBeenCalledWith('/api/v1/patient/reports');
     expect(conversations.get).toHaveBeenCalledWith('/api/v1/conversations/inbox');
+  });
+});
+
+/** Approved generic text as literals; the placeholder body differs from it. */
+const approvedNotice: GenericNotice = {
+  title: 'Appointment update',
+  body: 'You have an update about your appointment. Open the app to view details.',
+};
+
+/** Synthetic clinical detail; the fetcher may see it, the push never may. */
+const syntheticDetail = {
+  id: 'apt-1',
+  patientName: 'Layla Synthetic',
+  facilityCode: 'synthetic-facility',
+  status: 'cancelled',
+  result: 'Hemoglobin 7.2',
+  startsAt: '2026-12-01T07:00:00Z',
+};
+
+const clinicalFields = [
+  syntheticDetail.patientName,
+  syntheticDetail.facilityCode,
+  syntheticDetail.status,
+  syntheticDetail.result,
+  syntheticDetail.startsAt,
+  syntheticDetail.id,
+];
+
+const statusDetailRef = 'synthetic-organization\u0000apt-1';
+
+/** One synthetic status change emitted through the installed page's port. */
+const statusChangeEvent: AppointmentStatusChange = {
+  organizationId: 'synthetic-organization',
+  patientId: 'synthetic-patient',
+  appointmentId: 'apt-1',
+  status: 'cancelled',
+  detailRef: statusDetailRef,
+};
+
+interface StatusSeamOptions {
+  readonly authenticated?: boolean;
+  readonly fetchDetail?: (ref: string) => Promise<unknown>;
+}
+
+/** Build a port whose subscribe seam is the only way a change enters the page. */
+function statusSeam(options: StatusSeamOptions = {}) {
+  let listener: ((change: AppointmentStatusChange) => void) | undefined;
+  let subscribed = 0;
+  let unsubscribed = 0;
+  const tokens: string[] = [];
+  const notices: GenericNotice[] = [];
+  const fetchCalls: string[] = [];
+  const gateway: PushGateway = {
+    async send(value, notice) {
+      tokens.push(value);
+      notices.push(notice);
+      return { kind: 'accepted' };
+    },
+  };
+  const device: DeviceToken = {
+    id: 'dev-1',
+    patientId: 'synthetic-patient',
+    state: 'active',
+    token: 'synthetic-dev-1',
+  };
+  const inbox: readonly InboxItem[] = [{ id: 'notice-1', detailRef: statusDetailRef }];
+  const seam: StatusNoticeSeam = {
+    subscribe(fn) {
+      subscribed += 1;
+      listener = fn;
+      return () => {
+        unsubscribed += 1;
+      };
+    },
+    auth: { authenticated: options.authenticated ?? true },
+    devices: new Map([[tenantKey('synthetic-organization', device.id), device]]),
+    inbox,
+    gateway,
+    logger: {
+      invalidToken() {
+        // No invalid token is produced by the synthetic accepted disposition.
+      },
+    },
+    at: '2026-11-27T09:00:00Z',
+    fetchDetail:
+      options.fetchDetail ??
+      (async (ref) => {
+        fetchCalls.push(ref);
+        return syntheticDetail;
+      }),
+  };
+  return {
+    seam,
+    devices: seam.devices,
+    inbox,
+    tokens,
+    notices,
+    fetchCalls,
+    subscribedCount: () => subscribed,
+    unsubscribedCount: () => unsubscribed,
+    emit: async (event: AppointmentStatusChange = statusChangeEvent) => {
+      await act(async () => {
+        listener?.(event);
+      });
+    },
+  };
+}
+
+describe('appointment status change to generic push through the installed page (PAT-01)', () => {
+  it('renders the approved generic notice before any status change arrives', async () => {
+    const view = await render(
+      <AppointmentListPage
+        {...baseProps}
+        transport={fakeTransport(async () => appointmentPayload)}
+        onSessionExpired={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(view.getByTestId('appointment-list')).toBeTruthy());
+    expect(view.getByTestId('generic-notice').props.children).toBe(
+      `${approvedNotice.title} — ${approvedNotice.body}`,
+    );
+  });
+
+  it('turns one emitted status change into exactly one content-free push', async () => {
+    const h = statusSeam();
+    const onSessionExpired = jest.fn();
+    const view = await render(
+      <AppointmentListPage
+        {...baseProps}
+        transport={fakeTransport(async () => appointmentPayload)}
+        statusNotices={h.seam}
+        onSessionExpired={onSessionExpired}
+      />,
+    );
+    await waitFor(() => expect(h.subscribedCount()).toBe(1));
+    await h.emit();
+
+    await waitFor(() => expect(h.tokens).toEqual(['synthetic-dev-1']));
+    expect(h.notices).toEqual([approvedNotice]);
+    expect(h.fetchCalls).toEqual([statusDetailRef]);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    const egress = JSON.stringify({ notices: h.notices, devices: [...h.devices.values()] });
+    for (const field of clinicalFields) {
+      expect(egress).not.toContain(field);
+    }
+
+    await act(async () => {
+      view.unmount();
+    });
+    expect(h.unsubscribedCount()).toBe(1);
+  });
+
+  it('pushes only once when the same status change is emitted again', async () => {
+    const h = statusSeam();
+    await render(
+      <AppointmentListPage
+        {...baseProps}
+        transport={fakeTransport(async () => appointmentPayload)}
+        statusNotices={h.seam}
+        onSessionExpired={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(h.subscribedCount()).toBe(1));
+    await h.emit();
+    await h.emit();
+
+    await waitFor(() => expect(h.tokens).toEqual(['synthetic-dev-1']));
+    expect(h.fetchCalls).toEqual([statusDetailRef]);
+  });
+
+  it('ends the session and sends no push when detail retrieval is a 401', async () => {
+    const h = statusSeam({
+      fetchDetail: async () => {
+        throw new TransportError('unauthenticated', {});
+      },
+    });
+    const onSessionExpired = jest.fn();
+    await render(
+      <AppointmentListPage
+        {...baseProps}
+        transport={fakeTransport(async () => appointmentPayload)}
+        statusNotices={h.seam}
+        onSessionExpired={onSessionExpired}
+      />,
+    );
+    await waitFor(() => expect(h.subscribedCount()).toBe(1));
+    await h.emit();
+
+    await waitFor(() => expect(onSessionExpired).toHaveBeenCalledTimes(1));
+    expect(h.tokens).toEqual([]);
+    expect(h.notices).toEqual([]);
+  });
+
+  it('fetches no detail and sends no push while signed out', async () => {
+    const h = statusSeam({ authenticated: false });
+    await render(
+      <AppointmentListPage
+        {...baseProps}
+        transport={fakeTransport(async () => appointmentPayload)}
+        statusNotices={h.seam}
+        onSessionExpired={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(h.subscribedCount()).toBe(1));
+    await h.emit();
+
+    expect(h.fetchCalls).toEqual([]);
+    expect(h.tokens).toEqual([]);
+  });
+
+  it('ignores an emitted change for another tenant or patient', async () => {
+    const h = statusSeam();
+    await render(
+      <AppointmentListPage
+        {...baseProps}
+        transport={fakeTransport(async () => appointmentPayload)}
+        statusNotices={h.seam}
+        onSessionExpired={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(h.subscribedCount()).toBe(1));
+    await h.emit({ ...statusChangeEvent, organizationId: 'org-b' });
+    await h.emit({ ...statusChangeEvent, patientId: 'patient-2' });
+
+    expect(h.tokens).toEqual([]);
+    expect(h.fetchCalls).toEqual([]);
+    expect([...h.devices.values()].map((device) => device.state)).toEqual(['active']);
   });
 });
