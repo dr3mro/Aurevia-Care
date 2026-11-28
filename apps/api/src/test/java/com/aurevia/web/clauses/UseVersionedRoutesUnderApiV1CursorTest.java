@@ -3,7 +3,6 @@ package com.aurevia.web.clauses;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -35,8 +34,9 @@ import com.aurevia.observability.CorrelationIdFilter;
  * only under the {@code /api/v1} prefix, that a tenant's staff list is paged in
  * a stable subject order by an opaque tenant-scoped cursor, and that both
  * success and refusal carry a caller-supplied correlation id and a
- * machine-readable error code. No production code is added: every assertion
- * reaches the real controller through HTTP.</p>
+ * machine-readable error code. Version negotiation is enforced at the HTTP
+ * boundary before the controller runs; every assertion reaches that boundary
+ * or the real controller through HTTP.</p>
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -265,22 +265,37 @@ class UseVersionedRoutesUnderApiV1CursorTest {
         assertFalse(response.getBody().contains(ORG_A), "the error body must not expose the tenant id");
     }
 
-    /**
-     * Known gap, characterized by an enabled assertion rather than a skipped
-     * test: no production caller of ApiVersion.from exists, so X-Api-Version is
-     * ignored and a stale v2 header is still served from the v1 route family.
-     * The desired test that expects 422 UNSUPPORTED_API_VERSION was written and
-     * observed red before this characterization replaced it. The future task
-     * that wires version enforcement must flip these assertions back to the
-     * desired behavior.
-     */
+    /** An unsupported version header is refused at the boundary before any staff row is read. */
     @Test
-    void unsupportedVersionIsNotEnforcedGap() {
+    void unsupportedVersionIsRefused() {
         ResponseEntity<String> response = get("/api/v1/staff?limit=2", "admin-a", ORG_A,
                 CORRELATION_ID, "v2");
+        assertEquals(422, response.getStatusCode().value(), response.getBody());
+        assertEquals("UNSUPPORTED_API_VERSION", stringField(response.getBody(), "code"),
+                response.getBody());
+        assertFalse(response.getBody().contains("\"subject\""),
+                "the error body must not expose staff rows");
+        assertFalse(response.getBody().contains(ORG_A),
+                "the error body must not expose the tenant id");
+        assertEquals(CORRELATION_ID,
+                response.getHeaders().getFirst(CorrelationIdFilter.CORRELATION_HEADER));
+    }
+
+    /** An absent X-Api-Version header still selects the only routed version, v1. */
+    @Test
+    void absentVersionDefaultsToV1() {
+        ResponseEntity<String> response = get("/api/v1/staff?limit=2", "admin-a", ORG_A,
+                CORRELATION_ID, null);
         assertEquals(HttpStatus.OK, response.getStatusCode(), response.getBody());
-        assertNull(stringField(response.getBody(), "code"),
-                "known gap: a stale version header does not produce a machine-readable refusal");
+        assertEquals(List.of("admin-a", "alpha-a"), subjects(response.getBody()));
+    }
+
+    /** An explicit v1 header is accepted and returns the same first page. */
+    @Test
+    void validV1IsAccepted() {
+        ResponseEntity<String> response = get("/api/v1/staff?limit=2", "admin-a", ORG_A,
+                CORRELATION_ID, "v1");
+        assertEquals(HttpStatus.OK, response.getStatusCode(), response.getBody());
         assertEquals(List.of("admin-a", "alpha-a"), subjects(response.getBody()));
     }
 }
