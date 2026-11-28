@@ -20,6 +20,9 @@ python3 -I scripts/check-names.py
 python3 -I scripts/check-wiring.py
 python3 -I scripts/check-constraints.py
 python3 -I scripts/check-migrations.py --require-baseline
+# One malformed task pr: field makes reconcile-tasks raise before any write and
+# aborts every integrator wave; catch that shape before the merge gate runs.
+python3 -I scripts/swarm_gate.py validate-tasks --dir tasks
 bash scripts/python-coverage.sh
 bash scripts/frontend-check.sh
 

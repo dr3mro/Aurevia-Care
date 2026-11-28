@@ -16,7 +16,7 @@
 - [x] Added no-subprocess regression covering all eight affected scenarios.
 - [x] Mocked deterministic Git boundaries in all affected integrator tests.
 - [x] Ran targeted non-Git tests and static checks.
-- [ ] Independent review and final checkpoint.
+- Pending: independent review and final checkpoint.
 
 ## Plan review
 - Initial NO-GO findings resolved: deterministic `git(return_value="base-sha\n")` and `pr_already_in_main(return_value=False)` mocks; regression asserts eight inner tests ran successfully and guarded subprocess call count is zero; exact targeted non-Git commands recorded below.
