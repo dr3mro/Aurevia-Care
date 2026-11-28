@@ -311,8 +311,25 @@ class PatientAppointmentServiceTest {
         when(devices.find("dev-1", PATIENT)).thenReturn(Optional.of(activeToken()));
         service.recordInvalidToken(SUBJECT, PATIENT, "dev-1", "provider-rejected", NOW);
         verify(devices).save(activeToken().invalidate());
-        verify(devices).appendInvalidTokenLog("dev-1", PATIENT, "provider-rejected", NOW);
+        // Arbitrary client text is normalized so the durable ledger stays non-sensitive.
+        verify(devices).appendInvalidTokenLog("dev-1", PATIENT, "UNSPECIFIED", NOW);
         verify(audit).append(SUBJECT, PATIENT, "DEVICE_INVALID_TOKEN", "SUCCESS", NOW);
+    }
+
+    @Test
+    void invalidTokenWithNullDispositionFailsClosedToUnspecified() {
+        linked();
+        when(devices.find("dev-1", PATIENT)).thenReturn(Optional.of(activeToken()));
+        service.recordInvalidToken(SUBJECT, PATIENT, "dev-1", null, NOW);
+        verify(devices).appendInvalidTokenLog("dev-1", PATIENT, "UNSPECIFIED", NOW);
+    }
+
+    @Test
+    void invalidTokenKeepsAKnownDispositionCode() {
+        linked();
+        when(devices.find("dev-1", PATIENT)).thenReturn(Optional.of(activeToken()));
+        service.recordInvalidToken(SUBJECT, PATIENT, "dev-1", "EXPIRED", NOW);
+        verify(devices).appendInvalidTokenLog("dev-1", PATIENT, "EXPIRED", NOW);
     }
 
     @Test

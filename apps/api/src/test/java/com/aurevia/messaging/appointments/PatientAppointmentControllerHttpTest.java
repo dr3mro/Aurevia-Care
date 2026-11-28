@@ -44,7 +44,8 @@ class PatientAppointmentControllerHttpTest {
     void setUp() {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         ports = new SyntheticPatientAppointmentPorts();
-        controller = new PatientAppointmentController(ports, clock);
+        controller = new PatientAppointmentController(new PatientAppointmentService(ports.links,
+                ports.appointments, ports.devices, ports.gateway, ports.audit), clock);
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("synthetic-auth");
         mvc = MockMvcBuilders.standaloneSetup(controller)
