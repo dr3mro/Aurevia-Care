@@ -19,13 +19,13 @@ import com.aurevia.api.ApiException;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for patient appointment self-service (PAT-01, PAT-03).
+ * Thin HTTP adapter for patient appointment self-service.
  *
  * <p>The authenticated subject comes from the request context; the patient
  * identifier is checked against a freshly verified link on every command inside
  * {@link com.aurevia.messaging.appointments.PatientAppointmentService}.
  * Push payloads are generic and contain no clinical detail. The synthetic ports
- * make the workflow runnable with fixtures until durable IAM-05 adapters land.</p>
+ * make the workflow runnable with fixtures until durable verified-link adapters land.</p>
  */
 @RestController
 @RequestMapping("/api/v1/patient/appointments")
@@ -61,6 +61,7 @@ public final class PatientAppointmentController {
      *
      * @param patientId linked patient identifier
      * @return appointment projections with facility time zone and status
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @GetMapping
     public List<PatientAppointment> list(@RequestParam String patientId) {
@@ -73,6 +74,7 @@ public final class PatientAppointmentController {
      * @param appointmentId appointment identifier
      * @param request       patient and version fields
      * @return the confirmed projection
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{appointmentId}/confirm")
     public PatientAppointment confirm(@PathVariable String appointmentId,
@@ -87,6 +89,7 @@ public final class PatientAppointmentController {
      * @param appointmentId appointment that changed
      * @param request       patient and authoritative status
      * @return HTTP 204 when the command completes
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{appointmentId}/notify")
     public ResponseEntity<Void> notify(@PathVariable String appointmentId,
@@ -101,6 +104,7 @@ public final class PatientAppointmentController {
      *
      * @param request patient, device identifier and provider token
      * @return HTTP 204 when the command completes
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/devices")
     public ResponseEntity<Void> register(@RequestBody DeviceRequest request) {
@@ -115,6 +119,7 @@ public final class PatientAppointmentController {
      * @param tokenId   device identifier
      * @param patientId linked patient identifier
      * @return HTTP 204 when the command completes
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @DeleteMapping("/devices/{tokenId}")
     public ResponseEntity<Void> revoke(@PathVariable String tokenId,
@@ -130,6 +135,7 @@ public final class PatientAppointmentController {
      * @param patientId linked patient identifier
      * @param reason    non-sensitive disposition code
      * @return HTTP 204 when the command completes
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/devices/{tokenId}/invalid")
     public ResponseEntity<Void> invalidToken(@PathVariable String tokenId,

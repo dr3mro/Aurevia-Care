@@ -2,7 +2,7 @@ package com.aurevia.messaging.appointments;
 
 /**
  * A device registered by a verified patient subject, bound to one patient in
- * one organization (PAT-01, ARC-02).
+ * one organization.
  *
  * @param tokenId  opaque device identifier, safe to log
  * @param token    push provider token; never written to an audit or log sink

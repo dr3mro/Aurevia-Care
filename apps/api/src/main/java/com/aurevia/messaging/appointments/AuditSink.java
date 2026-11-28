@@ -3,7 +3,7 @@ package com.aurevia.messaging.appointments;
 import java.time.Instant;
 
 /**
- * Append-only audit boundary for patient self-access (PAT-01, OPS-02).
+ * Append-only audit boundary for patient self-access.
  * The adapter must derive the actor from the transaction-local actor binding;
  * neither the subject string passed here nor any token value is authoritative.
  */

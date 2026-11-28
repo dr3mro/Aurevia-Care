@@ -30,8 +30,8 @@ import com.aurevia.messaging.acknowledgment.InstructionFacts.Instruction;
 import com.aurevia.messaging.acknowledgment.InstructionFacts.Publication;
 
 /**
- * PostgreSQL-backed persistence boundary for MSG-05 instruction facts
- * (ARC-01, ARC-02, OPS-02).
+ * PostgreSQL-backed persistence boundary for instruction facts. Every
+ * operation runs in a tenant-guarded transaction.
  *
  * <p>V63 owns the nine tenant tables and their forced row-level security. Every
  * operation runs in the tenant-guarded transaction, which binds
@@ -41,10 +41,12 @@ import com.aurevia.messaging.acknowledgment.InstructionFacts.Publication;
  * method's {@code organizationId} so the policy's {@code WITH CHECK} rejects a
  * mismatch.</p>
  *
- * <p>Membership and roles are owned by the tenancy module, verified charts by
- * IAM-05 and patient-unit connections by MSG-01: this adapter reads those
- * authoritative folds rather than projecting a second copy, so a deactivation
- * or revocation takes effect on the next request. Staff-to-unit assignment has
+ * <p>Membership and roles are owned by the tenancy module, verified patient
+ * charts by patient identity proofing through the {@code current_chart_links()}
+ * fold and patient-unit connections by the care-unit directory. This adapter
+ * reads those authoritative folds rather than projecting
+ * a second copy, so a deactivation or revocation takes effect on the next
+ * request. Staff-to-unit assignment has
  * no authoritative durable source yet and is read from the V63 reference table.
  * Immutable facts are inserted with {@code ON CONFLICT DO NOTHING} and read
  * back, so a replay returns the original fact. No clinical payload is persisted:
@@ -101,6 +103,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
         this.transactions = transactions;
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean hasActiveMembership(String organizationId, String subject) {
         // organizationId is intentionally unused: the guarded transaction binds
@@ -110,6 +113,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 Map.of("subject", subject), Boolean.class)));
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<String> activeRoles(String organizationId, String subject) {
         return transactions.execute(status -> jdbc.queryForList(
@@ -117,6 +121,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 Map.of("subject", subject), String.class));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Set<String> verifiedPatientCharts(String organizationId, String subject) {
         return transactions.execute(status -> Set.copyOf(jdbc.queryForList("""
@@ -125,6 +130,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 """, Map.of("subject", subject), String.class)));
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean hasActiveConnection(String organizationId, String patientId, String unitId) {
         return transactions.execute(status -> Boolean.TRUE.equals(jdbc.queryForObject("""
@@ -136,6 +142,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("unitId", unitId), Boolean.class)));
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean isStaffAssignedToUnit(String organizationId, String subject, String unitId) {
         return transactions.execute(status -> Boolean.TRUE.equals(jdbc.queryForObject("""
@@ -146,6 +153,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("subject", subject).addValue("unitId", unitId), Boolean.class)));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Instruction putInstruction(String organizationId, Instruction instruction) {
         if (instruction == null || !organizationId.equals(instruction.organizationId())) {
@@ -179,6 +187,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<Instruction> instruction(String organizationId, String instructionId, int revision) {
         return transactions.execute(status -> jdbc.query(
@@ -190,6 +199,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 INSTRUCTION_MAPPER).stream().findFirst());
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<Instruction> latestInstruction(String organizationId, String instructionId) {
         return transactions.execute(status -> jdbc.query(
@@ -200,6 +210,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("id", instructionId), INSTRUCTION_MAPPER).stream().findFirst());
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Instruction> instructionsForUnit(String organizationId, String unitId) {
         return transactions.execute(status -> jdbc.query("""
@@ -216,6 +227,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("unitId", unitId), INSTRUCTION_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Publication putPublication(String organizationId, Publication publication) {
         return transactions.execute(status -> {
@@ -241,6 +253,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Publication> publications(String organizationId, String instructionId, int revision) {
         return transactions.execute(status -> jdbc.query("SELECT " + PUBLICATION_COLUMNS
@@ -252,6 +265,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 PUBLICATION_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Dispatch appendDispatch(String organizationId, Dispatch dispatch) {
         return transactions.execute(status -> {
@@ -270,6 +284,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Dispatch> dispatches(String organizationId, String instructionId, int revision) {
         return transactions.execute(status -> jdbc.query("SELECT " + DISPATCH_COLUMNS
@@ -282,6 +297,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 DISPATCH_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public FirstView putFirstViewIfAbsent(String organizationId, FirstView firstView) {
         return transactions.execute(status -> {
@@ -309,6 +325,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<FirstView> firstViews(String organizationId, String instructionId, int revision,
                                       String viewer) {
@@ -322,6 +339,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("viewer", viewer), FIRST_VIEW_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Acknowledgment putAcknowledgmentIfAbsent(String organizationId, Acknowledgment acknowledgment) {
         return transactions.execute(status -> {
@@ -350,6 +368,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Acknowledgment> acknowledgments(String organizationId, String instructionId, int revision) {
         return transactions.execute(status -> jdbc.query("SELECT " + ACKNOWLEDGMENT_COLUMNS
@@ -362,6 +381,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 ACKNOWLEDGMENT_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public FollowUp putFollowUpIfAbsent(String organizationId, FollowUp followUp) {
         return transactions.execute(status -> {
@@ -394,6 +414,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<FollowUp> followUps(String organizationId, String instructionId, int revision) {
         return transactions.execute(status -> jdbc.query("SELECT " + FOLLOW_UP_COLUMNS
@@ -405,6 +426,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 FOLLOW_UP_MAPPER).stream().findFirst());
     }
 
+    /** {@inheritDoc} */
     @Override
     public FollowUp resolveFollowUp(String organizationId, String instructionId, int revision,
                                     String resolver, String reason, Instant resolvedAt) {
@@ -432,6 +454,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<FollowUp> allFollowUps(String organizationId) {
         return transactions.execute(status -> jdbc.query("SELECT " + FOLLOW_UP_COLUMNS
@@ -440,6 +463,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 Map.of("organizationId", organizationId), FOLLOW_UP_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Instruction> overdueCandidates(String organizationId, Instant now) {
         return transactions.execute(status -> jdbc.query("""
@@ -465,6 +489,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("now", dateTime(now)), INSTRUCTION_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean putClientDigest(String organizationId, String subject, String action, String clientId,
                                    String digest) {
@@ -478,6 +503,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("clientId", clientId).addValue("digest", digest)) == 1);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<String> clientDigest(String organizationId, String subject, String action,
                                          String clientId) {
@@ -490,6 +516,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("clientId", clientId), String.class).stream().findFirst());
     }
 
+    /** {@inheritDoc} */
     @Override
     public int clientDigestCount(String organizationId, String subject, String action) {
         return transactions.execute(status -> Objects.requireNonNull(jdbc.queryForObject("""
@@ -501,6 +528,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 "client digest count must be present").intValue());
     }
 
+    /** {@inheritDoc} */
     @Override
     public void appendAudit(AuditFact fact) {
         transactions.executeWithoutResult(status -> jdbc.update("""
@@ -517,6 +545,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                         .addValue("occurredAt", dateTime(fact.occurredAt()))));
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<AuditFact> auditEvents(String organizationId) {
         return transactions.execute(status -> jdbc.query("SELECT " + AUDIT_COLUMNS
@@ -525,6 +554,7 @@ public class JdbcInstructionFactStore implements InstructionFactStore {
                 Map.of("organizationId", organizationId), AUDIT_MAPPER));
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Fact> allFacts(String organizationId, String instructionId) {
         return transactions.execute(status -> {

@@ -4,13 +4,14 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Bounded action matrix for the S-G3-06 attachment slice (IAM-01, MSG-03).
+ * Bounded action matrix for the attachment workflow.
  *
  * <p>The quarantine scanner is a distinct service principal and can only
  * issue a verdict. Filing patient-supplied material into a chart is a separate
  * clinician action; downloading is never implied by scanning or filing. The
  * matrix is paired with a fresh actor snapshot and a server-side connection
- * grant check on every protected command.</p>
+ * grant checked on upload; other commands re-check role, tenant and attachment
+ * binding only.</p>
  */
 public final class AttachmentActions {
 

@@ -4,7 +4,7 @@ import com.aurevia.api.ApiException;
 
 /**
  * Boundary that resolves the verified connection a patient is using for a
- * protected messaging action (MSG-01, MSG-07, ARC-07).
+ * protected messaging action.
  *
  * <p>The port is owned by the conversation domain so it depends only on
  * conversation vocabulary. The implementation lives in the care-unit directory

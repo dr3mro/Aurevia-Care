@@ -23,7 +23,7 @@ import com.aurevia.messaging.acknowledgment.InstructionFacts.Timeline;
 import com.aurevia.messaging.acknowledgment.InstructionFacts.ViewCommand;
 
 /**
- * Thin HTTP adapter for MSG-05 facts. Every authorization, fact-separation and
+ * Thin HTTP adapter for instruction facts. Every authorization, fact-separation and
  * revision-binding decision lives in
  * {@link com.aurevia.messaging.acknowledgment.InstructionFactService}; this
  * adapter only binds command fields and returns domain values.
@@ -37,7 +37,7 @@ public class InstructionFactController {
     /**
      * Create the controller.
      *
-     * @param service MSG-05 domain service
+     * @param service instruction-fact domain service
      */
     public InstructionFactController(InstructionFactService service) {
         this.service = service;
@@ -48,6 +48,7 @@ public class InstructionFactController {
      *
      * @param command publish command
      * @return the recorded publication fact
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/instructions/publish")
     public Publication publish(@RequestBody PublishCommand command) {
@@ -59,6 +60,7 @@ public class InstructionFactController {
      *
      * @param command retry command
      * @return the recorded dispatch fact
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/instructions/dispatch/retry")
     public Dispatch retry(@RequestBody RetryCommand command) {
@@ -70,6 +72,7 @@ public class InstructionFactController {
      *
      * @param command view command
      * @return the recorded first-view fact
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/instructions/first-view")
     public FirstView firstView(@RequestBody ViewCommand command) {
@@ -81,6 +84,7 @@ public class InstructionFactController {
      *
      * @param command acknowledgment command
      * @return the recorded receipt-only acknowledgment
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/instructions/acknowledge")
     public Acknowledgment acknowledge(@RequestBody AcknowledgeCommand command) {
@@ -92,6 +96,7 @@ public class InstructionFactController {
      *
      * @param instructionId instruction identifier
      * @return immutable ordered facts
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @GetMapping("/instructions/{id}/facts")
     public Timeline facts(@PathVariable("id") String instructionId) {
@@ -103,6 +108,7 @@ public class InstructionFactController {
      *
      * @param unitId owning unit identifier
      * @return open, unacknowledged follow-ups
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @GetMapping("/instructions/overdue-follow-ups")
     public List<FollowUp> overdue(@RequestParam String unitId) {
@@ -114,6 +120,7 @@ public class InstructionFactController {
      *
      * @param command resolve command
      * @return the resolved follow-up
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/instructions/follow-up/resolve")
     public FollowUp resolve(@RequestBody ResolveCommand command) {

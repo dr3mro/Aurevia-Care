@@ -1,7 +1,7 @@
 package com.aurevia.messaging.appointments;
 
 /**
- * The only push payload this slice may emit (PAT-01, OPS-02).
+ * The only push payload this slice may emit.
  *
  * <p>The factory accepts no appointment, patient, facility or time value, so a
  * notification cannot carry clinical detail even by accident. The app retrieves

@@ -10,14 +10,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Synthetic in-memory adapters for the patient self-service ports (PAT-01, PAT-03).
+ * Synthetic in-memory adapters for the patient self-service ports.
  *
  * <p>These adapters exist only so the workflow has a locally runnable HTTP entry
  * point with synthetic data. A verified link is seeded explicitly by an
  * integration fixture; demographics are never used to create one. Before real
  * patient enablement the verified-link, appointment-projection, device and push
  * ports must be replaced by tenant-scoped adapters over durable tables and a
- * real provider (IAM-05, PAT-01). No push token or patient payload is logged.</p>
+ * real provider. No push token or patient payload is logged.</p>
  */
 final class SyntheticPatientAppointmentPorts {
 
@@ -46,6 +46,7 @@ final class SyntheticPatientAppointmentPorts {
             values.computeIfAbsent(subject, key -> new LinkedHashSet<>()).add(patientId);
         }
 
+        /** {@inheritDoc} */
         @Override
         public boolean allows(String subject, String patientId) {
             return values.getOrDefault(subject, Set.of()).contains(patientId);
@@ -66,6 +67,7 @@ final class SyntheticPatientAppointmentPorts {
             values.put(appointment.id(), appointment);
         }
 
+        /** {@inheritDoc} */
         @Override
         public List<PatientAppointment> forPatient(String patientId) {
             return values.values().stream()
@@ -73,12 +75,14 @@ final class SyntheticPatientAppointmentPorts {
                     .toList();
         }
 
+        /** {@inheritDoc} */
         @Override
         public Optional<PatientAppointment> find(String appointmentId, String patientId) {
             return Optional.ofNullable(values.get(appointmentId))
                     .filter(appointment -> appointment.patientId().equals(patientId));
         }
 
+        /** {@inheritDoc} */
         @Override
         public int confirm(String appointmentId, String patientId, int expectedVersion, Instant at) {
             PatientAppointment current = values.get(appointmentId);
@@ -102,22 +106,26 @@ final class SyntheticPatientAppointmentPorts {
             return List.copyOf(invalidLog);
         }
 
+        /** {@inheritDoc} */
         @Override
         public void save(DeviceToken token) {
             values.put(token.tokenId(), token);
         }
 
+        /** {@inheritDoc} */
         @Override
         public Optional<DeviceToken> find(String tokenId, String patientId) {
             return Optional.ofNullable(values.get(tokenId))
                     .filter(token -> token.patientId().equals(patientId));
         }
 
+        /** {@inheritDoc} */
         @Override
         public Optional<DeviceToken> findByTokenId(String tokenId) {
             return Optional.ofNullable(values.get(tokenId));
         }
 
+        /** {@inheritDoc} */
         @Override
         public List<DeviceToken> active(String patientId) {
             return values.values().stream()
@@ -125,6 +133,7 @@ final class SyntheticPatientAppointmentPorts {
                     .toList();
         }
 
+        /** {@inheritDoc} */
         @Override
         public void appendInvalidTokenLog(String tokenId, String patientId, String reason, Instant at) {
             invalidLog.add(tokenId + "|" + patientId + "|" + reason);
@@ -134,6 +143,7 @@ final class SyntheticPatientAppointmentPorts {
     /** Synthetic always-delivered push gateway: notices contain no clinical detail. */
     static final class Gateway implements PushGateway {
 
+        /** {@inheritDoc} */
         @Override
         public Outcome send(String token, GenericPushNotice notice) {
             return Outcome.DELIVERED;
@@ -154,6 +164,7 @@ final class SyntheticPatientAppointmentPorts {
             return List.copyOf(entries);
         }
 
+        /** {@inheritDoc} */
         @Override
         public void append(String subject, String patientId, String action, String outcome, Instant at) {
             entries.add(new Entry(subject, patientId, action, outcome, at));

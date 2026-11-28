@@ -5,7 +5,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Patient-visible lifecycle of an appointment (PAT-01).
+ * Patient-visible lifecycle of an appointment.
  *
  * <p>The status is authoritative from the scheduling domain; this projection
  * only decides whether a patient confirmation is still meaningful. Mobile
