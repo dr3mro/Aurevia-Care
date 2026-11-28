@@ -9,8 +9,10 @@ import type { HttpResponse, Transport } from '../api/transport';
 import {
   createPatientTransport,
   loadAppointments,
+  loadConversationDetail,
   loadConversations,
   loadReports,
+  markConversationRead,
 } from './providers';
 
 jest.mock('../api/tokenStore', () => ({
@@ -250,6 +252,105 @@ describe('loadConversations', () => {
       organizationId,
     );
     expect(result.conversations[0]!.topic).toBe('');
+  });
+});
+
+describe('conversation detail and read commands', () => {
+  const record = {
+    id: 'conv-1',
+    version: 3,
+    patientId,
+    patientSubject: 'synthetic-subject',
+    unitKey: 'lab',
+    connectionId: 'conn-1',
+    topic: 'Synthetic follow-up',
+    state: 'awaiting_patient',
+    assigneeSubject: null,
+    patientReadSequence: 1,
+    staffReadSequence: 4,
+    createdAt: '2026-11-21T10:00:00Z',
+  };
+  const detailPayload = {
+    conversation: { ...record, organizationId: 'spoofed-organization' },
+    messages: [{
+      id: 'msg-1',
+      conversationId: 'conv-1',
+      sequence: 2,
+      senderKind: 'staff',
+      senderSubject: 'synthetic-unit',
+      senderRole: 'UNIT',
+      body: 'Synthetic message text',
+      createdAt: '2026-11-21T10:01:00Z',
+    }],
+    events: [],
+  };
+
+  it('maps a detail response to the verified organization and message trail', async () => {
+    const transport = fakeTransport(async () => detailPayload);
+    const detail = await loadConversationDetail(transport, organizationId, 'conv-1');
+    expect(detail.version).toBe(3);
+    expect(detail.conversation.organizationId).toBe(organizationId);
+    expect(detail.conversation.messages).toMatchObject([{ sequence: 2, senderRole: 'staff' }]);
+    expect(transport.get).toHaveBeenCalledWith('/api/v1/conversations/conv-1');
+  });
+
+  it.each([{}, { conversation: record }, { conversation: record, messages: 'no' }])(
+    'rejects a malformed detail payload',
+    async (payload) => {
+      const transport = fakeTransport(async () => payload);
+      await expect(loadConversationDetail(transport, organizationId, 'conv-1'))
+        .rejects.toThrow('MALFORMED_CONVERSATION_DETAIL');
+    },
+  );
+
+  it('uses an empty topic when the server sends none', async () => {
+    const transport = fakeTransport(async () => ({
+      ...detailPayload,
+      conversation: { ...record, topic: null },
+    }));
+    const detail = await loadConversationDetail(transport, organizationId, 'conv-1');
+    expect(detail.conversation.topic).toBe('');
+  });
+
+  it('rejects a malformed message in the detail trail', async () => {
+    const transport = fakeTransport(async () => ({
+      ...detailPayload,
+      messages: [{ ...detailPayload.messages[0], sequence: 0 }],
+    }));
+    await expect(loadConversationDetail(transport, organizationId, 'conv-1'))
+      .rejects.toThrow('MALFORMED_CONVERSATION_DETAIL');
+  });
+
+  it('rejects a foreign conversation identifier', async () => {
+    const transport = fakeTransport(async () => detailPayload);
+    await expect(loadConversationDetail(transport, organizationId, 'conv-2'))
+      .rejects.toThrow('MALFORMED_CONVERSATION_DETAIL');
+  });
+
+  it('posts one versioned read command and returns the advanced position', async () => {
+    const post = jest.fn(async () => ({
+      ...record,
+      version: 4,
+      patientReadSequence: 2,
+    })) as unknown as Transport['post'];
+    const transport = { get: jest.fn() as Transport['get'], post, put: jest.fn() as Transport['put'] };
+    const result = await markConversationRead(transport, 'conv-1', 3, 'synthetic-key');
+    expect(result).toEqual({ version: 4, patientReadSequence: 2 });
+    expect(post).toHaveBeenCalledWith(
+      '/api/v1/conversations/conv-1/read',
+      undefined,
+      { 'If-Match': '"3"', 'Idempotency-Key': 'synthetic-key' },
+    );
+  });
+
+  it('rejects a malformed read response', async () => {
+    const transport = {
+      get: jest.fn() as Transport['get'],
+      post: jest.fn(async () => ({ version: 'bad' })) as unknown as Transport['post'],
+      put: jest.fn() as Transport['put'],
+    };
+    await expect(markConversationRead(transport, 'conv-1', 3, 'key'))
+      .rejects.toThrow('MALFORMED_CONVERSATION_READ');
   });
 });
 

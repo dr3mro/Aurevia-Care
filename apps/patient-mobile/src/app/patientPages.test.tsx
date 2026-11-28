@@ -6,6 +6,7 @@
 import { jest } from '@jest/globals';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { createElement } from 'react';
+import * as RN from 'react-native';
 import type { ReactElement } from 'react';
 
 import { clinicalCacheSize } from '../api/clinicalCache';
@@ -432,4 +433,234 @@ describe('patient endpoint selection', () => {
     expect(reports.get).toHaveBeenCalledWith('/api/v1/patient/reports');
     expect(conversations.get).toHaveBeenCalledWith('/api/v1/conversations/inbox');
   });
+});
+
+describe('installed conversation inbox open action', () => {
+  const detailRecord = {
+    id: 'conv-1',
+    version: 3,
+    patientId: 'synthetic-patient',
+    patientSubject: 'synthetic-subject',
+    unitKey: 'synthetic-lab',
+    connectionId: 'conn-1',
+    topic: 'Synthetic follow-up',
+    state: 'awaiting_staff',
+    assigneeSubject: null,
+    patientReadSequence: 0,
+    staffReadSequence: 2,
+    createdAt: '2026-11-21T10:00:00Z',
+  };
+  const detailPayload = {
+    conversation: detailRecord,
+    messages: [{
+      id: 'msg-1',
+      conversationId: 'conv-1',
+      sequence: 1,
+      senderKind: 'staff',
+      senderSubject: 'synthetic-unit',
+      senderRole: 'UNIT',
+      body: 'Synthetic message text',
+      createdAt: '2026-11-21T10:01:00Z',
+    }],
+    events: [],
+  };
+
+  function inboxTransport(options: {
+    readonly detail?: () => Promise<unknown>;
+    readonly read?: () => Promise<unknown>;
+    readonly getPaths?: string[];
+  } = {}): Transport {
+    const getPaths = options.getPaths ?? [];
+    return {
+      get: jest.fn(async (path: string) => {
+        getPaths.push(path);
+        if (path === '/api/v1/conversations/inbox') {
+          return inboxPayload;
+        }
+        return options.detail ? options.detail() : detailPayload;
+      }) as Transport['get'],
+      post: jest.fn(async (path: string) => {
+        if (path.endsWith('/read')) {
+          return options.read
+            ? options.read()
+            : { ...detailRecord, version: 4, patientReadSequence: 2 };
+        }
+        return undefined;
+      }) as Transport['post'],
+      put: jest.fn(async () => undefined) as Transport['put'],
+    };
+  }
+
+  it('selects the pressed row, loads its detail and renders the thread', async () => {
+    const transport = inboxTransport();
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(view.getByLabelText('conversation thread')).toBeTruthy());
+    expect(transport.get).toHaveBeenCalledWith('/api/v1/conversations/conv-1');
+    expect(view.getByLabelText('unit synthetic-lab')).toBeTruthy();
+  });
+
+  it('keeps unread messages reported by the read reply visible', async () => {
+    const transport = inboxTransport({
+      read: async () => ({ ...detailRecord, version: 4, patientReadSequence: 0 }),
+    });
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(transport.post).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 1 unread')).toBeTruthy());
+  });
+
+  it('clears the unread badge after a successful read command', async () => {
+    const transport = inboxTransport();
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(view.queryByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeNull());
+    expect(view.getByLabelText('synthetic-lab: awaiting_staff')).toBeTruthy();
+    expect(transport.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onSessionExpired when the detail request is unauthenticated', async () => {
+    const expired = jest.fn();
+    const transport = inboxTransport({
+      detail: async () => { throw new TransportError('unauthenticated', { correlationId: 'synthetic-corr' }); },
+    });
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={expired} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(expired).toHaveBeenCalledTimes(1));
+    expect(view.queryByLabelText('conversation thread')).toBeNull();
+  });
+
+  it('does not request a detail from an empty inbox', async () => {
+    const transport = fakeTransport(async () => ({ entries: [] }));
+    await render(<ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />);
+    await waitFor(() => expect(transport.get).toHaveBeenCalledWith('/api/v1/conversations/inbox'));
+    expect(transport.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the thread when the read version is stale', async () => {
+    const expired = jest.fn();
+    const transport = inboxTransport({
+      read: async () => { throw new TransportError('conflict', { correlationId: 'synthetic-corr' }); },
+    });
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={expired} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(transport.post).toHaveBeenCalledTimes(1));
+    expect(expired).not.toHaveBeenCalled();
+    expect(view.queryByLabelText('conversation thread')).toBeNull();
+  });
+
+  it('keeps the unread badge when the read command fails', async () => {
+    const transport = inboxTransport({
+      read: async () => { throw new TransportError('server', { correlationId: 'synthetic-corr' }); },
+    });
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(transport.post).toHaveBeenCalledTimes(1));
+    expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy();
+  });
+  it('calls onSessionExpired when the read command is unauthenticated', async () => {
+    const expired = jest.fn();
+    const transport = inboxTransport({
+      read: async () => { throw new TransportError('unauthenticated', { correlationId: 'synthetic-corr' }); },
+    });
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={expired} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(expired).toHaveBeenCalledTimes(1));
+  });
+
+  it.each(['forbidden', 'server'] as const)(
+    'keeps the inbox badge when the read fails with %s',
+    async (kind) => {
+      const transport = inboxTransport({
+        read: async () => { throw new TransportError(kind, { correlationId: 'synthetic-corr' }); },
+      });
+      const view = await render(
+        <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+      );
+      await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+      fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+      await waitFor(() => expect(transport.post).toHaveBeenCalledTimes(1));
+      expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy();
+    },
+  );
+
+  it('returns to the inbox from the compact back control', async () => {
+    const transport = inboxTransport();
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(view.getByLabelText('conversation thread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('Back'));
+    await waitFor(() => expect(view.queryByLabelText('conversation thread')).toBeNull());
+  });
+
+  it('does not send a reply from the unwired composer', async () => {
+    const transport = inboxTransport();
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+    await waitFor(() => expect(view.getByLabelText('reply composer')).toBeTruthy());
+    fireEvent.press(view.getByLabelText('send reply'));
+    expect(transport.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the detail pane with no back control on a large window', async () => {
+    const spy = jest.spyOn(RN.Dimensions, 'get').mockImplementation(() => ({
+      width: 1024, height: 900, scale: 2, fontScale: 1,
+    }));
+    try {
+      const transport = inboxTransport();
+      const view = await render(
+        <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+      );
+      await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+      fireEvent.press(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread'));
+      await waitFor(() => expect(view.getByLabelText('conversation thread')).toBeTruthy());
+      expect(view.getByTestId('conversations-detail-pane')).toBeTruthy();
+      expect(view.queryByLabelText('Back')).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('ignores a second press while the first detail request is pending', async () => {
+    // Never resolved: the component unmounts at cleanup, so no late state
+    // update can leak into the next test in this file.
+    const pending = new Promise<unknown>(() => undefined);
+    const transport = inboxTransport({ detail: () => pending });
+    const view = await render(
+      <ConversationInboxPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+    );
+    await waitFor(() => expect(view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread')).toBeTruthy());
+    const row = view.getByLabelText('synthetic-lab: awaiting_staff, 2 unread');
+    fireEvent.press(row);
+    fireEvent.press(row);
+    expect(transport.get).toHaveBeenCalledTimes(2);
+  });
+
 });

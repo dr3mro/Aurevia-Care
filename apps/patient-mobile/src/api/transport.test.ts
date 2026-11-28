@@ -106,6 +106,52 @@ describe('createTransport — request construction (PAT-01, ARC-03)', () => {
     expect(init.body).toBe(JSON.stringify({ confirmation: true }));
   });
 
+  it('sends explicit conditional headers on a versioned POST', async () => {
+    const { transport, fetchImpl } = harness();
+    fetchImpl.mockResolvedValue(response(200, { ok: true }));
+
+    await transport.post('/api/v1/conversations/conv-1/read', undefined, {
+      'If-Match': '"3"',
+      'Idempotency-Key': 'synthetic-key',
+    });
+
+    const headers = headersOf(initAt(fetchImpl, 0));
+    expect(headers['If-Match']).toBe('"3"');
+    expect(headers['Idempotency-Key']).toBe('synthetic-key');
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it('never lets conditional headers override the authenticated identity', async () => {
+    const { transport, fetchImpl } = harness();
+    fetchImpl.mockResolvedValue(response(200, { ok: true }));
+
+    await transport.post('/api/v1/commands', undefined, {
+      Authorization: 'Bearer forged',
+      'X-Correlation-Id': 'forged',
+    });
+
+    const headers = headersOf(initAt(fetchImpl, 0));
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    expect(headers['X-Correlation-Id']).toBe(UUID);
+  });
+
+  it('rejects case variants of protected conditional headers', async () => {
+    const { transport, fetchImpl } = harness();
+    fetchImpl.mockResolvedValue(response(200, { ok: true }));
+
+    await transport.post('/api/v1/commands', undefined, {
+      authorization: 'Bearer forged',
+      'x-correlation-id': 'forged',
+      'content-type': 'text/plain',
+    });
+
+    const headers = headersOf(initAt(fetchImpl, 0));
+    expect(headers.authorization).toBeUndefined();
+    expect(headers['x-correlation-id']).toBeUndefined();
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    expect(headers['X-Correlation-Id']).toBe(UUID);
+  });
+
   it('sends a JSON body and content type on PUT', async () => {
     const { transport, fetchImpl } = harness();
     fetchImpl.mockResolvedValue(response(200, { ok: true }));
