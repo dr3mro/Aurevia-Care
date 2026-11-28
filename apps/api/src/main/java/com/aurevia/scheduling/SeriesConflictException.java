@@ -7,7 +7,7 @@ import com.aurevia.api.ApiException;
 
 /**
  * Rejection of a whole series when one or more occurrences overlap a protected
- * resource (CLN-01). The complete clash list is carried so the caller can see
+ * resource. The complete clash list is carried so the caller can see
  * every conflict, and the message renders the same list for the HTTP error body.
  */
 public final class SeriesConflictException extends ApiException {

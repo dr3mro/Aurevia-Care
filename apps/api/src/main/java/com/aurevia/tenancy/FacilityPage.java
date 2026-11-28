@@ -9,6 +9,8 @@ import java.util.List;
  * returned row, or {@code null} when this is the final page.</p>
  *
  * @return this record
+ * @param items value supplied by the caller
+ * @param nextCursor value supplied by the caller
  */
 public record FacilityPage(List<Facility> items, String nextCursor) {
 

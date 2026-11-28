@@ -11,7 +11,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.aurevia.api.ApiException;
 
 /**
- * Transaction boundary for the CLN-06 follow-up commands.
+ * Transaction boundary for the follow-up commands.
  *
  * <p>The domain service owns validation, authorization and the rule explanation;
  * this application boundary makes each command atomic with its persistence and

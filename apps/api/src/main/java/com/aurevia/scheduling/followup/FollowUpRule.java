@@ -3,7 +3,7 @@ package com.aurevia.scheduling.followup;
 import java.util.Locale;
 
 /**
- * One approved follow-up interval for a visit type (CLN-06).
+ * One approved follow-up interval for a visit type.
  *
  * <p>The value comes from the tenant's approved configuration fold; a missing,
  * blank, non-numeric or out-of-range value yields no rule rather than an

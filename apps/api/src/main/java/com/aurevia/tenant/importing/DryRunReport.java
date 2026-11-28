@@ -5,7 +5,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Deterministic, read-only result of an OPS-08 onboarding dry run.
+ * Deterministic, read-only result of an onboarding dry run.
  *
  * <p>The five findings named by the specification are reported together. The
  * report is a pure value: computing it writes nothing to the chart. Sorted and
@@ -77,7 +77,7 @@ public record DryRunReport(
     }
 
     /**
-     * Counts surfaced by an OPS-08 dry run.
+     * Counts surfaced by an onboarding dry run.
      *
      * @param totalRecords      number of source records inspected
      * @param batchCount        number of declared controlled batches
@@ -100,6 +100,7 @@ public record DryRunReport(
      *
      * @param record source id of the owning record
      * @param key    declared object key
+     * @return this record
      */
     public record MissingAttachment(String record, String key) {
     }

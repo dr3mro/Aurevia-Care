@@ -4,7 +4,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * Shared lowercase-hex SHA-256 digest and blank check for tenant import (OPS-08).
+ * Shared lowercase-hex SHA-256 digest and blank check for tenant import.
  *
  * <p>Both import services compute canonical digests that validate import signatures
  * and manifest content. Keeping the byte-to-hex computation and the blank check here
@@ -24,7 +24,7 @@ public final class ImportDigests {
          *
          * @return a message digest
          * @throws NoSuchAlgorithmException when SHA-256 is unavailable
-         */
+     */
         MessageDigest create() throws NoSuchAlgorithmException;
     }
 

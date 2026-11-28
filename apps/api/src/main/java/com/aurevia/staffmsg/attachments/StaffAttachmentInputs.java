@@ -10,7 +10,7 @@ import com.aurevia.documents.DocumentContract.MediaType;
 import com.aurevia.documents.UploadValidation;
 
 /**
- * Pure validation of every staff-attachment command field (MSG-03, CLN-07).
+ * Pure validation of every staff-attachment command field.
  *
  * <p>Shared upload rules (file name, checksum, key, detail) delegate to the
  * single {@code UploadValidation} primitive so a tightened bound applies at

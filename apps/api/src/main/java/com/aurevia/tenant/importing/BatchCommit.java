@@ -1,7 +1,7 @@
 package com.aurevia.tenant.importing;
 
 /**
- * The result of reconciling one controlled batch during an OPS-08 import.
+ * The result of reconciling one controlled batch during an import.
  *
  * @param sequence batch sequence number this result refers to
  * @param outcome  whether the batch was applied, skipped or rejected

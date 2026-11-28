@@ -14,9 +14,10 @@ import com.aurevia.staffmsg.policy.MessagingPolicyContract.PolicyScope;
  * no update or delete path is exposed. An implementation must enforce a unique
  * {@code (organizationId, scope, facilityCode, version)} constraint and bind the
  * duplicate check and the append into one tenant-bound transaction, so two
- * concurrent edits cannot both allocate the same version. No production
- * adapter is part of this kernel slice; the database adapter and its row-level
- * security migration are a follow-up task.</p>
+ * concurrent edits cannot both allocate the same version. No production adapter
+ * is wired in this component, so revisions are supplied by the injected port;
+ * any adapter must bind every row to the tenant and keep the append in one
+ * guarded transaction.</p>
  */
 public interface MessagingPolicyHistory {
 

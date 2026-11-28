@@ -29,7 +29,7 @@ import com.aurevia.staffmsg.model.StaffMessagingContract.StaffParticipant;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Instant staff-chat commands and read models inside one facility (MSG-02, ARC-07).
+ * Instant staff-chat commands and read models inside one facility.
  *
  * <p>Every command re-derives the active tenant from the request context, checks
  * that the actor and each peer have active staff membership, and re-checks

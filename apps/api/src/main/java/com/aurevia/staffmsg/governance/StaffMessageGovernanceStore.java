@@ -15,7 +15,7 @@ import com.aurevia.staffmsg.model.StaffMessagingContract.StaffConversation;
 import com.aurevia.staffmsg.model.StaffMessagingContract.StaffParticipant;
 
 /**
- * Persistence boundary for staff-message governance (MSG-07, ARC-02).
+ * Persistence boundary for staff-message governance.
  *
  * <p>Every operation carries the active organization explicitly so two tenants
  * with identical local identifiers remain isolated across audit, holds,

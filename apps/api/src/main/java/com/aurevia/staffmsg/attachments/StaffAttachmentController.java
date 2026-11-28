@@ -30,7 +30,7 @@ import com.aurevia.staffmsg.attachments.StaffAttachmentContract.UploadRequest;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP entry point for staff-message attachments (MSG-03, CLN-07).
+ * Thin HTTP entry point for staff-message attachments.
  *
  * <p>Payload bytes are read only at this boundary and are never logged or
  * returned as metadata. The controller derives the checksum from the uploaded
@@ -68,6 +68,7 @@ public final class StaffAttachmentController {
      * @param draftId conversation or mail-draft identifier
      * @param file    uploaded payload
      * @return HTTP 201 with the quarantined attachment
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<StaffAttachment> upload(@RequestParam("draftId") String draftId,
@@ -91,6 +92,7 @@ public final class StaffAttachmentController {
      * @param id      attachment identifier
      * @param request verdict command
      * @return the attachment with its recorded scan state
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/{id}/scan")
     public StaffAttachment scan(@PathVariable String id, @RequestBody ScanRequest request) {
@@ -102,6 +104,7 @@ public final class StaffAttachmentController {
      *
      * @param draftId conversation or mail-draft identifier
      * @return the pending files
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/pending")
     public java.util.List<StaffAttachment> pending(@RequestParam("draftId") String draftId) {
@@ -113,6 +116,7 @@ public final class StaffAttachmentController {
      *
      * @param request send command
      * @return the sent attachments
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/send")
     public java.util.List<StaffAttachment> send(@RequestBody SendRequest request) {
@@ -124,6 +128,7 @@ public final class StaffAttachmentController {
      *
      * @param id attachment identifier
      * @return the original bytes with integrity headers
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/{id}/download")
     public ResponseEntity<byte[]> download(@PathVariable String id) {

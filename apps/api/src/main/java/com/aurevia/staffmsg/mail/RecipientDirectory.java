@@ -3,7 +3,7 @@ package com.aurevia.staffmsg.mail;
 import java.util.List;
 
 /**
- * Resolves a role recipient to the people who currently hold it (MSG-02).
+ * Resolves a role recipient to the people who currently hold it.
  *
  * <p>The lookup is performed at send time, never when a draft is composed, so a
  * role always reaches its present holders. The resolved list is then frozen on

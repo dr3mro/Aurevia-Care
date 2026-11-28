@@ -1,7 +1,7 @@
 package com.aurevia.tenant.importing;
 
 /**
- * Outcome of reconciling and applying one controlled onboarding batch (OPS-08).
+ * Outcome of reconciling and applying one controlled onboarding batch.
  *
  * <p>Only {@code COMMITTED} and {@code ALREADY_COMMITTED} let an import
  * continue; every other outcome stops the batch sequence and leaves the failing

@@ -10,6 +10,8 @@ import java.util.List;
  * scheduled start ascending with the immutable appointment id as tie-break.</p>
  *
  * @return this record
+ * @param items value supplied by the caller
+ * @param nextCursor value supplied by the caller
  */
 public record AppointmentPage(List<AppointmentView> items, String nextCursor) {
 

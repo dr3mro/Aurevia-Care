@@ -20,7 +20,7 @@ import com.aurevia.tenancy.FacilityRepository.FacilityRow;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Tenant-scoped directory of facilities and staff who may be messaged (MSG-02, ARC-07).
+ * Tenant-scoped directory of facilities and staff who may be messaged.
  *
  * <p>Every read runs inside the tenant-guarded transaction so forced row-level
  * security confines results to the active organization. The organization and actor
@@ -69,7 +69,7 @@ public class StaffDirectoryService {
      *
      * <p>The browse API selects facilities by code, but stored drafts carry the
      * facility row id. This lookup uses the same forced-RLS repository and the same
-     * context guard as {@link com.aurevia.staffmsg.directory.StaffDirectoryService#findFacility(String)}:
+     * context guard as {@link com.aurevia.staffmsg.directory.StaffDirectoryService#findFacility(java.lang.String)}:
      * an id outside the active organization is invisible and fails closed.</p>
      *
      * @param facilityId tenant-local facility identifier, possibly null or unknown

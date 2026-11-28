@@ -3,7 +3,7 @@ package com.aurevia.scheduling.checkin;
 import java.time.Instant;
 
 /**
- * Appendable record of one worklist assignment or transfer (CLN-02).
+ * Appendable record of one worklist assignment or transfer.
  *
  * @param id          opaque event identifier
  * @param itemId      worklist entry the event belongs to

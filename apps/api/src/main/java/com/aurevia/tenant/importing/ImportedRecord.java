@@ -3,7 +3,7 @@ package com.aurevia.tenant.importing;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * A source record prepared for import with its provenance attached (OPS-08).
+ * A source record prepared for import with its provenance attached.
  *
  * <p>Every imported record carries the source system and version plus the
  * original signature evidence. {@code imported} records where this projection

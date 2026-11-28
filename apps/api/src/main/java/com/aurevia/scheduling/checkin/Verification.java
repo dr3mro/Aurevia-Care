@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * Immutable proof that a staff member confirmed a patient's identity before a
- * check-in (CLN-02, IAM-03).
+ * check-in.
  *
  * <p>Only the identifier categories used are retained, never their values, so
  * the record carries no more patient data than the audit purpose requires. The

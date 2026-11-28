@@ -20,13 +20,12 @@ import com.aurevia.staffmsg.notify.NotificationContract.NotificationSettings;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Wiring for the notification ports using existing domain beans (MSG-06, ARC-07).
+ * Wiring for the notification ports using existing domain beans.
  *
  * <p>The notifier publishes identifier-free drafts through the durable outbox, mirroring
- * the reference notifier. The settings adapter is process-local because persistence is
- * outside this story's scope; a durable, RLS-protected implementation belongs to the
- * follow-up task recorded in the hand-off notes. No production HTTP route is added, so
- * route parity with the out-of-scope contract is unaffected.</p>
+ * the reference notifier. The settings adapter is process-local: it holds mute and
+ * auto-reply state for this JVM only and is not a durable store. No HTTP route is added
+ * here; the outbox is the only side effect.</p>
  */
 @Configuration
 public class NotificationConfiguration {
@@ -73,19 +72,36 @@ public class NotificationConfiguration {
 
         private final Map<String, NotificationSettings> settings = new ConcurrentHashMap<>();
         private final Set<String> replies = ConcurrentHashMap.newKeySet();
-
+        /**
+         * Read one subject's concealed preferences.
+         *
+         * @param organizationId owning tenant
+         * @param subject        authenticated staff subject
+         * @return the preferences, or empty when the subject has none in this tenant
+     */
         @Override
         public Optional<NotificationSettings> findSettings(String organizationId, String subject) {
             guard(organizationId);
             return Optional.ofNullable(settings.get(key(organizationId, subject)));
         }
-
+        /**
+         * Save one subject's notification preferences in the active organization.
+         *
+         * @param value frozen preferences whose organization and subject are validated
+         */
         @Override
         public void saveSettings(NotificationSettings value) {
             guard(value.organizationId());
             settings.put(key(value.organizationId(), value.subject()), value);
         }
-
+        /**
+         * Decide whether a recipient muted a conversation.
+         *
+         * @param organizationId owning tenant
+         * @param conversationId opaque conversation handle
+         * @param subject        authenticated staff subject
+         * @return {@code true} when notifications for this conversation are suppressed
+         */
         @Override
         public boolean isConversationMuted(String organizationId, String conversationId, String subject) {
             guard(organizationId);
@@ -93,7 +109,12 @@ public class NotificationConfiguration {
                     .map(value -> value.mutes(conversationId))
                     .orElse(false);
         }
-
+        /**
+         * Atomically record the first out-of-office reply for this recipient, sender and day.
+         *
+         * @param receipt receipt carrying tenant, recipient, sender and UTC day
+         * @return {@code true} only when this call recorded the first reply for the key
+         */
         @Override
         public boolean tryRecordAutoReply(AutoReplyReceipt receipt) {
             guard(receipt.organizationId());
@@ -125,7 +146,11 @@ public class NotificationConfiguration {
         OutboxNotifier(DurableEventService events) {
             this.events = events;
         }
-
+        /**
+         * Dispatch one notification draft.
+         *
+         * @param draft immutable identifier-free draft
+         */
         @Override
         public void dispatch(NotificationDraft draft) {
             // The digest covers only the two fixed phrases, never a body or a name.

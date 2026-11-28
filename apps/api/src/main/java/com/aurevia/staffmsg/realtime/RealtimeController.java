@@ -9,13 +9,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * Thin HTTP adapter for identifier-only staff conversation events (ARC-07).
+ * Thin HTTP adapter for identifier-only staff conversation events.
  *
  * <p>The active organization and actor are taken from the request context; a
  * caller only names a facility and a sequence cursor. Authorization, membership
- * re-checks and tenant rebinding live in the injected service. The stream route
- * is the live transport and the polling route returns the same identifier set
- * for the same cursor.</p>
+ * re-checks and tenant rebinding live in the injected service. Both routes use the
+ * same cursor and visibility filter; polling returns a bounded page with a next
+ * cursor, while the stream replays identifiers from the requested sequence.</p>
  */
 @RestController
 @RequestMapping("/api/v1/staff/instant")
@@ -38,6 +38,7 @@ public final class RealtimeController {
      * @param facilityId  facility the caller must be allowed to use
      * @param lastEventId sequence of the last event the client received, or absent for zero
      * @return the SSE emitter installed for this subscription
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping(value = "/events/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestParam String facilityId,
@@ -52,6 +53,7 @@ public final class RealtimeController {
      * @param cursor     exclusive lower sequence bound, or absent for zero
      * @param limit      maximum number of events to return
      * @return the page and the next cursor
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/events")
     public EventPage events(@RequestParam String facilityId,

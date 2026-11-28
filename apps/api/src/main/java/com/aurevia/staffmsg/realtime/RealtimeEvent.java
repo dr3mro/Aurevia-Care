@@ -1,7 +1,7 @@
 package com.aurevia.staffmsg.realtime;
 
 /**
- * Identifier-only notification about a change in a staff conversation (ARC-07).
+ * Identifier-only notification about a change in a staff conversation.
  *
  * <p>An event is deliberately limited to identifiers and its stream sequence:
  * it never carries message text, a sender display name or any other clinical

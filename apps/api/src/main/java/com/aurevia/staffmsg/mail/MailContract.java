@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Immutable value types of the email-like staff mail domain (MSG-02, ARC-07).
+ * Immutable value types of the email-like staff mail domain.
  *
  * <p>These are in-memory values shaped after the staff-messaging tables of the
  * earlier migration: a conversation of kind {@code mail_thread}, an immutable
@@ -72,6 +72,8 @@ public final class MailContract {
      * A mail recipient as entered by the composer.
      *
      * @return the immutable value
+     * @param kind value supplied by the caller
+     * @param value value to persist in the active organization
      */
     public record Recipient(RecipientKind kind, String value) {
 
@@ -242,6 +244,8 @@ public final class MailContract {
      * shared, matching the message-level flags of the staff-mail schema.</p>
      *
      * @return the immutable value
+     * @param message value supplied by the caller
+     * @param viewerFolder value supplied by the caller
      */
     public record MailView(SentMail message, MailFolder viewerFolder) {
     }
@@ -250,6 +254,9 @@ public final class MailContract {
      * A thread grouped by normalized subject and a shared reference message.
      *
      * @return the immutable value
+     * @param threadId value supplied by the caller
+     * @param subject authenticated subject derived from the tenant context
+     * @param messages value supplied by the caller
      */
     public record ThreadView(String threadId, String subject, List<MailView> messages) {
 

@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import com.aurevia.staffmsg.governance.StaffMessageGovernanceContract.StaffAction;
 
 /**
- * Bounded role matrix for staff-message governance (MSG-07, ARC-02).
+ * Bounded role matrix for staff-message governance.
  *
  * <p>Retention, legal holds, exports and audit review belong to the privacy and
  * administrative roles; content and folder actions belong to the staff roles

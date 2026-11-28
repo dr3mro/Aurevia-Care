@@ -21,7 +21,7 @@ import com.aurevia.staffmsg.attachments.StaffAttachmentContract.View;
 import com.aurevia.staffmsg.model.StaffMessagingContract.ScanState;
 
 /**
- * Domain service for staff-message attachments (MSG-03, CLN-07).
+ * Domain service for staff-message attachments.
  *
  * <p>An upload is accepted only after the declared media type, the leading
  * payload bytes, the file extension, the size and the client integrity claim all
@@ -163,7 +163,7 @@ public final class StaffAttachmentService {
 
     /**
      * Explicitly send named clean files, after validating every member before any
-     * member changes (MSG-03 explicit send).
+     * member changes ( explicit send).
      *
      * @param actor   freshly derived sender identity
      * @param request identifiers of the pending files, the message and the recipients

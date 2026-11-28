@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Wire contract for instant staff conversations inside one facility (MSG-02, ARC-07).
+ * Wire contract for instant staff conversations inside one facility.
  *
  * <p>Commands carry the facility selected by the caller; the organization and
  * the authenticated actor always come from the request tenant context. A

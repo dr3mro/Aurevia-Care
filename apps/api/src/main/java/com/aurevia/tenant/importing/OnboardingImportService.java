@@ -15,15 +15,16 @@ import com.aurevia.tenant.importing.DryRunReport.MissingAttachment;
 
 /**
  * Evaluates a versioned onboarding manifest and prepares provenance-bearing import
- * records without writing to the chart (OPS-08).
+ * records without writing to the chart.
  *
  * <p>{@link com.aurevia.tenant.importing.OnboardingImportService#dryRun(ImportManifest)}
  * is a pure computation: it reports counts, unsupported fields, duplicate risk,
  * missing attachments and errors, and touches no store.
  * {@link com.aurevia.tenant.importing.OnboardingImportService#toImportedRecords(ImportManifest)}
- * only projects records with their provenance and original signature evidence; a
- * later, separately authorized story performs controlled commits. Canonical
- * hashing makes the report deterministic, and no operation mints a new attestation.</p>
+ * only projects records with their provenance and original signature evidence;
+ * controlled commits are a separate, separately authorized operation on the
+ * resulting manifest. Canonical hashing makes the report deterministic, and no
+ * operation mints a new attestation.</p>
  */
 @Service
 public class OnboardingImportService {
@@ -57,7 +58,7 @@ public class OnboardingImportService {
     }
 
     /**
-     * Compute the shared lowercase-hex SHA-256 of canonical bytes.
+     * Compute the shared lowercase-hex digest of canonical bytes.
      *
      * @param bytes canonical bytes to digest
      * @return lowercase 64-hex-digit digest
@@ -67,7 +68,7 @@ public class OnboardingImportService {
     }
 
     /**
-     * Compute the deterministic OPS-08 dry-run report for one manifest.
+     * Compute the deterministic dry-run report for one manifest.
      *
      * @param manifest versioned onboarding manifest
      * @return the five findings and their counts; no chart row is changed
@@ -240,7 +241,7 @@ public class OnboardingImportService {
 
     private static boolean isSha256(String value) {
         // The shared rule accepts either case; only the verdict is used here because
-        // OPS-08 preserves the caller's original checksum text as provenance evidence.
+        // preserves the caller's original checksum text as provenance evidence.
         try {
             Sha256Hex.sha256Hex(value);
             return true;

@@ -22,11 +22,11 @@ import com.aurevia.scheduling.checkin.CheckInCommands.Intake;
 import com.aurevia.scheduling.checkin.CheckInCommands.VerifyIdentity;
 
 /**
- * Check-in, worklist and handoff commands for CLN-02.
+ * Check-in, worklist and handoff commands.
  *
  * <p>Every command runs inside one tenant-guarded transaction. Roles and
  * membership are re-derived on each request; a deactivated member fails closed
- * on the next protected action (IAM-02). Authorization, evidence and audit
+ * on the next protected action. Authorization, evidence and audit
  * commit together so a refusal leaves no partial verification or assignment.</p>
  *
  * <p>The booked to checked-in and checked-in to in-progress transitions stay
@@ -55,10 +55,10 @@ public class CheckInService {
     /**
      * Create the service.
      *
-     * @param repository   RLS-bounded CLN-02 repository
+     * @param repository row-scoped check-in repository
      * @param appointments shared owner of the V8 appointment state machine
      * @param scheduling   source of live membership, roles and configuration
-     * @param policy       local CLN-02 action policy
+     * @param policy local check-in action policy
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
      * @param clock        application clock for assignment and verification times
@@ -439,7 +439,7 @@ public class CheckInService {
     }
 
     /**
-     * Apply the IAM-01 facility scope to a facility-aware command. The denial is
+     * Apply the facility scope to a facility-aware command. The denial is
      * returned, not thrown, so the guarded transaction still commits its DENIED
      * audit row before the caller reports the failure to the client.
      *

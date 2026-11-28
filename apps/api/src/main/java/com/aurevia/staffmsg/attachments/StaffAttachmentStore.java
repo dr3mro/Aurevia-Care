@@ -8,7 +8,7 @@ import com.aurevia.staffmsg.attachments.StaffAttachmentContract.AttachmentAudit;
 import com.aurevia.staffmsg.attachments.StaffAttachmentContract.StaffAttachment;
 
 /**
- * Tenant-scoped persistence boundary for staff-message attachments (MSG-03).
+ * Tenant-scoped persistence boundary for staff-message attachments.
  *
  * <p>Every method takes the active organization explicitly so a caller can never
  * reach another tenant's row by guessing a local identifier. The authoritative

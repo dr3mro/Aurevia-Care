@@ -19,7 +19,7 @@ import com.aurevia.authz.ActionPolicy;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Follow-up suggestions, authorized overrides, explicit confirmation and care-team tasks (CLN-06).
+ * Follow-up suggestions, authorized overrides, explicit confirmation and care-team tasks.
  *
  * <p>Every command validates before any I/O, derives the tenant from the request context,
  * re-checks membership and permission, and audits the outcome including denials. Civil-date
@@ -154,6 +154,8 @@ public class FollowUpService {
         authorize(context, ActionPolicy.APPOINTMENT_RESCHEDULE, SUGGESTION_RESOURCE, id,
                 "FOLLOWUP_OVERRIDE");
         FollowUpSuggestion current = findSuggestion(context, id, "FOLLOWUP_OVERRIDE");
+        // Confirmation is one-shot: a second request must never create a second booking,
+        // so the confirmed state is rejected before the version check and booking port.
         if (current.confirmed()) {
             throw conflict(context, "FOLLOWUP_OVERRIDE", SUGGESTION_RESOURCE, id,
                     "ALREADY_CONFIRMED", "a confirmed follow-up cannot be overridden");
@@ -192,6 +194,8 @@ public class FollowUpService {
             throw conflict(context, "FOLLOWUP_CONFIRM", SUGGESTION_RESOURCE, id,
                     "ALREADY_CONFIRMED", "the follow-up is already confirmed");
         }
+        // The expected version is the If-Match precondition. Audit the conflict before
+        // rejecting it so a stale update remains attributable to its caller.
         if (current.version() != expectedVersion) {
             audit.append(context, PURPOSE, "FOLLOWUP_CONFIRM", SUGGESTION_RESOURCE, SCOPE, id,
                     "CONFLICT");

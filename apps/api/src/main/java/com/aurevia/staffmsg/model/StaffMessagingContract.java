@@ -7,16 +7,16 @@ import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Domain contract for staff-to-staff messaging records (MSG-03, MSG-07, ARC-07).
+ * Domain contract for staff-to-staff messaging records.
  *
- * <p>Staff messaging is a separate domain from the patient-to-unit conversations
- * of MSG-01 to MSG-07: a staff conversation is scoped to an organization and a
- * facility, never to a verified patient connection. Message content is immutable
- * once stored; a correction is a new, later message that points at the original.
- * Sequence allocation is strictly {@code last + 1} so a conversation has a
- * gap-free order, and mail folders belong to a participant rather than to the
- * message. These are value types only: persistence and authorization live in
- * later slices of this domain.</p>
+ * <p>Staff messaging is a separate domain from patient-to-unit conversations:
+ * a staff conversation is scoped to an organization and a facility, never to a
+ * verified patient connection. Message content is immutable once stored; a
+ * correction is a new, later message that points at the original. Sequence
+ * allocation is strictly {@code last + 1} so a conversation has a gap-free
+ * order, and mail folders belong to a participant rather than to a patient
+ * conversation. This class owns only immutable value types; persistence and
+ * authorization live in sibling packages of this domain.</p>
  */
 public final class StaffMessagingContract {
 
@@ -154,7 +154,7 @@ public final class StaffMessagingContract {
     }
 
     /**
-     * Scan verdict for an attachment link (MSG-03). Only a clean file may be
+     * Scan verdict for an attachment link. Only a clean file may be
      * downloaded after the message is published.
      */
     public enum ScanState {
@@ -293,6 +293,8 @@ public final class StaffMessagingContract {
      * and advances the cursor by exactly one, so the stored sequence cannot skip.
      *
      * @return the immutable value
+     * @param conversationId conversation identifier in the active organization
+     * @param lastSequence value supplied by the caller
      */
     public record MessageSequence(String conversationId, long lastSequence) {
 

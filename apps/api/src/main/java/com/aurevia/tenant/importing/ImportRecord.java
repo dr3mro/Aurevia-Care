@@ -6,7 +6,7 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * One source record in an onboarding dataset (OPS-08).
+ * One source record in an onboarding dataset.
  *
  * <p>The field map is keyed by source-field name; the deterministic mapping
  * declared by the manifest decides which values become identity and chart data.

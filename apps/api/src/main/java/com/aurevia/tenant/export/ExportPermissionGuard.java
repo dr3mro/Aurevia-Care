@@ -6,7 +6,7 @@ import com.aurevia.audit.AuditRepository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Export permission check (OPS-07, IAM-01).
+ * Export permission check.
  *
  * <p>Membership and role folds are read from the authoritative database views
  * on every command, so a deactivation or revoked role takes effect immediately.

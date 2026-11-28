@@ -6,14 +6,14 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Value types for typed references carried in a staff message (MSG-07, ARC-07).
+ * Value types for typed references carried in a staff message.
  *
  * <p>A reference points at a patient, encounter, order or document without
  * copying any chart content into the message. The label is deliberately
  * non-identifying; the target and connection identifiers are opaque handles that
- * are only resolved after the recipient's access check passes. These are value
- * types only: persistence of the reference belongs to the message-content
- * boundary in a later slice.</p>
+ * are only resolved after the recipient's access check passes. These are
+ * immutable value types only: a reference is embedded in message content rather
+ * than stored as an independent row.</p>
  */
 public final class ReferenceContract {
 
@@ -41,7 +41,7 @@ public final class ReferenceContract {
          * Return the stable wire key.
          *
          * @return lowercase wire value
-         */
+     */
         @JsonValue
         public String wire() {
             return wire;
@@ -97,7 +97,7 @@ public final class ReferenceContract {
          * Return the stable stored key.
          *
          * @return lowercase wire value
-         */
+     */
         @JsonValue
         public String wire() {
             return wire;
@@ -110,6 +110,7 @@ public final class ReferenceContract {
      * @param organizationId active organization from the tenant context
      * @param subject        authenticated staff subject
      * @param roles          currently active roles in this organization
+     * @return this record
      */
     public record ReferenceActor(String organizationId, String subject, Set<String> roles) {
         /**
@@ -149,6 +150,9 @@ public final class ReferenceContract {
      * What a recipient sees before opening: the label and kind, never a target id.
      *
      * @return the immutable label-only view
+     * @param id identifier of the record in the active organization
+     * @param kind value supplied by the caller
+     * @param label value supplied by the caller
      */
     public record ReferenceView(String id, String kind, String label) {
     }
@@ -160,6 +164,8 @@ public final class ReferenceContract {
      * warning, an audit fact or a notification.</p>
      *
      * @return the immutable warning
+     * @param suspicious value supplied by the caller
+     * @param reasonCode value supplied by the caller
      */
     public record SubjectWarning(boolean suspicious, String reasonCode) {
     }
@@ -171,6 +177,9 @@ public final class ReferenceContract {
      * fields, so a patient-facing push can never carry a chart identifier.</p>
      *
      * @return the immutable notification draft
+     * @param eventType value supplied by the caller
+     * @param text value supplied by the caller
+     * @param referenceId value supplied by the caller
      */
     public record NotificationDraft(String eventType, String text, String referenceId) {
     }
@@ -188,6 +197,9 @@ public final class ReferenceContract {
      * The target locator returned only after the access check passes.
      *
      * @return the immutable open result
+     * @param id identifier of the record in the active organization
+     * @param kind value supplied by the caller
+     * @param targetId value supplied by the caller
      */
     public record OpenResult(String id, String kind, String targetId) {
     }
@@ -217,6 +229,8 @@ public final class ReferenceContract {
      * Result of an attach: the reference plus an identifier-safe warning.
      *
      * @return the immutable result
+     * @param reference value supplied by the caller
+     * @param warning value supplied by the caller
      */
     public record AttachResult(MessageReference reference, SubjectWarning warning) {
     }
@@ -229,6 +243,7 @@ public final class ReferenceContract {
      * retain it.</p>
      *
      * @return the immutable command
+     * @param subject authenticated subject derived from the tenant context
      */
     public record ScreenSubjectRequest(String subject) {
     }

@@ -14,7 +14,7 @@ import com.aurevia.api.ApiException;
 import com.aurevia.scheduling.SchedulingRepository;
 
 /**
- * Tenant facts used to compute a follow-up date (CLN-06).
+ * Tenant facts used to compute a follow-up date.
  *
  * <p>Intervals come only from the tenant's approved configuration fold, the zone
  * from the facility record, and an applicable prior follow-up from the tenant's
@@ -37,12 +37,22 @@ public class FollowUpConfiguration implements FollowUpConfig {
         this.scheduling = scheduling;
         this.jdbc = jdbc;
     }
-
+    /**
+     * Read one approved configuration value through the version fold.
+     *
+     * @param key tenant-local configuration key
+     * @return the approved value when one is effective
+     */
     @Override
     public Optional<String> setting(String key) {
         return scheduling.setting(key);
     }
-
+    /**
+     * Resolve the facility's authoritative IANA time zone.
+     *
+     * @param facilityCode tenant-local facility code
+     * @return the facility time zone
+     */
     @Override
     public ZoneId facilityZone(String facilityCode) {
         return ZoneId.of(scheduling.facility(facilityCode)

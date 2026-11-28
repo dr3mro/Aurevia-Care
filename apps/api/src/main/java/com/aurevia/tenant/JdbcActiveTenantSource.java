@@ -37,7 +37,12 @@ public class JdbcActiveTenantSource implements ActiveTenantSource {
     public JdbcActiveTenantSource(NamedParameterJdbcOperations jdbc) {
         this.jdbc = jdbc;
     }
-
+    /**
+     * List every active organization identifier in deterministic order.
+     *
+     * @return immutable list of organization identifiers; empty when no
+     * organization is active
+     */
     @Override
     public List<UUID> activeOrganizationIds() {
         return List.copyOf(jdbc.query(ACTIVE_ORGANIZATION_IDS_SQL, ORGANIZATION_ID_MAPPER));

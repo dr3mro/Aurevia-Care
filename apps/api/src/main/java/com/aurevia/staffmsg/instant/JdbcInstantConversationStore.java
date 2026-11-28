@@ -23,7 +23,7 @@ import com.aurevia.staffmsg.model.StaffMessagingContract.StaffMessage;
 import com.aurevia.staffmsg.model.StaffMessagingContract.StaffParticipant;
 
 /**
- * PostgreSQL store for instant staff conversations (MSG-02, ARC-07).
+ * PostgreSQL store for instant staff conversations.
  *
  * <p>V91 owns the six tenant tables and their forced row-level security. Every
  * statement runs in the guarded transaction that binds {@code app.current_org}
@@ -97,7 +97,13 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
                         .addValue("topic", topic), CONVERSATION_MAPPER)
                 .get(0));
     }
-
+    /**
+     * Load one conversation by identifier inside the active organization.
+     *
+     * @param organizationId active organization
+     * @param conversationId conversation identifier
+     * @return the conversation, or empty when absent or foreign
+     */
     @Override
     public Optional<StaffConversation> conversation(String organizationId, String conversationId) {
         return transactions.execute(status -> jdbc.query("""
@@ -110,7 +116,13 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
                         .addValue("conversationId", conversationId), CONVERSATION_MAPPER)
                 .stream().findFirst());
     }
-
+    /**
+     * List the full membership history of a conversation, including leavers.
+     *
+     * @param organizationId active organization
+     * @param conversationId owning conversation
+     * @return all memberships ordered by join time
+     */
     @Override
     public List<StaffParticipant> participants(String organizationId, String conversationId) {
         return transactions.execute(status -> jdbc.query("""
@@ -138,7 +150,14 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
                         .addValue("role", role.wire())
                         .addValue("joinedAt", dateTime(joinedAt))));
     }
-
+    /**
+     * Close a membership window without deleting the membership row.
+     *
+     * @param organizationId active organization
+     * @param conversationId owning conversation
+     * @param subject        staff subject
+     * @param leftAt         membership end
+     */
     @Override
     public void leaveParticipant(String organizationId, String conversationId, String subject, Instant leftAt) {
         transactions.executeWithoutResult(status -> jdbc.update("""
@@ -206,7 +225,13 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
                         .addValue("afterSequence", afterSequence)
                         .addValue("notAfter", notAfter == null ? null : dateTime(notAfter)), MESSAGE_MAPPER));
     }
-
+    /**
+     * Report whether a subject has active membership and at least one active role.
+     *
+     * @param organizationId active organization
+     * @param subject        staff subject
+     * @return {@code true} only for an active member with an active role
+     */
     @Override
     public boolean activeStaff(String organizationId, String subject) {
         // organizationId is intentionally unused: the guarded transaction binds
@@ -216,7 +241,14 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
                        AND EXISTS (SELECT 1 FROM public.active_roles(:subject))
                 """, Map.of("subject", subject), Boolean.class)));
     }
-
+    /**
+     * Decide whether a facility is inside the subject's authorized scope.
+     *
+     * @param organizationId active organization identifier
+     * @param subject        authenticated subject from the tenant context
+     * @param facilityId    facility identifier being checked
+     * @return {@code true} only when the facility is within the subject's scope
+     */
     @Override
     public boolean facilityWithinScope(String organizationId, String subject, String facilityId) {
         // The fold is authoritative: legacy members with no assignment keep
@@ -250,7 +282,15 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
                         .addValue("facilityId", facilityId)
                         .addValue("subject", subject), CONVERSATION_MAPPER));
     }
-
+    /**
+     * Persist one person's read cursor. A cursor never moves backwards and is
+     * clamped to the last sequence appended to the conversation's ledger.
+     *
+     * @param organizationId active organization
+     * @param conversationId owning conversation
+     * @param subject        reader subject, derived from the authenticated context
+     * @param upToSequence   highest sequence read; may exceed the ledger and is clamped
+     */
     @Override
     public void markRead(String organizationId, String conversationId, String subject, long upToSequence) {
         // One upsert keeps the cursor durable and monotonic without a Java
@@ -276,7 +316,14 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
                         .addValue("subject", subject)
                         .addValue("upToSequence", upToSequence)));
     }
-
+    /**
+     * Read a person's durable cursor for one conversation.
+     *
+     * @param organizationId active organization
+     * @param conversationId owning conversation
+     * @param subject        reader subject
+     * @return the last read sequence, or zero when nothing was read
+     */
     @Override
     public long readSequence(String organizationId, String conversationId, String subject) {
         // COALESCE guarantees one row even before the first acknowledgement, so

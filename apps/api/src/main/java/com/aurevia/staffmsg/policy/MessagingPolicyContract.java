@@ -8,7 +8,7 @@ import com.aurevia.api.ApiException;
 import com.aurevia.documents.DocumentContract.MediaType;
 
 /**
- * Value contract for effective-dated staff messaging policy (MSG-07).
+ * Value contract for effective-dated staff messaging policy.
  *
  * <p>Every type here is a non-sensitive configuration fact. The contract owns
  * only validation and immutability; the authoritative consumers of attachment
@@ -38,7 +38,7 @@ public final class MessagingPolicyContract {
      *
      * <p>The kernel stores and serves the rule; conversation services remain
      * responsible for enforcing it against tenant-scoped membership data.</p>
-     */
+         */
     public enum MessageRule {
         /** Any active staff member in scope may address any other. */
         ALL_STAFF,
@@ -62,7 +62,7 @@ public final class MessagingPolicyContract {
      * @param effectiveFrom        instant from which this version applies
      * @param version              monotonically increasing version within its scope
      * @return the immutable settings
-     */
+         */
     public record MessagingPolicySettings(MessageRule messageRule, Set<MediaType> allowedTypes,
                                           long retentionDays, boolean crossFacilityEnabled,
                                           Instant effectiveFrom, long version) {

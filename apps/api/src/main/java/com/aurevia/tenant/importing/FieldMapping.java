@@ -7,7 +7,7 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Deterministic source-to-target field mapping for an onboarding manifest (OPS-08).
+ * Deterministic source-to-target field mapping for an onboarding manifest.
  *
  * <p>The only accepted strategy is {@code canonical_sha256}: identity keys and
  * batch digests are SHA-256 over canonical JSON bytes (sorted keys, compact

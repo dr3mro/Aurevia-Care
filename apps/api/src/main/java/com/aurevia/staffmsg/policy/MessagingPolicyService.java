@@ -16,7 +16,7 @@ import com.aurevia.staffmsg.policy.MessagingPolicyContract.PolicyRevision;
 import com.aurevia.staffmsg.policy.MessagingPolicyContract.PolicyScope;
 
 /**
- * Effective-dated, append-only messaging policy kernel (MSG-07).
+ * Effective-dated, append-only messaging policy kernel.
  *
  * <p>The service owns the effective-date selection and the revision append
  * guards. It has no transport, Spring or persistence concerns: tenant identity
@@ -30,11 +30,9 @@ public final class MessagingPolicyService {
     /**
      * Settings served when no approved revision has opened yet. Cross-facility
      * messaging is closed, the documented three attachment types are allowed,
-     * retention is the bounded default, and the audience rule matches the
-     * current conservative baseline. This is a fail-closed substitute for a
-     * missing configuration, not a claim to be narrower than every possible
-     * approved policy; the audience default is confirmed by the consumer
-     * migration task.
+     * retention is the bounded default, and the audience is all staff. This is a
+     * fail-closed substitute for a missing configuration, not a claim to be
+     * narrower than every possible approved policy.
      */
     private static final MessagingPolicySettings FAIL_CLOSED_DEFAULT = new MessagingPolicySettings(
             MessageRule.ALL_STAFF, EnumSet.allOf(MediaType.class),

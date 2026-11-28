@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * The single SQL boundary for the G0 facility slice.
+ * The single SQL boundary for facility reference data.
  *
  * <p>Every statement is bounded by the transaction-local tenant context set by
  * {@link com.aurevia.tenant.TenantGuardTransactionManager}; forced

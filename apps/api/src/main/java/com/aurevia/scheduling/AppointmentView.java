@@ -6,6 +6,8 @@ import java.util.List;
  * An appointment together with its append-only history.
  *
  * @return this record
+ * @param appointment value supplied by the caller
+ * @param history value supplied by the caller
  */
 public record AppointmentView(Appointment appointment, List<AppointmentEvent> history) {
 

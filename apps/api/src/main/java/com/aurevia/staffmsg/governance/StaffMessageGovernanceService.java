@@ -36,7 +36,7 @@ import com.aurevia.staffmsg.model.StaffMessagingContract.StaffParticipant;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Governance domain service for staff-to-staff messages (MSG-07, ARC-02, OPS-02).
+ * Governance domain service for staff-to-staff messages.
  *
  * <p>Every protected method derives organization and subject from the request
  * context, re-checks active membership and role through the store, and appends a
@@ -51,7 +51,7 @@ import com.aurevia.tenant.TenantContext;
 @Service
 public class StaffMessageGovernanceService {
 
-    /** Purpose stamped on every staff-message governance audit fact (OPS-02). */
+    /** Purpose stamped on every staff-message governance audit fact. */
     public static final String PURPOSE = "STAFFMSG_GOVERNANCE";
 
     private static final String SYSTEM_SCOPE = "SYSTEM";
@@ -69,7 +69,7 @@ public class StaffMessageGovernanceService {
      * Actions the generic recorder may legitimately record. Governance commands
      * are performed and audited only by their dedicated endpoints, so a caller of
      * the recorder cannot self-report a SUCCESS fact for a hold, export,
-     * retention run or audit review that never happened (OPS-02).
+     * retention run or audit review that never happened.
      */
     private static final Set<StaffAction> WORKFLOW_ACTIONS = Set.of(
             StaffAction.OPEN, StaffAction.SEND, StaffAction.FORWARD, StaffAction.ATTACH,
@@ -351,7 +351,7 @@ public class StaffMessageGovernanceService {
     /**
      * Validate the provenance an export must carry, binding its source to a
      * conversation in the active tenant and reducing free text to allowlisted
-     * codes and bounded identifier tokens (OPS-07).
+     * codes and bounded identifier tokens.
      *
      * @param provenance caller-supplied provenance
      * @param context    active tenant used for the source binding

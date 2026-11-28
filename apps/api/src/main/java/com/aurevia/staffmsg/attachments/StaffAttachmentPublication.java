@@ -5,14 +5,14 @@ import java.util.Set;
 
 /**
  * Narrow seam through which a staff message send publishes the files already
- * bound to its draft or conversation (MSG-03, CLN-07).
+ * bound to its draft or conversation.
  *
  * <p>The seam has two phases.
- * {@link com.aurevia.staffmsg.attachments.StaffAttachmentPublication#requirePublishable(String, String, String)}
+ * {@link com.aurevia.staffmsg.attachments.StaffAttachmentPublication#requirePublishable(java.lang.String, java.lang.String, java.lang.String)}
  * runs before the message row is committed so a quarantined or otherwise
  * unpublishable file prevents publication completely; it returns the validated
  * file identifiers so the second phase binds exactly those files.
- * {@link com.aurevia.staffmsg.attachments.StaffAttachmentPublication#publish(String, String, String, String, Set, List)}
+ * {@link com.aurevia.staffmsg.attachments.StaffAttachmentPublication#publish(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Set, java.util.List)}
  * runs after the message row exists, because the
  * durable attachment link carries a foreign key to the published message. The
  * audience is supplied by the caller from persisted membership or frozen mail
@@ -63,7 +63,14 @@ public interface StaffAttachmentPublication {
 
         private NoOp() {
         }
-
+        /**
+         * Reject a message send when any pending file of the draft cannot be sent.
+         *
+         * @param organizationId active organization
+         * @param subject        authenticated sender
+         * @param draftId        mail draft or conversation identifier
+         * @return identifiers of the files that passed validation, possibly empty
+         */
         @Override
         public List<String> requirePublishable(String organizationId, String subject, String draftId) {
             // No message is being published, so there is nothing to validate.

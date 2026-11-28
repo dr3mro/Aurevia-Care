@@ -8,7 +8,7 @@ import com.aurevia.messaging.governance.MessagingAuditContract.Outcome;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Value contract for staff-to-staff message governance (MSG-07, OPS-02, OPS-07).
+ * Value contract for staff-to-staff message governance.
  *
  * <p>Every type here is a non-sensitive governance fact. An audit fact records
  * who did what to which resource and with what outcome, but never a message
@@ -96,7 +96,7 @@ public final class StaffMessageGovernanceContract {
     }
 
     /**
-     * One append-only, non-sensitive staff-message audit fact (OPS-02).
+     * One append-only, non-sensitive staff-message audit fact.
      *
      * @param id            opaque fact identifier
      * @param organizationId owning organization

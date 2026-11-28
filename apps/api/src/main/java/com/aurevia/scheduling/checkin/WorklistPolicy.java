@@ -5,7 +5,7 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * Action policy for the CLN-02 check-in and worklist slice.
+ * Action policy for the check-in and worklist slice.
  *
  * <p>The policy is deliberately local to this slice: it does not widen the
  * shared {@code ActionPolicy}, so an unrelated story cannot accidentally gain
@@ -31,7 +31,7 @@ public class WorklistPolicy {
     public static final String WORKLIST_ASSIGN = "WORKLIST_ASSIGN";
     /** Transfer an assigned item to another active member. */
     public static final String HANDOFF = "WORKLIST_HANDOFF";
-    /** Record vitals; the vitals store itself belongs to the CLN-03 slice. */
+    /** Record vitals; the vitals store itself belongs to the slice. */
     public static final String VITALS_RECORD = "VITALS_RECORD";
     /** Open the clinical encounter after a verified check-in. */
     public static final String ENCOUNTER_OPEN = "ENCOUNTER_OPEN";
@@ -40,7 +40,7 @@ public class WorklistPolicy {
 
     // Tenant administration is an organizational role: it may run the clerical
     // worklist but holds no clinical permission. Opening an encounter or recording
-    // vitals follows separate clinical privileges (spec role table, IAM-01).
+    // Vitals recording follows a separate clinical privilege, not this worklist matrix.
     private static final Set<String> ADMIN_ACTIONS = Set.of(
             IDENTITY_VERIFY, CHECK_IN, WORKLIST_READ, WORKLIST_ASSIGN, HANDOFF, INTAKE_LINK);
     private static final Set<String> RECEPTION_ACTIONS = Set.of(

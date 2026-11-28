@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 /**
- * A care-team action task with an owner, a due date and an outcome (CLN-06).
+ * A care-team action task with an owner, a due date and an outcome.
  *
  * <p>Only an open task can be completed; the outcome is recorded on the same
  * immutable record so the closed task keeps its original owner and due date.</p>

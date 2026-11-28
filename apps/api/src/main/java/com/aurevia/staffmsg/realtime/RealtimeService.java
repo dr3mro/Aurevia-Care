@@ -17,7 +17,7 @@ import com.aurevia.staffmsg.model.StaffMessagingContract.StaffConversation;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Authorization and projection for identifier-only conversation events (ARC-07).
+ * Authorization and projection for identifier-only conversation events.
  *
  * <p>Every read re-derives the caller from {@link com.aurevia.tenant.TenantContext},
  * re-checks active staff status and facility scope, and limits events to
@@ -96,6 +96,11 @@ public class RealtimeService {
         AtomicBoolean closed = new AtomicBoolean(false);
 
         MessageEventHub.Subscriber subscriber = new MessageEventHub.Subscriber() {
+            /**
+             * Deliver one live event.
+             *
+             * @param event the appended event
+             */
             @Override
             public void accept(RealtimeEvent event) {
                 withSnapshot(access.context(), () -> {
@@ -112,7 +117,9 @@ public class RealtimeService {
                     }
                 });
             }
-
+            /**
+             * Release resources held for this subscription, such as completing its emitter.
+             */
             @Override
             public void onClose() {
                 if (closed.compareAndSet(false, true)) {
@@ -263,7 +270,7 @@ public class RealtimeService {
          * Create an emitter for one stream.
          *
          * @return a new SSE emitter
-         */
+     */
         SseEmitter create();
     }
 }

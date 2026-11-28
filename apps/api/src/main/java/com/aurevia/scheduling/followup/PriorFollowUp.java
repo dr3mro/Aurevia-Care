@@ -3,7 +3,7 @@ package com.aurevia.scheduling.followup;
 import java.time.LocalDate;
 
 /**
- * An existing follow-up the tenant considers applicable to an encounter (CLN-06).
+ * An existing follow-up the tenant considers applicable to an encounter.
  *
  * <p>The owning port applies eligibility rules such as tenant scope, visit type
  * and a non-terminal booking before returning one; the domain never links a

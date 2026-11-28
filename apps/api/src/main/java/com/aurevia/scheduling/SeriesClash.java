@@ -2,7 +2,7 @@ package com.aurevia.scheduling;
 
 /**
  * One rejected occurrence of a series and the appointment that already owns its
- * protected slot (CLN-01).
+ * protected slot.
  *
  * @param occurrence    one-based position of the clashing occurrence in the series
  * @param appointmentId immutable id of the conflicting appointment, or {@code null}

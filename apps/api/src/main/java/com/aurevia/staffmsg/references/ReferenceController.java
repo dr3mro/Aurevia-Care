@@ -27,7 +27,7 @@ import com.aurevia.staffmsg.references.ReferenceContract.SubjectWarning;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP entry point for typed staff-message references (MSG-07, ARC-07).
+ * Thin HTTP entry point for typed staff-message references.
  *
  * <p>The controller only derives identity from the tenant context and fresh
  * active membership, then delegates to the domain service. No role, organization
@@ -77,6 +77,7 @@ public final class ReferenceController {
      *
      * @param request target handles, label and raw subject
      * @return HTTP 201 with the opaque reference and identifier-safe warning
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping(path = "/attach", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AttachResult> attach(@RequestBody AttachRequest request) {
@@ -94,6 +95,7 @@ public final class ReferenceController {
      * @param targetId     opaque target handle
      * @param label        non-identifying label
      * @return the label-only view
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/view")
     public ReferenceView view(@RequestParam("id") String id,
@@ -109,6 +111,7 @@ public final class ReferenceController {
      *
      * @param handle client-held reference descriptor
      * @return the target locator when access is granted
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping(path = "/open", consumes = MediaType.APPLICATION_JSON_VALUE)
     public OpenResult open(@RequestBody ReferenceHandle handle) {
@@ -120,6 +123,7 @@ public final class ReferenceController {
      *
      * @param request command carrying the raw subject line in a POST body
      * @return a warning with a fixed reason code, never the subject text
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping(path = "/screen-subject", consumes = MediaType.APPLICATION_JSON_VALUE)
     public SubjectWarning screenSubject(@RequestBody ScreenSubjectRequest request) {
@@ -130,7 +134,7 @@ public final class ReferenceController {
      * Derive the actor from the tenant context and fresh active roles.
      *
      * @return the authenticated actor
-     * @throws ApiException 401 when no authentication context is present
+     * @throws com.aurevia.api.ApiException 401 when no authentication context is present
      */
     private ReferenceActor actor() {
         if (fixedActor != null) {

@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 import org.springframework.stereotype.Component;
 
 /**
- * Thread-safe broker for identifier-only conversation events (ARC-07).
+ * Thread-safe broker for identifier-only conversation events.
  *
  * <p>The hub is a process-local live-delivery and bounded-replay mechanism, not
  * a system of record: conversation messages remain in the existing durable

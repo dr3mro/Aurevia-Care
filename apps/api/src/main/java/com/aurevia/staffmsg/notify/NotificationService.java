@@ -18,7 +18,7 @@ import com.aurevia.staffmsg.notify.NotificationContract.SuppressionReason;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Domain decisions for staff notifications (MSG-06, ARC-07).
+ * Domain decisions for staff notifications.
  *
  * <p>Tenant and actor are derived from the bound {@link com.aurevia.tenant.TenantContext}
  * on every call; a missing or blank organization fails closed. This service holds no

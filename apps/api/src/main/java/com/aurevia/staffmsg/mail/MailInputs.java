@@ -6,7 +6,7 @@ import java.util.UUID;
 import com.aurevia.api.ApiException;
 
 /**
- * Boundary validation shared by the mail commands (MSG-02, ARC-07).
+ * Boundary validation shared by the mail commands.
  *
  * <p>Every method fails closed with a machine-readable command error so a caller
  * cannot turn a missing or blank value into a stored message. Identifiers are

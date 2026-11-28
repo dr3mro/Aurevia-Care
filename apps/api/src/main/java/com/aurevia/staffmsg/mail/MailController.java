@@ -30,7 +30,7 @@ import com.aurevia.staffmsg.model.StaffMessagingContract.MailFolder;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for email-like staff messages (MSG-02, ARC-07).
+ * Thin HTTP adapter for email-like staff messages.
  *
  * <p>The controller binds paths, headers and command bodies only. The active
  * tenant and actor always come from the request context; every decision is made
@@ -59,6 +59,7 @@ public final class MailController {
      *
      * @param request compose body with recipients, subject and body
      * @return the version-one draft
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/drafts")
     public DraftView create(@RequestBody ComposeRequest request) {
@@ -75,6 +76,7 @@ public final class MailController {
      * @param ifMatch  version the caller read
      * @param request  replacement draft content
      * @return the advanced draft
+     * @throws com.aurevia.api.ApiException when authorization or validation fails or the supplied version is stale
      */
     @PutMapping("/drafts/{id}")
     public DraftView save(@PathVariable String id,
@@ -93,6 +95,7 @@ public final class MailController {
      * @param idem    retry key for the publication
      * @param request body carrying the confirmed recipient list
      * @return the published message
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/drafts/{id}/send")
     public MailView send(@PathVariable String id,
@@ -109,6 +112,7 @@ public final class MailController {
      * @param id      original message identifier
      * @param request reply body
      * @return the reply draft
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/messages/{id}/reply")
     public DraftView reply(@PathVariable String id, @RequestBody TextRequest request) {
@@ -123,6 +127,7 @@ public final class MailController {
      * @param id      original message identifier
      * @param request reply body
      * @return the reply-all draft
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/messages/{id}/reply-all")
     public DraftView replyAll(@PathVariable String id, @RequestBody TextRequest request) {
@@ -137,6 +142,7 @@ public final class MailController {
      * @param id      original message identifier
      * @param request new recipients and optional body
      * @return the forward draft
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/messages/{id}/forward")
     public DraftView forward(@PathVariable String id, @RequestBody ComposeRequest request) {
@@ -151,6 +157,7 @@ public final class MailController {
      * @param id      message identifier
      * @param request target folder
      * @return the message in its new folder
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/messages/{id}/move")
     public MailView move(@PathVariable String id, @RequestBody FolderRequest request) {
@@ -165,6 +172,7 @@ public final class MailController {
      * @param id      message identifier
      * @param request flag name and desired state
      * @return the message with its updated flags
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/messages/{id}/flag")
     public MailView flag(@PathVariable String id, @RequestBody FlagRequest request) {
@@ -178,6 +186,7 @@ public final class MailController {
      *
      * @param folder folder name from the path
      * @return the messages in that folder
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/folders/{folder}")
     public List<MailView> folder(@PathVariable String folder) {
@@ -190,6 +199,7 @@ public final class MailController {
      *
      * @param id message identifier
      * @return the message with the reader's folder
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/messages/{id}")
     public MailView message(@PathVariable String id) {
@@ -201,6 +211,7 @@ public final class MailController {
      * List the acting person's threads.
      *
      * @return threads grouped by normalized subject and reference
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/threads")
     public List<ThreadView> threads() {
@@ -279,6 +290,7 @@ public final class MailController {
      * Send body carrying the explicitly confirmed recipient list.
      *
      * @return the immutable body
+     * @param confirmedRecipients value supplied by the caller
      */
     public record SendRequest(List<String> confirmedRecipients) {
 
@@ -302,6 +314,7 @@ public final class MailController {
      * Reply body with the new text.
      *
      * @return the immutable body
+     * @param body value supplied by the caller
      */
     public record TextRequest(String body) {
     }
@@ -310,6 +323,7 @@ public final class MailController {
      * Move body with the target folder name.
      *
      * @return the immutable body
+     * @param folder value supplied by the caller
      */
     public record FolderRequest(String folder) {
     }
@@ -318,6 +332,8 @@ public final class MailController {
      * Flag body with the flag name and desired state.
      *
      * @return the immutable body
+     * @param flag value supplied by the caller
+     * @param enabled value supplied by the caller
      */
     public record FlagRequest(String flag, boolean enabled) {
     }

@@ -8,7 +8,7 @@ import com.aurevia.tenant.export.ExportModel.ExportJob;
 import com.aurevia.tenant.export.ExportModel.ExportSource;
 
 /**
- * Durable boundary for tenant export jobs and their authorized sources (OPS-07).
+ * Durable boundary for tenant export jobs and their authorized sources.
  *
  * <p>Every method runs in the active tenant context; forced row-level security
  * confines each statement to one organization so a job or audit fact from

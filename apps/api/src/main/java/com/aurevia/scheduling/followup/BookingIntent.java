@@ -3,7 +3,7 @@ package com.aurevia.scheduling.followup;
 import java.time.LocalDate;
 
 /**
- * The bounded payload handed to the booking port on explicit confirmation (CLN-06).
+ * The bounded payload handed to the booking port on explicit confirmation.
  *
  * <p>The domain does not choose a clinician, room or slot; the booking adapter
  * applies the scheduling rules and returns the created appointment identifier.</p>

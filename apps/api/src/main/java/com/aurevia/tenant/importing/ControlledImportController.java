@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for controlled onboarding commits, sign-off and reversal (OPS-08).
+ * Thin HTTP adapter for controlled onboarding commits, sign-off and reversal.
  *
  * <p>All reconciliation, resumability and role rules live in
  * {@link com.aurevia.tenant.importing.ControlledImportService}; this
@@ -39,6 +39,7 @@ public class ControlledImportController {
      *
      * @param request manifest and optional resumable checkpoint
      * @return per-batch outcomes and the new checkpoint
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/commit")
     public CommitReport commit(@RequestBody CommitRequest request) {
@@ -54,11 +55,12 @@ public class ControlledImportController {
      *
      * <p>The named approver must be the authenticated subject; an absent
      * identity or a different subject is refused before the service is called.
-     * Full verification of the claimed role against a verified membership is
-     * owned by the identity boundary and is a separate story.</p>
+     * This boundary binds the named approver to the authenticated subject; the
+     * claimed role is checked against an allow-list, not against verified membership.</p>
      *
      * @param request manifest, checkpoint and named sign-off
      * @return acceptance or refusal with a reason
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/sign-off")
     public SignOffResult signOff(@RequestBody SignOffRequest request) {
@@ -76,6 +78,7 @@ public class ControlledImportController {
      *
      * @param request staging checkpoint to reverse
      * @return empty checkpoint for the same manifest version
+     * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/reverse")
     public ImportProgress reverse(@RequestBody ReverseRequest request) {

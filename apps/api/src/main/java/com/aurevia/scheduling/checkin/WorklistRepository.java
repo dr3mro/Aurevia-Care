@@ -14,7 +14,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 /**
- * SQL boundary for the CLN-02 ledgers and the mutable worklist projection.
+ * SQL boundary for the check-in ledgers and the mutable worklist projection.
  *
  * <p>Every statement relies on the transaction-local tenant binding and the
  * forced row-level security of V12, so a row outside the active organization is

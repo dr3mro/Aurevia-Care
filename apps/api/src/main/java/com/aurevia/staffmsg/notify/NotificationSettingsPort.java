@@ -8,10 +8,10 @@ import com.aurevia.staffmsg.notify.NotificationContract.NotificationSettings;
 /**
  * Boundary for per-person notification preferences and the auto-reply ledger.
  *
- * <p>The port is deliberately not named a store: persistence is owned by a later
- * slice. A durable adapter must read mute from the existing participant membership
- * (which carries the muted flag), bind every row to its tenant and subject, and
- * enforce a unique key on tenant, recipient, sender and UTC day so the atomic
+ * <p>The port is deliberately not named a store: the in-memory implementation is
+ * process-local and loses its state on restart. The participant membership carries
+ * the muted flag; a durable adapter must bind every row to its tenant and subject
+ * and enforce a unique key on tenant, recipient, sender and UTC day so the atomic
  * reply check below survives concurrent requests and a restart.</p>
  */
 public interface NotificationSettingsPort {

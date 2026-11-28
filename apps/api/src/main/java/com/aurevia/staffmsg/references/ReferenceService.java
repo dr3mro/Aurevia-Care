@@ -21,7 +21,7 @@ import com.aurevia.staffmsg.references.ReferenceContract.ReferenceView;
 import com.aurevia.staffmsg.references.ReferenceContract.SubjectWarning;
 
 /**
- * Domain service for typed staff-message references (MSG-07, ARC-07).
+ * Domain service for typed staff-message references.
  *
  * <p>Attaching validates the target and screens the subject but copies no chart
  * content: the subject is discarded after screening. A view projects the label

@@ -12,7 +12,7 @@ import com.aurevia.documents.storage.FileSystemObjectStore;
 import com.aurevia.staff.StaffRepository;
 
 /**
- * Wiring for the staff-attachment private object store (MSG-03, ARC-06).
+ * Wiring for the staff-attachment private object store.
  *
  * <p>The default adapter keeps originals beneath a configurable local directory
  * for development and synthetic verification; a managed object-store adapter can

@@ -9,7 +9,7 @@ import com.aurevia.staffmsg.mail.MailContract.SentMail;
 import com.aurevia.staffmsg.model.StaffMessagingContract.MailFolder;
 
 /**
- * Durable persistence boundary for email-like staff messages (MSG-02, ARC-07).
+ * Durable persistence boundary for email-like staff messages.
  *
  * <p>The kernel owns every decision; this port only stores and retrieves state.
  * Every method takes the active organization explicitly so a JDBC adapter can

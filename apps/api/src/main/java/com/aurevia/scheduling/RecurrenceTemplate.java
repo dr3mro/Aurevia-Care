@@ -12,11 +12,11 @@ import java.util.List;
 import com.aurevia.api.ApiException;
 
 /**
- * A weekly recurrence pattern for an appointment series (CLN-01).
+ * A weekly recurrence pattern for an appointment series.
  *
  * <p>The pattern is civil: a start local date and clock time in the facility's
  * IANA zone, stepped by a whole number of weeks. Each occurrence is resolved
- * back to an instant through {@link java.time.LocalDateTime#atZone(ZoneId)},
+ * back to an instant through {@link java.time.LocalDateTime#atZone(java.time.ZoneId)},
  * so a daylight-saving transition changes the UTC offset but never the local
  * clock time the patient and clinician see. The pattern terminates on either a
  * fixed occurrence count or an inclusive local end date, never both.</p>

@@ -3,7 +3,7 @@ package com.aurevia.scheduling.checkin;
 import java.time.Instant;
 
 /**
- * One assignable row of the organization/facility worklist (CLN-02).
+ * One assignable row of the organization/facility worklist.
  *
  * <p>A row is either a scheduled appointment (with a start time) or an
  * unscheduled arrival linked to intake (with an intake reason). Assignment is
