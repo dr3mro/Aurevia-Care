@@ -198,6 +198,16 @@ def is_issue_call(args):
     )
 
 
+# Shared by gh() and the paginated merged-PR reader: a 5xx, secondary rate
+# limit or dropped connection is a GitHub-side blip worth one more read.
+GH_TRANSIENT = re.compile(
+    r"\b(?:500|502|503|504)\b|Bad Gateway|Service Unavailable|Internal Server Error"
+    r"|secondary rate limit|abuse detection|rate limit exceeded|connection reset"
+    r"|timed out|TLS handshake|temporary failure|unexpected EOF",
+    re.IGNORECASE,
+)
+
+
 def gh(*args, check=True):
     """Run a gh CLI command, retrying transient GitHub API failures.
 
@@ -206,12 +216,6 @@ def gh(*args, check=True):
     errors (permissions, missing refs) are raised immediately with the CLI stderr visible
     in the job log.
     """
-    transient = re.compile(
-        r"\b(?:500|502|503|504)\b|Bad Gateway|Service Unavailable|Internal Server Error"
-        r"|secondary rate limit|abuse detection|rate limit exceeded|connection reset"
-        r"|timed out|TLS handshake|temporary failure|unexpected EOF",
-        re.IGNORECASE,
-    )
     # Issue, comment and label calls use the job's own token when GH_ISSUES_TOKEN is set:
     # it always has issues: write, while SWARM_TOKEN (used for pushes) may not.
     extra = (
@@ -229,7 +233,7 @@ def gh(*args, check=True):
         )
         if not (check and done.returncode):
             return done.stdout
-        if transient.search(done.stderr or "") and attempt < 3:
+        if GH_TRANSIENT.search(done.stderr or "") and attempt < 3:
             time.sleep(2**attempt)
             attempt += 1
             continue
@@ -1457,20 +1461,34 @@ def paginated_merged_pull_requests(branch):
     JSON lines, so a partial or malformed record fails before any task is written.
     An empty stream means there are no merged pull requests and yields an empty list.
     """
-    out = subprocess.check_output(
-        [
-            "gh",
-            "api",
-            "--paginate",
-            f"repos/{repo_slug()}/pulls?state=closed&base={branch}&per_page=100",
-            "--jq",
-            '.[] | select(.merged_at != null) | '
-            '{number: .number, title: .title, baseRefName: .base.ref, state: "MERGED"}',
-        ],
-        text=True,
-        stderr=subprocess.DEVNULL,
-        env=child_environment(read_only=True),
-    )
+    command = [
+        "gh",
+        "api",
+        "--paginate",
+        f"repos/{repo_slug()}/pulls?state=closed&base={branch}&per_page=100",
+        "--jq",
+        '.[] | select(.merged_at != null) | '
+        '{number: .number, title: .title, baseRefName: .base.ref, state: "MERGED"}',
+    ]
+    # A transient API blip used to abort the whole reconcile step. Retry a
+    # bounded number of times, but keep the last failure visible and fatal so
+    # reconciliation never writes from incomplete merged-PR evidence.
+    attempt = 0
+    while True:  # the last attempt breaks or raises; no silent exhaustion path
+        try:
+            out = subprocess.check_output(
+                command, text=True, stderr=subprocess.PIPE,
+                env=child_environment(read_only=True),
+            )
+            break
+        except subprocess.CalledProcessError as error:
+            reason = str(error.stderr or "").strip()
+            if reason:
+                print(f"gh api --paginate: {reason}", file=sys.stderr)
+            if attempt == 2 or not GH_TRANSIENT.search(reason):
+                raise
+            time.sleep(2**attempt)
+            attempt += 1
     text = out.strip()
     if not text:
         # gh api --paginate prints nothing when the repository has no merged PRs;

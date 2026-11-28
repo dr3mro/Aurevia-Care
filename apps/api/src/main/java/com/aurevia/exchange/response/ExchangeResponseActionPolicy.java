@@ -5,12 +5,12 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * Bounded action policy for the XCH-03 recipient-response slice (IAM-01, XCH-03).
+ * Bounded action policy for the recipient-response slice.
  *
  * <p>Recipient decisions and sender lifecycle commands are separated. A privacy
  * auditor may read the work item but cannot mutate it, and no generic role can
- * revoke a release. This policy is local to the story so the shared action
- * policy is not widened outside its scope.</p>
+ * revoke a release. Keeping the matrix local prevents a command from gaining
+ * a role beyond the recipient-response workflow.</p>
  */
 @Component
 public class ExchangeResponseActionPolicy {

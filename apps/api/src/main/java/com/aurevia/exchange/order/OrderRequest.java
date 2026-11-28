@@ -1,7 +1,7 @@
 package com.aurevia.exchange.order;
 
 /**
- * Command to release one clinical order to an approved destination (XCH-01).
+ * Command to release one clinical order to an approved destination.
  *
  * @param patientId           opaque patient identifier of the sending organization
  * @param encounterRef        local encounter reference carried in the released content

@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 /**
- * SQL boundary for XCH-03 order responses and their immutable ledgers.
+ * SQL boundary for recipient order responses and their immutable ledgers.
  *
  * <p>Every statement relies on the forced-RLS active-tenant context bound by the
  * guarded transaction manager. Reads expose only rows of the active

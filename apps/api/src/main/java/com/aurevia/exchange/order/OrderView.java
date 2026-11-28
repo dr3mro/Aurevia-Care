@@ -3,7 +3,7 @@ package com.aurevia.exchange.order;
 import java.time.Instant;
 
 /**
- * Immutable released order with the identifiers stamped by the exchange (XCH-01).
+ * Immutable released order with the identifiers stamped by the exchange.
  *
  * <p>The snapshot fingerprint identifies the exact released content; it is not a
  * cryptographic signature and carries no clinical payload in audit records.</p>

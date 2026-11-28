@@ -6,7 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * MSG-05 domain vocabulary: publication, notification dispatch, first in-app
+ * Domain vocabulary for publication, notification dispatch, first in-app
  * view and explicit patient acknowledgment as four distinct immutable facts.
  *
  * <p>Clinical text never appears in a fact. Instructions carry only an opaque
@@ -55,8 +55,9 @@ public final class InstructionFacts {
         }
 
         /**
-         * Parse a stored wire key.
+         * Parse a stored fact key.
          *
+         * @param value lowercase wire key stored on the fact
          * @return the matching fact type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -71,7 +72,7 @@ public final class InstructionFacts {
     }
 
     /**
-     * The only meaning an MSG-05 acknowledgment can have: confirmation of
+     * The only meaning an acknowledgment can have: confirmation of
      * receipt. Other acknowledgment workflows use their own distinct types.
      */
     public enum AcknowledgmentScope {
@@ -102,6 +103,7 @@ public final class InstructionFacts {
         /**
          * Parse a stored wire key.
          *
+         * @param value lowercase wire key stored on the fact
          * @return the matching scope
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -148,6 +150,7 @@ public final class InstructionFacts {
         /**
          * Parse a stored wire key.
          *
+         * @param value lowercase wire key stored on the fact
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -200,7 +203,7 @@ public final class InstructionFacts {
     }
 
     /**
-     * One published instruction revision (MSG-04 handoff, MSG-05 fact source).
+     * One published instruction revision handed off for dispatch and used as the fact source.
      *
      * <p>The content reference is opaque; the fact layer never holds clinical
      * text. Full content is retrieved only through an authenticated read.</p>
@@ -219,6 +222,7 @@ public final class InstructionFacts {
      */
     public record Publication(String organizationId, String instructionId, int revision, String actor,
                               Instant occurredAt) implements Fact {
+        /** {@inheritDoc} */
         @Override
         public FactType type() {
             return FactType.PUBLICATION;
@@ -233,6 +237,7 @@ public final class InstructionFacts {
      */
     public record Dispatch(String organizationId, String instructionId, int revision, String genericKey,
                            String correlationId, Instant occurredAt) implements Fact {
+        /** {@inheritDoc} */
         @Override
         public FactType type() {
             return FactType.DISPATCH;
@@ -246,6 +251,7 @@ public final class InstructionFacts {
      */
     public record FirstView(String organizationId, String instructionId, int revision, String actor,
                             Instant occurredAt) implements Fact {
+        /** {@inheritDoc} */
         @Override
         public FactType type() {
             return FactType.FIRST_VIEW;
@@ -259,6 +265,7 @@ public final class InstructionFacts {
      */
     public record Acknowledgment(String organizationId, String instructionId, int revision, String actor,
                                  AcknowledgmentScope scope, Instant occurredAt) implements Fact {
+        /** {@inheritDoc} */
         @Override
         public FactType type() {
             return FactType.ACKNOWLEDGMENT;
@@ -273,11 +280,13 @@ public final class InstructionFacts {
     public record FollowUp(String organizationId, String instructionId, int revision, String unitId,
                            Instant routedAt, FollowUpState state, String resolvedBy, Instant resolvedAt,
                            String reason) implements Fact {
+        /** {@inheritDoc} */
         @Override
         public FactType type() {
             return FactType.FOLLOW_UP;
         }
 
+        /** {@inheritDoc} */
         @Override
         public Instant occurredAt() {
             return routedAt;
@@ -306,7 +315,7 @@ public final class InstructionFacts {
     }
 
     /**
-     * One non-sensitive audit fact for an MSG-05 decision (OPS-02).
+     * One non-sensitive audit fact for an instruction decision.
      *
      * @param organizationId active organization
      * @param subject        authenticated actor

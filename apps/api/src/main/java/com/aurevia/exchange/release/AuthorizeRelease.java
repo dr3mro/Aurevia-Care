@@ -1,7 +1,7 @@
 package com.aurevia.exchange.release;
 
 /**
- * Client command for a patient release authorization (XCH-06).
+ * Client command for a patient release authorization.
  *
  * <p>The issuing organization, author and tenant are derived from the guarded
  * request context; they are never accepted from this body.</p>

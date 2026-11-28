@@ -4,7 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 
 /**
- * Immutable projection of one patient release authorization (XCH-06, PAT-02).
+ * Immutable projection of one patient release authorization.
  *
  * <p>The release references an immutable report revision by its opaque identifier
  * and version, the issuing organization and the policy version that governed the

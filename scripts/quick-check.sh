@@ -21,6 +21,9 @@ python3 -I scripts/check-names.py
 python3 -I scripts/check-wiring.py
 python3 -I scripts/check-constraints.py
 python3 -I scripts/check-migrations.py --require-baseline
+# The fast merge gate needs the same tracker preflight as check.sh: a single
+# malformed pr: field otherwise aborts reconciliation after branches are pushed.
+python3 -I scripts/swarm_gate.py validate-tasks --dir tasks
 bash scripts/python-coverage.sh
 
 # Compile and unit tests only. The no-security profile skips OWASP and SpotBugs;

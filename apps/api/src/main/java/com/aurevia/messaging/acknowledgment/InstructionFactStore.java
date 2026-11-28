@@ -15,7 +15,7 @@ import com.aurevia.messaging.acknowledgment.InstructionFacts.Instruction;
 import com.aurevia.messaging.acknowledgment.InstructionFacts.Publication;
 
 /**
- * Tenant-scoped persistence boundary for MSG-05 facts.
+ * Tenant-scoped persistence boundary for instruction facts.
  *
  * <p>Every method carries the active organization explicitly so two tenants
  * with identical local identifiers can never share a fact, a digest or a
@@ -44,7 +44,7 @@ public interface InstructionFactStore {
     List<String> activeRoles(String organizationId, String subject);
 
     /**
-     * List patient charts verified for this account (IAM-05).
+     * List patient charts verified for this account.
      *
      * @param organizationId active organization
      * @param subject        authenticated subject
@@ -171,7 +171,7 @@ public interface InstructionFactStore {
     /**
      * Record one patient account's acknowledgment of a revision, never
      * overwriting that account's earlier receipt. Several verified accounts may
-     * link to the same chart (IAM-05), so each is recorded separately.
+     * link to the same chart, so each is recorded separately.
      *
      * @param organizationId active organization
      * @param acknowledgment acknowledgment fact

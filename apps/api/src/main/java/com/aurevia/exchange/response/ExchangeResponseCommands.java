@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Request payloads and immutable value records for XCH-03.
+ * Request payloads and immutable value records for recipient responses.
  *
  * <p>Every record is immutable; the actor, tenant and timestamp of a command come
  * from the authenticated request context, never from the client payload.</p>
@@ -73,7 +73,7 @@ public record RevokeRequest(String reason, String retentionPolicy, String target
     }
 
     /**
-     * Mutable current projection of one exchanged order work item (XCH-03).
+     * Mutable current projection of one exchanged order work item.
      *
  * @return this record
  */
@@ -84,7 +84,7 @@ public record ExchangeOrder(String id, int version, String orderCode, ExchangeSt
     }
 
     /**
-     * Immutable released-content revision (XCH-01, XCH-03). A post-acceptance change
+     * Immutable released-content revision. A post-acceptance change
      * inserts a new revision linked to the previous one; it never rewrites an old row.
      *
  * @return this record
@@ -95,7 +95,7 @@ public record Revision(String id, int revision, Integer previousRevision, String
 
     /**
      * Immutable retained recipient copy with its permitted purpose and policy
-     * (XCH-03, ARC-06). Access is governed by the parent order's revocation state.
+     * Only a revoked order blocks retrieval of the retained copy.
      *
  * @return this record
  */
@@ -105,7 +105,7 @@ public record RetainedCopy(String id, int revision, String contentChecksum, Stri
     }
 
     /**
-     * One append-only response-history entry (XCH-03, OPS-02).
+     * One append-only response-history entry.
      *
  * @return this record
  */
@@ -114,7 +114,7 @@ public record ExchangeEvent(String id, int orderVersion, String action, String f
     }
 
     /**
-     * Immutable downstream-notification record emitted on revocation (XCH-03, ARC-05).
+     * Immutable downstream-notification record emitted on revocation.
      *
  * @return this record
  */
@@ -123,7 +123,7 @@ public record Notification(String id, String eventId, String target, String chan
     }
 
     /**
-     * Read projection of one order work item with its append-only ledgers (XCH-03).
+     * Read projection of one order work item with its append-only ledgers.
      *
  * @return this record
  */

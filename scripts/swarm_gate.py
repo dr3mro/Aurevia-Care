@@ -55,7 +55,11 @@ TASK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 # A worker note is a claim, not proof. The canonical line is the only field
 # used as a compare query; a SHA anywhere else in a log must not count.
-TESTED_REVISION = re.compile(r"^Tested revision:[ \t]*([0-9a-f]{40})[ \t]*$", re.M)
+# A canonical line may carry a trailing explanation, but it must hold exactly
+# one revision token. Parsing the line first keeps a bare SHA in prose from ever
+# becoming a tested revision; the trusted compare API still proves ancestry.
+CANONICAL_LINE = re.compile(r"^Tested revision:[ \t]*(.*)$", re.M)
+SHA_TOKEN = re.compile(r"(?<![0-9A-Za-z_])[0-9a-f]{40}(?![0-9A-Za-z_])")
 # Anchor to the filename suffix: an eight-digit task ID followed by a date
 # would otherwise be read as a timestamp and select a stale note.
 NOTE_STAMP = re.compile(r"(\d{8}-\d{6})(?:-[A-Za-z0-9_-]+)?\.md$")
@@ -65,6 +69,14 @@ INTEGRATION_BRANCH = re.compile(r"^swarm/integration/[A-Za-z0-9._-]+$")
 RECONCILE_BRANCH = re.compile(r"^swarm/reconcile/[A-Za-z0-9._-]+$")
 TASK_TITLE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9-]*):\s+\S")
 TASK_MARK = re.compile(r"^- \[([ x!-])\] (\S+)\s+·", re.M)
+# Reconcile reads the first open or taken task line of every file and its single
+# pr: field. Mirror that exact contract here so a local preflight cannot pass a
+# tracker that the integrator will later reject. [x] and [!] files are skipped,
+# but a later open checkbox in them is a latent false task id and is reported.
+TASK_LINE = re.compile(r"^- \[([ x!-])\] (\S+)", re.M)
+ACTIVE_TASK_LINE = re.compile(r"^- \[[- ]\] (\S+)", re.M)
+PR_FIELD = re.compile(r"^  - pr:[ \t]*(.*)$", re.M)
+PR_NUMBER = re.compile(r"#?[1-9][0-9]*")
 EVIDENCE_SECTIONS = ("## Test evidence", "## Coverage", "## Review verdicts")
 CHECK_COMMANDS = ("scripts/quick-check.sh", "scripts/check.sh", "mvn ",
                   "python3 -I -m unittest", "apps/patient-mobile/check.sh", "apps/staff-web/check.sh")
@@ -141,6 +153,7 @@ class GateContext:
     head_sha: str = ""
     base_sha: str = ""
     tested_sha: str = ""
+    refresh_from: str = ""
     labels: tuple = ()
     title: str = ""
     commit_authors: tuple = ()
@@ -170,15 +183,85 @@ def _matches(path, patterns):
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
 
 
+def parse_note_revision(text):
+    """Return ``(sha, error)`` for one note's canonical tested revision.
+
+    ``sha`` is the sole lowercase 40-hex token on the sole canonical line, or
+    empty when the shape is invalid. ``error`` is an actionable explanation for
+    a local validator and is empty on success. This reads note shape only: it
+    never contacts GitHub or reads a token, so a local call cannot mark a check
+    passed. The trusted compare API proves ancestry later in ``evaluate``.
+    """
+    lines = CANONICAL_LINE.findall(text or "")
+    if len(lines) != 1:
+        return "", f"note revision requires exactly one 'Tested revision:' line, found {len(lines)}"
+    tokens = SHA_TOKEN.findall(lines[0])
+    if len(tokens) != 1:
+        return "", (f"note revision requires exactly one 40-character lowercase SHA "
+                    f"on that line, found {len(tokens)}")
+    return tokens[0], ""
+
+
 def extract_note_revision(text):
     """Return the single canonical ``Tested revision`` SHA, or empty when absent.
 
-    Worker notes are untrusted data. More than one field is rejected instead
-    of choosing one, so a stale or repeated line cannot satisfy the binding by
-    accident.
+    Worker notes are untrusted data. A second canonical line or a second
+    revision token is rejected instead of choosing one, so a stale or repeated
+    claim cannot satisfy the binding by accident. Trailing explanation is
+    allowed because the token is still proven in the pull request ancestry.
     """
-    values = TESTED_REVISION.findall(text or "")
-    return values[0] if len(values) == 1 else ""
+    sha, _ = parse_note_revision(text)
+    return sha
+
+
+def validate_tasks(directory):
+    """Validate task tracker shape offline, without a token or GitHub call.
+
+    ``directory`` is a path to the task markdown files. The returned pair is
+    ``(count, errors)``: ``count`` is the number of files inspected and each
+    error is a ``(path, reason)`` pair so the caller can report every bad file.
+    Only open ``[ ]`` and taken ``[-]`` entries are active, matching reconcile;
+    ``[x]`` and ``[!]`` entries are valid states but a later open checkbox in
+    such a file is reported because reconcile would read it as the task id.
+    An active task may have no ``pr:``, or one numeric ``pr:``; duplicate task
+    ids and repeated or malformed ``pr:`` fields fail closed.
+    """
+    count, errors, seen = 0, [], {}
+    root = Path(directory)
+    if not root.is_dir():
+        return 0, [(str(directory), "unreadable task directory")]
+    try:
+        paths = sorted(root.glob("*.md"))
+    except OSError as error:
+        return 0, [(str(directory), f"unreadable task directory: {error}")]
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as error:
+            errors.append((str(path), f"unreadable task file: {error}"))
+            continue
+        first = TASK_LINE.search(text)
+        if first is None:
+            # Instructions such as tasks/_head.md are not task entries; reconcile
+            # skips them too, so a validator must not fail the whole tracker.
+            continue
+        count += 1
+        tid, state = first.group(2), first.group(1)
+        if state in ("x", "!"):
+            buried = ACTIVE_TASK_LINE.search(text, first.end())
+            if buried is not None:
+                errors.append((str(path),
+                               f"{tid} contains an open task line after its task mark"))
+            continue
+        if tid in seen:
+            errors.append((str(path), f"{tid} appears in more than one task file"))
+        seen[tid] = path
+        fields = PR_FIELD.findall(text)
+        if len(fields) > 1:
+            errors.append((str(path), f"{tid} has repeated pr: fields"))
+        elif len(fields) == 1 and not PR_NUMBER.fullmatch(fields[0].strip()):
+            errors.append((str(path), f"{tid} has a malformed pr: field"))
+    return count, errors
 
 
 def _note_key(path):
@@ -428,6 +511,8 @@ def evaluate(ctx):
     live_head = (ctx.tested_sha or "")[:12] or "missing"
     current = bool(ctx.head_sha and ctx.tested_sha and ctx.head_sha == ctx.tested_sha)
     reason = "the verified revision is the current GitHub head"
+    if current and ctx.refresh_from:
+        reason += f"; refreshed from {ctx.refresh_from[:12]}"
     if not current:
         reason = f"event head {event_head} vs live headRefOid {live_head}"
         if ctx.head_sha and ctx.tested_sha:
@@ -512,11 +597,16 @@ def collect_context(event, event_name, root, required_checks=(), head_root=None,
         ["gh", *_gh_repo_args(), "pr", "diff", str(number), "--name-only"],
         text=True, env=child_environment(read_only=True),
     ).split()
+    # A trusted workflow may rewrite the event head after moving to the live PR
+    # head; keep the original SHA so the verdict still records the refresh.
+    refresh = event.get("swarm_gate_head_refresh")
+    refresh_from = refresh.get("from", "") if isinstance(refresh, Mapping) else ""
     ctx = GateContext(**{**ctx.__dict__, "title": details.get("title") or ctx.title,
                          "labels": tuple(x.get("name", "") for x in details.get("labels", [])),
                          "commit_authors": tuple((x.get("author") or {}).get("login", "")
                                                  for x in details.get("commits", [])),
                          "tested_sha": details.get("headRefOid", ""),
+                         "refresh_from": refresh_from,
                          "files": tuple(files)})
     ctx = _collect_task_and_evidence(ctx, root, tested_root)
     kind, _ = classify_pull_request(ctx.head_ref, ctx.labels, ctx.title,
@@ -592,20 +682,96 @@ def _collect_manifest(ctx, root):
     return GateContext(**{**ctx.__dict__, "manifest": manifest, "ancestors": ancestors})
 
 
+def refresh_event(event_path, head_sha, original_sha, output_path):
+    """Copy a GitHub event with its PR head moved to a trusted checked-out SHA.
+
+    The workflow checks out the live PR head into a separate tree before calling
+    this pure JSON rewrite. Both SHAs must be lowercase 40-hex, the event must be
+    a pull_request event, and the original SHA must equal that event's head so the
+    provenance marker is self-verifying. The original head is recorded so the
+    verdict can name the refresh instead of silently rewriting history.
+
+    @param event_path path to the immutable GitHub event payload
+    @param head_sha exact SHA checked out and about to be evaluated
+    @param original_sha event head SHA before the trusted refresh
+    @param output_path path of the rewritten event; written only on success
+    @raises ValueError when either SHA or the event shape is invalid
+    """
+    if not SHA.fullmatch(head_sha or "") or not SHA.fullmatch(original_sha or ""):
+        raise ValueError("refreshed heads must be 40-character lowercase SHAs")
+    event = json.loads(Path(event_path).read_text(encoding="utf-8"))
+    pr = event.get("pull_request") if isinstance(event, Mapping) else None
+    if not isinstance(pr, Mapping) or not isinstance(pr.get("head"), dict):
+        raise ValueError("only pull_request events can refresh their head")
+    event_sha = pr["head"].get("sha", "")
+    if not SHA.fullmatch(event_sha or "") or event_sha != original_sha:
+        raise ValueError("the original head must match the event head")
+    refreshed = json.loads(json.dumps(event))
+    refreshed["pull_request"]["head"]["sha"] = head_sha
+    refreshed["swarm_gate_head_refresh"] = {"from": original_sha, "to": head_sha}
+    Path(output_path).write_text(json.dumps(refreshed), encoding="utf-8")
+
+
 def main(argv=None):
-    """Evaluate one event; print a readable summary; exit 0 only when it passes."""
+    """Evaluate an event, refresh a moved head, or validate a note or task tree.
+
+    Exit 0 only when the requested operation succeeds; malformed input and
+    unavailable verification data return 2 so a CI reader can act on them.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", nargs="?", default="evaluate", choices=("evaluate",))
-    parser.add_argument("--event-path", required=True)
-    parser.add_argument("--event-name", required=True)
+    parser.add_argument("command", nargs="?", default="evaluate",
+                        choices=("evaluate", "refresh-event", "validate-note", "validate-tasks"))
+    # The event is required only for the two event-driven commands; validate-note
+    # works on a single note and must not need a GitHub event or a token.
+    parser.add_argument("--event-path", default="")
+    parser.add_argument("--note-path", default="")
+    parser.add_argument("--dir", default="")
+    parser.add_argument("--event-name")
     parser.add_argument("--root", default=".")
     # The verifier runs from the trusted base checkout, but the manifest and
     # ancestry describe the revision under test and live in a separate checkout.
     # Reading them from --root would judge a stale revision.
     parser.add_argument("--head-root", default=None)
     parser.add_argument("--required-checks", default=os.environ.get("SWARM_GATE_REQUIRED_CHECKS", ""))
+    parser.add_argument("--head-sha", default="")
+    parser.add_argument("--original-sha", default="")
+    parser.add_argument("--output", default="")
     args = parser.parse_args(argv)
     try:
+        if args.command == "validate-note":
+            if not args.note_path:
+                raise ValueError("note revision validation requires --note-path")
+            try:
+                note_text = Path(args.note_path).read_text(encoding="utf-8")
+            except OSError as read_error:
+                print(f"Swarm gate: note validation error: {args.note_path}: {read_error}",
+                      file=sys.stderr)
+                return 2
+            sha, error = parse_note_revision(note_text)
+            if error:
+                print(f"Swarm gate: note validation error: {args.note_path}: {error}",
+                      file=sys.stderr)
+                return 2
+            print(f"Swarm gate: note revision valid: {sha}")
+            return 0
+        if args.command == "validate-tasks":
+            if not args.dir:
+                raise ValueError("task validation requires --dir")
+            count, errors = validate_tasks(args.dir)
+            for path, reason in errors:
+                print(f"Swarm gate: task validation error: {path}: {reason}",
+                      file=sys.stderr)
+            if errors:
+                return 2
+            print(f"Swarm gate: task validation valid: {count} task files")
+            return 0
+        if not args.event_path:
+            raise ValueError("evaluate and refresh-event require --event-path")
+        if args.command == "refresh-event":
+            refresh_event(args.event_path, args.head_sha, args.original_sha, args.output)
+            return 0
+        if not args.event_name:
+            raise ValueError("evaluate requires --event-name")
         event = json.loads(Path(args.event_path).read_text())
         required = tuple(n.strip() for n in args.required_checks.split(",") if n.strip())
         ctx = collect_context(event, args.event_name, args.root, required,

@@ -3,7 +3,7 @@ package com.aurevia.exchange.result;
 import com.aurevia.exchange.result.ReconciliationModel.Resolution;
 
 /**
- * Durable read and append port for XCH-04 reconciliation decisions (XCH-04, ARC-02, OPS-02).
+ * Durable read and append port for reconciliation decisions.
  *
  * <p>Every operation is scoped to the active tenant. A resolution is appended at most once per queue
  * entry: a second append yields no row so the caller can report a conflict instead of overwriting the

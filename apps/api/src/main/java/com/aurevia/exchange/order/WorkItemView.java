@@ -3,7 +3,7 @@ package com.aurevia.exchange.order;
 import java.time.Instant;
 
 /**
- * Bounded work item projected to the receiving organization (XCH-01).
+ * Bounded work item projected to the receiving organization.
  *
  * <p>Only exchange-specific fields are projected. The sender patient reference
  * and its issuer-scoped MRN let the receiver verify a local patient through a

@@ -18,7 +18,7 @@ import com.aurevia.audit.AuditAppender;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * XCH-01 order release commands.
+ * Clinical order release commands.
  *
  * <p>One command runs inside one tenant-guarded transaction: membership and role
  * are re-derived, the sender's approved authorization is checked against the
@@ -52,7 +52,7 @@ public class OrderService {
             "(.+):([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 200;
-    // The order's projected work-item state values from the XCH-01 migration and WorkItemView.
+    // The order's projected work-item state values are mirrored from the schema and WorkItemView.
     private static final List<String> STATUSES = List.of("awaiting_local_patient", "ready");
 
     private final OrderRepository repository;
@@ -108,7 +108,7 @@ public class OrderService {
             AuthorizationView grant = repository.authorization(authorizationId).orElse(null);
             // One instant for the window check and the ledger stamp: a live clock
             // advancing between two reads could otherwise record a disclosure
-            // expiry past the authorization that was just validated (XCH-01).
+            // expiry past the authorization that was just validated.
             Instant now = clock.instant();
             ApiException grantFailure = checkGrant(grant, context, CREATE_ACTION, authorizationId,
                     orderCode, destination, purpose, duration, now);
@@ -405,7 +405,7 @@ public class OrderService {
                                     String purpose, int duration, Instant now) {
         // The disclosure must stop being valid when the authorization that
         // permitted it stops applying; otherwise a still-effective grant could
-        // authorize sharing past its own expiry (XCH-01 duration boundary).
+        // authorize sharing past its own expiry.
         // The caller supplies the same instant used to stamp the disclosure, so
         // clock drift between validation and recording cannot widen the window.
         Instant disclosureExpiresAt = disclosureExpiry(now, duration);

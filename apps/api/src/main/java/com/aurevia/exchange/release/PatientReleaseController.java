@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.aurevia.api.IfMatch;
 
 /**
- * Thin HTTP adapter for patient release decisions (XCH-06).
+ * Thin HTTP adapter for patient release decisions.
  *
  * <p>Authorization, state transitions, visibility and audit live in
  * {@link com.aurevia.exchange.release.ReleaseService}. This adapter only parses the version precondition and
@@ -41,6 +41,7 @@ public class PatientReleaseController {
      *
      * @param command validated authorization command
      * @return HTTP 201 with the current visibility decision
+     * @throws com.aurevia.api.ApiException on invalid input, denial or a duplicate authorization
      */
     @PostMapping
     public ResponseEntity<PatientRelease> authorize(@RequestBody AuthorizeRelease command) {
@@ -55,6 +56,7 @@ public class PatientReleaseController {
      * @param ifMatch version precondition
      * @param request withdrawal reason
      * @return the withdrawn release
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/withdraw")
     public PatientRelease withdraw(@PathVariable String id,
@@ -70,6 +72,7 @@ public class PatientReleaseController {
      * @param ifMatch version precondition
      * @param request replacement revision and reason
      * @return the new release linked to the corrected one
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/correct")
     public PatientRelease correct(@PathVariable String id,
@@ -86,6 +89,7 @@ public class PatientReleaseController {
      * @param ifMatch version precondition
      * @param request review note
      * @return the now-visible release
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/{id}/lift-hold")
     public PatientRelease liftHold(@PathVariable String id,
@@ -99,6 +103,7 @@ public class PatientReleaseController {
      *
      * @param id tenant-local release identifier
      * @return the release projection
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     @GetMapping("/{id}")
     public PatientRelease get(@PathVariable String id) {
@@ -110,6 +115,7 @@ public class PatientReleaseController {
      *
      * @param id tenant-local release identifier
      * @return decision events in commit order
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     @GetMapping("/{id}/history")
     public List<ReleaseEvent> history(@PathVariable String id) {

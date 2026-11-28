@@ -25,9 +25,10 @@ import com.aurevia.messaging.conversations.ConversationContract.View;
 import com.aurevia.messaging.conversations.ConversationContract.WorkQueue;
 
 /**
- * Thin HTTP adapter for the MSG-02 conversation lifecycle (ARC-03, ARC-04).
+ * Thin HTTP adapter for the conversation lifecycle.
  *
- * <p>Every mutating command requires an {@code If-Match} version, parsed here.
+ * <p>Every command on an existing thread requires an {@code If-Match} version,
+ * parsed here; opening a new resource takes no precondition.
  * Authorization, state, unit and relationship invariants live in the domain
  * service; this controller only binds JSON and headers.</p>
  */
@@ -51,6 +52,7 @@ public class ConversationController {
      *
      * @param request open command
      * @return HTTP 201 with the created conversation
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping
     public ResponseEntity<Conversation> open(@RequestBody OpenRequest request) {
@@ -62,6 +64,7 @@ public class ConversationController {
      * Read the caller's patient inbox; declared before the id route.
      *
      * @return the inbox with unread counts
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @GetMapping("/inbox")
     public Inbox inbox() {
@@ -72,6 +75,7 @@ public class ConversationController {
      * Read the role-scoped staff work queue; declared before the id route.
      *
      * @return the work queue
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @GetMapping("/work-queue")
     public WorkQueue workQueue() {
@@ -83,6 +87,7 @@ public class ConversationController {
      *
      * @param id conversation identifier
      * @return the thread view
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @GetMapping("/{id}")
     public View get(@PathVariable String id) {
@@ -97,6 +102,7 @@ public class ConversationController {
      * @param ifMatch         expected version
      * @param idempotencyKey  durable client key, required on every reply
      * @return the updated thread
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{id}/reply")
     public View reply(@PathVariable String id, @RequestBody ReplyRequest request,
@@ -112,6 +118,7 @@ public class ConversationController {
      * @param request assignment command
      * @param ifMatch expected version
      * @return the updated conversation
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{id}/assign")
     public Conversation assign(@PathVariable String id, @RequestBody AssignRequest request,
@@ -126,6 +133,7 @@ public class ConversationController {
      * @param request transfer command
      * @param ifMatch expected version
      * @return the updated conversation
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{id}/transfer")
     public Conversation transfer(@PathVariable String id, @RequestBody TransferRequest request,
@@ -140,6 +148,7 @@ public class ConversationController {
      * @param request resolve command
      * @param ifMatch expected version
      * @return the updated conversation
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{id}/resolve")
     public Conversation resolve(@PathVariable String id, @RequestBody ResolveRequest request,
@@ -154,6 +163,7 @@ public class ConversationController {
      * @param request close command
      * @param ifMatch expected version
      * @return the updated conversation
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{id}/close")
     public Conversation close(@PathVariable String id, @RequestBody CloseRequest request,
@@ -167,6 +177,7 @@ public class ConversationController {
      * @param id      conversation identifier
      * @param ifMatch expected version
      * @return the updated conversation
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{id}/read")
     public Conversation markRead(@PathVariable String id,

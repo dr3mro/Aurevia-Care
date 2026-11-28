@@ -22,6 +22,10 @@ HEAD, BASE, WORKER = "a" * 40, "b" * 40, "c" * 40
 EVIDENCE = ("# notes\n\n## Test evidence\nscripts/quick-check.sh passed\n\n## Coverage\n100%\n\n"
             "## Review verdicts\nGO\n\nTested revision: " + HEAD + "\n")
 ANCESTOR, DIVERGED, STALE = "e" * 40, "f" * 40, "d" * 40
+# The exact shape that hid a valid revision in PR #1815: the SHA is correct and
+# in the head's ancestry, but the canonical line had trailing explanation.
+PROSE_LINE = (f"Tested revision: {ANCESTOR} (`git rev-parse HEAD` when checks ran; "
+              "reconciled before push)")
 
 
 def binding_evidence(sha):
@@ -886,6 +890,424 @@ class TrustedVerifierCheckoutTests(unittest.TestCase):
         self.assertIn("github.event.merge_group.base_sha || github.event.repository.default_branch",
                       workflow)
         self.assertNotIn("github.event.pull_request.base.sha", workflow)
+
+
+class RefreshEventTests(unittest.TestCase):
+    """The pure event rewrite used after a trusted live-head checkout."""
+
+    def event(self, **overrides):
+        data = {"pull_request": {"number": 42, "head": {"sha": HEAD, "ref": "swarm/TASK-01-7"}},
+                "action": "synchronize"}
+        data.update(overrides)
+        return data
+
+    def write_event(self, data):
+        path = Path(tempfile.mkdtemp()) / "event.json"
+        path.write_text(json.dumps(data))
+        return path
+
+    def test_refresh_rewrites_head_and_records_provenance(self):
+        source = self.write_event(self.event())
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 0)
+        refreshed = json.loads(output.read_text())
+        self.assertEqual(refreshed["pull_request"]["head"]["sha"], DIVERGED)
+        self.assertEqual(refreshed["action"], "synchronize")
+        self.assertEqual(refreshed["swarm_gate_head_refresh"],
+                         {"from": HEAD, "to": DIVERGED})
+
+    def test_refresh_rejects_malformed_sha(self):
+        source = self.write_event(self.event())
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", "not-a-sha", "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_a_malformed_original_sha(self):
+        source = self.write_event(self.event())
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", "not-a-sha",
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_a_malformed_event_head(self):
+        source = self.write_event(self.event(pull_request={
+            "number": 42, "head": {"sha": "not-a-sha", "ref": "swarm/TASK-01-7"}}))
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_an_original_sha_that_is_not_the_event_head(self):
+        source = self.write_event(self.event())
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", ANCESTOR,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_a_non_mapping_event_shape(self):
+        source = self.write_event(["not", "an", "event"])
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_refresh_rejects_a_head_that_is_not_an_object(self):
+        source = self.write_event(self.event(pull_request={"head": "not-an-object"}))
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+    def test_evaluate_still_requires_an_event_name(self):
+        source = self.write_event(self.event())
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(gate.main(["evaluate", "--event-path", str(source)]), 2)
+
+    def test_refresh_rejects_a_non_pull_request_event(self):
+        source = self.write_event({"merge_group": {"head_sha": HEAD}})
+        output = source.parent / "refreshed.json"
+        self.assertEqual(gate.main(["refresh-event", "--event-path", str(source),
+                                    "--head-sha", DIVERGED, "--original-sha", HEAD,
+                                    "--output", str(output)]), 2)
+        self.assertFalse(output.exists())
+
+
+class RefreshedHeadEvaluationTests(unittest.TestCase):
+    """A refreshed head cannot silently accept stale or second-move evidence."""
+
+    def test_refresh_is_audited_in_the_currency_reason(self):
+        check = run(head_sha=DIVERGED, tested_sha=DIVERGED, refresh_from=HEAD) \
+            .check("tested_revision")
+        self.assertEqual(check.state, gate.PASSED)
+        self.assertIn(f"refreshed from {HEAD[:12]}", check.reason)
+
+    def test_collect_context_propagates_the_refresh_marker(self):
+        """A refreshed event must reach both binding and the currency reason."""
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(binding_evidence(ANCESTOR))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: refreshed",
+                                      "head": {"sha": DIVERGED, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []},
+                     "swarm_gate_head_refresh": {"from": HEAD, "to": DIVERGED}}
+            details = {"title": "TASK-01: refreshed", "labels": [], "commits": [],
+                       "headRefOid": DIVERGED}
+            checker = mock.Mock(return_value=compare_result("ahead", ANCESTOR))
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.dict(gate.os.environ, {"GITHUB_REPOSITORY": "owner/repo"}), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base),
+                                           head_root=str(head), ancestry_checker=checker)
+            checker.assert_called_once_with(ANCESTOR, DIVERGED, "owner/repo")
+            self.assertEqual(ctx.refresh_from, HEAD)
+            result = gate.evaluate(ctx)
+            self.assertEqual(result.check("revision_binding").state, gate.PASSED)
+            self.assertEqual(result.check("tested_revision").state, gate.PASSED)
+            self.assertIn(f"refreshed from {HEAD[:12]}",
+                          result.check("tested_revision").reason)
+
+    def test_second_head_move_still_fails_currency(self):
+        check = run(head_sha=DIVERGED, tested_sha=STALE, refresh_from=HEAD,
+                    note_sha=HEAD, revision_evidence=compare_result("ahead", HEAD)) \
+            .check("tested_revision")
+        self.assertEqual(check.state, gate.FAILED)
+        self.assertIn("head moved after the event", check.reason)
+
+
+class RefreshedCheckoutWorkflowTests(unittest.TestCase):
+    """The verifier boundary and live-head validation stay in trusted code."""
+
+    def setUp(self):
+        self.workflow = (ROOT / ".github" / "workflows" / "swarm-gate.yml").read_text(
+            encoding="utf-8")
+
+    def test_live_head_step_validates_sha_and_has_a_read_token(self):
+        step = self.workflow.split("- name: Resolve live PR head", 1)[1].split("\n      - ", 1)[0]
+        self.assertIn("github.event_name == 'pull_request'", step)
+        self.assertIn("^[0-9a-f]{40}$", step)
+        self.assertIn("exit 1", step)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", step)
+        self.assertIn('gh pr view --repo "$GITHUB_REPOSITORY"', step)
+
+    def test_refresh_uses_a_trusted_pr_head_checkout(self):
+        step = self.workflow.split("- name: Refresh tested checkout", 1)[1].split("\n      - ", 1)[0]
+        self.assertIn("path: tested", step)
+        self.assertIn("refs/pull/${{ github.event.pull_request.number }}/head", step)
+        self.assertIn("fetch-depth: 0", step)
+        self.assertIn("persist-credentials: false", step)
+
+    def test_gate_still_runs_base_verifier_against_both_roots(self):
+        self.assertIn("python3 -I base/scripts/swarm_gate.py evaluate", self.workflow)
+        self.assertIn("--root base", self.workflow)
+        self.assertIn("--head-root tested", self.workflow)
+        self.assertIn("RUNNER_TEMP/swarm-gate-event.json", self.workflow)
+
+
+class CanonicalRevisionExtractionTests(unittest.TestCase):
+    """One canonical line, one revision token; trailing prose is not a second claim."""
+
+    def test_pr1815_line_with_trailing_prose_returns_sha(self):
+        self.assertEqual(gate.extract_note_revision(PROSE_LINE), ANCESTOR)
+
+    def test_canonical_line_alone_returns_sha(self):
+        self.assertEqual(gate.extract_note_revision(f"Tested revision: {HEAD}"), HEAD)
+
+    def test_two_shas_on_one_line_is_rejected(self):
+        line = f"Tested revision: {HEAD} {ANCESTOR} (two claims)"
+        self.assertEqual(gate.extract_note_revision(line), "")
+
+    def test_two_canonical_lines_are_rejected(self):
+        text = EVIDENCE + f"Tested revision: {ANCESTOR} (later)\n"
+        self.assertEqual(gate.extract_note_revision(text), "")
+
+    def test_empty_text_returns_no_revision(self):
+        self.assertEqual(gate.extract_note_revision(""), "")
+        self.assertEqual(gate.extract_note_revision(None), "")
+
+    def test_missing_sha_is_rejected(self):
+        self.assertEqual(gate.extract_note_revision(
+            "Tested revision: (`git rev-parse HEAD` was not run)"), "")
+
+    def test_malformed_sha_is_rejected(self):
+        for sha in ("g" * 40, HEAD.upper(), "e" * 39):
+            with self.subTest(sha=sha):
+                self.assertEqual(gate.extract_note_revision(f"Tested revision: {sha}"), "")
+
+    def test_longer_hex_token_and_bare_prose_sha_are_rejected(self):
+        self.assertEqual(gate.extract_note_revision(f"Tested revision: {'a' * 41}"), "")
+        self.assertEqual(gate.extract_note_revision(f"Tested revision: {HEAD}0"), "")
+        self.assertEqual(gate.extract_note_revision(f"I tested {HEAD} in prose"), "")
+
+    def test_trailing_prose_binds_ancestry_and_rejects_divergence(self):
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(
+                EVIDENCE.replace(f"Tested revision: {HEAD}\n", PROSE_LINE + "\n"))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                      "head": {"sha": HEAD, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []}}
+            details = {"title": "TASK-01: x", "labels": [], "commits": [],
+                       "headRefOid": HEAD}
+            observed = []
+
+            def checker(note_sha, head_sha, repo):
+                observed.append((note_sha, head_sha, repo))
+                return (compare_result("diverged", BASE, 3) if len(observed) == 2
+                        else compare_result("ahead", ANCESTOR))
+
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base),
+                                           head_root=str(head), ancestry_checker=checker)
+                passed = gate.evaluate(ctx).check("revision_binding").state
+                # The same note still fails when the trusted compare says diverged.
+                ctx = gate.collect_context(event, "pull_request", str(base),
+                                           head_root=str(head), ancestry_checker=checker)
+                failed = gate.evaluate(ctx).check("revision_binding").state
+            self.assertEqual(observed, [(ANCESTOR, HEAD, "owner/repo")] * 2)
+            self.assertEqual(ctx.note_sha, ANCESTOR)
+            self.assertEqual(passed, gate.PASSED)
+            self.assertEqual(failed, gate.FAILED)
+
+
+class ValidateNoteCommandTests(unittest.TestCase):
+    """Workers can catch an unreadable revision line before publishing a PR."""
+
+    def write_note(self, line):
+        path = Path(tempfile.mkdtemp()) / "note.md"
+        path.write_text(EVIDENCE.replace(f"Tested revision: {HEAD}\n", line + "\n"),
+                        encoding="utf-8")
+        return path
+
+    def test_valid_prose_note_returns_zero_and_names_the_sha(self):
+        path = self.write_note(PROSE_LINE)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-note", "--note-path", str(path)])
+        self.assertEqual(code, 0)
+        self.assertIn(f"Swarm gate: note revision valid: {ANCESTOR}", out.getvalue())
+        self.assertEqual(err.getvalue(), "")
+
+    def test_malformed_note_returns_two_without_a_traceback(self):
+        path = self.write_note(PROSE_LINE + "\nTested revision: " + DIVERGED)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-note", "--note-path", str(path)])
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", err.getvalue())
+        self.assertIn("note revision", err.getvalue())
+
+    def test_validate_note_requires_a_path(self):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-note"])
+        self.assertEqual(code, 2)
+        self.assertIn("note revision", err.getvalue())
+
+    def test_unreadable_note_path_returns_two_without_a_traceback(self):
+        path = Path(tempfile.mkdtemp()) / "missing.md"
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-note", "--note-path", str(path)])
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", err.getvalue())
+        self.assertIn("note validation error", err.getvalue())
+
+    def test_evaluate_still_requires_an_event_path(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(gate.main(["evaluate", "--event-name", "pull_request"]), 2)
+
+    def test_refresh_event_still_requires_an_event_path(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(gate.main(["refresh-event"]), 2)
+
+
+class ValidateTasksCommandTests(unittest.TestCase):
+    """Offline preflight for tracker fields that otherwise abort reconciliation."""
+
+    def write_tasks(self, files):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(root, ignore_errors=True))
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        return root
+
+    def run_check(self, root):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-tasks", "--dir", str(root)])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_empty_directory_passes_with_zero_count(self):
+        code, out, err = self.run_check(self.write_tasks({}))
+        self.assertEqual(code, 0)
+        self.assertIn("Swarm gate: task validation valid: 0 task files", out)
+        self.assertEqual(err, "")
+
+    def test_all_task_states_and_valid_pr_forms_pass(self):
+        root = self.write_tasks({
+            "a.md": "- [ ] ACTIVE-1 · one\n  - pr: #12\n",
+            "b.md": "- [-] TAKEN-1 · two\n  - pr: 13\n",
+            "c.md": "- [x] DONE-1 · three\n  - [x] a completed checklist item\n",
+            "d.md": "- [!] HELD-1 · four\n  - details:\n    reason\n",
+        })
+        code, out, err = self.run_check(root)
+        self.assertEqual(code, 0)
+        self.assertIn("4 task files", out)
+        self.assertEqual(err, "")
+
+    def test_unreadable_task_file_is_reported_and_scan_continues(self):
+        root = self.write_tasks({"a.md": "- [ ] BAD-9 · one\n  - pr: prose\n"})
+        (root / "broken.md").mkdir()
+        code, out, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("broken.md: unreadable task file", err)
+        self.assertIn("BAD-9 has a malformed pr: field", err)
+        self.assertEqual(out, "")
+
+    def test_unreadable_directory_glob_is_reported(self):
+        with mock.patch.object(Path, "glob", side_effect=OSError("denied")):
+            code, out, err = self.run_check("tasks")
+        self.assertEqual(code, 2)
+        self.assertIn("unreadable task directory: denied", err)
+        self.assertEqual(out, "")
+
+    def test_files_without_a_task_line_are_skipped(self):
+        root = self.write_tasks({
+            "_head.md": "# TODO\n\nThis file holds instructions, not a task entry.\n",
+        })
+        code, out, err = self.run_check(root)
+        self.assertEqual(code, 0)
+        self.assertIn("0 task files", out)
+        self.assertEqual(err, "")
+
+    def test_prose_pr_field_is_reported_and_exits_two(self):
+        root = self.write_tasks({
+            "a.md": "- [ ] BAD-1 · one\n  - pr: local scoped commits on main\n",
+        })
+        code, out, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("BAD-1 has a malformed pr: field", err)
+        self.assertNotIn("Traceback", err)
+
+    def test_repeated_pr_field_is_reported_and_exits_two(self):
+        root = self.write_tasks({"a.md": "- [ ] BAD-2 · two\n  - pr: #12\n  - pr: #13\n"})
+        code, _, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("BAD-2 has repeated pr: fields", err)
+
+    def test_duplicate_id_across_files_is_reported_and_exits_two(self):
+        root = self.write_tasks({
+            "a.md": "- [ ] DUP-1 · one\n",
+            "b.md": "- [-] DUP-1 · two\n",
+        })
+        code, _, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("DUP-1 appears in more than one task file", err)
+
+    def test_done_file_with_embedded_open_checkbox_is_reported(self):
+        root = self.write_tasks({
+            "a.md": "- [x] DONE-2 · done\n\n- [ ] Independent review and final checkpoint.\n",
+        })
+        code, _, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("DONE-2 contains an open task line after its task mark", err)
+
+    def test_task_patterns_stay_in_sync_with_reconcile(self):
+        """A parser change in reconcile must not silently drift from preflight."""
+        source = (Path(__file__).resolve().parents[2] / "scripts" / "swarm.py").read_text(
+            encoding="utf-8")
+        self.assertIn(r"^- \[[- ]\] (\S+)", source)
+        self.assertIn(r"^  - pr:[ \t]*(.*)$", source)
+        self.assertIn(r"#?[1-9][0-9]*", source)
+        active = "- [ ] SYNC-1 · one\n  - pr: #12\n"
+        self.assertEqual(gate.ACTIVE_TASK_LINE.search(active).group(1), "SYNC-1")
+        self.assertEqual(gate.PR_FIELD.findall(active), ["#12"])
+        self.assertTrue(gate.PR_NUMBER.fullmatch("#12"))
+
+    def test_check_scripts_run_the_preflight(self):
+        scripts = Path(__file__).resolve().parents[2] / "scripts"
+        for name in ("check.sh", "quick-check.sh"):
+            with self.subTest(script=name):
+                text = (scripts / name).read_text(encoding="utf-8")
+                self.assertIn("swarm_gate.py validate-tasks --dir tasks", text)
+
+    def test_missing_dir_returns_two_without_a_traceback(self):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-tasks"])
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", err.getvalue())
+
+    def test_unreadable_dir_returns_two_without_a_traceback(self):
+        root = Path(tempfile.mkdtemp()) / "missing"
+        code, _, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("unreadable", err.lower())
 
 
 if __name__ == "__main__":

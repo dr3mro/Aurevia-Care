@@ -25,20 +25,23 @@ import com.aurevia.messaging.attachments.AttachmentContract.UploadRequest;
 import com.aurevia.messaging.attachments.AttachmentContract.View;
 
 /**
- * Domain service for S-G3-06 attachments (MSG-03, ARC-06).
+ * Domain service for message attachments.
  *
  * <p>An upload is accepted into private quarantine only after its declared
  * content type, leading bytes, size and checksum all validate. The unit and
  * patient binding come from a server-side verified connection grant, never
  * from the upload command, and the fresh caller snapshot is re-checked on
- * every command. A payload becomes reachable only after an independent clean
- * verdict and an explicit publication against an authorized message.</p>
+ * every command. A payload becomes downloadable by another participant only after
+ * an independent clean verdict and explicit publication with a validated message
+ * identifier; the uploader can still view its own quarantined draft.
+ * Message existence is not checked in this slice.</p>
  *
  * <p>The integrating layer must rebuild the {@code Actor} from active
- * membership and verified link state on each protected request (IAM-01).
- * Every refused authorization is recorded as an append-only fact; no payload
- * bytes, file names or URLs ever enter a fact or this service's output beyond
- * the private object handle.</p>
+ * membership and verified link state on each protected request. Refusals raised
+ * with an actor are recorded as append-only facts; concealed or missing resources
+ * are not. File names never enter a fact; no payload bytes or URLs are returned,
+ * and only the private object key is exposed for retrieval through the object
+ * boundary.</p>
  */
 @Service
 public final class AttachmentService {
@@ -130,7 +133,7 @@ public final class AttachmentService {
      * Explicitly publish named clean files to one message and recipient unit.
      *
      * <p>Every file is validated before the first one is changed, so a batch
-     * with a single invalid member publishes nothing (MSG-03 explicit send).</p>
+     * with a single invalid member publishes nothing.</p>
      *
      * @param actor   freshly derived sender identity
      * @param request identifiers of the pending files, message and recipient unit

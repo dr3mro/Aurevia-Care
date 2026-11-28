@@ -21,7 +21,7 @@ import com.aurevia.audit.AuditAppender;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * XCH-03 recipient-response invariants (XCH-01, XCH-02, XCH-03, ARC-03, OPS-02).
+ * Recipient-response invariants for exchanged orders.
  *
  * <p>Each command runs in one tenant-guarded transaction: authorization is
  * re-derived, the order row is locked and its expected version checked, the
@@ -48,7 +48,7 @@ public class ExchangeResponseService {
      * Create the service.
      *
      * @param repository   RLS-bounded order repository
-     * @param policy       local XCH-03 action policy
+     * @param policy       local recipient-response action policy
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
      */
@@ -129,7 +129,7 @@ public class ExchangeResponseService {
      * accepted snapshot is never rewritten and the recipient must respond. The
      * proposed revision lives only in the revision ledger until that response:
      * retrieval keeps serving the last accepted revision in the meantime, so a
-     * rejected change can never serve unretained content (XCH-03, ARC-03).
+     * rejected change can never serve unretained content.
      *
      * @param id      order identifier
      * @param version version read by the caller
@@ -141,7 +141,7 @@ public class ExchangeResponseService {
         String summary = ExchangeResponseInputs.text(request.changeSummary(), "changeSummary", MAX_REASON, true);
         String checksum = ExchangeResponseInputs.checksum(request.contentChecksum());
         return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_PROPOSE_CHANGE, "propose_change", current -> {
-            // XCH-03 scopes changes to *after* acceptance: only an accepted order has
+            // Changes are scoped to *after* acceptance: only an accepted order has
             // a verified patient, permitted purpose and retained recipient copy.
             requireState(current, ExchangeState.ACCEPTED);
             int next = current.revision() + 1;
@@ -157,8 +157,8 @@ public class ExchangeResponseService {
     /**
      * Record the recipient response to a linked change. Accepting promotes the
      * linked revision to current and retains it under the purpose captured at the
-     * original acceptance; rejecting leaves the accepted revision current so no
-     * unretained content is ever served through retrieval (XCH-03, ARC-03).
+     * original acceptance; rejecting records a terminal rejection while the revision
+     * pointer stays put, so no unretained content is ever served through retrieval.
      *
      * @param id      order identifier
      * @param version version read by the caller
@@ -275,7 +275,7 @@ public class ExchangeResponseService {
      * @param id order identifier
      * @return the current released revision
      * @throws ApiException {@code 410} when the release was revoked, {@code 404}
-     *                      when concealed, or on denial and staleness
+     *                      when concealed, or on invalid input and denial
      */
     public Revision retrieve(String id) {
         ExchangeResponseInputs.uuid(id, "id");
@@ -380,7 +380,7 @@ public class ExchangeResponseService {
                 // A locally verified patient association and every ledger reference are
                 // enforced by tenant-scoped database constraints. An unresolvable reference
                 // is concealed as not found; any other integrity refusal is a conflict —
-                // never an unhandled 500 (XCH-03, ARC-03, ARC-04).
+                // never an unhandled 500.
                 throw SqlFailureTranslator.translate(exception);
             }
         });

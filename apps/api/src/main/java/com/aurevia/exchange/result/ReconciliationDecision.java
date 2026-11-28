@@ -9,12 +9,12 @@ import com.aurevia.exchange.result.ReconciliationModel.ReconciliationAction;
 import com.aurevia.exchange.result.ReconciliationModel.Resolution;
 
 /**
- * Pure XCH-04 reconciliation-resolution rules.
+ * Pure reconciliation-resolution rules.
  *
  * <p>An entry may be resolved only once. Every disposition requires a recorded
  * reason; only a reassignment may name a new owner, and that owner is required
- * and bounded. No I/O or framework state lives here, so each guard is covered
- * by the fast unit tier.</p>
+ * and bounded. No I/O or framework state lives here, so each guard is decided
+ * from its arguments alone.</p>
  */
 public final class ReconciliationDecision {
 

@@ -317,6 +317,11 @@ jobs:
               exit 1
             fi
           done
+      # Reconcile runs after publication, so a bad tracker field checked there
+      # would already have pushed branches. Validate the trusted main tracker
+      # here, before any write, and fail the wave on malformed task fields.
+      - name: Validate task tracker fields
+        run: python3 -I scripts/swarm_gate.py validate-tasks --dir tasks
       - name: Push only the exact validated commit SHAs
         id: push
         env:
@@ -351,7 +356,9 @@ jobs:
             .github/actions
       - uses: ./.github/actions/setup-tooling-python
       - name: Reconcile tasks whose PRs merged
-        run: python3 -I scripts/swarm.py reconcile-tasks --dir tasks
+        run: |
+          python3 -I scripts/swarm_gate.py validate-tasks --dir tasks
+          python3 -I scripts/swarm.py reconcile-tasks --dir tasks
 
   # Automatic conflict resolution is disabled until a trusted seal job can
   # attest conflict decisions. Candidate-runner output must never authorize an

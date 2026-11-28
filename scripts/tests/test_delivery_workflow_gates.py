@@ -360,6 +360,15 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
         self.assertFalse(any("integrate-publish" in run_text(step) for step in reconcile["steps"]))
         self.assertTrue(any("reconcile-tasks" in run_text(step) for step in reconcile["steps"]))
 
+    def test_tracker_preflight_runs_before_publication(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
+        steps = workflow["jobs"]["publish"]["steps"]
+        texts = [" ".join(str(value) for value in step.values()) for step in steps]
+        preflight = next(i for i, text in enumerate(texts) if "validate-tasks" in text)
+        publish = next(i for i, text in enumerate(texts) if "integrate-publish" in text)
+        self.assertLess(preflight, publish)
+        self.assertFalse(any("reconcile-tasks" in text for text in texts))
+
     def test_follow_up_jobs_require_successful_publication(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         jobs = workflow["jobs"]
