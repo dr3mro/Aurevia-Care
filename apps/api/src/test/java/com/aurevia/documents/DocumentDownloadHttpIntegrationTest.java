@@ -213,7 +213,9 @@ class DocumentDownloadHttpIntegrationTest {
         String chartId = registerChart();
         for (String name : new String[] { "..", "a..b" }) {
             ResponseEntity<String> response = linkWithFileName(chartId, name);
-            assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode(), response.getBody());
+            // Spring 7 renamed HttpStatus.UNPROCESSABLE_ENTITY to UNPROCESSABLE_CONTENT;
+            // assert the wire code so the 422 contract stays stable across the rename.
+            assertEquals(422, response.getStatusCode().value(), response.getBody());
             assertNotNull(response.getBody());
             assertTrue(response.getBody().contains("INVALID_FILE_NAME"), response.getBody());
         }
