@@ -1,7 +1,9 @@
-name: Rebase PR onto main
+name: Refresh PR from main
 # First step for a freshly opened PR: bring its branch up to date with main so
-# the PR starts conflict-free. Triggered only on `opened` (not `synchronize`) so
-# the rebase push cannot loop. Conflicts are reported, never auto-resolved.
+# the PR starts conflict-free. The base is merged, not rebased, so a worker
+# note's tested revision stays in the branch ancestry and the Swarm gate keeps
+# proving it. Triggered only on `opened` (not `synchronize`) so the merge push
+# cannot loop. Conflicts are reported, never auto-resolved.
 on:
   pull_request:
     types: [opened]
@@ -11,8 +13,8 @@ concurrency:
   group: pr-rebase-${{ github.run_id }}
   cancel-in-progress: false
 jobs:
-  rebase:
-    name: Rebase ${{ github.event.pull_request.head.ref }} onto main
+  refresh:
+    name: Refresh ${{ github.event.pull_request.head.ref }} from main
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -25,7 +27,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Rebase onto main and push
+      - name: Merge main and push
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           BASE: ${{ github.event.repository.default_branch }}
@@ -42,14 +44,16 @@ jobs:
           }
           gh_fetch "+refs/heads/$BASE:refs/remotes/origin/$BASE"
           if git merge-base --is-ancestor "origin/$BASE" HEAD; then
-            echo "Already contains main; nothing to rebase."; exit 0
+            echo "Already contains main; nothing to merge."; exit 0
           fi
-          if git rebase "origin/$BASE"; then
+          # A merge commit keeps the worker's tested head as an ancestor, so a
+          # canonical Tested revision: line remains provable by the Swarm gate.
+          if git merge --no-edit "origin/$BASE"; then
             git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
-              push --force-with-lease origin "HEAD:$(git rev-parse --abbrev-ref HEAD)"
-            gh pr comment "$PR" --body "Rebased this branch onto \`$BASE\` so it starts conflict-free."
+              push origin "HEAD:$(git rev-parse --abbrev-ref HEAD)"
+            gh pr comment "$PR" --body "Merged \`$BASE\` into this branch so it starts conflict-free."
           else
-            git rebase --abort || true
-            gh pr comment "$PR" --body "⚠️ Rebase onto \`$BASE\` hit conflicts. Resolve them manually or let a fix worker handle it."
+            git merge --abort || true
+            gh pr comment "$PR" --body "⚠️ Merge of \`$BASE\` into this branch hit conflicts. Resolve them manually or let a fix worker handle it."
             exit 0
           fi
