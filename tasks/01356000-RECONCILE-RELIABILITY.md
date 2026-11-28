@@ -1,6 +1,7 @@
-- [-] RECONCILE-RELIABILITY · Unblock and harden task reconciliation after post-21:00EST failures
+- [x] RECONCILE-RELIABILITY · Unblock and harden task reconciliation after post-21:00EST failures
   - agent: orca
   - attempts: 0
+  - pr: #1829
   - requirements: OPS-06
   - scope: tasks/00095000-AUTH-WIRE-02.md, tasks/01270000-AUDIT-FIX-DEPENDABOT-GATE.md, scripts/swarm.py, scripts/swarm_gate.py, scripts/check.sh, scripts/quick-check.sh, scripts/tests/test_swarm.py, scripts/tests/test_swarm_schedule_coverage.py, scripts/tests/test_swarm_gate.py, .github/workflows/swarm-integrator.yml, tasks/01356000-RECONCILE-RELIABILITY.md
   - details:
