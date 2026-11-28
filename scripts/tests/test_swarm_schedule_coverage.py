@@ -13,6 +13,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -562,6 +563,66 @@ class PendingNotesTests(unittest.TestCase):
                 mock.patch.object(swarm, "live_workers", return_value=[]) as live:
             self.assertTrue(swarm.daily_can_start())
         live.assert_not_called()
+
+
+class PaginatedMergeRetryTests(unittest.TestCase):
+    """A transient GitHub read must retry without weakening fail-closed parsing."""
+
+    RECORD = {"number": 7, "title": "X-7: one", "baseRefName": "main", "state": "MERGED"}
+
+    def test_transient_failure_then_success_uses_two_calls(self):
+        transient = subprocess.CalledProcessError(1, ["gh"], stderr="502 Bad Gateway")
+        with mock.patch.object(subprocess, "check_output",
+                               side_effect=[transient, json.dumps(self.RECORD)]) as checked, \
+                mock.patch.object(swarm.time, "sleep") as slept:
+            merged = swarm.paginated_merged_pull_requests("main")
+        self.assertEqual(merged, [self.RECORD])
+        self.assertEqual(checked.call_count, 2)
+        slept.assert_called_once_with(1)
+
+    def test_persistent_transient_failure_stops_after_three_calls(self):
+        transient = subprocess.CalledProcessError(1, ["gh"], stderr="secondary rate limit")
+        with mock.patch.object(subprocess, "check_output", side_effect=transient) as checked, \
+                mock.patch.object(swarm.time, "sleep") as slept, \
+                mock.patch.object(sys, "stderr", new_callable=io.StringIO) as err:
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.paginated_merged_pull_requests("main")
+        self.assertEqual(checked.call_count, 3)
+        self.assertEqual([call.args[0] for call in slept.call_args_list], [1, 2])
+        self.assertIn("secondary rate limit", err.getvalue())
+
+    def test_non_transient_failure_raises_immediately_without_sleep(self):
+        denied = subprocess.CalledProcessError(1, ["gh"], stderr="permission denied")
+        with mock.patch.object(subprocess, "check_output", side_effect=denied) as checked, \
+                mock.patch.object(swarm.time, "sleep") as slept, \
+                mock.patch.object(sys, "stderr", new_callable=io.StringIO) as err:
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.paginated_merged_pull_requests("main")
+        self.assertEqual(checked.call_count, 1)
+        slept.assert_not_called()
+        self.assertIn("permission denied", err.getvalue())
+
+    def test_failure_without_stderr_raises_without_a_message(self):
+        silent = subprocess.CalledProcessError(1, ["gh"], stderr="")
+        with mock.patch.object(subprocess, "check_output", side_effect=silent) as checked, \
+                mock.patch.object(swarm.time, "sleep") as slept, \
+                mock.patch.object(sys, "stderr", new_callable=io.StringIO) as err:
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.paginated_merged_pull_requests("main")
+        self.assertEqual(err.getvalue(), "")
+        self.assertEqual(checked.call_count, 1)
+        slept.assert_not_called()
+
+    def test_retry_success_still_parses_json_lines_and_keeps_read_only_env(self):
+        transient = subprocess.CalledProcessError(1, ["gh"], stderr="timed out")
+        second = json.dumps(self.RECORD) + "\n" + json.dumps(
+            {**self.RECORD, "number": 8, "title": "X-8: two"})
+        with mock.patch.object(subprocess, "check_output",
+                               side_effect=[transient, second]) as checked, \
+                mock.patch.object(swarm.time, "sleep"):
+            merged = swarm.paginated_merged_pull_requests("main")
+        self.assertEqual([item["number"] for item in merged], [7, 8])
+        self.assertEqual(checked.call_args.kwargs["env"]["GIT_OPTIONAL_LOCKS"], "0")
 
 
 if __name__ == "__main__":

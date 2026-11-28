@@ -69,6 +69,14 @@ INTEGRATION_BRANCH = re.compile(r"^swarm/integration/[A-Za-z0-9._-]+$")
 RECONCILE_BRANCH = re.compile(r"^swarm/reconcile/[A-Za-z0-9._-]+$")
 TASK_TITLE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9-]*):\s+\S")
 TASK_MARK = re.compile(r"^- \[([ x!-])\] (\S+)\s+·", re.M)
+# Reconcile reads the first open or taken task line of every file and its single
+# pr: field. Mirror that exact contract here so a local preflight cannot pass a
+# tracker that the integrator will later reject. [x] and [!] files are skipped,
+# but a later open checkbox in them is a latent false task id and is reported.
+TASK_LINE = re.compile(r"^- \[([ x!-])\] (\S+)", re.M)
+ACTIVE_TASK_LINE = re.compile(r"^- \[[- ]\] (\S+)", re.M)
+PR_FIELD = re.compile(r"^  - pr:[ \t]*(.*)$", re.M)
+PR_NUMBER = re.compile(r"#?[1-9][0-9]*")
 EVIDENCE_SECTIONS = ("## Test evidence", "## Coverage", "## Review verdicts")
 CHECK_COMMANDS = ("scripts/quick-check.sh", "scripts/check.sh", "mvn ",
                   "python3 -I -m unittest", "apps/patient-mobile/check.sh", "apps/staff-web/check.sh")
@@ -204,6 +212,56 @@ def extract_note_revision(text):
     """
     sha, _ = parse_note_revision(text)
     return sha
+
+
+def validate_tasks(directory):
+    """Validate task tracker shape offline, without a token or GitHub call.
+
+    ``directory`` is a path to the task markdown files. The returned pair is
+    ``(count, errors)``: ``count`` is the number of files inspected and each
+    error is a ``(path, reason)`` pair so the caller can report every bad file.
+    Only open ``[ ]`` and taken ``[-]`` entries are active, matching reconcile;
+    ``[x]`` and ``[!]`` entries are valid states but a later open checkbox in
+    such a file is reported because reconcile would read it as the task id.
+    An active task may have no ``pr:``, or one numeric ``pr:``; duplicate task
+    ids and repeated or malformed ``pr:`` fields fail closed.
+    """
+    count, errors, seen = 0, [], {}
+    root = Path(directory)
+    if not root.is_dir():
+        return 0, [(str(directory), "unreadable task directory")]
+    try:
+        paths = sorted(root.glob("*.md"))
+    except OSError as error:
+        return 0, [(str(directory), f"unreadable task directory: {error}")]
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as error:
+            errors.append((str(path), f"unreadable task file: {error}"))
+            continue
+        first = TASK_LINE.search(text)
+        if first is None:
+            # Instructions such as tasks/_head.md are not task entries; reconcile
+            # skips them too, so a validator must not fail the whole tracker.
+            continue
+        count += 1
+        tid, state = first.group(2), first.group(1)
+        if state in ("x", "!"):
+            buried = ACTIVE_TASK_LINE.search(text, first.end())
+            if buried is not None:
+                errors.append((str(path),
+                               f"{tid} contains an open task line after its task mark"))
+            continue
+        if tid in seen:
+            errors.append((str(path), f"{tid} appears in more than one task file"))
+        seen[tid] = path
+        fields = PR_FIELD.findall(text)
+        if len(fields) > 1:
+            errors.append((str(path), f"{tid} has repeated pr: fields"))
+        elif len(fields) == 1 and not PR_NUMBER.fullmatch(fields[0].strip()):
+            errors.append((str(path), f"{tid} has a malformed pr: field"))
+    return count, errors
 
 
 def _note_key(path):
@@ -655,18 +713,19 @@ def refresh_event(event_path, head_sha, original_sha, output_path):
 
 
 def main(argv=None):
-    """Evaluate an event, refresh a moved head or validate a note locally.
+    """Evaluate an event, refresh a moved head, or validate a note or task tree.
 
     Exit 0 only when the requested operation succeeds; malformed input and
     unavailable verification data return 2 so a CI reader can act on them.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", nargs="?", default="evaluate",
-                        choices=("evaluate", "refresh-event", "validate-note"))
+                        choices=("evaluate", "refresh-event", "validate-note", "validate-tasks"))
     # The event is required only for the two event-driven commands; validate-note
     # works on a single note and must not need a GitHub event or a token.
     parser.add_argument("--event-path", default="")
     parser.add_argument("--note-path", default="")
+    parser.add_argument("--dir", default="")
     parser.add_argument("--event-name")
     parser.add_argument("--root", default=".")
     # The verifier runs from the trusted base checkout, but the manifest and
@@ -694,6 +753,17 @@ def main(argv=None):
                       file=sys.stderr)
                 return 2
             print(f"Swarm gate: note revision valid: {sha}")
+            return 0
+        if args.command == "validate-tasks":
+            if not args.dir:
+                raise ValueError("task validation requires --dir")
+            count, errors = validate_tasks(args.dir)
+            for path, reason in errors:
+                print(f"Swarm gate: task validation error: {path}: {reason}",
+                      file=sys.stderr)
+            if errors:
+                return 2
+            print(f"Swarm gate: task validation valid: {count} task files")
             return 0
         if not args.event_path:
             raise ValueError("evaluate and refresh-event require --event-path")
