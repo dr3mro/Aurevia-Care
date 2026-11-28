@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 import com.aurevia.api.ApiException;
 
 /**
- * Trust-boundary validation for XCH-03 commands (ARC-03).
+ * Trust-boundary validation for recipient-response commands.
  *
  * <p>Every value is trimmed, bounded and checked here before a transaction
  * opens, so an invalid command never reaches durable state. Optional blank

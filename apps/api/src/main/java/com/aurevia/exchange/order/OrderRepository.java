@@ -14,7 +14,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 /**
- * SQL boundary for the XCH-01 order exchange.
+ * SQL boundary for the clinical order exchange.
  *
  * <p>Every statement runs inside the tenant-guarded transaction. The sender owns
  * the order, its snapshot and its disclosure ledger; the work item is a bounded

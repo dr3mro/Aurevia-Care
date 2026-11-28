@@ -5,12 +5,12 @@ import java.util.Locale;
 import com.aurevia.api.ApiException;
 
 /**
- * The three XCH-06 release policies.
+ * The three release timing policies.
  *
  * <p>{@code IMMEDIATE} releases are visible as soon as the authorization is
  * effective, {@code TIMED} releases become visible at a configured future
  * instant, and {@code HOLD} releases stay invisible until an authorized reviewer
- * lifts the hold. A hold never opens access by elapsed time alone (PRD-06).</p>
+ * lifts the hold. A hold never opens access by elapsed time alone.</p>
  */
 public enum ReleaseKind {
     /** Visible once the authorization is effective. */

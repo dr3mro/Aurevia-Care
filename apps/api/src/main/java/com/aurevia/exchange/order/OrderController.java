@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Thin HTTP adapter for the XCH-01 order exchange.
+ * Thin HTTP adapter for the clinical order exchange.
  *
  * <p>The controller contains no business rules: tenant derivation happens in the
  * request interceptor, and authorization, snapshotting, disclosure and the work
@@ -39,6 +39,7 @@ public class OrderController {
      *
      * @param request release command
      * @return HTTP 201 with the stamped released order
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     @PostMapping("/orders")
     public ResponseEntity<OrderView> create(@RequestBody OrderRequest request) {
@@ -53,6 +54,7 @@ public class OrderController {
      * @param limit  page size, or {@code null} for the default of 50
      * @param status optional exact work-item state filter
      * @return HTTP 200 with one page of orders
+     * @throws com.aurevia.api.ApiException on invalid input or denial
      */
     @GetMapping("/orders")
     public OrderPage list(@RequestParam(required = false) String cursor,
@@ -66,6 +68,7 @@ public class OrderController {
      *
      * @param id order identifier
      * @return HTTP 200 with the order
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     @GetMapping("/orders/{id}")
     public OrderView get(@PathVariable String id) {
@@ -77,6 +80,7 @@ public class OrderController {
      *
      * @param request authorization command
      * @return HTTP 201 with the appended authorization
+     * @throws com.aurevia.api.ApiException on invalid input or denial
      */
     @PostMapping("/exchange/authorizations")
     public ResponseEntity<AuthorizationView> authorize(@RequestBody AuthorizationRequest request) {
@@ -89,6 +93,7 @@ public class OrderController {
      * List bounded work items of the active receiving organization.
      *
      * @return HTTP 200 with the destination's work items
+     * @throws com.aurevia.api.ApiException on denial
      */
     @GetMapping("/exchange/work-items")
     public List<WorkItemView> workItems() {
@@ -101,6 +106,7 @@ public class OrderController {
      * @param id      work item identifier
      * @param request receiver-side patient identifier
      * @return HTTP 200 with the verified work item
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment, identity mismatch or a repeat verification
      */
     @PostMapping("/exchange/work-items/{id}/verify-patient")
     public WorkItemView verifyPatient(@PathVariable String id,

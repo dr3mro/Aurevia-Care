@@ -18,7 +18,7 @@ import com.aurevia.exchange.result.ResultModel.ReconciliationEntry;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Commands for XCH-04 reconciliation-queue resolution (ARC-02, OPS-02).
+ * Commands for reconciliation-queue resolution.
  *
  * <p>Each command runs in one tenant-guarded transaction. Membership and role
  * are re-derived from the active tenant on every request, the entry is read
@@ -123,6 +123,7 @@ public class ReconciliationService {
      *
      * @param entryId queue entry identifier
      * @return the resolution recorded in the active tenant, if any
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     public Optional<Resolution> resolution(String entryId) {
         String id = uuid(entryId, "entryId");

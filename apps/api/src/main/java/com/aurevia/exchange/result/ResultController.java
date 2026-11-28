@@ -23,7 +23,7 @@ import com.aurevia.exchange.result.ResultModel.ResultDetail;
 import com.aurevia.exchange.result.ResultModel.Review;
 
 /**
- * Thin HTTP adapter for XCH-04 (ARC-03, ARC-04).
+ * Thin HTTP adapter for result routing.
  *
  * <p>No domain decision lives here. The version precondition is parsed before
  * the service compares it, and an imported report returns 201 while a report
@@ -49,6 +49,7 @@ public class ResultController {
      *
      * @param request expectation values
      * @return HTTP 201 with the registered expectation
+     * @throws com.aurevia.api.ApiException on invalid input or denial
      */
     @PostMapping("/orders")
     public ResponseEntity<ExpectedOrder> registerOrder(@RequestBody RegisterOrderRequest request) {
@@ -61,6 +62,7 @@ public class ResultController {
      *
      * @param request inbound result values
      * @return 201 with the revision, or 202 with a reconciliation entry
+     * @throws com.aurevia.api.ApiException on invalid input, denial or a conflict
      */
     @PostMapping("/results")
     public ResponseEntity<?> importResult(@RequestBody ImportResultRequest request) {
@@ -77,6 +79,7 @@ public class ResultController {
      *
      * @param id revision identifier
      * @return the result detail
+     * @throws com.aurevia.api.ApiException on invalid input, denial or concealment
      */
     @GetMapping("/results/{id}")
     public ResultDetail getReport(@PathVariable String id) {
@@ -89,6 +92,7 @@ public class ResultController {
      * @param id      revision identifier
      * @param ifMatch expected review task version
      * @return the acknowledged review task
+     * @throws com.aurevia.api.ApiException on invalid input, denial, concealment or a stale version
      */
     @PostMapping("/results/{id}/acknowledge")
     public Review acknowledge(@PathVariable String id,
@@ -101,6 +105,7 @@ public class ResultController {
      *
      * @param status {@code open} or {@code resolved}
      * @return queue entries newest first
+     * @throws com.aurevia.api.ApiException on invalid input or denial
      */
     @GetMapping("/reconciliations")
     public List<ReconciliationEntry> listReconciliation(

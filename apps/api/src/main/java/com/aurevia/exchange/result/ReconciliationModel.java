@@ -7,9 +7,9 @@ import com.aurevia.api.ApiException;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Value contracts for operator resolution of unmatched XCH-04 results.
+ * Value contracts for operator resolution of unmatched results.
  *
- * <p>A result whose patient, accession, destination or order identifier does not
+ * <p>A result whose patient, source, accession, destination or order identifier does not
  * match the registered expectation is diverted to the reconciliation queue and
  * never imported. An authorized operator then resolves that entry by matching,
  * rejecting or reassigning it with a recorded reason. These immutable contracts
