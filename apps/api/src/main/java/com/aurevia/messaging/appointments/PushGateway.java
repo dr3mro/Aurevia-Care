@@ -1,8 +1,9 @@
 package com.aurevia.messaging.appointments;
 
 /**
- * Synthetic push channel boundary. The real APNs/FCM adapter
- * is a deployment decision and is not part of this slice.
+ * Push channel boundary for generic appointment notices. A real APNs/FCM adapter
+ * is a deployment decision; the local-only bean carries no clinical detail and
+ * is documented as not proving provider delivery.
  */
 public interface PushGateway {
 
