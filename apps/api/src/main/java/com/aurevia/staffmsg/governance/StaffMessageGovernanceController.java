@@ -26,7 +26,7 @@ import com.aurevia.staffmsg.governance.StaffMessageGovernanceContract.SearchPage
 import com.aurevia.staffmsg.governance.StaffMessageGovernanceContract.SearchQuery;
 
 /**
- * Thin HTTP adapter for staff-message governance (MSG-07, ARC-03).
+ * Thin HTTP adapter for staff-message governance.
  *
  * <p>All tenant derivation, authorization, retention and hold decisions live in
  * {@link com.aurevia.staffmsg.governance.StaffMessageGovernanceService};
@@ -61,6 +61,7 @@ public final class StaffMessageGovernanceController {
      *
      * @param request action command
      * @return the appended audit fact
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/actions")
     public AuditEvent recordAction(@RequestBody RecordActionRequest request) {
@@ -73,6 +74,7 @@ public final class StaffMessageGovernanceController {
      * @param messageId      message to hide
      * @param conversationId owning conversation
      * @return the appended audit fact
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/messages/{messageId}/hide")
     public AuditEvent hide(@PathVariable String messageId, @RequestParam String conversationId) {
@@ -84,6 +86,7 @@ public final class StaffMessageGovernanceController {
      *
      * @param conversationId conversation identifier
      * @return the explicit decision
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/retention/{conversationId}")
     public RetentionDecision retention(@PathVariable String conversationId) {
@@ -95,6 +98,7 @@ public final class StaffMessageGovernanceController {
      *
      * @param request hold command
      * @return HTTP 201 with the created hold
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/legal-holds")
     public ResponseEntity<LegalHold> placeHold(@RequestBody PlaceHoldRequest request) {
@@ -108,6 +112,7 @@ public final class StaffMessageGovernanceController {
      * @param id     hold identifier
      * @param reason non-sensitive release reason
      * @return the released hold
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/legal-holds/{id}/release")
     public LegalHold releaseHold(@PathVariable String id, @RequestParam String reason) {
@@ -142,6 +147,7 @@ public final class StaffMessageGovernanceController {
      *
      * @param request export command
      * @return HTTP 201 with the export and its checksum snapshot
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/exports")
     public ResponseEntity<ConversationExport> exportConversation(@RequestBody ExportRequest request) {

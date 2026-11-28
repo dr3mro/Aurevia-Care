@@ -7,7 +7,7 @@ import java.util.Set;
 import com.aurevia.staffmsg.mail.MailInputs;
 
 /**
- * Frozen value types for content-free staff notifications (MSG-06, ARC-07).
+ * Frozen value types for content-free staff notifications.
  *
  * <p>A notification draft carries only a fixed approved phrase and opaque handles.
  * No subject line, message body, sender name or patient identifier ever enters a
@@ -47,6 +47,7 @@ public final class NotificationContract {
      *
      * @param start inclusive time in the injected clock's zone (UTC in production)
      * @param end   exclusive time in the injected clock's zone (UTC in production)
+     * @return this record
      */
     public record DndWindow(LocalTime start, LocalTime end) {
 
@@ -153,6 +154,7 @@ public final class NotificationContract {
      * Fixed-wording urgent notice appended to a draft when the sender marks a message urgent.
      *
      * @param text the fixed emergency-procedure wording
+     * @return this record
      */
     public record UrgentNotice(String text) {
 
@@ -249,6 +251,7 @@ public final class NotificationContract {
      * @param dispatched whether the notifier was called
      * @param reason     the suppression reason, or NONE
      * @param draft      the dispatched draft, or null when suppressed
+     * @return this record
      */
     public record NotificationOutcome(boolean dispatched, SuppressionReason reason, NotificationDraft draft) {
 

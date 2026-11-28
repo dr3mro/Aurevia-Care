@@ -1,7 +1,7 @@
 package com.aurevia.tenant.importing;
 
 /**
- * Outcome of an OPS-08 sign-off attempt.
+ * Outcome of a controlled-import sign-off attempt.
  *
  * @param accepted true when an authorized sign-off finalized the import
  * @param reason   short machine-readable reason; empty when accepted

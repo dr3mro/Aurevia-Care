@@ -3,7 +3,7 @@ package com.aurevia.staffmsg.realtime;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Kind of change carried by an identifier-only realtime event (ARC-07).
+ * Kind of change carried by an identifier-only realtime event.
  *
  * <p>The wire value is part of the SSE {@code event:} line and of the polling
  * projection, so it is a stable lowercase token rather than the Java constant

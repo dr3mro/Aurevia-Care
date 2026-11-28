@@ -1,7 +1,7 @@
 package com.aurevia.scheduling.followup;
 
 /**
- * Booking boundary used only by the explicit confirm command (CLN-06).
+ * Booking boundary used only by the explicit confirm command.
  *
  * <p>The adapter delegates to the scheduling service so protected-slot and
  * availability rules are not duplicated here.</p>

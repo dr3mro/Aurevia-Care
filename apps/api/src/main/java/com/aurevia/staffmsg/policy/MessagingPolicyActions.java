@@ -12,7 +12,7 @@ import com.aurevia.staffmsg.policy.MessagingPolicyContract.PolicyScope;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Public command and query facade for messaging policy (MSG-07).
+ * Public command and query facade for messaging policy.
  *
  * <p>Other staff messaging services inject this facade to read the policy
  * effective for a message. Reads deliberately carry no admin gate; writes

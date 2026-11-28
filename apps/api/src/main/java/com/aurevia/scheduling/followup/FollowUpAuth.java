@@ -3,7 +3,7 @@ package com.aurevia.scheduling.followup;
 import java.util.List;
 
 /**
- * Re-derived membership source for follow-up commands (CLN-06, IAM-02).
+ * Re-derived membership source for follow-up commands.
  *
  * <p>An adapter reads the append-only membership fold on every protected
  * request, so deactivation denies the next command without token expiry.</p>

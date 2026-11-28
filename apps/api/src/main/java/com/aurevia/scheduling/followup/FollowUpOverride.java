@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 /**
- * Append-only provenance for an authorized follow-up date override (CLN-06).
+ * Append-only provenance for an authorized follow-up date override.
  *
  * <p>The actor is taken from the authenticated context, never from the caller's
  * payload. The original date stays visible so a reviewer can see what changed.</p>

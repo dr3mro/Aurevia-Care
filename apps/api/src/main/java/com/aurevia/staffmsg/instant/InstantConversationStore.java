@@ -11,7 +11,7 @@ import com.aurevia.staffmsg.model.StaffMessagingContract.StaffMessage;
 import com.aurevia.staffmsg.model.StaffMessagingContract.StaffParticipant;
 
 /**
- * Persistence boundary for instant staff conversations (MSG-02, ARC-07).
+ * Persistence boundary for instant staff conversations.
  *
  * <p>Every method names the active organization explicitly even though forced
  * row-level security also confines the statement to the guarded transaction.

@@ -21,7 +21,7 @@ import com.aurevia.scheduling.checkin.CheckInCommands.VerifyIdentity;
 import com.aurevia.scheduling.Appointment;
 
 /**
- * Thin HTTP adapter for the CLN-02 reception workflow (ARC-03).
+ * Thin HTTP adapter for the reception workflow.
  *
  * <p>The controller parses the {@code If-Match} precondition and delegates all
  * authorization, state transitions, evidence and audit to
@@ -48,6 +48,7 @@ public class ClinicController {
      *
      * @param request verification command
      * @return HTTP 201 with the immutable verification
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/verifications")
     public ResponseEntity<Verification> verify(@RequestBody VerifyIdentity request) {
@@ -128,6 +129,7 @@ public class ClinicController {
      *
      * @param request intake command
      * @return HTTP 201 with the new worklist entry
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/worklist/intake")
     public ResponseEntity<WorklistItem> intake(@RequestBody Intake request) {

@@ -16,13 +16,14 @@ import com.aurevia.tenant.retention.RetentionContract.RetentionRun;
 import com.aurevia.tenant.retention.RetentionContract.RetentionSnapshot;
 
 /**
- * Retention job for active tenant data and approved backup expirations (OPS-07).
+ * Retention job for active tenant data and approved backup expirations.
  *
  * <p>The job is a pure domain kernel: it consumes a tenant-scoped snapshot and
  * returns ledgers of deletions, expirations and explicit negative decisions for
  * the caller to persist. Every refusal is recorded rather than silently
- * dropped, and a legal hold is evaluated before any retention window so held
- * data is always explained as such. The injected clock makes boundary checks
+ * dropped. For active records a legal hold is checked before the retention
+ * window; for backups tenant, approval and due-date checks come first, so a
+ * held backup that is not yet due is reported as not due. The injected clock makes boundary checks
  * deterministic; scheduling and durable storage belong to the wiring layer.</p>
  */
 public final class RetentionJob {

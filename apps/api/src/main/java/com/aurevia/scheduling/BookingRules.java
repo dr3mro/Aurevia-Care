@@ -5,7 +5,7 @@ import java.util.function.Function;
 
 /**
  * Configurable booking rules read from the tenant's approved configuration
- * (ADM-01), with approved defaults when a setting is absent or unusable.
+ * with approved defaults when a setting is absent or unusable.
  *
  * <p>Keys: {@code booking.min_notice_minutes} (0-10080),
  * {@code booking.max_advance_days} (1-3650) and {@code booking.hold_minutes}
@@ -47,6 +47,8 @@ public record BookingRules(long minNoticeMinutes, int maxAdvanceDays, int holdMi
      * @return resolved rules
      */
     public static BookingRules from(Function<String, Optional<String>> settings) {
+        // Bounds are checked before a value is accepted so malformed configuration
+        // cannot widen a booking window beyond the approved limits.
         return new BookingRules(
                 parse(settings.apply(MIN_NOTICE_KEY).orElse(null), 0, 10080, (int) DEFAULT_MIN_NOTICE),
                 parse(settings.apply(MAX_ADVANCE_KEY).orElse(null), 1, 3650, DEFAULT_MAX_ADVANCE),

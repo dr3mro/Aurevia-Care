@@ -15,6 +15,8 @@ public record TenantContext(String organizationId, String subject, String purpos
     /** Purpose recorded on G0 facility administration audit events. */
     public static final String PURPOSE = "FACILITY_ADMIN";
 
+    // Request-thread storage: a pooled thread must not carry an organization into the
+    // next request, so the interceptor clears it after every call.
     private static final ThreadLocal<TenantContext> CURRENT = new ThreadLocal<>();
 
     /**

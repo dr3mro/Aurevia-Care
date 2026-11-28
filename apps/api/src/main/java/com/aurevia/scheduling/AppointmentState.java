@@ -6,7 +6,7 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Lifecycle of one appointment (CLN-01).
+ * Lifecycle of one appointment.
  *
  * <p>{@code held} is a temporary reservation with an expiry, {@code expired} is
  * the released form of a hold, and {@code completed}, {@code cancelled},
@@ -77,7 +77,7 @@ public enum AppointmentState {
     }
 
     /**
-     * Whether CLN-01 requires a recorded reason to enter the state.
+     * Whether requires a recorded reason to enter the state.
      *
      * @return {@code true} for cancelled and no show
      */

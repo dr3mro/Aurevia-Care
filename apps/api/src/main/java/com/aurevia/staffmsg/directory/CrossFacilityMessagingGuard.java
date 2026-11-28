@@ -10,15 +10,17 @@ import com.aurevia.tenancy.Facility;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Injectable guard for cross-facility instant and mail messages between staff (MSG-02, ARC-07).
+ * Injectable guard for cross-facility instant and mail messages between staff.
  *
- * <p>The guard is deliberately independent of a send path: a future caller resolves
- * its destination in the tenant directory and calls it before publishing. It refuses
- * cross-organization attempts unconditionally because that connection is an unapproved
- * proposal. Within one organization a destination inside the actor's home facility is
- * allowed; the membership-facility scope fold detects a crossing, and only then is an
- * approved tenant flag required. Every read runs in one tenant-guarded transaction;
- * without a bound context the answer is denial, and an absent flag closes the crossing.</p>
+ * <p>Any caller resolving a destination in the tenant directory must invoke this
+ * guard before publishing. Cross-organization attempts are refused unconditionally:
+ * no configuration flag can relax tenant isolation. Within one organization the
+ * facility-scope fold reports whether the destination is outside the actor's
+ * assigned facilities; only that crossing requires an approved tenant flag.
+ * A subject with no recorded assignments keeps organization-wide scope, and
+ * oversight roles are exempt from the fold's out-of-scope answer. Every read runs
+ * in one tenant-guarded transaction; without a bound context the answer is denial,
+ * and an absent flag closes the crossing.</p>
  */
 @Component
 public final class CrossFacilityMessagingGuard {
@@ -75,12 +77,12 @@ public final class CrossFacilityMessagingGuard {
                     new ApiException(403, "CROSS_ORGANIZATION_MESSAGING_DISABLED",
                             "destination facility is not in the active organization"));
             policy.requireSameOrganization(context.organizationId(), facility.organizationId());
-            // The V93 fold tells us whether this destination needs a cross-facility
-            // decision at all: every invited member has exactly one home assignment,
-            // so an out-of-scope answer means the actor is crossing facilities. That
-            // crossing is authorized only by an approved tenant flag; an absent flag
-            // is false, so an unconfigured tenant stays closed. The destination is
-            // already tenant-scoped by the RLS-guarded directory lookup above.
+            // The fold only reports a crossing for a subject with recorded
+            // assignments; an unassigned legacy member stays organization-wide and
+            // oversight roles are exempt. A crossing is authorized only by an
+            // approved tenant flag; an absent flag evaluates false, so an
+            // unconfigured tenant stays closed. The destination itself is already
+            // tenant-scoped by the guarded directory lookup above.
             if (access.outsideAssignedFacilities(context.subject(), facility.code())
                     && !policy.allowsCrossFacility(AccessRules.isEnabled(access.effectiveConfig(POLICY_KEY)))) {
                 throw new ApiException(403, "CROSS_FACILITY_MESSAGING_DISABLED",

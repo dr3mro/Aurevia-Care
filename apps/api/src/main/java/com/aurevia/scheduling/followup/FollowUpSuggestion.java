@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 /**
- * Server-owned follow-up suggestion with an auditable rule explanation (CLN-06).
+ * Server-owned follow-up suggestion with an auditable rule explanation.
  *
  * <p>The suggested civil date is immutable until an authorized override appends
  * provenance. A booking is created only by the separate confirm command, which

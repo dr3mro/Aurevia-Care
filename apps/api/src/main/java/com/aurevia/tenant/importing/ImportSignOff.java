@@ -5,7 +5,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Named authorization to finalize a controlled onboarding import (OPS-08).
+ * Named authorization to finalize a controlled onboarding import.
  *
  * <p>The sign-off names the approver, an authorized role and an affirmative
  * decision, and binds itself to this manifest version, every batch sequence and

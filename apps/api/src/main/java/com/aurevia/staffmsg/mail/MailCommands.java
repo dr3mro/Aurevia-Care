@@ -6,7 +6,7 @@ import com.aurevia.staffmsg.mail.MailContract.Recipient;
 import com.aurevia.staffmsg.model.StaffMessagingContract.MailFolder;
 
 /**
- * Command values of the staff mail API (MSG-02, ARC-07).
+ * Command values of the staff mail API.
  *
  * <p>A command is the complete, explicit input of one state transition. The
  * active tenant and the actor are always supplied by the web adapter from the
@@ -192,6 +192,10 @@ public final class MailCommands {
      * Move a message into a folder of the acting person.
      *
      * @return the immutable command
+     * @param organizationId organization identifier derived from the tenant context
+     * @param actor value supplied by the caller
+     * @param messageId message identifier in the active organization
+     * @param folder value supplied by the caller
      */
     public record MoveCommand(String organizationId, String actor, String messageId, MailFolder folder) {
     }

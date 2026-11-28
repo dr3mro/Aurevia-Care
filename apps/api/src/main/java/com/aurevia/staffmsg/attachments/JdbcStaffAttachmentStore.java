@@ -32,7 +32,7 @@ import com.aurevia.staffmsg.attachments.StaffAttachmentContract.StaffAttachment;
 import com.aurevia.staffmsg.model.StaffMessagingContract.ScanState;
 
 /**
- * PostgreSQL-backed persistence for staff-message attachments (MSG-03, CLN-07).
+ * PostgreSQL-backed persistence for staff-message attachments.
  *
  * <p>The link between a message or draft and a document lives in the
  * tenant-isolated {@code staff_attachment_link} table created by the staff
@@ -81,7 +81,13 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
         this.documents = documents;
         this.objects = objects;
     }
-
+    /**
+     * Read one attachment by its tenant-local identifier.
+     *
+     * @param organizationId active organization
+     * @param id             tenant-local attachment identifier
+     * @return the attachment when it exists in this tenant
+     */
     @Override
     public Optional<StaffAttachment> attachment(String organizationId, String id) {
         return transactions.execute(status -> {
@@ -100,7 +106,13 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
             return compose(organizationId, link.get());
         });
     }
-
+    /**
+     * List every attachment bound to one draft.
+     *
+     * @param organizationId active organization
+     * @param draftId        conversation or mail-draft identifier
+     * @return immutable snapshot in this tenant
+     */
     @Override
     public List<StaffAttachment> attachmentsForDraft(String organizationId, String draftId) {
         return transactions.execute(status -> jdbc.query("""
@@ -117,7 +129,11 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
                 .filter(Objects::nonNull)
                 .toList());
     }
-
+    /**
+     * Insert or replace one attachment in its owning organization.
+     *
+     * @param attachment attachment to store
+     */
     @Override
     public void putAttachment(StaffAttachment attachment) {
         transactions.executeWithoutResult(status -> {
@@ -146,7 +162,18 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
             putMetadata(attachment);
         });
     }
-
+    /**
+     * Bind one pending attachment to a published message with a conditional write.
+     *
+     * <p>The transition is atomic so two senders racing on one idempotency key
+     * cannot both bind the same file: only the caller that changed the row should
+     * record a SENT fact. A file already bound to this message is a replay and
+     * returns {@code false}; a file bound to another message is refused.</p>
+     *
+     * @param attachment pending attachment carrying the target message identifier
+     * @return {@code true} when this call performed the transition
+     * @throws ApiException when the file is bound to a different message
+     */
     @Override
     public boolean bindToMessage(StaffAttachment attachment) {
         return transactions.execute(status -> {
@@ -186,7 +213,13 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
             throw new ApiException(409, "ALREADY_SENT", "the file has already been sent");
         });
     }
-
+    /**
+     * Count the attachments bound to one draft.
+     *
+     * @param organizationId active organization
+     * @param draftId        conversation or mail-draft identifier
+     * @return number of bound files
+     */
     @Override
     public int countForDraft(String organizationId, String draftId) {
         return transactions.execute(status -> jdbc.queryForObject("""
@@ -196,7 +229,14 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
                         .addValue("organizationId", organizationId)
                         .addValue("draftId", draftId), Integer.class));
     }
-
+    /**
+     * Decide whether a subject is a recipient of a published message.
+     *
+     * @param organizationId active organization
+     * @param messageId      published message identifier
+     * @param subject        authenticated subject
+     * @return {@code true} only for a message recipient
+     */
     @Override
     public boolean isRecipient(String organizationId, String messageId, String subject) {
         // The audience is resolved per message, not per conversation: a mail reply
@@ -227,7 +267,15 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
                         .addValue("messageId", messageId)
                         .addValue("subject", subject), Boolean.class)));
     }
-
+    /**
+     * Record the audience frozen on a published message so the synthetic tier
+     * can authorize downloads without a database. The durable tier resolves the
+     * same audience from persisted message data at read time and needs no write.
+     *
+     * @param organizationId active organization
+     * @param messageId      published message identifier
+     * @param subjects       recipient subjects authorized to download
+     */
     @Override
     public void grantRecipients(String organizationId, String messageId, Set<String> subjects) {
         // There is no separate grant row: isRecipient derives the audience from the
@@ -235,26 +283,49 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
         // Recording it here would grant a whole reply thread a single message's
         // audience, so the durable tier intentionally performs no write.
     }
-
+    /**
+     * Store the original bytes of one private object.
+     *
+     * @param organizationId active organization
+     * @param objectKey      private object key
+     * @param content        original payload bytes
+     */
     @Override
     public void putBytes(String organizationId, String objectKey, byte[] content) {
         ObjectKey key = keyOf(organizationId, objectKey);
         objects.putInQuarantine(key, content);
         objects.promote(key, StaffAttachmentInputs.checksum(content));
     }
-
+    /**
+     * Read original bytes only when the private object is present and its bytes
+     * still match the expected checksum.
+     *
+     * @param organizationId active organization
+     * @param objectKey      private object key
+     * @param checksum       expected original checksum
+     * @return the bytes, or empty when the object is absent or fails verification
+     */
     @Override
     public Optional<byte[]> bytes(String organizationId, String objectKey, String checksum) {
         return objects.getVerified(keyOf(organizationId, objectKey), checksum);
     }
-
+    /**
+     * Append one immutable audit fact.
+     *
+     * @param audit immutable fact to append
+     */
     @Override
     public void appendAudit(AttachmentAudit audit) {
         documents.appendEvent(new DocumentEvent(audit.id(), audit.organizationId(), audit.attachmentId(),
                 AUDIT_TO_EVENT.get(audit.type()), audit.actorSubject(), audit.outcome(),
                 audit.detail(), audit.occurredAt()));
     }
-
+    /**
+     * Read every audit fact for one organization in recorded order.
+     *
+     * @param organizationId active organization
+     * @return immutable snapshot of this tenant's facts
+     */
     @Override
     public List<AttachmentAudit> audits(String organizationId) {
         return documents.events(organizationId).stream()

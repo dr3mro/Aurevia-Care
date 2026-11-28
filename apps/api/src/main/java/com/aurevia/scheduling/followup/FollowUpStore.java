@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Tenant-scoped persistence for follow-up suggestions and care-team tasks (CLN-06).
+ * Tenant-scoped persistence for follow-up suggestions and care-team tasks.
  *
  * <p>Every lookup takes the active organization so an identifier from another
  * tenant is never resolvable even when the local identifier is identical.</p>

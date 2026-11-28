@@ -23,13 +23,13 @@ import com.aurevia.tenant.export.ExportModel.ExportSource;
 import com.aurevia.tenant.export.ExportModel.Manifest;
 
 /**
- * Tenant export orchestration (OPS-07).
+ * Tenant export orchestration.
  *
  * <p>A tenant admin starts one job for the active organization. Only documents
  * released under the current policy are read, their bytes are re-checksummed,
  * and the manifest carries schema, policy, provenance and audit history before
  * it is promoted in the private object store. Every start, download and expiry
- * is appended to the OPS-02 audit chain. A downloaded artifact is refused as
+ * is appended to the audit chain. A downloaded artifact is refused as
  * soon as its job is expired or its retention instant has passed, and the object
  * is removed on expiry.</p>
  */

@@ -5,7 +5,7 @@ import java.util.Set;
 
 /**
  * Narrow seam through which a staff message send publishes the files already
- * bound to its draft or conversation (MSG-03, CLN-07).
+ * bound to its draft or conversation.
  *
  * <p>The seam has two phases.
  * {@link com.aurevia.staffmsg.attachments.StaffAttachmentPublication#requirePublishable(String, String, String)}
@@ -63,7 +63,14 @@ public interface StaffAttachmentPublication {
 
         private NoOp() {
         }
-
+        /**
+         * Reject a message send when any pending file of the draft cannot be sent.
+         *
+         * @param organizationId active organization
+         * @param subject        authenticated sender
+         * @param draftId        mail draft or conversation identifier
+         * @return identifiers of the files that passed validation, possibly empty
+         */
         @Override
         public List<String> requirePublishable(String organizationId, String subject, String draftId) {
             // No message is being published, so there is nothing to validate.

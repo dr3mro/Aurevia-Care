@@ -3,7 +3,7 @@ package com.aurevia.tenant.importing;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Provenance declaration for an onboarding dataset (OPS-08).
+ * Provenance declaration for an onboarding dataset.
  *
  * <p>The import preserves where the dataset came from and keeps each record's
  * historical signature evidence. It must never create a new attestation:

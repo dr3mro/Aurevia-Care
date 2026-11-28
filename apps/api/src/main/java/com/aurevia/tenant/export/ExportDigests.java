@@ -6,7 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import org.springframework.stereotype.Component;
 
 /**
- * Canonical SHA-256 digest for tenant export artifacts (OPS-07).
+ * Canonical SHA-256 digest for tenant export artifacts.
  *
  * <p>Export checksums are derived from the bytes actually written to the object
  * store, never copied from a caller-supplied label. The digest factory is an
@@ -26,7 +26,7 @@ public final class ExportDigests {
          *
          * @return a message digest
          * @throws NoSuchAlgorithmException when SHA-256 is unavailable
-         */
+     */
         MessageDigest create() throws NoSuchAlgorithmException;
     }
 

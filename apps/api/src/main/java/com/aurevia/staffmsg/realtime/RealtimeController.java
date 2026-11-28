@@ -9,13 +9,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * Thin HTTP adapter for identifier-only staff conversation events (ARC-07).
+ * Thin HTTP adapter for identifier-only staff conversation events.
  *
  * <p>The active organization and actor are taken from the request context; a
  * caller only names a facility and a sequence cursor. Authorization, membership
- * re-checks and tenant rebinding live in the injected service. The stream route
- * is the live transport and the polling route returns the same identifier set
- * for the same cursor.</p>
+ * re-checks and tenant rebinding live in the injected service. Both routes use the
+ * same cursor and visibility filter; polling returns a bounded page with a next
+ * cursor, while the stream replays identifiers from the requested sequence.</p>
  */
 @RestController
 @RequestMapping("/api/v1/staff/instant")

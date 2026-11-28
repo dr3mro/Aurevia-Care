@@ -34,7 +34,7 @@ import com.aurevia.staffmsg.mail.MailContract.ThreadView;
 import com.aurevia.staffmsg.model.StaffMessagingContract.MailFolder;
 
 /**
- * Domain kernel for email-like staff messages (MSG-02, ARC-07).
+ * Domain kernel for email-like staff messages.
  *
  * <p>The kernel owns versioned drafts, an immutable message ledger, per-person
  * folders, flags and threads grouped by normalized subject and a shared
@@ -179,7 +179,7 @@ public final class MailService {
     /**
      * Publish a draft after expanding recipients and checking the sender's
      * confirmation. A retry with the same client message id returns the first
-     * publication instead of creating a second message (ARC-07).
+     * publication instead of creating a second message.
      *
      * @param command send command carrying the confirmed recipient list
      * @return the published message in the sender's sent folder
@@ -192,6 +192,8 @@ public final class MailService {
         String actor = MailInputs.requireText(command.actor(), "INVALID_ACTOR", "actor is required");
         String clientMessageId = MailInputs.requireText(command.clientMessageId(),
                 "INVALID_IDEMPOTENCY_KEY", "an idempotency key is required");
+        // Replay the original message before any new row is written: a retried send must
+        // return the same message rather than append a duplicate to the conversation.
         var replayed = store.replay(organizationId, actor, clientMessageId);
         if (replayed.isPresent()) {
             SentMail original = storedMessage(organizationId, replayed.get());

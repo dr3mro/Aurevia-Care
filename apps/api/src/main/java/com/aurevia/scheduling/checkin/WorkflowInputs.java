@@ -13,12 +13,12 @@ import com.aurevia.api.ApiException;
 import com.aurevia.api.contract.FacilityCode;
 
 /**
- * Pure, total input guards for the CLN-02 commands.
+ * Pure, total input guards for check-in commands.
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * with a stable code before any SQL runs. Identifier categories are checked
  * here because a name, a shared phone number or a date of birth alone is not
- * proof of identity (IAM-03): two distinct categories are required, at least
+ * proof of identity: two distinct categories are required, at least
  * one of which is issuer-scoped or independently verified.</p>
  */
 public final class WorkflowInputs {
@@ -177,6 +177,8 @@ public final class WorkflowInputs {
             }
             normalized.add(category);
         }
+        // Two weak, self-asserted categories are not identity proof: one issuer-scoped
+        // or independently verified category is required before check-in can proceed.
         if (normalized.stream().noneMatch(STRONG::contains)) {
             throw new ApiException(422, "INSUFFICIENT_IDENTIFIERS",
                     "at least one issuer-scoped or verified identifier is required");

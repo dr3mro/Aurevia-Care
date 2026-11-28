@@ -23,7 +23,7 @@ import com.aurevia.staffmsg.instant.InstantMessagingContract.SendRequest;
 import com.aurevia.staffmsg.instant.InstantMessagingContract.UnreadView;
 
 /**
- * Thin HTTP adapter for instant staff conversations inside a facility (MSG-02, ARC-07).
+ * Thin HTTP adapter for instant staff conversations inside a facility.
  *
  * <p>The active organization and actor come from the request context; a caller
  * only names a facility and resource identifiers. Authorization, membership
@@ -50,6 +50,7 @@ public class InstantMessagingController {
      *
      * @param request facility and peer
      * @return the conversation view
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/direct")
     public ResponseEntity<ConversationView> openDirect(@RequestBody OpenDirectRequest request) {
@@ -61,6 +62,7 @@ public class InstantMessagingController {
      *
      * @param request facility, topic and peers
      * @return the conversation view
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/groups")
     public ResponseEntity<ConversationView> createGroup(@RequestBody CreateGroupRequest request) {
@@ -72,6 +74,7 @@ public class InstantMessagingController {
      *
      * @param request facility, conversation and subject
      * @return the updated conversation view
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/participants")
     public ConversationView addParticipant(@RequestBody AddParticipantRequest request) {
@@ -128,6 +131,7 @@ public class InstantMessagingController {
      *
      * @param request facility, conversation and sequence
      * @return the remaining unread count
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/read")
     public UnreadView markRead(@RequestBody MarkReadRequest request) {
@@ -139,6 +143,7 @@ public class InstantMessagingController {
      *
      * @param facilityId facility filter
      * @return one count per conversation
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/unread")
     public List<UnreadView> unread(@RequestParam String facilityId) {
@@ -150,6 +155,7 @@ public class InstantMessagingController {
      *
      * @param facilityId facility filter
      * @return conversation views
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @GetMapping("/conversations")
     public List<ConversationView> conversations(@RequestParam String facilityId) {

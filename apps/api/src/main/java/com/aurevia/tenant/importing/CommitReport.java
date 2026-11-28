@@ -3,7 +3,7 @@ package com.aurevia.tenant.importing;
 import java.util.List;
 
 /**
- * Result of one controlled-batch commit attempt (OPS-08).
+ * Result of one controlled-batch commit attempt.
  *
  * <p>The returned progress is the resumable checkpoint: a later call passes it
  * back so already-applied batches are skipped. Committing never changes the

@@ -18,7 +18,7 @@ import com.aurevia.staffmsg.references.ReferenceContract.ReferenceKind;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Wiring for the reference ports using existing domain beans (MSG-07, ARC-07).
+ * Wiring for the reference ports using existing domain beans.
  *
  * <p>Each adapter is a narrow translation at a boundary: the connection access
  * check delegates to messaging governance, audits go through the staff audit
@@ -99,7 +99,11 @@ public class ReferenceConfiguration {
         StaffAuditAdapter(StaffRepository staff) {
             this.staff = staff;
         }
-
+        /**
+         * Append one audit fact.
+         *
+         * @param audit immutable fact to record
+     */
         @Override
         public void append(ReferenceAudit audit) {
             TenantContext context = TenantContext.current();
@@ -122,7 +126,11 @@ public class ReferenceConfiguration {
         OutboxNotifier(DurableEventService events) {
             this.events = events;
         }
-
+        /**
+         * Dispatch one notification draft.
+         *
+         * @param draft immutable identifier-free draft
+     */
         @Override
         public void dispatch(NotificationDraft draft) {
             // The digest is over the fixed phrase, never over patient data.

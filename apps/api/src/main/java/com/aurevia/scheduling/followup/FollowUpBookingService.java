@@ -14,7 +14,7 @@ import com.aurevia.scheduling.ResourceView;
 import com.aurevia.scheduling.SchedulingRepository;
 
 /**
- * Booking boundary used only by the explicit follow-up confirmation (CLN-06).
+ * Booking boundary used only by the explicit follow-up confirmation.
  *
  * <p>The domain chooses the civil date; this adapter chooses the first available
  * clinician in the facility and interprets the date at the fixed morning slot in
@@ -43,7 +43,14 @@ public class FollowUpBookingService implements FollowUpBooking {
         this.appointments = appointments;
         this.scheduling = scheduling;
     }
-
+    /**
+     * Create a confirmed appointment.
+     *
+     * @param intent booking intent carrying the confirmed follow-up slot
+     * @return the booked appointment
+     * @throws ApiException on invalid input, denial, unknown reference data,
+     * an availability or rule violation, or a slot conflict
+     */
     @Override
     public String book(BookingIntent intent) {
         ResourceView clinician = scheduling.resources(intent.facilityCode()).stream()

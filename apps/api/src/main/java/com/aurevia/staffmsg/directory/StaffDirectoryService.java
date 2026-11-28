@@ -20,7 +20,7 @@ import com.aurevia.tenancy.FacilityRepository.FacilityRow;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Tenant-scoped directory of facilities and staff who may be messaged (MSG-02, ARC-07).
+ * Tenant-scoped directory of facilities and staff who may be messaged.
  *
  * <p>Every read runs inside the tenant-guarded transaction so forced row-level
  * security confines results to the active organization. The organization and actor

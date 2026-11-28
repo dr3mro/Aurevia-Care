@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Applies a versioned onboarding manifest in controlled, resumable batches and
- * gates the change of source of truth on an authorized sign-off (OPS-08).
+ * gates the change of source of truth on an authorized sign-off.
  *
  * <p>Each batch is reconciled before it is applied: its declared record count
  * must match its contents and its declared SHA-256 must match a digest recomputed
@@ -50,7 +50,7 @@ public class ControlledImportService {
     }
 
     /**
-     * Compute the shared lowercase-hex SHA-256 of canonical bytes.
+     * Compute the shared lowercase-hex digest of canonical bytes.
      *
      * @param bytes canonical bytes to digest
      * @return lowercase 64-hex-digit digest
@@ -188,6 +188,8 @@ public class ControlledImportService {
         if (!ImportDigests.isNonBlank(signOff.approver())) {
             return refused(progress, "approver");
         }
+        // This layer checks the claimed role against an allow-list; the controller has
+        // already bound the named approver to the authenticated subject.
         if (!AUTHORIZED_ROLES.contains(signOff.role())) {
             return refused(progress, "unauthorized role");
         }

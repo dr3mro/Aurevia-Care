@@ -10,7 +10,7 @@ import com.aurevia.messaging.governance.MessagingAuditContract.RetentionDecision
 import com.aurevia.messaging.governance.MessagingAuditContract.RetentionPolicy;
 
 /**
- * Fail-closed value vocabulary for OPS-07 tenant retention and offboarding.
+ * Fail-closed value vocabulary for tenant retention and offboarding.
  *
  * <p>Every value here is a non-sensitive governance fact: identifiers,
  * instants, reasons and approvers. No clinical payload crosses this boundary.
@@ -27,7 +27,7 @@ public final class RetentionContract {
     /**
      * The governed offboarding steps in their mandatory execution order.
      *
-     * <p>The wire keys are the stable OPS-07 step identifiers. Deletion and
+     * <p>The wire keys are the stable step identifiers. Deletion and
      * backup expiry follow the verified export, never precede it.</p>
      */
     public enum OffboardingStep {
@@ -51,7 +51,7 @@ public final class RetentionContract {
         /**
          * Return the stable wire identifier.
          *
-         * @return lowercase OPS-07 step identifier
+         * @return lowercase export step identifier
          */
         public String wire() {
             return wire;
@@ -81,6 +81,7 @@ public final class RetentionContract {
      * @param id           record identifier in the active tenant
      * @param resourceType family used to find the approved retention policy
      * @param createdAt    server creation instant
+     * @return this record
      */
     public record ActiveRecord(String id, String resourceType, Instant createdAt) {
     }
@@ -132,7 +133,7 @@ public final class RetentionContract {
          * later mutation cannot change a decision.
          *
          * @throws IllegalArgumentException when the approver or reason is blank,
-         *                                  because an unattributed deletion would fail OPS-07
+         * because an unattributed deletion would fail
          */
         public RetentionSnapshot {
             if (approvedBy == null || approvedBy.isBlank()) {
@@ -147,25 +148,29 @@ public final class RetentionContract {
             backups = List.copyOf(backups);
         }
 
-        /** Return an immutable copy of the active records. */
+        /** Return an immutable copy of the active records.         @return the result of this operation
+         */
         @Override
         public List<ActiveRecord> resources() {
             return List.copyOf(resources);
         }
 
-        /** Return an immutable copy of the policies keyed by resource type. */
+        /** Return an immutable copy of the policies keyed by resource type.         @return the result of this operation
+         */
         @Override
         public Map<String, RetentionPolicy> policies() {
             return Map.copyOf(policies);
         }
 
-        /** Return an immutable copy of the legal holds. */
+        /** Return an immutable copy of the legal holds.         @return the result of this operation
+         */
         @Override
         public List<LegalHold> holds() {
             return List.copyOf(holds);
         }
 
-        /** Return an immutable copy of the backup candidates. */
+        /** Return an immutable copy of the backup candidates.         @return the result of this operation
+         */
         @Override
         public List<BackupExpiration> backups() {
             return List.copyOf(backups);
@@ -194,19 +199,22 @@ public final class RetentionContract {
             skipped = List.copyOf(skipped);
         }
 
-        /** Return an immutable copy of the approved deletions. */
+        /** Return an immutable copy of the approved deletions.         @return the result of this operation
+         */
         @Override
         public List<Deletion> deletions() {
             return List.copyOf(deletions);
         }
 
-        /** Return an immutable copy of the approved backup expirations. */
+        /** Return an immutable copy of the approved backup expirations.         @return the result of this operation
+         */
         @Override
         public List<BackupExpiration> expirations() {
             return List.copyOf(expirations);
         }
 
-        /** Return an immutable copy of the explicit negative decisions. */
+        /** Return an immutable copy of the explicit negative decisions.         @return the result of this operation
+         */
         @Override
         public List<RetentionDecision> skipped() {
             return List.copyOf(skipped);
@@ -250,7 +258,8 @@ public final class RetentionContract {
             steps = List.copyOf(steps);
         }
 
-        /** Return an immutable copy of the governed steps. */
+        /** Return an immutable copy of the governed steps.         @return the result of this operation
+         */
         @Override
         public List<OffboardingStep> steps() {
             return List.copyOf(steps);

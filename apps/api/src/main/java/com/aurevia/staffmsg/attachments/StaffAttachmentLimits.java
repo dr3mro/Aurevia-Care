@@ -1,7 +1,7 @@
 package com.aurevia.staffmsg.attachments;
 
 /**
- * Configured bounds for staff-message attachments (MSG-03).
+ * Configured bounds for staff-message attachments.
  *
  * <p>Injected into the domain service so a deployment can tighten the size and
  * count ceilings without changing domain code. Defaults reuse the shared upload

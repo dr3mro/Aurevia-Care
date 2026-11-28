@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Bounded action matrix for staff-message attachments (IAM-01, MSG-03).
+ * Bounded action matrix for staff-message attachments.
  *
  * <p>The quarantine scanner is a distinct service principal that can only issue
  * a verdict. Sending staff may upload, send, remove and download. Privacy audit

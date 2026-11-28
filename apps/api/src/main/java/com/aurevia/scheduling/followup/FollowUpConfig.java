@@ -5,7 +5,7 @@ import java.time.ZoneId;
 import java.util.Optional;
 
 /**
- * Read-only tenant facts needed to compute a follow-up date (CLN-06).
+ * Read-only tenant facts needed to compute a follow-up date.
  *
  * <p>An adapter delegates to the tenant's approved configuration fold and to the
  * scheduling record. Every query is resolved from the active tenant, never from

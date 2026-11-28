@@ -3,7 +3,7 @@ package com.aurevia.staffmsg.realtime;
 import java.util.List;
 
 /**
- * Bounded polling result for the realtime event stream (ARC-07).
+ * Bounded polling result for the realtime event stream.
  *
  * <p>The object shape is intentional: a client never receives a bare array, so
  * it can advance its cursor without re-reading unrelated pages. {@code nextCursor}

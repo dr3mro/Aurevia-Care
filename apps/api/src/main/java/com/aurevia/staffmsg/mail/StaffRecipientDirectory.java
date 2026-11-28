@@ -55,7 +55,14 @@ final class StaffRecipientDirectory implements RecipientDirectory {
         this.access = access;
         this.policy = policy;
     }
-
+    /**
+     * List the active holders of a role in a facility of the active tenant.
+     *
+     * @param organizationId active tenant identifier
+     * @param facilityId     facility the role is scoped to
+     * @param role           role key
+     * @return the distinct current holder subjects in a stable order
+     */
     @Override
     public List<String> holders(String organizationId, String facilityId, String role) {
         TenantContext context = TenantContext.current();

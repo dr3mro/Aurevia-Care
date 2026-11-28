@@ -11,7 +11,7 @@ import com.aurevia.staffmsg.attachments.StaffAttachmentContract.StaffAttachment;
 
 /**
  * Publishes a draft's pending files through the existing attachment policy when
- * a staff mail or instant message is sent (MSG-03, CLN-07).
+ * a staff mail or instant message is sent.
  *
  * <p>Roles are re-derived from active staff membership inside the tenant-guarded
  * transaction on every phase, so a revoked role cannot widen the audience
@@ -39,7 +39,14 @@ public class StaffAttachmentPublicationService implements StaffAttachmentPublica
         this.staff = staff;
         this.transactions = transactions;
     }
-
+    /**
+     * Reject a message send when any pending file of the draft cannot be sent.
+     *
+     * @param organizationId active organization
+     * @param subject        authenticated sender
+     * @param draftId        mail draft or conversation identifier
+     * @return identifiers of the files that passed validation, possibly empty
+     */
     @Override
     public List<String> requirePublishable(String organizationId, String subject, String draftId) {
         StaffActor actor = actor(organizationId, subject);

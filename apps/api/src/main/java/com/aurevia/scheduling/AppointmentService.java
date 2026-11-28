@@ -22,7 +22,7 @@ import com.aurevia.authz.ActionPolicy;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Booking invariants for CLN-01.
+ * Booking invariants for appointment slots, holds and series.
  *
  * <p>One command runs inside one tenant-guarded transaction: authorization is
  * re-checked, the requested slot is validated against the facility's local
@@ -100,7 +100,7 @@ public class AppointmentService {
     }
 
     /**
-     * Create a recurrence series in one tenant-guarded transaction (CLN-01).
+     * Create a recurrence series in one tenant-guarded transaction.
      *
      * <p>Occurrences are expanded from the facility-local clock time, so a
      * daylight-saving change keeps the same local appointment time. Every

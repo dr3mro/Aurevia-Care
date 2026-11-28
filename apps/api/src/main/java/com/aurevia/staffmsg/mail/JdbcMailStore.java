@@ -27,7 +27,7 @@ import com.aurevia.staffmsg.mail.MailContract.SentMail;
 import com.aurevia.staffmsg.model.StaffMessagingContract.MailFolder;
 
 /**
- * PostgreSQL adapter for the durable staff-mail state (MSG-02, ARC-07).
+ * PostgreSQL adapter for the durable staff-mail state.
  *
  * <p>V95 owns drafts and the send retry ledger; V91 owns the immutable message
  * ledger, its metadata and the per-person folders, which this adapter reuses.
@@ -77,7 +77,12 @@ public class JdbcMailStore implements MailStore {
         this.jdbc = jdbc;
         this.transactions = transactions;
     }
-
+    /**
+     * Insert or replace a draft, keyed by its tenant and identifier.
+     *
+     * @param organizationId active tenant
+     * @param draft          the current draft value
+     */
     @Override
     public void saveDraft(String organizationId, DraftView draft) {
         transactions.executeWithoutResult(status -> jdbc.update("""
@@ -94,7 +99,14 @@ public class JdbcMailStore implements MailStore {
                     updated_at = EXCLUDED.updated_at
                 """, draftParameters(organizationId, draft)));
     }
-
+    /**
+     * Find a draft owned by one subject.
+     *
+     * @param organizationId active tenant
+     * @param draftId        draft identifier
+     * @param actor          owner subject, never accepted from a request body
+     * @return the draft, or empty when it is absent or owned by somebody else
+     */
     @Override
     public Optional<DraftView> draft(String organizationId, String draftId, String actor) {
         return transactions.execute(status -> jdbc.query("SELECT " + DRAFT_COLUMNS + """
@@ -105,7 +117,13 @@ public class JdbcMailStore implements MailStore {
                         .addValue("draftId", draftId).addValue("actor", actor), DRAFT_MAPPER)
                 .stream().findFirst());
     }
-
+    /**
+     * Find a published message by identifier.
+     *
+     * @param organizationId active tenant
+     * @param messageId      message identifier
+     * @return the message, or empty when it is absent in this tenant
+     */
     @Override
     public Optional<SentMail> message(String organizationId, String messageId) {
         return transactions.execute(status -> jdbc.query("SELECT " + MESSAGE_COLUMNS + MESSAGE_FROM
@@ -114,14 +132,26 @@ public class JdbcMailStore implements MailStore {
                         .addValue("messageId", messageId), MESSAGE_MAPPER)
                 .stream().findFirst());
     }
-
+    /**
+     * List every published message in a tenant. Participation and folder filters
+     * are applied by the kernel, not here, so read policy stays in one place.
+     *
+     * @param organizationId active tenant
+     * @return all published messages in insertion order
+     */
     @Override
     public List<SentMail> messages(String organizationId) {
         return transactions.execute(status -> jdbc.query("SELECT " + MESSAGE_COLUMNS + MESSAGE_FROM
                 + " ORDER BY m.sent_at, m.id",
                 new MapSqlParameterSource().addValue("organizationId", organizationId), MESSAGE_MAPPER));
     }
-
+    /**
+     * Replace the flags of a published message; the message body never changes.
+     *
+     * @param organizationId active tenant
+     * @param messageId      message identifier
+     * @param flags          complete replacement flag set
+     */
     @Override
     public void setFlags(String organizationId, String messageId, List<String> flags) {
         transactions.executeWithoutResult(status -> jdbc.update("""
@@ -132,7 +162,13 @@ public class JdbcMailStore implements MailStore {
                         .addValue("messageId", messageId)
                         .addValue("flags", flags.toArray(String[]::new))));
     }
-
+    /**
+     * Return the folder placement of one viewer for every message.
+     *
+     * @param organizationId active tenant
+     * @param actor          viewer subject
+     * @return message identifier to folder, absent entries default to inbox
+     */
     @Override
     public Map<String, MailFolder> folders(String organizationId, String actor) {
         return transactions.execute(status -> jdbc.query("""
@@ -145,7 +181,14 @@ public class JdbcMailStore implements MailStore {
                         MailFolder.from(resultSet.getString("folder"))))
                 .stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
-
+    /**
+     * Place one message in one viewer's folder.
+     *
+     * @param organizationId active tenant
+     * @param messageId      message identifier
+     * @param actor          viewer subject
+     * @param folder         target folder
+     */
     @Override
     public void setFolder(String organizationId, String messageId, String actor, MailFolder folder) {
         transactions.executeWithoutResult(status -> jdbc.update("""
@@ -156,7 +199,14 @@ public class JdbcMailStore implements MailStore {
                         .addValue("messageId", messageId).addValue("actor", actor)
                         .addValue("folder", folder.wire())));
     }
-
+    /**
+     * Read the message id already published for a client retry key.
+     *
+     * @param organizationId   active tenant
+     * @param actor            original sender
+     * @param clientMessageId  opaque retry key from the request
+     * @return the first published message id, or empty on a fresh key
+     */
     @Override
     public Optional<String> replay(String organizationId, String actor, String clientMessageId) {
         return transactions.execute(status -> jdbc.query("""

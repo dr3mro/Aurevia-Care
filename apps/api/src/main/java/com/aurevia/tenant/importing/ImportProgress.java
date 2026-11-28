@@ -5,7 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Resumable checkpoint of a controlled onboarding import (OPS-08).
+ * Resumable checkpoint of a controlled onboarding import.
  *
  * <p>Applied batches and their source ids are tracked so a retry after a failed
  * batch skips work already done and never duplicates a source record. Before

@@ -1,7 +1,7 @@
 package com.aurevia.tenant.importing;
 
 /**
- * Declared evidence for one attachment referenced by an onboarding record (OPS-08).
+ * Declared evidence for one attachment referenced by an onboarding record.
  *
  * <p>The import never reads the object bytes: it validates the declared key,
  * lowercase SHA-256 checksum, supported type and clean-scan verdict. A

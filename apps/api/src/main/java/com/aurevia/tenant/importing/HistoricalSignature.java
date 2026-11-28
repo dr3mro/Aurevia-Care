@@ -3,7 +3,7 @@ package com.aurevia.tenant.importing;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Historical signature evidence carried by a source record (OPS-08).
+ * Historical signature evidence carried by a source record.
  *
  * <p>This evidence is preserved verbatim on the imported record. An import never
  * mints a new clinical attestation: the original issuer, signing time and

@@ -5,7 +5,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Versioned onboarding import manifest (OPS-08).
+ * Versioned onboarding import manifest.
  *
  * <p>The envelope fixes the contract version and version number before any
  * content is interpreted. The payload carries the source records, the
@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * collections are frozen so a parsed manifest cannot change during evaluation.</p>
  *
  * @param schemaVersion   must be {@code 1.0}
- * @param requirement     must be {@code OPS-08}
+ * @param requirement must be the onboarding requirement identifier
  * @param manifestVersion positive version number named by the sign-off
  * @param source          named source system or dataset
  * @param syntheticOnly   must be {@code true} for this repository

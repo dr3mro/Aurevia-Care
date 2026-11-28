@@ -5,7 +5,7 @@ import java.util.List;
 import com.aurevia.messaging.governance.MessagingAuditContract.LegalHold;
 
 /**
- * OPS-07 legal-hold coverage predicate.
+ * legal-hold coverage predicate.
  *
  * <p>A hold scope is an exact record id, an ancestor separated by {@code /}, or
  * {@code *} for the whole tenant. Coverage is bidirectional: deleting a parent

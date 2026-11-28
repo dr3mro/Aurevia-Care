@@ -17,14 +17,14 @@ import com.aurevia.tenant.export.ExportModel.ExportSource;
 import com.aurevia.tenant.export.ExportModel.Provenance;
 
 /**
- * PostgreSQL implementation of the tenant export store (OPS-07).
+ * PostgreSQL implementation of the tenant export store.
  *
  * <p>All statements run inside the tenant-guarded transaction. The export job
  * table is tenant-owned with forced RLS declared in V89; a cross-tenant job id
  * therefore resolves to no row rather than to another tenant's artifact. Source
  * documents are taken only from completed clean artifacts with a release
  * decision under the current policy, and audit facts come from the append-only
- * OPS-02 chain for the active tenant.</p>
+ * chain for the active tenant.</p>
  */
 @Repository
 public class JdbcExportStore implements ExportStore {
@@ -43,7 +43,12 @@ public class JdbcExportStore implements ExportStore {
     public JdbcExportStore(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
-
+    /**
+     * List documents authorized for export under a policy version.
+     *
+     * @param policyVersion authorizing policy version
+     * @return authorized sources in a stable order
+     */
     @Override
     public List<ExportSource> authorizedSources(String policyVersion) {
         return jdbc.query("""
@@ -60,7 +65,12 @@ public class JdbcExportStore implements ExportStore {
                  ORDER BY a.id
                 """, new MapSqlParameterSource().addValue("policyVersion", policyVersion), SOURCE_MAPPER);
     }
-
+    /**
+     * Read the append-only audit history of one exported record.
+     *
+     * @param recordId tenant-local record identifier
+     * @return audit facts in increasing sequence order
+     */
     @Override
     public List<AuditEntry> auditFor(String recordId) {
         return jdbc.query("""
@@ -70,7 +80,12 @@ public class JdbcExportStore implements ExportStore {
                  ORDER BY seq ASC
                 """, new MapSqlParameterSource().addValue("recordId", recordId), AUDIT_MAPPER);
     }
-
+    /**
+     * Persist a completed export job exactly once.
+     *
+     * @param job job metadata
+     * @return {@code true} when the row was inserted
+     */
     @Override
     public boolean save(ExportJob job) {
         TenantContext context = TenantContext.current();
@@ -92,7 +107,12 @@ public class JdbcExportStore implements ExportStore {
                 .addValue("createdAt", job.createdAt())
                 .addValue("expiresAt", job.expiresAt())) == 1;
     }
-
+    /**
+     * Find one export job visible in the active tenant.
+     *
+     * @param jobId opaque export job identifier
+     * @return the job when visible, otherwise empty
+     */
     @Override
     public Optional<ExportJob> find(String jobId) {
         return jdbc.query("""
@@ -103,7 +123,12 @@ public class JdbcExportStore implements ExportStore {
                 """, new MapSqlParameterSource().addValue("id", jobId), JOB_MAPPER)
                 .stream().findFirst();
     }
-
+    /**
+     * Mark a completed job as expired.
+     *
+     * @param jobId opaque job identifier
+     * @return {@code true} when a completed job was updated
+     */
     @Override
     public boolean markExpired(String jobId) {
         return jdbc.update("""

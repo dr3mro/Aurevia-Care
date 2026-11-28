@@ -3,13 +3,14 @@ package com.aurevia.staffmsg.policy;
 import java.util.List;
 
 /**
- * Narrow boundary for the authoritative actor facts used by the admin gate.
+ * Contract for authoritative actor facts that an authorization gate may consume.
  *
  * <p>Both reads must come from the tenant-guarded membership and role fold of
  * the active organization, never from a client-supplied role or facility
  * field. An implementation must fail closed when the tenant context is unset
- * or the subject is not an active member. No production adapter is part of
- * this kernel slice; the fold-backed adapter is a follow-up task.</p>
+ * or the subject is not an active member. This type declares the boundary;
+ * callers must supply a fold-backed implementation, and no such implementation
+ * is wired here.</p>
  */
 public interface MessagingPolicyActorSource {
 

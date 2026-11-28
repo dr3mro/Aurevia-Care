@@ -14,12 +14,12 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 /**
- * Tenant-owned JDBC store for follow-up suggestions and care-team tasks (CLN-06).
+ * Tenant-owned JDBC store for follow-up suggestions and care-team tasks.
  *
  * <p>Every statement is parameterised and carries the active organization, which
  * V74 also enforces with forced row-level security. A write upserts the current
  * version of an immutable identifier; the prior rule explanation, override
- * provenance and OPS-02 audit events preserve the history of a change.</p>
+ * provenance and audit events preserve the history of a change.</p>
  */
 @Repository
 public class JdbcFollowUpStore implements FollowUpStore {
@@ -76,7 +76,11 @@ public class JdbcFollowUpStore implements FollowUpStore {
     public JdbcFollowUpStore(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
-
+    /**
+     * Insert or replace one suggestion at its current version.
+     *
+     * @param suggestion suggestion to store
+     */
     @Override
     public void saveSuggestion(FollowUpSuggestion suggestion) {
         FollowUpOverride override = suggestion.override();
@@ -101,7 +105,13 @@ public class JdbcFollowUpStore implements FollowUpStore {
                 .addValue("bookingId", suggestion.bookingId())
                 .addValue("version", suggestion.version()));
     }
-
+    /**
+     * Find a suggestion inside one tenant.
+     *
+     * @param organizationId active organization
+     * @param id             suggestion identifier
+     * @return the matching suggestion, or empty
+     */
     @Override
     public Optional<FollowUpSuggestion> findSuggestion(String organizationId, String id) {
         return jdbc.query("""
@@ -114,7 +124,11 @@ public class JdbcFollowUpStore implements FollowUpStore {
                 """, new MapSqlParameterSource().addValue("organizationId", organizationId)
                 .addValue("id", id), SUGGESTION_MAPPER).stream().findFirst();
     }
-
+    /**
+     * Insert or replace one care-team task.
+     *
+     * @param task task to store
+     */
     @Override
     public void saveTask(CareTeamTask task) {
         jdbc.update(UPSERT_TASK, new MapSqlParameterSource()
@@ -128,7 +142,13 @@ public class JdbcFollowUpStore implements FollowUpStore {
                 .addValue("outcome", task.outcome())
                 .addValue("createdBy", task.createdBy()));
     }
-
+    /**
+     * Find a task inside one tenant.
+     *
+     * @param organizationId active organization
+     * @param id             task identifier
+     * @return the matching task, or empty
+     */
     @Override
     public Optional<CareTeamTask> findTask(String organizationId, String id) {
         return jdbc.query("""
@@ -139,7 +159,13 @@ public class JdbcFollowUpStore implements FollowUpStore {
                 """, new MapSqlParameterSource().addValue("organizationId", organizationId)
                 .addValue("id", id), TASK_MAPPER).stream().findFirst();
     }
-
+    /**
+     * List tasks for one suggestion inside one tenant.
+     *
+     * @param organizationId active organization
+     * @param followUpId     suggestion identifier
+     * @return the visible tasks
+     */
     @Override
     public List<CareTeamTask> tasksFor(String organizationId, String followUpId) {
         return jdbc.query("""

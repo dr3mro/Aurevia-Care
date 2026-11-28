@@ -12,7 +12,7 @@ import java.util.List;
 import com.aurevia.api.ApiException;
 
 /**
- * A weekly recurrence pattern for an appointment series (CLN-01).
+ * A weekly recurrence pattern for an appointment series.
  *
  * <p>The pattern is civil: a start local date and clock time in the facility's
  * IANA zone, stepped by a whole number of weeks. Each occurrence is resolved

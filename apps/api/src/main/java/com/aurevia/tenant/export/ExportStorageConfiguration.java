@@ -11,7 +11,7 @@ import com.aurevia.documents.storage.FileSystemObjectStore;
 import com.aurevia.documents.storage.ObjectStorePort;
 
 /**
- * Object-store binding for tenant export artifacts (OPS-07).
+ * Object-store binding for tenant export artifacts.
  *
  * <p>The default is the private local-filesystem adapter used by development
  * and tests. A managed object-store adapter supplied by the deployment binds

@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository;
  *
  * <p>Every statement runs inside the tenant-guarded transaction, so forced RLS
  * confines it to the active organization. Reference rows are insert-only for the
- * runtime role; corrections are a later configuration story (ADM-01).</p>
+ * runtime role; corrections are a later configuration story.</p>
  */
 @Repository
 public class SchedulingRepository {

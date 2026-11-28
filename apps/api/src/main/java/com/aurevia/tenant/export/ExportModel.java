@@ -7,7 +7,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Value types for the OPS-07 tenant export manifest and its job record.
+ * Value types for the tenant export manifest and its job record.
  *
  * <p>The manifest names its schema and authorizing policy, carries a checksum
  * for every exported file, keeps the source provenance and includes the
@@ -26,6 +26,7 @@ public final class ExportModel {
      * @param seq    per-tenant monotonic audit sequence
      * @param action audit action key
      * @param outcome audit outcome
+     * @return this record
      */
     public record AuditEntry(long seq, String action, String outcome) {
     }
@@ -36,6 +37,7 @@ public final class ExportModel {
      * @param sourceSystem system that created the record
      * @param sourceId     opaque identifier in the source system
      * @param version      source version, strictly positive
+     * @return this record
      */
     public record Provenance(String sourceSystem, String sourceId, int version) {
     }

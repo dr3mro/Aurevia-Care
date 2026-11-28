@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Thin HTTP adapter for the OPS-08 onboarding dry run.
+ * Thin HTTP adapter for the onboarding dry run.
  *
  * <p>All validation, mapping and provenance rules live in
  * {@link com.aurevia.tenant.importing.OnboardingImportService}; this
@@ -29,10 +29,11 @@ public class ImportController {
     }
 
     /**
-     * Evaluate a manifest and return its OPS-08 dry-run report without writing anything.
+     * Evaluate a manifest and return its dry-run report without writing anything.
      *
      * @param manifest versioned onboarding manifest
      * @return deterministic dry-run report
+          *  * @throws com.aurevia.api.ApiException when the route rejects the request for authorization, validation or state reasons
      */
     @PostMapping("/dry-run")
     public DryRunReport dryRun(@RequestBody ImportManifest manifest) {

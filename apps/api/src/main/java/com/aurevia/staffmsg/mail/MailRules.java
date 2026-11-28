@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 /**
  * Pure mail rules: subject normalization, reply-all addressing and confirmation
- * checking (MSG-02, ARC-07).
+ * checking.
  *
  * <p>The rules have no state and no I/O so every branch is exercised by a small
  * deterministic test. Nothing here decides authorization; the service applies

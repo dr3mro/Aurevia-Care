@@ -8,7 +8,7 @@ import com.aurevia.staffmsg.references.ReferenceContract.ReferenceKind;
 import com.aurevia.staffmsg.references.ReferenceContract.SubjectWarning;
 
 /**
- * Pure validation for staff-message reference commands (MSG-07, ARC-07).
+ * Pure validation for staff-message reference commands.
  *
  * <p>All helpers are deterministic and side-effect free. Opaque keys reuse the
  * shared upload key rule so every boundary enforces the same bound. The subject

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.aurevia.staffmsg.model.StaffMessagingContract.ScanState;
 
 /**
- * Value types for the staff-message attachment slice (MSG-03, CLN-07).
+ * Value types for the staff-message attachment slice.
  *
  * <p>An upload is bound to its uploader and a chosen conversation or mail draft,
  * held in private quarantine until an independent scan verdict is recorded. A
@@ -58,9 +58,12 @@ public final class StaffAttachmentContract {
     }
 
     /**
-     * Freshly derived staff caller identity for one protected request (IAM-01).
+     * Freshly derived staff caller identity for one protected request.
      *
      * @return the immutable identity snapshot
+     * @param organizationId organization identifier derived from the tenant context
+     * @param subject authenticated subject derived from the tenant context
+     * @param roles value supplied by the caller
      */
     public record StaffActor(String organizationId, String subject, Set<String> roles) {
         /**
@@ -143,13 +146,15 @@ public final class StaffAttachmentContract {
      * Scanner verdict command from the authorized quarantine scanner.
      *
      * @return the scan command
+     * @param verdict value supplied by the caller
+     * @param detail value supplied by the caller
      */
     public record ScanRequest(String verdict, String detail) {
     }
 
     /**
      * Explicit send command naming the pending files, the recipients and the
-     * confirmation flag. MSG-03 requires the sender to see the recipient and the
+     * confirmation flag. requires the sender to see the recipient and the
      * pending files and to confirm before publication.
      *
      * @return the send command
@@ -189,6 +194,10 @@ public final class StaffAttachmentContract {
      * Verified original bytes and their metadata returned by a download.
      *
      * @return the downloaded file
+     * @param bytes bytes to digest
+     * @param checksum value supplied by the caller
+     * @param contentType value supplied by the caller
+     * @param sizeBytes value supplied by the caller
      */
     public record DownloadedFile(byte[] bytes, String checksum, String contentType, long sizeBytes) {
         /**
@@ -214,6 +223,8 @@ public final class StaffAttachmentContract {
      * the sender needs to see (carried in the latest denial detail).
      *
      * @return the immutable view
+     * @param attachment value supplied by the caller
+     * @param audit value supplied by the caller
      */
     public record View(StaffAttachment attachment, List<AttachmentAudit> audit) {
         /**

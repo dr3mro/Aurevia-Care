@@ -5,10 +5,10 @@ import org.springframework.stereotype.Component;
 import com.aurevia.api.ApiException;
 
 /**
- * Pure policy decisions for staff discovery and staff-to-staff messaging (MSG-02, ARC-07).
+ * Pure policy decisions for staff discovery and staff-to-staff messaging.
  *
- * <p>Cross-organization messaging is an unapproved proposal, so the same-organization
- * rule is unconditional: no tenant policy flag can relax it. The cross-facility rule
+ * <p>Cross-organization messaging is refused unconditionally: no tenant policy flag
+ * can relax tenant isolation. The cross-facility rule
  * only reports whether an approved tenant flag was supplied; the caller must obtain
  * that value from an authoritative, tenant-scoped source.</p>
  */

@@ -12,7 +12,7 @@ import com.aurevia.tenant.retention.RetentionContract.OffboardingStatus;
 import com.aurevia.tenant.retention.RetentionContract.OffboardingStep;
 
 /**
- * Tenant offboarding command (OPS-07).
+ * Tenant offboarding command.
  *
  * <p>Offboarding is fail-closed: the verified export must exist in the active
  * tenant, and deletion may only be marked after a named review period. The

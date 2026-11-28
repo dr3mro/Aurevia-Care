@@ -35,7 +35,7 @@ import com.aurevia.staffmsg.model.StaffMessagingContract.StaffParticipant;
 
 /**
  * Durable adapter for staff-message governance over the existing forced-RLS
- * tables (MSG-07, ARC-02, OPS-02).
+ * tables.
  *
  * <p>Membership, roles, holds, retention policies and export metadata are owned
  * by the authoritative
@@ -83,17 +83,33 @@ public class JdbcStaffMessageGovernanceStore implements StaffMessageGovernanceSt
         this.conversations = conversations;
         this.attachments = attachments;
     }
-
+    /**
+     * Check active membership in the organization.
+     *
+     * @param organizationId active organization
+     * @param subject        authenticated subject
+     * @return {@code true} only when the membership is active
+     */
     @Override
     public boolean hasActiveMembership(String organizationId, String subject) {
         return governance.hasActiveMembership(organizationId, subject);
     }
-
+    /**
+     * Read the role keys currently effective for a subject.
+     *
+     * @param organizationId active organization identifier
+     * @param subject        authenticated subject from the tenant context
+     * @return the effective role keys, empty when the subject has none
+     */
     @Override
     public List<String> activeRoles(String organizationId, String subject) {
         return governance.activeRoles(organizationId, subject);
     }
-
+    /**
+     * Append one immutable audit fact.
+     *
+     * @param event fact to append
+     */
     @Override
     public void appendAudit(AuditEvent event) {
         // Staff facts use the canonical tamper-evident audit ledger, not the
@@ -120,7 +136,12 @@ public class JdbcStaffMessageGovernanceStore implements StaffMessageGovernanceSt
                         .addValue("correlationId", event.correlationId())
                         .addValue("outcome", event.outcome().wire())));
     }
-
+    /**
+     * Read the tenant's append-only audit trail in insertion order.
+     *
+     * @param organizationId active organization
+     * @return audit facts in insertion order
+     */
     @Override
     public List<AuditEvent> auditEvents(String organizationId) {
         // Filter by purpose so unrelated clinical audit facts in the shared
@@ -135,22 +156,44 @@ public class JdbcStaffMessageGovernanceStore implements StaffMessageGovernanceSt
                 """, Map.of("organizationId", organizationId,
                         "purpose", StaffMessageGovernanceService.PURPOSE), AUDIT_MAPPER));
     }
-
+    /**
+     * List every legal hold in a tenant.
+     *
+     * @param organizationId active organization
+     * @return holds in insertion order
+     */
     @Override
     public List<LegalHold> legalHolds(String organizationId) {
         return governance.legalHolds(organizationId);
     }
-
+    /**
+     * Store or replace one legal hold.
+     *
+     * @param organizationId owning organization
+     * @param hold           hold to store
+     */
     @Override
     public void putLegalHold(String organizationId, LegalHold hold) {
         governance.putLegalHold(organizationId, hold);
     }
-
+    /**
+     * Read the tenant retention policy for one resource family.
+     *
+     * @param organizationId active organization
+     * @param resourceType   resource family
+     * @return the policy, or empty when no approved policy is configured
+     */
     @Override
     public Optional<RetentionPolicy> retentionPolicy(String organizationId, String resourceType) {
         return governance.retentionPolicy(organizationId, resourceType);
     }
-
+    /**
+     * List every published message in a tenant. Participation and folder filters
+     * are applied by the kernel, not here, so read policy stays in one place.
+     *
+     * @param organizationId active tenant
+     * @return all published messages in insertion order
+     */
     @Override
     public List<MessageView> messages(String organizationId) {
         // The mail store's projection carries everything search needs; the
@@ -159,27 +202,58 @@ public class JdbcStaffMessageGovernanceStore implements StaffMessageGovernanceSt
                 .map(this::messageView)
                 .toList();
     }
-
+    /**
+     * List the full membership history of a conversation, including leavers.
+     *
+     * @param organizationId active organization
+     * @param conversationId owning conversation
+     * @return all memberships ordered by join time
+     */
     @Override
     public List<StaffParticipant> participants(String organizationId, String conversationId) {
         return conversations.participants(organizationId, conversationId);
     }
-
+    /**
+     * Load one conversation by identifier inside the active organization.
+     *
+     * @param organizationId active organization
+     * @param conversationId conversation identifier
+     * @return the conversation, or empty when absent or foreign
+     */
     @Override
     public Optional<StaffConversation> conversation(String organizationId, String conversationId) {
         return conversations.conversation(organizationId, conversationId);
     }
-
+    /**
+     * Return the folder placement of one viewer for every message.
+     *
+     * @param organizationId active tenant
+     * @param subject       viewer subject
+     * @return message identifier to folder, absent entries default to inbox
+     */
     @Override
     public Map<String, MailFolder> folders(String organizationId, String subject) {
         return mail.folders(organizationId, subject);
     }
-
+    /**
+     * Place one message in one viewer's folder.
+     *
+     * @param organizationId active tenant
+     * @param messageId      message identifier
+     * @param subject       viewer subject
+     * @param folder         target folder
+     */
     @Override
     public void setFolder(String organizationId, String messageId, String subject, MailFolder folder) {
         mail.setFolder(organizationId, messageId, subject, folder);
     }
-
+    /**
+     * List the attachment links bound to one message, carrying each checksum.
+     *
+     * @param organizationId active organization
+     * @param messageId      owning message
+     * @return attachment links in this tenant
+     */
     @Override
     public List<AttachmentLink> attachmentLinks(String organizationId, String messageId) {
         // attachmentsForDraft deliberately queries staff_attachment_link by
@@ -189,7 +263,14 @@ public class JdbcStaffMessageGovernanceStore implements StaffMessageGovernanceSt
                         link.checksum(), link.scanState()))
                 .toList();
     }
-
+    /**
+     * Persist the non-sensitive metadata of a conversation export. Attachment
+     * bytes and the assembled checksum snapshot are returned to the caller only;
+     * the durable export keeps provenance, scope, actor and expiry.
+     *
+     * @param organizationId owning organization
+     * @param export         export metadata
+     */
     @Override
     public void putExport(String organizationId, ConversationExport export) {
         governance.putExport(organizationId, new ExportRecord(export.id(), export.organizationId(),
