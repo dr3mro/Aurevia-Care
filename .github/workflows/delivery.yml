@@ -200,7 +200,9 @@ jobs:
     name: Publish tagged test image and release
     if: github.ref_type == 'tag'
     needs: verify
-    timeout-minutes: 30
+    # The bounded wait below can take up to 45 minutes; allow it to finish with
+    # time left for the exact-SHA verdict and publication.
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -224,8 +226,25 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          runs_json=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
-            -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" --jq '.')
+          runs_url="repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs"
+          # A version tag can be pushed while Delivery on main is still running.
+          # Decide red/green only once no trusted run for this commit is pending;
+          # a bound expiry fails without claiming an unfinished run is red.
+          max_attempts=45
+          for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+            runs_json=$(gh api --method GET "$runs_url" \
+              -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" --jq '.')
+            state=$(jq -n --argjson runs "$runs_json" '{runs: $runs, jobs: {}}' \
+              | python3 -I scripts/check-release-base.py --state \
+                  --sha "$GITHUB_SHA" --branch "$DEFAULT_BRANCH" --repo "$GITHUB_REPOSITORY")
+            if [[ "$state" == ready ]]; then break; fi
+            echo "release base: Delivery on $DEFAULT_BRANCH for $GITHUB_SHA still running (poll $attempt/$max_attempts)." >&2
+            if (( attempt < max_attempts )); then sleep 60; fi
+          done
+          if [[ "$state" == pending ]]; then
+            echo "release base: Delivery on $DEFAULT_BRANCH for $GITHUB_SHA did not finish after $max_attempts attempts; refusing to decide red or green from an unfinished run" >&2
+            exit 1
+          fi
           jobs_json='{}'
           for run_id in $(jq -r --arg sha "$GITHUB_SHA" \
               '.workflow_runs[] | select(.head_sha == $sha) | .id' <<< "$runs_json"); do
