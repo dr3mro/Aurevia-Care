@@ -17778,6 +17778,8 @@ export interface operations {
                 "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
                 /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
                 "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
             };
             path: {
                 id: string;
@@ -17804,6 +17806,13 @@ export interface operations {
             404: components["responses"]["ResourceNotFound"];
             409: components["responses"]["StateConflict"];
             422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     cliniccheckin: {

@@ -5698,6 +5698,7 @@ paths:
           required: true
           schema: { type: string }
         - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         required: false
         content:
@@ -5714,6 +5715,7 @@ paths:
         '404': { $ref: '#/components/responses/ResourceNotFound' }
         '409': { $ref: '#/components/responses/StateConflict' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { description: If-Match precondition required }
   /api/v1/clinic/appointments/{id}/check-in:
     post:
       operationId: cliniccheckin
