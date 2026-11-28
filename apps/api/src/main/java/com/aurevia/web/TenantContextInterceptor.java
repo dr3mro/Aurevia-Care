@@ -20,6 +20,7 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.aurevia.api.ApiException;
+import com.aurevia.api.contract.ApiVersion;
 import com.aurevia.observability.CorrelationIdFilter;
 import com.aurevia.tenant.TenantContext;
 
@@ -84,7 +85,8 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
      * @param response current HTTP response
      * @param handler  selected handler
      * @return {@code true} so the request proceeds
-     * @throws ApiException when authentication or tenant selection is invalid
+     * @throws ApiException when authentication or tenant selection is invalid,
+     *                      or the requested API version is unsupported
      */
     @Override
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
@@ -118,6 +120,10 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
         // The observability filter clears MDC in its own finally block on every
         // path; afterCompletion clears it on the normal completion path too.
         MDC.put("correlationId", correlation);
+        // Reject a stale version before authentication, tenant binding, rate
+        // limiting or any handler runs. The correlation header was already
+        // echoed above, so the 422 is traceable even without a TenantContext.
+        ApiVersion.from(request.getHeader("X-Api-Version"));
 
         if (PUBLIC_CONTRACT_PATH.equals(request.getRequestURI())) {
             enforceRateLimit(response, PUBLIC_CONTRACT_LIMIT_KEY);
