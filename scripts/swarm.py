@@ -3040,8 +3040,9 @@ def attempts_of(task):
 def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
     """Change one entry's mark and its agent, pr and evidence fields. Other entries are untouched.
 
-    Incomplete work keeps its details and attempt history but drops stale completion evidence;
-    an explicit retry returns to todo through the existing trusted release paths.
+    Incomplete, reopened and newly claimed work keeps its details and attempt
+    history but drops stale completion evidence; that freshness signal is what
+    lets a later reclaim tell finished work from a still-held claim.
     """
     task = task_lookup(text).get(task_id)
     if task is None:
@@ -3066,7 +3067,11 @@ def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
         end -= 1
     drop = (
         {"agent", "pr"}
-        | ({"evidence"} if evidence or status == "incomplete" else set())
+        # Claiming, reopening or pausing a task clears old completion evidence:
+        # a later evidence write is the only freshness signal that the work was
+        # actually finished while this claim was held. Without it, reclaim could
+        # release a live claim.
+        | ({"evidence"} if evidence or status in ("incomplete", "taken", "todo") else set())
         | ({"attempts"} if status == "taken" else set())
     )
     kept, in_details, tries, dropping = [], False, 0, False
@@ -3119,7 +3124,10 @@ def reclaim(text, prs, live=()):
     one with no pull request, or only closed ones, goes back to open. A claim whose
     worker is still running (`live`: task ids) has no pull request yet and must
     stay: waves overlap, and releasing it started a second worker on the same task.
-    Incomplete entries are held work, not stale claims, and remain untouched."""
+    Incomplete entries are held work, not stale claims, and remain untouched.
+    An interactive ``orca`` claim is released only on fresh evidence written
+    after the claim or a matched merged pull request; claiming clears old
+    evidence so an active task cannot be released by a stale artifact."""
     lookup = task_lookup(text)
 
     def canonical_id(task_id):
@@ -3128,22 +3136,27 @@ def reclaim(text, prs, live=()):
 
     live_ids = {canonical_id(task_id) for task_id in live}
     for task in parse_tasks(text):
-        # `opencode-` claims come from the older dispatch system; with no pull request
-        # behind them they would hold their scope (and block repairs) forever.
-        if task["status"] != "taken" or not task["agent"].startswith(
-            ("swarm", "opencode")
-        ):
+        if task["status"] != "taken":
+            continue
+        # `opencode-` claims come from the older dispatch system. Interactive
+        # `orca` claims have no live-worker marker, so they are released only on
+        # positive proof of completion: fresh evidence written after the claim
+        # or a matched merged pull request. Unknown agent prefixes stay held.
+        agent = task["agent"]
+        if not (agent.startswith(("swarm", "opencode")) or agent == "orca"):
+            continue
+        mine = [p for p in prs if canonical_id(pr_task_id(p)) == task["id"]]
+        merged = next((p for p in mine if p["state"] == "MERGED"), None)
+        if agent == "orca" and not (task["evidence"] or merged):
             continue
         if task["id"] in live_ids:
             continue
-        mine = [p for p in prs if canonical_id(pr_task_id(p)) == task["id"]]
         # An open PR still in progress keeps the claim. A needs-human PR is a
         # failure the swarm gave up on: return the task to the open pool.
         if any(
             p["state"] == "OPEN" and "needs-human" not in label_names(p) for p in mine
         ):
             continue
-        merged = next((p for p in mine if p["state"] == "MERGED"), None)
         text = (
             set_task_status(text, task["id"], "done", pr=f"#{merged['number']}")
             if merged

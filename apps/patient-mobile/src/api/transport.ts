@@ -108,7 +108,11 @@ export interface TransportConfig {
 /** Versioned JSON operations exposed by the transport. */
 export interface Transport {
   get<T = unknown>(path: string): Promise<T>;
-  post<T = unknown>(path: string, body?: unknown): Promise<T>;
+  post<T = unknown>(
+    path: string,
+    body?: unknown,
+    headers?: Readonly<Record<string, string>>,
+  ): Promise<T>;
   put<T = unknown>(path: string, body?: unknown): Promise<T>;
 }
 
@@ -125,6 +129,15 @@ interface ErrorBody {
 }
 
 const CORRELATION_HEADER = 'X-Correlation-Id';
+
+/** Header names the transport owns; callers may not supply any case variant. */
+const RESERVED_HEADERS = new Set([
+  'authorization',
+  'x-correlation-id',
+  'accept',
+  'accept-language',
+  'content-type',
+]);
 const TIMEOUT_MS = 15_000;
 const DEV_LOCALHOST = /^http:\/\/localhost(?::\d+)?(?:\/|$)/;
 /** Only bounded opaque identifiers are accepted from a response header. */
@@ -228,6 +241,10 @@ async function send<T>(
   method: 'GET' | 'POST' | 'PUT',
   path: string,
   body: unknown,
+  // Caller-supplied conditional headers (If-Match, Idempotency-Key). The
+  // credential and correlation headers are applied after these, so an untrusted
+  // caller cannot override the authenticated identity or request tracing.
+  extraHeaders: Readonly<Record<string, string>> = {},
 ): Promise<T> {
   const correlationId = newCorrelationId();
   let controller: AbortController | undefined;
@@ -238,12 +255,19 @@ async function send<T>(
       throw new TransportError('unauthenticated', { correlationId });
     }
 
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${token}`,
-      'Accept-Language': config.language,
-      Accept: 'application/json',
-      [CORRELATION_HEADER]: correlationId,
-    };
+    // Fetch header names are case-insensitive: a lower-case forgery would
+    // otherwise become a second key that the runtime merges with ours.
+    const safeExtra: Record<string, string> = {};
+    for (const [name, value] of Object.entries(extraHeaders)) {
+      if (!RESERVED_HEADERS.has(name.toLowerCase())) {
+        safeExtra[name] = value;
+      }
+    }
+    const headers: Record<string, string> = { ...safeExtra };
+    headers.Authorization = `Bearer ${token}`;
+    headers['Accept-Language'] = config.language;
+    headers.Accept = 'application/json';
+    headers[CORRELATION_HEADER] = correlationId;
     let serialized: string | undefined;
     if (body !== undefined) {
       serialized = JSON.stringify(body);
@@ -294,7 +318,8 @@ export function createTransport(config: TransportConfig): Transport {
   const resolved: ResolvedConfig = { ...config, language: config.language ?? 'en' };
   return {
     get: <T>(path: string) => send<T>(resolved, 'GET', path, undefined),
-    post: <T>(path: string, body?: unknown) => send<T>(resolved, 'POST', path, body),
+    post: <T>(path: string, body?: unknown, extraHeaders?: Readonly<Record<string, string>>) =>
+      send<T>(resolved, 'POST', path, body, extraHeaders),
     put: <T>(path: string, body?: unknown) => send<T>(resolved, 'PUT', path, body),
   };
 }
