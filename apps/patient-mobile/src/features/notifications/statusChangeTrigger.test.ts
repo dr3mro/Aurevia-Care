@@ -268,8 +268,16 @@ describe('triggerStatusNotice', () => {
     expect(JSON.stringify(h.logged)).not.toContain('SESSION_EXPIRED');
     expect(JSON.stringify(h.logged)).not.toContain('req-1');
 
-    const retry = await triggerStatusNotice(change(), harness().deps);
+    const retry = await triggerStatusNotice(change(), {
+      ...h.deps,
+      fetchDetail: async (ref) => {
+        h.fetchCalls.push(ref);
+        return appointmentDetail;
+      },
+    });
     expect(retry.kind).toBe('dispatched');
+    expect(h.spy.tokens).toEqual(['synthetic-dev-1']);
+    expect(h.dispatched.size).toBe(1);
   });
 
   it('sends no push on another fetch failure and keeps the key reusable', async () => {
@@ -285,9 +293,17 @@ describe('triggerStatusNotice', () => {
     expect(h.expiredCount()).toBe(0);
     expect(h.dispatched.size).toBe(0);
 
-    const retry = await triggerStatusNotice(change(), harness().deps);
+    const retry = await triggerStatusNotice(change(), {
+      ...h.deps,
+      fetchDetail: async (ref) => {
+        h.fetchCalls.push(ref);
+        return appointmentDetail;
+      },
+    });
     expect(retry.kind).toBe('dispatched');
     expect(retry.outcomes).toEqual([{ deviceId: 'dev-1', disposition: { kind: 'accepted' } }]);
+    expect(h.spy.tokens).toEqual(['synthetic-dev-1']);
+    expect(h.dispatched.size).toBe(1);
   });
 
   it('logs an invalid token without the provider value and keeps the inbox', async () => {
