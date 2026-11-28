@@ -1028,6 +1028,91 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(got["ALIAS-OWNER"]["status"], "taken")
         self.assertEqual(got["HELD-1"]["status"], "incomplete")
 
+    def test_claim_clears_stale_completion_evidence(self):
+        stale = ("- [ ] CW-001 · one\n  - evidence: old CI green\n"
+                 "  - scope: apps/claim\n")
+        taken = swarm.set_task_status(stale, "CW-001", "taken", agent="swarm-1")
+        self.assertEqual(swarm.parse_tasks(taken)[0]["evidence"], "")
+
+    def test_reopened_orca_claim_has_no_stale_evidence_to_release_it(self):
+        done = swarm.set_task_status(TASKS, "CW-001", "done", evidence="old CI green")
+        reopened = swarm.set_task_status(done, "CW-001", "todo")
+        claimed = swarm.set_task_status(reopened, "CW-001", "taken", agent="orca")
+        self.assertEqual(swarm.parse_tasks(claimed)[0]["evidence"], "")
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(claimed, []))}
+        self.assertEqual(got["CW-001"]["status"], "taken")
+
+    def test_reclaim_releases_an_orca_claim_with_completed_evidence(self):
+        claimed = swarm.set_task_status(TASKS, "CW-001", "taken", agent="orca")
+        text = swarm.set_task_status(claimed, "CW-001", "taken", agent="orca",
+                                     evidence="CI green on exact SHA")
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, []))}
+        self.assertEqual(got["CW-001"]["status"], "todo")
+        self.assertEqual(got["CW-001"]["agent"], "")
+        self.assertEqual(got["CW-001"]["evidence"], "")
+
+    def test_reclaim_finishes_an_orca_claim_with_a_merged_pr(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="orca")
+        prs = [{"number": 11, "headRefName": "swarm/CW-001-4", "state": "MERGED"}]
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual((got["CW-001"]["status"], got["CW-001"]["pr"]), ("done", "#11"))
+
+    def test_reclaim_keeps_an_orca_claim_with_an_open_pr(self):
+        claimed = swarm.set_task_status(TASKS, "CW-001", "taken", agent="orca")
+        text = swarm.set_task_status(claimed, "CW-001", "taken", agent="orca",
+                                     evidence="CI green on exact SHA")
+        prs = [{"number": 12, "headRefName": "swarm/CW-001-5", "state": "OPEN"}]
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual(got["CW-001"]["status"], "taken")
+
+    def test_reclaim_keeps_an_orca_claim_without_completion_evidence(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="orca")
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, []))}
+        self.assertEqual((got["CW-001"]["status"], got["CW-001"]["agent"]), ("taken", "orca"))
+
+    def test_reclaim_keeps_an_orca_claim_with_a_needs_human_pr(self):
+        claimed = swarm.set_task_status(TASKS, "CW-001", "taken", agent="orca")
+        text = swarm.set_task_status(claimed, "CW-001", "taken", agent="orca",
+                                     evidence="CI green on exact SHA")
+        prs = [{"number": 13, "headRefName": "swarm/CW-001-6", "state": "OPEN",
+                "labels": labels("swarm", "needs-human")}]
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual(got["CW-001"]["status"], "todo")
+
+    def test_reclaim_keeps_an_orca_prefixed_agent_claim(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="orca-worker-1")
+        text = swarm.set_task_status(text, "CW-001", "taken", agent="orca-worker-1",
+                                     evidence="CI green on exact SHA")
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, []))}
+        self.assertEqual(got["CW-001"]["status"], "taken")
+
+    def test_reclaim_finishes_an_orca_claim_with_evidence_and_merged_pr(self):
+        claimed = swarm.set_task_status(TASKS, "CW-001", "taken", agent="orca")
+        text = swarm.set_task_status(claimed, "CW-001", "taken", agent="orca",
+                                     evidence="CI green on exact SHA")
+        prs = [{"number": 14, "headRefName": "swarm/CW-001-7", "state": "MERGED"}]
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual((got["CW-001"]["status"], got["CW-001"]["pr"]), ("done", "#14"))
+
+    def test_reclaim_keeps_a_live_orca_claim_even_with_evidence(self):
+        claimed = swarm.set_task_status(TASKS, "CW-001", "taken", agent="orca")
+        text = swarm.set_task_status(claimed, "CW-001", "taken", agent="orca",
+                                     evidence="CI green on exact SHA")
+        got = {t["id"]: t for t in swarm.parse_tasks(
+            swarm.reclaim(text, [], live=["CW-001"]))}
+        self.assertEqual(got["CW-001"]["status"], "taken")
+
+    def test_reclaim_keeps_an_unknown_prefix_with_a_merged_pr(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="manual-1")
+        prs = [{"number": 15, "headRefName": "swarm/CW-001-8", "state": "MERGED"}]
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual((got["CW-001"]["status"], got["CW-001"]["agent"]), ("taken", "manual-1"))
+
+    def test_reclaim_leaves_an_incomplete_orca_entry_untouched(self):
+        text = ("- [!] ORCA-1 · Held incomplete\n  - agent: orca\n"
+                "  - evidence: earlier CI green\n  - scope: apps/held\n")
+        self.assertEqual(swarm.reclaim(text, []), text)
+
     def test_release_claim_returns_task_to_open(self):
         captured = {}
 
