@@ -22,6 +22,10 @@ HEAD, BASE, WORKER = "a" * 40, "b" * 40, "c" * 40
 EVIDENCE = ("# notes\n\n## Test evidence\nscripts/quick-check.sh passed\n\n## Coverage\n100%\n\n"
             "## Review verdicts\nGO\n\nTested revision: " + HEAD + "\n")
 ANCESTOR, DIVERGED, STALE = "e" * 40, "f" * 40, "d" * 40
+# The exact shape that hid a valid revision in PR #1815: the SHA is correct and
+# in the head's ancestry, but the canonical line had trailing explanation.
+PROSE_LINE = (f"Tested revision: {ANCESTOR} (`git rev-parse HEAD` when checks ran; "
+              "reconciled before push)")
 
 
 def binding_evidence(sha):
@@ -1053,6 +1057,132 @@ class RefreshedCheckoutWorkflowTests(unittest.TestCase):
         self.assertIn("--root base", self.workflow)
         self.assertIn("--head-root tested", self.workflow)
         self.assertIn("RUNNER_TEMP/swarm-gate-event.json", self.workflow)
+
+
+class CanonicalRevisionExtractionTests(unittest.TestCase):
+    """One canonical line, one revision token; trailing prose is not a second claim."""
+
+    def test_pr1815_line_with_trailing_prose_returns_sha(self):
+        self.assertEqual(gate.extract_note_revision(PROSE_LINE), ANCESTOR)
+
+    def test_canonical_line_alone_returns_sha(self):
+        self.assertEqual(gate.extract_note_revision(f"Tested revision: {HEAD}"), HEAD)
+
+    def test_two_shas_on_one_line_is_rejected(self):
+        line = f"Tested revision: {HEAD} {ANCESTOR} (two claims)"
+        self.assertEqual(gate.extract_note_revision(line), "")
+
+    def test_two_canonical_lines_are_rejected(self):
+        text = EVIDENCE + f"Tested revision: {ANCESTOR} (later)\n"
+        self.assertEqual(gate.extract_note_revision(text), "")
+
+    def test_empty_text_returns_no_revision(self):
+        self.assertEqual(gate.extract_note_revision(""), "")
+        self.assertEqual(gate.extract_note_revision(None), "")
+
+    def test_missing_sha_is_rejected(self):
+        self.assertEqual(gate.extract_note_revision(
+            "Tested revision: (`git rev-parse HEAD` was not run)"), "")
+
+    def test_malformed_sha_is_rejected(self):
+        for sha in ("g" * 40, HEAD.upper(), "e" * 39):
+            with self.subTest(sha=sha):
+                self.assertEqual(gate.extract_note_revision(f"Tested revision: {sha}"), "")
+
+    def test_longer_hex_token_and_bare_prose_sha_are_rejected(self):
+        self.assertEqual(gate.extract_note_revision(f"Tested revision: {'a' * 41}"), "")
+        self.assertEqual(gate.extract_note_revision(f"Tested revision: {HEAD}0"), "")
+        self.assertEqual(gate.extract_note_revision(f"I tested {HEAD} in prose"), "")
+
+    def test_trailing_prose_binds_ancestry_and_rejects_divergence(self):
+        with tempfile.TemporaryDirectory() as base_tmp, tempfile.TemporaryDirectory() as head_tmp:
+            base, head = Path(base_tmp), Path(head_tmp)
+            (base / "tasks").mkdir()
+            (base / "tasks" / "TASK-01.md").write_text("- [-] TASK-01 · work it\n")
+            notes = head / ".agents" / "notes"
+            notes.mkdir(parents=True)
+            (notes / "TASK-01-20261126-051824.md").write_text(
+                EVIDENCE.replace(f"Tested revision: {HEAD}\n", PROSE_LINE + "\n"))
+            event = {"pull_request": {"number": 42, "title": "TASK-01: x",
+                                      "head": {"sha": HEAD, "ref": "swarm/TASK-01-7",
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "base": {"sha": BASE,
+                                               "repo": {"full_name": "owner/repo"}},
+                                      "labels": []}}
+            details = {"title": "TASK-01: x", "labels": [], "commits": [],
+                       "headRefOid": HEAD}
+            observed = []
+
+            def checker(note_sha, head_sha, repo):
+                observed.append((note_sha, head_sha, repo))
+                return (compare_result("diverged", BASE, 3) if len(observed) == 2
+                        else compare_result("ahead", ANCESTOR))
+
+            with mock.patch.object(gate, "_gh_json", return_value=details), \
+                 mock.patch.object(gate.subprocess, "check_output", return_value="src/a.py\n"):
+                ctx = gate.collect_context(event, "pull_request", str(base),
+                                           head_root=str(head), ancestry_checker=checker)
+                passed = gate.evaluate(ctx).check("revision_binding").state
+                # The same note still fails when the trusted compare says diverged.
+                ctx = gate.collect_context(event, "pull_request", str(base),
+                                           head_root=str(head), ancestry_checker=checker)
+                failed = gate.evaluate(ctx).check("revision_binding").state
+            self.assertEqual(observed, [(ANCESTOR, HEAD, "owner/repo")] * 2)
+            self.assertEqual(ctx.note_sha, ANCESTOR)
+            self.assertEqual(passed, gate.PASSED)
+            self.assertEqual(failed, gate.FAILED)
+
+
+class ValidateNoteCommandTests(unittest.TestCase):
+    """Workers can catch an unreadable revision line before publishing a PR."""
+
+    def write_note(self, line):
+        path = Path(tempfile.mkdtemp()) / "note.md"
+        path.write_text(EVIDENCE.replace(f"Tested revision: {HEAD}\n", line + "\n"),
+                        encoding="utf-8")
+        return path
+
+    def test_valid_prose_note_returns_zero_and_names_the_sha(self):
+        path = self.write_note(PROSE_LINE)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-note", "--note-path", str(path)])
+        self.assertEqual(code, 0)
+        self.assertIn(f"Swarm gate: note revision valid: {ANCESTOR}", out.getvalue())
+        self.assertEqual(err.getvalue(), "")
+
+    def test_malformed_note_returns_two_without_a_traceback(self):
+        path = self.write_note(PROSE_LINE + "\nTested revision: " + DIVERGED)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-note", "--note-path", str(path)])
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", err.getvalue())
+        self.assertIn("note revision", err.getvalue())
+
+    def test_validate_note_requires_a_path(self):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-note"])
+        self.assertEqual(code, 2)
+        self.assertIn("note revision", err.getvalue())
+
+    def test_unreadable_note_path_returns_two_without_a_traceback(self):
+        path = Path(tempfile.mkdtemp()) / "missing.md"
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-note", "--note-path", str(path)])
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", err.getvalue())
+        self.assertIn("note validation error", err.getvalue())
+
+    def test_evaluate_still_requires_an_event_path(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(gate.main(["evaluate", "--event-name", "pull_request"]), 2)
+
+    def test_refresh_event_still_requires_an_event_path(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(gate.main(["refresh-event"]), 2)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
-- [-] GATE-HEAD-REFRESH · Refresh a moved PR head in the Swarm gate before failing
+- [x] GATE-HEAD-REFRESH · Refresh a moved PR head in the Swarm gate before failing
   - agent: orca
   - attempts: 0
+  - pr: #1817
   - requirements: OPS-06
   - scope: .github/workflows/swarm-gate.yml, scripts/swarm_gate.py, scripts/tests/test_swarm_gate.py, tasks/01354000-GATE-HEAD-REFRESH.md
   - evidence:
