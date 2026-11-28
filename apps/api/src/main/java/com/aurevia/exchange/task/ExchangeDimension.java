@@ -25,8 +25,10 @@ public enum ExchangeDimension {
     private final String policyAction;
 
     /**
-     * @param wire
-     * @param policyAction
+     * Bind the stored wire name to the authorization key for its channel.
+     *
+     * @param wire         lower-case value written to the event ledger
+     * @param policyAction action key checked before this channel may change
      */
     ExchangeDimension(String wire, String policyAction) {
         this.wire = wire;

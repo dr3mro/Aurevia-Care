@@ -19,7 +19,7 @@ public enum TransmissionState {
     SENT,
     /** The partner confirmed receipt. Terminal. */
     DELIVERED,
-    /** Transmission failed. Terminal; a retry is a new work item, not a reversal. */
+    /** Transmission failed. Terminal: the channel has no outgoing transition. */
     FAILED;
 
     /**

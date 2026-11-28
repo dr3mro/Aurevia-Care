@@ -10,8 +10,9 @@ import com.aurevia.api.ApiException;
  * <p>Each command writes exactly one channel. In particular the transmission
  * branch copies the clinical review channel and its evidence unchanged, which
  * is the domain-level form of the rule that a transmission acknowledgment
- * cannot close a clinical task. The V20 guard trigger enforces the same rule
- * for any writer that bypasses this class.</p>
+ * cannot close a clinical task. The database guard enforces single-channel
+ * updates and evidence binding for any writer that bypasses this class; role
+ * authorization remains a service responsibility.</p>
  */
 public final class ExchangeStateMachine {
 

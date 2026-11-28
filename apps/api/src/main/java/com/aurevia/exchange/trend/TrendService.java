@@ -20,8 +20,8 @@ import com.aurevia.tenant.TenantContext;
  * <p>Each command runs in one tenant-guarded transaction: membership and role
  * are re-derived on every request, the tenant context comes from authentication
  * and the explicit active organization, and a denial is audited before it is
- * returned. TrendObservation and trend reads require the clinical role; changing
- * comparability policy is a separate administrative act. Absent comparability
+ * returned. Observation recording and trend reads require the clinical role;
+ * changing comparability policy is a separate administrative act. Absent comparability
  * is never an error that hides data: all observations are returned as visible
  * exclusions.</p>
  */

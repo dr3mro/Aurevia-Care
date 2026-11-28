@@ -10,6 +10,11 @@ import com.aurevia.api.ApiException;
  * medical director; this slice stores the mechanism and its audit trail. It
  * never invents a clinical rule.</p>
  *
+ * @param testCode           test identity the rule governs
+ * @param canonicalUnit      the only unit eligible for the numeric trend
+ * @param comparabilityGroup assay or method group the rule governs
+ * @param trendable          whether clinical trending is permitted
+ * @param version            positive policy version assigned by the database
  * @return this record
  */
 public record ComparabilityRule(String testCode, String canonicalUnit, String comparabilityGroup,
@@ -18,6 +23,11 @@ public record ComparabilityRule(String testCode, String canonicalUnit, String co
     /**
      * Validate the rule at the trust boundary.
      *
+     * @param testCode           test identity the rule governs
+     * @param canonicalUnit      the only unit eligible for the numeric trend
+     * @param comparabilityGroup assay or method group the rule governs
+     * @param trendable          whether clinical trending is permitted
+     * @param version            positive policy version assigned by the database
      * @throws ApiException when the identity, unit, group or version is invalid
      */
     public ComparabilityRule {
