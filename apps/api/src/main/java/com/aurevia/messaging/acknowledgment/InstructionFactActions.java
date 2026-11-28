@@ -5,15 +5,16 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * Bounded action matrix for the MSG-05 fact slice.
+ * Bounded action matrix for instruction facts.
  *
  * <p>Patient actions (first view, acknowledgment) are separated from staff
  * actions (publication, dispatch, follow-up review). A tenant administrator may
- * hold the staff action permissions, but every owning-unit action still needs
- * unit assignment as object authorization (IAM-01); without that assignment it
- * cannot review a follow-up or view or acknowledge on behalf of a patient. The
- * matrix is paired with fresh membership, role, verified-chart and connection
- * checks on every protected request.</p>
+ * hold the staff action permissions, but an owning-unit action still needs unit
+ * assignment as object authorization. An administrator may read the follow-up
+ * queue for an assigned unit; it can never record a patient first view or receipt
+ * acknowledgment, which are patient-only facts. The matrix is paired with fresh
+ * membership, role, verified-chart and connection checks on every protected
+ * request.</p>
  */
 @Component
 public class InstructionFactActions {

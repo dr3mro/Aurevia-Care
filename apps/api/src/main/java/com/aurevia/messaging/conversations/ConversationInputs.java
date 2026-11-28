@@ -9,7 +9,7 @@ import com.aurevia.api.contract.Subject;
 import com.aurevia.messaging.conversations.ConversationContract.UnitKey;
 
 /**
- * Pure, total validation of every MSG-02 command field.
+ * Pure, total validation of every conversation command field.
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * with a stable code before any SQL runs, so a malformed identifier or oversized

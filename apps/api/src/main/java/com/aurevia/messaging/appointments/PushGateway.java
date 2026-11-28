@@ -1,7 +1,7 @@
 package com.aurevia.messaging.appointments;
 
 /**
- * Synthetic push channel boundary (PAT-01, ARC-05). The real APNs/FCM adapter
+ * Synthetic push channel boundary. The real APNs/FCM adapter
  * is a deployment decision and is not part of this slice.
  */
 public interface PushGateway {

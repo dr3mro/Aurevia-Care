@@ -8,13 +8,12 @@ import com.aurevia.messaging.attachments.AttachmentContract.AttachmentEvent;
 import com.aurevia.messaging.attachments.AttachmentContract.ConnectionGrant;
 
 /**
- * Tenant-scoped persistence boundary for the S-G3-06 attachment slice.
+ * Tenant-scoped persistence boundary for attachments.
  *
  * <p>Every method takes the active organization explicitly so a caller can
  * never read another tenant's row by guessing a local identifier. The
- * authoritative deployment binds this to PostgreSQL with forced row-level
- * security; this slice supplies an in-memory implementation for synthetic
- * verification.</p>
+ * authoritative adapter is the JDBC implementation with forced row-level
+ * security; in-memory fakes are test-only.</p>
  */
 public interface AttachmentStore {
 

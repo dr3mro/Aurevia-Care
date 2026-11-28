@@ -32,22 +32,23 @@ import com.aurevia.messaging.conversations.PatientConnectionVerifier.VerifiedCon
 import com.aurevia.tenant.TenantContext;
 
 /**
- * MSG-02 conversation lifecycle orchestration.
+ * Conversation lifecycle orchestration.
  *
- * <p>Each command runs in one tenant-guarded transaction: membership and roles
- * are re-derived, the action and unit capability are checked, the row is locked,
- * the version and lifecycle state are verified, and the conversation change,
- * its append-only facts and the audit event commit together. A patient reply to
- * a resolved thread reopens the work item only while the verified patient link
- * is still active; a closed thread is read-only.</p>
+ * <p>Each mutating command on an existing thread runs in one tenant-guarded
+ * transaction: membership and roles are re-derived, the action and unit capability
+ * are checked, the row is locked and the version is verified; all commands except
+ * marking read also require a non-closed state. The conversation change, its
+ * append-only facts and the audit event commit together. A reply to a resolved
+ * thread reopens the work item only while the verified patient link is still
+ * active; a closed thread refuses further mutations.</p>
  *
  * <p>A patient must address a unit through a verified, active connection: the
  * patient, unit and connection identities stored on the conversation are derived
  * from that connection, never from the request body alone. The connection is
- * re-resolved on every reply so a revoked connection stops new messaging, and a
- * unit category that no longer matches the verified unit cannot post a message
- * (MSG-01, MSG-02, MSG-07, ARC-07). A staff caller is authorized by the bounded
- * role and unit matrix.</p>
+ * re-resolved on every patient reply so a revoked connection stops new patient
+ * messaging, and a unit category that no longer matches the verified unit cannot
+ * post a message. Staff replies are gated by the verified patient link and the
+ * staff unit matrix only.</p>
  */
 @Service
 public class ConversationService {
@@ -100,8 +101,9 @@ public class ConversationService {
         String topic = ConversationInputs.topic(request.topic());
         String id = ConversationInputs.newId();
         return execute(ConversationActions.CONVERSATION_OPEN, id, caller -> {
-            // Check domain authorization before any existence lookup so a
-            // patient cannot probe which patients or links exist in the tenant.
+            // Check the caller's own subject before any lookup so a patient
+            // cannot act on another account's behalf. Within the tenant, the
+            // existence checks below remain distinguishable to the caller.
             if (caller.patient() && !Objects.equals(caller.subject(), patientSubject)) {
                 throw notFound("conversation not found");
             }
@@ -118,7 +120,7 @@ public class ConversationService {
             String persistedUnit = unit.wire();
             String persistedConnection = connectionId;
             if (caller.patient()) {
-                // MSG-01: a patient may only address a unit through a verified
+                // A patient may only address a unit through a verified
                 // connection. Persist the identities the server resolved from
                 // that connection, never the ones the client merely named.
                 VerifiedConnection verified = connections.requireActive(patientId, unit.wire(), connectionId);
@@ -152,7 +154,7 @@ public class ConversationService {
         return execute(ConversationActions.CONVERSATION_REPLY, conversationId, caller -> {
             Conversation current = repository.loadForUpdate(conversationId).orElseThrow(notFound());
             // Authorize before version/state checks so a foreign thread is never
-            // distinguished by a 412 or 409 (ARC-04 concealment).
+            // distinguished by a 412 or 409 to conceal existence.
             requireAccess(caller, current);
             // Replay before the version check: a retry may carry the version the
             // caller saw before the first reply, and must still return the outcome
@@ -163,9 +165,9 @@ public class ConversationService {
             }
             requireVersion(current, expectedVersion);
             requireWritable(current);
-            // Every reply is new messaging, from either side. MSG-02 reopens a
+            // Every reply is new messaging, from either side. A reply reopens a
             // resolved thread only while the verified relationship still permits
-            // messaging, and MSG-07 stops messaging entirely once it is revoked.
+            // messaging, and revocation stops messaging entirely.
             if (!repository.patientLinkActive(current.patientSubject(), current.patientId())) {
                 throw notFound("verified patient link not found");
             }

@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Tenant-scoped persistence port for the patient appointment projection
- * (PAT-01, ARC-01). The adapter must scope every operation by the active
+ * Tenant-scoped persistence port for the patient appointment projection.
+ * The adapter must scope every operation by the active
  * organization and by the verified patient, never by a client-supplied filter.
  */
 public interface PatientAppointmentStore {

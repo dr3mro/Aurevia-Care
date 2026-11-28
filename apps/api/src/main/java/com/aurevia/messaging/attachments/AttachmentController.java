@@ -35,7 +35,7 @@ import com.aurevia.staff.StaffRepository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for the MSG-03 attachment workflow (ARC-06).
+ * Thin HTTP adapter for the attachment workflow.
  *
  * <p>This is the protected multipart entry point for patient document upload and
  * mediated retrieval. Payload bytes are never logged or returned; the adapter
@@ -79,6 +79,7 @@ public final class AttachmentController {
      * @param connectionId verified care-unit connection identifier
      * @param file         uploaded payload
      * @return HTTP 201 with the quarantined attachment
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Attachment> upload(@RequestParam("connectionId") String connectionId,
@@ -100,6 +101,7 @@ public final class AttachmentController {
      * @param request verdict command
      * @param ifMatch expected version
      * @return the attachment with its recorded verdict
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @PostMapping("/{id}/scan")
     public Attachment scan(@PathVariable String id, @RequestBody ScanRequest request,
@@ -116,6 +118,7 @@ public final class AttachmentController {
      * @param id      attachment identifier
      * @param ifMatch expected version
      * @return the object handle, without bytes or a public URL
+     * @throws com.aurevia.api.ApiException when the delegated command is refused
      */
     @GetMapping("/{id}/download")
     public MediatedDownload download(@PathVariable String id,

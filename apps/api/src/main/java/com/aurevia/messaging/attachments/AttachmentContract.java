@@ -8,12 +8,15 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Domain contract for the S-G3-06 attachment slice (MSG-03, ARC-06).
+ * Domain contract for the attachment workflow.
  *
  * <p>The types here carry no persistence, transport or UI concerns. An
  * attachment starts life in private quarantine, receives an independent scan
- * verdict and becomes reachable only when it is bound to an authorized,
- * published message. Every state change is a separate immutable fact.</p>
+ * verdict and becomes downloadable by other participants only after explicit
+ * publication bound to a
+ * caller-supplied message identifier whose form is validated here; message
+ * existence is not checked in this slice. Every state change is a separate
+ * immutable fact.</p>
  */
 public final class AttachmentContract {
 
@@ -42,6 +45,9 @@ public final class AttachmentContract {
         /**
          * Create a supported media type.
          *
+         * @param contentType canonical media type accepted from the client
+         * @param extension   expected file-name suffix
+         * @param magicPrefix expected leading-byte signature in lowercase hex
          */
         FileType(String contentType, String extension, String magicPrefix) {
             this.contentType = contentType;
@@ -71,6 +77,7 @@ public final class AttachmentContract {
         /**
          * Check a declared content type, case-insensitively.
          *
+         * @param value declared content type supplied with the upload
          * @return {@code true} when it matches this type
          */
         public boolean accepts(String value) {
@@ -80,6 +87,7 @@ public final class AttachmentContract {
         /**
          * Check that a file name carries this type's extension.
          *
+         * @param fileName client-supplied file name
          * @return {@code true} when the extension matches
          */
         public boolean matchesExtension(String fileName) {
@@ -89,6 +97,7 @@ public final class AttachmentContract {
         /**
          * Check that actual leading bytes match this type's signature.
          *
+         * @param magicHex leading payload bytes as lowercase hexadecimal
          * @return {@code true} when the signature matches
          */
         public boolean matchesMagic(String magicHex) {
@@ -98,6 +107,7 @@ public final class AttachmentContract {
         /**
          * Resolve a declared content type to a supported type.
          *
+         * @param value declared content type supplied with the upload
          * @return the matching type, or {@code null} when unsupported
          */
         public static FileType fromContentType(String value) {
@@ -129,6 +139,7 @@ public final class AttachmentContract {
         /**
          * Create a verdict with its stable wire key.
          *
+         * @param wire lowercase key used on the wire and in stored facts
          */
         ScanVerdict(String wire) {
             this.wire = wire;
@@ -147,6 +158,7 @@ public final class AttachmentContract {
         /**
          * Parse a stored verdict key.
          *
+         * @param value lowercase wire key stored on the fact
          * @return the matching verdict
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -161,8 +173,9 @@ public final class AttachmentContract {
     }
 
     /**
-     * Lifecycle of one attachment. A payload is never reachable before both a
-     * clean verdict and publication against an authorized message.
+     * Lifecycle of one attachment. Payload download by another participant is
+     * not permitted before both a clean verdict and explicit publication with a
+     * validated message identifier.
      */
     public enum AttachmentState {
         /** Uploaded and held in private quarantine. */
@@ -181,6 +194,7 @@ public final class AttachmentContract {
         /**
          * Create a state with its stable wire key.
          *
+         * @param wire lowercase key used on the wire and in stored facts
          */
         AttachmentState(String wire) {
             this.wire = wire;
@@ -199,6 +213,7 @@ public final class AttachmentContract {
         /**
          * Parse a stored lifecycle key.
          *
+         * @param value lowercase wire key stored on the fact
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -214,6 +229,7 @@ public final class AttachmentContract {
         /**
          * Decide whether a transition is permitted.
          *
+         * @param next proposed lifecycle state
          * @return {@code true} for an allowed transition or an explicit no-op
          */
         public boolean canTransitionTo(AttachmentState next) {
@@ -262,6 +278,7 @@ public final class AttachmentContract {
         /**
          * Create a fact type with its stable wire key.
          *
+         * @param wire lowercase key used on the wire and in stored facts
          */
         EventType(String wire) {
             this.wire = wire;
@@ -280,6 +297,7 @@ public final class AttachmentContract {
         /**
          * Parse a stored fact key.
          *
+         * @param value lowercase wire key stored on the fact
          * @return the matching fact type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -294,7 +312,7 @@ public final class AttachmentContract {
     }
 
     /**
-     * Freshly derived caller identity for one protected request (IAM-01).
+     * Freshly derived caller identity for one protected request.
      *
      * <p>The integrating caller must rebuild this snapshot from active
      * membership on every command. It is never inferred from a request body.
@@ -306,8 +324,9 @@ public final class AttachmentContract {
     public record Actor(String organizationId, String subject, Set<String> roles,
                         String patientId, String unitId) {
         /**
-         * Defensively copy the role set and enforce patient/staff exclusivity.
-         * Components are documented once on the record declaration; repeating
+         * Defensively copies the role set; the two factories establish the
+         * patient-or-staff invariant. Components are documented once on the record
+         * declaration; repeating
          * them here or on the factory methods yields duplicate Doxygen sections.
          */
         public Actor {
@@ -315,9 +334,13 @@ public final class AttachmentContract {
         }
 
         /**
-         * Build a staff actor with a unit assignment. Parameter semantics are
-         * documented on the record declaration.
+         * Build a staff actor with a unit assignment. The returned snapshot keeps
+         * the unit as object authorization and never carries a patient identifier.
          *
+         * @param organizationId active organization that owns the actor
+         * @param subject        authenticated staff subject
+         * @param unitId         assigned care unit
+         * @param roles          active role keys for the request
          * @return the actor snapshot
          */
         public static Actor staff(String organizationId, String subject, String unitId, String... roles) {
@@ -325,9 +348,12 @@ public final class AttachmentContract {
         }
 
         /**
-         * Build a patient actor linked to one verified chart. Parameter semantics
-         * are documented on the record declaration.
+         * Build a patient actor linked to one verified chart. The patient
+         * identifier comes from the verified link, never from a request body.
          *
+         * @param organizationId active organization that owns the actor
+         * @param subject        authenticated patient subject
+         * @param patientId      linked patient identifier
          * @return the actor snapshot
          */
         public static Actor patient(String organizationId, String subject, String patientId) {
@@ -336,7 +362,7 @@ public final class AttachmentContract {
     }
 
     /**
-     * Verified patient-unit connection that authorizes an upload (MSG-01, MSG-03).
+     * Verified patient-unit connection that authorizes an upload.
      *
      * @return the immutable grant
      */
@@ -383,7 +409,7 @@ public final class AttachmentContract {
 
     /**
      * A mediated download handle. It never carries payload bytes or a public
-     * URL; the caller must present it to the private object boundary (ARC-06).
+     * URL; the caller must present it to the private object boundary.
      *
      * @return the immutable handle
      */
@@ -392,12 +418,13 @@ public final class AttachmentContract {
     }
 
     /**
-     * Upload command. The checksum and magic bytes are computed by the client
-     * over the original payload; the private object boundary verifies them.
+     * Upload command. The adapter derives the magic prefix and checksum from the
+     * uploaded bytes; the service validates the declared media type against both
+     * and checks their bounded form before the payload enters quarantine.
      *
      * <p>The unit is deliberately not a field: it is resolved from the server-side
      * verified connection grant so a caller cannot rebind a draft to another
-     * unit (MSG-03).</p>
+     * unit.</p>
      *
      * @return the upload command
      */
@@ -421,7 +448,7 @@ public final class AttachmentContract {
     public record PublishRequest(List<String> attachmentIds, String messageId, String recipientUnitId) {
         /**
          * Defensively copy the file identifier list so a caller cannot mutate a
-         * publish command after validation (ARC-06). Components are documented
+         * publish command after validation. Components are documented
          * on the record declaration, not repeated on this canonical constructor.
          */
         public PublishRequest {
