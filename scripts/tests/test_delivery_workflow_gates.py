@@ -369,6 +369,23 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
         self.assertLess(preflight, publish)
         self.assertFalse(any("reconcile-tasks" in text for text in texts))
 
+    def test_both_release_gates_wait_for_an_unfinished_main_delivery(self):
+        """A tag pushed mid-Delivery must never get a premature red/green verdict."""
+        for path in (DELIVERY, WORKFLOWS / "release-app-image.yml"):
+            with self.subTest(workflow=path.name):
+                workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+                step = next(
+                    item for job in workflow["jobs"].values() for item in job["steps"]
+                    if item.get("name") == "Require a green default-branch run for this commit"
+                )
+                body = run_text(step)
+                self.assertIn("check-release-base.py --state", body)
+                self.assertIn("max_attempts=45", body)
+                self.assertIn("sleep 60", body)
+                self.assertIn('"$state" == pending', body)
+                self.assertIn("refusing to decide red or green", body)
+                self.assertIn("check-release-base.py \\\n", body)
+
     def test_follow_up_jobs_require_successful_publication(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         jobs = workflow["jobs"]
