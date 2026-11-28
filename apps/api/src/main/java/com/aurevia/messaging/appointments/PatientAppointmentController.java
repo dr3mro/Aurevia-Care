@@ -23,37 +23,40 @@ import com.aurevia.tenant.TenantContext;
  *
  * <p>The authenticated subject comes from the request context; the patient
  * identifier is checked against a freshly verified link on every command inside
- * {@link com.aurevia.messaging.appointments.PatientAppointmentService}.
- * Push payloads are generic and contain no clinical detail. The synthetic ports
- * make the workflow runnable with fixtures until durable verified-link adapters land.</p>
+ * {@link com.aurevia.messaging.appointments.PatientAppointmentService}. Facts are
+ * held in tenant-forced-RLS tables and the service arrives by constructor
+ * injection; no port is assembled here. Push payloads are generic and contain no
+ * clinical detail.</p>
  */
 @RestController
 @RequestMapping("/api/v1/patient/appointments")
-public final class PatientAppointmentController {
+public class PatientAppointmentController {
 
     private final PatientAppointmentService service;
     private final Clock clock;
 
     /**
-     * Create the route over the synthetic in-memory ports.
+     * Create the production route from the injected, tenant-scoped service.
      *
-     * @param clock shared application clock
+     * @param service composed patient appointment service
+     * @param clock   shared application clock
      */
     @Autowired
-    public PatientAppointmentController(Clock clock) {
-        this(new SyntheticPatientAppointmentPorts(), clock);
+    public PatientAppointmentController(PatientAppointmentService service, Clock clock) {
+        this.service = service;
+        this.clock = clock;
     }
 
     /**
-     * Create the route over seeded synthetic ports, used by HTTP tests.
+     * Compatibility constructor for standalone HTTP guard tests that cannot use
+     * Spring. It resolves to a stateless deny-all service and fails closed before
+     * any store or provider is reached; Spring always selects the injected
+     * constructor above.
      *
-     * @param ports  synthetic patient-service ports
-     * @param clock  application clock
+     * @param clock shared application clock
      */
-    PatientAppointmentController(SyntheticPatientAppointmentPorts ports, Clock clock) {
-        this.service = new PatientAppointmentService(ports.links, ports.appointments,
-                ports.devices, ports.gateway, ports.audit);
-        this.clock = clock;
+    public PatientAppointmentController(Clock clock) {
+        this(FailClosedPatientAppointmentPorts.deniedService(), clock);
     }
 
     /**

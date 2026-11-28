@@ -7,9 +7,9 @@ package com.aurevia.messaging.appointments;
  * <p>The implementation must re-derive the link from the authenticated subject
  * and the active organization on every call. An absent or suspended link fails
  * closed; demographics and client-supplied patient identifiers are never a
- * substitute. This slice does not create links — no verified-link table exists
- * yet: the durable adapter must deny until a verified-link source is available,
- * while the synthetic fixture adapter is explicitly seeded for local runs.</p>
+ * substitute. This slice does not create links: the production adapter re-reads
+ * the authoritative identity-proofing fold, while a synthetic fixture adapter
+ * is only seeded for local HTTP tests.</p>
  */
 public interface VerifiedPatientLink {
 
