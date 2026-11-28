@@ -4,16 +4,17 @@
  * Each page is a thin container: it binds one transport loader to the shared
  * resource states and passes validated projections to the existing
  * presentational screen. Appointment confirmation is a real versioned command;
- * the remaining commands stay no-op placeholders until their own stories.
+ * conversation reply and acknowledgment stay no-op placeholders until their own
+ * stories; the conversation read command is wired.
  * A shared layout frame keeps each page readable on compact, large and
  * right-to-left windows without changing data or exported names.
  */
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import * as SafeArea from 'react-native-safe-area-context';
 
-import { TransportError } from '../api/transport';
+import { asTransportError, newCorrelationId, TransportError } from '../api/transport';
 import type { Transport } from '../api/transport';
 import { AppointmentDetail } from '../features/appointments/AppointmentDetail';
 import { AppointmentListScreen } from '../features/appointments/AppointmentListScreen';
@@ -35,6 +36,8 @@ import {
 import { screenText } from '../features/appointments/patientDesign';
 import type { DeviceToken } from '../features/appointments/types';
 import { ConversationInbox } from '../features/conversations/ConversationInbox';
+import { ConversationThread } from '../features/conversations/ConversationThread';
+import { unreadCount } from '../features/conversations/domain';
 import { SecureCredentialStore } from '../features/reports/credentials';
 import { createAlertConfirmer, downloadWithHandoff } from '../features/reports/downloadFlow';
 import type { Confirmer, DocumentHandoff } from '../features/reports/downloadFlow';
@@ -49,13 +52,15 @@ import { PatientResource } from './PatientResource';
 import {
   facilityZoneFormatter,
   loadAppointments,
+  loadConversationDetail,
   loadConversations,
   loadReports,
+  markConversationRead,
   PATIENT_API_BASE_URL,
   placeholderAction,
   placeholderNotice,
 } from './providers';
-import type { ConversationInboxData } from './providers';
+import type { ConversationDetailData, ConversationInboxData } from './providers';
 import { screenMessages } from './screenStates';
 
 /** Inputs shared by every data-backed patient tab. */
@@ -135,6 +140,8 @@ interface PatientPageFrameProps {
   readonly locale: Locale;
   /** The existing page content, rendered without modification. */
   readonly children: ReactNode;
+  /** Optional detail pane content for a selected list item. */
+  readonly detail?: ReactNode;
 }
 
 /**
@@ -152,7 +159,7 @@ interface PatientPageFrameProps {
  * @param props page identifier, locale and existing page content
  * @returns the framed page
  */
-function PatientPageFrame({ pageId, locale, children }: PatientPageFrameProps): React.JSX.Element {
+function PatientPageFrame({ pageId, locale, children, detail }: PatientPageFrameProps): React.JSX.Element {
   const { windowClass, insets } = usePageLayout();
   const large = windowClass === 'large';
   const rtl = locale === 'ar';
@@ -174,11 +181,14 @@ function PatientPageFrame({ pageId, locale, children }: PatientPageFrameProps): 
             <View testID={`${pageId}-list-pane`} style={styles.pane}>
               {children}
             </View>
-            <View testID={`${pageId}-detail-pane`} style={styles.pane} />
+            <View testID={`${pageId}-detail-pane`} style={styles.pane}>
+              {detail}
+            </View>
           </View>
         ) : (
           <View testID={`${pageId}-list-pane`} style={styles.pane}>
             {children}
+            {detail}
           </View>
         )}
       </View>
@@ -510,12 +520,63 @@ export function ConversationInboxPage({
   onSessionExpired,
 }: PatientPageProps): React.JSX.Element {
   const messages = useMemo(() => screenMessages(locale), [locale]);
+  const { windowClass } = usePageLayout();
+  const [selected, setSelected] = useState<ConversationDetailData | null>(null);
+  const [readPositions, setReadPositions] = useState<Readonly<Record<string, number>>>({});
+  // A ref, not rendered state, guards fast double presses before the first
+  // request resolves: neither render nor the inbox badge changes synchronously.
+  const pending = useRef<string | null>(null);
   const load = useCallback(
     () => loadConversations(transport, organizationId),
     [transport, organizationId],
   );
+  const openConversation = useCallback(async (conversationId: string) => {
+    if (pending.current !== null || selected?.conversation.id === conversationId) {
+      return;
+    }
+    pending.current = conversationId;
+    try {
+      const detail = await loadConversationDetail(transport, organizationId, conversationId);
+      setSelected(detail);
+      // Use the authoritative read position from the reply: a concurrent staff
+      // message must stay visible rather than being hidden by a blanket zero.
+      const read = await markConversationRead(
+        transport, conversationId, detail.version, newCorrelationId());
+      const viewed = {
+        ...detail.conversation,
+        lastReadSequence: read.patientReadSequence,
+      };
+      setSelected({ conversation: viewed, version: read.version });
+      setReadPositions((current) => ({ ...current, [conversationId]: unreadCount(viewed) }));
+    } catch (error) {
+      const typed = asTransportError(error);
+      setSelected(null);
+      if (typed.kind === 'unauthenticated') {
+        onSessionExpired();
+      }
+    } finally {
+      pending.current = null;
+    }
+  }, [transport, organizationId, onSessionExpired, selected?.conversation.id]);
+  const detail = selected ? (
+    <View>
+      {windowClass !== 'large' ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={screenText(locale, 'back')}
+          onPress={() => setSelected(null)}>
+          <Text>{screenText(locale, 'back')}</Text>
+        </Pressable>
+      ) : null}
+      <ConversationThread
+        conversation={selected.conversation}
+        onSend={placeholderAction}
+        locale={locale}
+      />
+    </View>
+  ) : null;
   return (
-    <PatientPageFrame pageId="conversations" locale={locale}>
+    <PatientPageFrame pageId="conversations" locale={locale} detail={detail}>
       <PatientResource
         load={load}
         isEmpty={isEmptyInbox}
@@ -525,8 +586,8 @@ export function ConversationInboxPage({
         {(inbox) => (
           <ConversationInbox
             conversations={inbox.conversations}
-            unreadByConversation={inbox.unreadByConversation}
-            onOpen={placeholderAction}
+            unreadByConversation={{ ...inbox.unreadByConversation, ...readPositions }}
+            onOpen={openConversation}
           />
         )}
       </PatientResource>
