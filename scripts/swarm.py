@@ -6225,8 +6225,9 @@ def merge_local(pr):
 # distinct so one successful merge cannot be mistaken for a failing exit code.
 INTEGRATION_FAILED = -1
 # A publish race with a newer main is recoverable by a fresh, tokenless validation
-# cycle. It still exits nonzero: only the emitted allow-listed signal authorises a
-# retry, so an untrusted log reader cannot turn a failure into a merge.
+# cycle. It is reported as a deferred publication and exits 0; only the emitted
+# allow-listed signal authorises a retry, so a green step cannot turn into an
+# unvalidated merge.
 INTEGRATION_RETRY = -2
 # Three publication attempts (0, 1, 2) bound the fetch/merge/re-gate recovery:
 # each base advance gets a fresh tokenless cycle, but a run can never loop forever.
@@ -6279,8 +6280,41 @@ def integration_retry_payload(reason, base, prs, attempt=0):
 
 
 def integration_exit_code(result):
-    """Map a merge count or a terminal/recoverable failure sentinel to a status."""
+    """Map an integrate-batch merge count or failure sentinel to a status."""
     return 1 if result < 0 else 0
+
+
+# Publication state is descriptive output for CI, never an authorisation. The
+# allow-listed integration_retry JSON remains the sole authority for a retry:
+# these four literals carry no PR ids and cannot drive a write on their own.
+PUBLICATION_PUBLISHED = "published"
+PUBLICATION_NOOP = "noop"
+PUBLICATION_DEFERRED = "deferred"
+PUBLICATION_FAILED = "failed"
+
+
+def publication_state(result):
+    """Describe an integrate_publish result with a closed state string.
+
+    Takes the sentinel or merge count returned by :func:`integrate_publish` and
+    returns one of the PUBLICATION_* constants. An unexpected negative result
+    fails closed as ``failed``. The value is diagnostic only: downstream jobs
+    use it to decide whether to reconcile or resolve, never to authorise a push
+    or a retry.
+    """
+    if result < 0:
+        return PUBLICATION_DEFERRED if result == INTEGRATION_RETRY else PUBLICATION_FAILED
+    return PUBLICATION_NOOP if result == 0 else PUBLICATION_PUBLISHED
+
+
+def publication_exit_code(result):
+    """Map an integrate_publish result to the trusted publish step's status.
+
+    A bounded base-advance retry and every non-negative result are green, so an
+    expected race is not reported as a broken step. A terminal or unrecognised
+    negative outcome stays red. ``integrate-batch`` keeps its own exit mapping.
+    """
+    return 0 if result >= 0 or result == INTEGRATION_RETRY else 1
 
 
 def record_merges(merged, gates):
@@ -7050,12 +7084,10 @@ def integrate_finalize(merged, gates, gate, attempt=0):
                 + staged,
                 error.stderr,
             )
-        # A full gate can take many minutes; concurrent [skip ci] tracker commits
-        # can advance main meanwhile. Integrators are serialized by their
-        # concurrency group, so the only new commits are tracker-only. Move HEAD
-        # onto fresh main with --soft (keeping the already-gated tree staged),
-        # adopt the fresh shared trackers, re-apply our merge records, re-gate and
-        # retry. No commit replay means no committer identity or rebase conflicts.
+        # A full gate can take many minutes, so main can advance before this
+        # write. No gate runs in the publication job: if a non-tracker path moved,
+        # the batch is deferred to a fresh tokenless validation cycle instead of
+        # replaying an already-gated tree onto an ungated base.
         try:
             authed_git("push", "origin", "HEAD:main")
         except subprocess.CalledProcessError as exc:
@@ -7869,12 +7901,26 @@ def main(argv=None):
         emit("conflicted", json.dumps(manifest["conflicted"]))
     elif a.cmd == "integrate-publish":
         if not 0 <= a.recovery_attempt < MAX_BASE_ADVANCE_RETRIES:
+            # A malformed dispatch input is a terminal publication outcome.
+            emit("publication_state", PUBLICATION_FAILED)
             raise SystemExit(
                 f"recovery attempt must be 0 to {MAX_BASE_ADVANCE_RETRIES - 1}"
             )
-        return integration_exit_code(
-            integrate_publish(a.manifest, a.bundle, a.gate, attempt=a.recovery_attempt)
-        )
+        # Emit exactly one state from the trusted publication step. Direct
+        # refusals inside integrate_publish bypass its return value, so they are
+        # caught here; no state means downstream equality gates fail closed.
+        try:
+            result = integrate_publish(
+                a.manifest, a.bundle, a.gate, attempt=a.recovery_attempt
+            )
+        except SystemExit:
+            emit("publication_state", PUBLICATION_FAILED)
+            raise
+        except Exception:
+            emit("publication_state", PUBLICATION_FAILED)
+            raise
+        emit("publication_state", publication_state(result))
+        return publication_exit_code(result)
     elif a.cmd == "resolve-publish":
         resolve_publish(a.dir, dispatch=not a.no_dispatch)
     elif a.cmd == "stale-retry":

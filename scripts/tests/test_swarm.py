@@ -1239,10 +1239,14 @@ class PlanTests(unittest.TestCase):
         for perm in ("contents", "pull-requests", "issues", "actions", "packages"):
             self.assertIn(perm, wave["integrate"]["permissions"])
 
-    def test_next_wave_requires_successful_integrator(self):
+    def test_next_wave_requires_a_published_integrator_batch(self):
         import yaml
         wave = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())["jobs"]
-        self.assertIn("needs.integrate.result == 'success'", wave["loop"]["if"])
+        condition = wave["loop"]["if"]
+        self.assertIn("needs.integrate.result == 'success'", condition)
+        self.assertIn("needs.integrate.outputs.publication_state == 'published'", condition)
+        self.assertIn("needs.integrate.outputs.publication_state == 'noop'", condition)
+        self.assertNotIn("publication_state == 'deferred'", condition)
 
     def test_integrator_gate_is_the_full_check(self):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()

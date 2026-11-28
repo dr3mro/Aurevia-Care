@@ -539,7 +539,11 @@ jobs:
   loop:
     name: Start the next wave
     needs: [plan, worker, integrate]
-    if: always() && needs.plan.result == 'success' && needs.integrate.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
+    if: >-
+      always() && needs.plan.result == 'success' && needs.integrate.result == 'success'
+      && (needs.integrate.outputs.publication_state == 'published'
+          || needs.integrate.outputs.publication_state == 'noop')
+      && fromJSON(needs.plan.outputs.count || '0') > 0
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

@@ -342,13 +342,23 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
         self.assertIn("report", workflow["jobs"]["validate"]["outputs"])
         self.assertIn("needs.validate.outputs.report", workflow["jobs"]["publish"]["if"])
 
-    def test_reconciliation_uses_clean_main_least_privilege_and_success_gate(self):
+    def test_publish_and_reusable_workflow_expose_publication_state(self):
+        workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
+        publish = workflow["jobs"]["publish"]
+        self.assertEqual(publish["outputs"]["publication_state"],
+                         "${{ steps.push.outputs.publication_state }}")
+        outputs = workflow[True]["workflow_call"]["outputs"]
+        self.assertEqual(outputs["publication_state"]["value"],
+                         "${{ jobs.publish.outputs.publication_state }}")
+
+    def test_reconciliation_uses_clean_main_least_privilege_and_published_gate(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         jobs = workflow["jobs"]
         self.assertFalse(any("reconcile-tasks" in run_text(step) for step in jobs["publish"]["steps"]))
         reconcile = jobs["reconcile"]
         self.assertEqual(reconcile["needs"], "publish")
-        self.assertEqual(reconcile["if"], "always() && needs.publish.result == 'success'")
+        self.assertEqual(reconcile["if"],
+                         "always() && needs.publish.outputs.publication_state == 'published'")
         self.assertEqual(reconcile["permissions"], {"contents": "write", "pull-requests": "read"})
         self.assertEqual(reconcile["env"]["GH_TOKEN"],
                          "${{ secrets.SWARM_TOKEN || github.token }}")
@@ -386,11 +396,14 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
                 self.assertIn("refusing to decide red or green", body)
                 self.assertIn("check-release-base.py \\\n", body)
 
-    def test_follow_up_jobs_require_successful_publication(self):
+    def test_follow_up_jobs_require_an_explicit_publication_state(self):
         workflow = yaml.safe_load((WORKFLOWS / "swarm-integrator.yml").read_text(encoding="utf-8"))
         jobs = workflow["jobs"]
         condition = jobs["resolve"]["if"]
-        self.assertIn("needs.publish.result == 'success'", condition)
+        self.assertNotIn("needs.publish.result", condition)
+        self.assertIn("needs.publish.outputs.publication_state == 'published'", condition)
+        self.assertIn("needs.publish.outputs.publication_state == 'noop'", condition)
+        self.assertIn("needs.publish.outputs.publication_state == 'deferred'", condition)
         self.assertIn("needs.seal.outputs.conflicted != ''", condition)
         self.assertIn("needs.publish.outputs.integration_retry != ''", condition)
         self.assertIn("needs.publish.outputs.recovery_attempt < 2", condition)
