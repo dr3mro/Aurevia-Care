@@ -13,7 +13,7 @@ import com.aurevia.printing.HandoutContract.HandoutSource;
 import com.aurevia.printing.HandoutContract.RenderedHandout;
 
 /**
- * Build a deterministic A4 handout PDF from one validated source revision (CLN-07).
+ * Build a deterministic A4 handout PDF from one validated source revision.
  *
  * <p>The renderer delegates byte production to the shared document renderer so
  * font embedding, page numbering, A4 media box, direction marker and provenance

@@ -6,7 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Domain contract for the MSG-02 conversation lifecycle.
+ * Domain contract for the conversation lifecycle.
  *
  * <p>A conversation is the single context between one verified patient
  * connection and one recipient unit. Messages are an append-only, sequenced
@@ -22,15 +22,15 @@ public final class ConversationContract {
     /**
      * Lifecycle state of one conversation and its staff work item.
      *
-     * <p>Every forward transition is legal except leaving {@code closed}, which
-     * makes a closed thread read-only for all authorized viewers. A patient
-     * reply to a resolved thread returns it to {@code awaiting_staff}, which is
-     * the work-item reopen.</p>
+     * <p>The service sets the next state explicitly; closed threads are refused
+     * by the domain service. A patient reply to a resolved thread sets
+     * {@code awaiting_staff}, a staff reply sets {@code awaiting_patient}, which
+     * is the work-item reopen.</p>
      */
     public enum State {
         /** A patient message needs a staff response. */
         AWAITING_STAFF("awaiting_staff"),
-        /** A staff message needs a patient response or acknowledgment. */
+        /** A staff message needs a patient reply; receipt acknowledgment is a separate fact. */
         AWAITING_PATIENT("awaiting_patient"),
         /** The work item was resolved with a reason; a reply can reopen it. */
         RESOLVED("resolved"),
@@ -42,6 +42,7 @@ public final class ConversationContract {
         /**
          * Create a state with its stable wire key.
          *
+         * @param wire lowercase key used on the wire and in stored facts
          */
         State(String wire) {
             this.wire = wire;
@@ -60,6 +61,7 @@ public final class ConversationContract {
         /**
          * Parse a stored state key.
          *
+         * @param value lowercase key stored on the fact
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -75,6 +77,7 @@ public final class ConversationContract {
         /**
          * Decide whether a transition is permitted.
          *
+         * @param next proposed lifecycle state
          * @return {@code true} for a no-op or any transition out of a non-closed state
          */
         public boolean canTransitionTo(State next) {
@@ -104,6 +107,7 @@ public final class ConversationContract {
         /**
          * Create a unit key with its stable wire value.
          *
+         * @param wire canonical unit key used on the wire
          */
         UnitKey(String wire) {
             this.wire = wire;
@@ -122,6 +126,7 @@ public final class ConversationContract {
         /**
          * Parse a stored unit key.
          *
+         * @param value canonical unit key from the caller
          * @return the matching unit
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -137,7 +142,7 @@ public final class ConversationContract {
 
     /**
      * Kind of message author. Delivery and notification are separate facts in
-     * MSG-05 and are deliberately not represented here.
+     * the instruction-fact workflow and are deliberately not represented here.
      */
     public enum SenderKind {
         /** Message authored by the verified patient. */
@@ -150,6 +155,7 @@ public final class ConversationContract {
         /**
          * Create a sender kind with its stable wire key.
          *
+         * @param wire lowercase key used on the wire and in stored facts
          */
         SenderKind(String wire) {
             this.wire = wire;
@@ -168,6 +174,7 @@ public final class ConversationContract {
         /**
          * Parse a stored sender key.
          *
+         * @param value lowercase wire key stored on the fact
          * @return the matching sender kind
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -204,6 +211,7 @@ public final class ConversationContract {
         /**
          * Create a work-item event type with its stable wire key.
          *
+         * @param wire lowercase key used on the wire and in stored facts
          */
         WorkEventType(String wire) {
             this.wire = wire;
@@ -222,6 +230,7 @@ public final class ConversationContract {
         /**
          * Parse a stored work-item event key.
          *
+         * @param value lowercase wire key stored on the fact
          * @return the matching event type
          * @throws IllegalArgumentException when the key is unknown
          */

@@ -2,13 +2,14 @@ package com.aurevia.messaging.appointments;
 
 /**
  * Port for the verified patient-account to chart link required before any
- * patient self-access (PAT-01, IAM-05, ARC-02).
+ * patient self-access.
  *
  * <p>The implementation must re-derive the link from the authenticated subject
  * and the active organization on every call. An absent or suspended link fails
  * closed; demographics and client-supplied patient identifiers are never a
  * substitute. This slice does not create links — no verified-link table exists
- * yet, so until IAM-05 lands the adapter must deny every request.</p>
+ * yet: the durable adapter must deny until a verified-link source is available,
+ * while the synthetic fixture adapter is explicitly seeded for local runs.</p>
  */
 public interface VerifiedPatientLink {
 

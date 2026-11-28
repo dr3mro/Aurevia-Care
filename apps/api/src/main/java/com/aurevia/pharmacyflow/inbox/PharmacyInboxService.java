@@ -19,7 +19,7 @@ import com.aurevia.prescription.rx.RxInputs;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * RX-02 / XCH-01 pharmacy inbox domain service.
+ * Pharmacy inbox domain service.
  *
  * <p>Every read runs in one tenant-guarded transaction. Active membership, the
  * {@code pharmacy_staff} role and the subject's approved pharmacy assignment are

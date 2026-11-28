@@ -5,7 +5,7 @@ import java.util.Set;
 import com.aurevia.radiology.RadRules;
 
 /**
- * Pure role-boundary rules for the RAD-01 performing-site worklist.
+ * Pure role-boundary rules for the performing-site worklist.
  *
  * <p>The checks reuse the radiology role vocabulary so the worklist cannot drift
  * into a second, incompatible permission model. Roles are supplied by the caller

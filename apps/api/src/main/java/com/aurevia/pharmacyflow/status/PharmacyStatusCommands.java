@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Set;
 
 /**
- * Command bodies for the four pharmacy status facts (RX-02, ARC-03).
+ * Command bodies for the four pharmacy status facts.
  *
  * <p>The organization, actor and active roles are supplied by the caller from
  * the active tenant context and freshly resolved membership; none is inferred

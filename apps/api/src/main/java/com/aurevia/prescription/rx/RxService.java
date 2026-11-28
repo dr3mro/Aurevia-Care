@@ -29,13 +29,14 @@ import com.aurevia.prescription.rx.RxContract.View;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * RX-02 prescription transmission workflow.
+ * Controlled prescription transmission workflow.
  *
  * <p>Each command runs in one tenant-guarded transaction: authorization is
  * re-derived, the state precondition is checked, the row change, its immutable
  * event and the audit event are committed together. Prescriber attestation and
- * market entitlement are re-checked on every clinician-driven command so a
- * revocation between attest and transmit fails closed. A stable submission id
+ * market entitlement are re-derived on the commands that change transmission or
+ * produce a printable document, so a revocation between attest and transmit
+ * fails closed. A stable submission id
  * is created once; an ambiguous transmission enters reconciliation and cannot
  * be retried until the partner is queried and reports the submission absent.
  * The retry reuses the same submission id and never creates a second send.</p>
@@ -73,7 +74,7 @@ public class RxService {
     }
 
     /**
-     * Register an RX-02 transmission record for an RX-01 draft id.
+     * Register a transmission record for a prescription draft id.
      *
      * @param request registration command
      * @return the created draft
@@ -231,6 +232,8 @@ public class RxService {
             Prescription current = lockedByPrescriber(id, expectedVersion, State.AMBIGUOUS);
             requireEntitlement(current.prescriberSubject());
             requireSubmission(current, submissionId);
+            // A retry is blocked until the partner reports the submission absent;
+            // the original submission id is reused so the retry cannot send twice.
             if (!current.retryAllowed()) {
                 throw new ApiException(409, "RETRY_NOT_ALLOWED",
                         "partner status must be verified absent before a retry");
@@ -349,7 +352,7 @@ public class RxService {
      * @param request         cancellation command
      * @param expectedVersion version read by the caller
      * @return the cancelled prescription
-     * @throws ApiException on denial, stale version or a terminal state
+     * @throws ApiException on denial, stale version or a state that cannot be cancelled
      */
     public Prescription cancel(String id, CancelRequest request, int expectedVersion) {
         RxInputs.uuid(id, "id");

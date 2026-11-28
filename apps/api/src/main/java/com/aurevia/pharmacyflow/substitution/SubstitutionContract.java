@@ -10,7 +10,7 @@ import com.aurevia.prescription.PrescriptionContract.DrugEntry;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Domain contract for a pharmacy-proposed substitution (RX-01, RX-02).
+ * Domain contract for a pharmacy-proposed substitution.
  *
  * <p>A proposal is a tagged catalog alternative offered by the pharmacy with a
  * reason and the allergy assessment it was checked against. It is review-only

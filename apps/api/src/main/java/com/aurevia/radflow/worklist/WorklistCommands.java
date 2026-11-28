@@ -7,7 +7,7 @@ import com.aurevia.radiology.RadTypes.Modality;
 import com.aurevia.radiology.RadTypes.Urgency;
 
 /**
- * Command bodies for the RAD-01 performing-site worklist kernel.
+ * Command bodies for the performing-site worklist kernel.
  *
  * <p>Organization, actor and roles are supplied by the caller from the active
  * tenant context and freshly resolved membership; none is inferred from a
@@ -38,7 +38,7 @@ public interface WorklistCommands {
     }
 
     /**
-     * Command that records the study time, an approved modality and the accession.
+     * Command that records the study time, the supplied modality and the accession.
      *
      * @return this record
      */

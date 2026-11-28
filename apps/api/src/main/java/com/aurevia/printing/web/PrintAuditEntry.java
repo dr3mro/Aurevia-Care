@@ -5,7 +5,7 @@ import java.time.Instant;
 import com.aurevia.printing.HandoutKind;
 
 /**
- * The sanitized facts recorded for one print, reprint, download or refusal (OPS-02).
+ * The sanitized facts recorded for one print, reprint, download or refusal.
  *
  * <p>The value deliberately has no field for clinical content, a patient name or
  * identifier, a file name, a URL or an object key: a disclosure is described by

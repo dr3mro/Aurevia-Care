@@ -1,7 +1,7 @@
 package com.aurevia.messaging.appointments;
 
 /**
- * Lifecycle of a registered push device (PAT-01, ARC-02).
+ * Lifecycle of a registered push device.
  */
 public enum DeviceState {
 

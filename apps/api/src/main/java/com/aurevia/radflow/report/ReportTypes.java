@@ -3,7 +3,7 @@ package com.aurevia.radflow.report;
 import java.util.Locale;
 
 /**
- * Bounded vocabularies for imaging report delivery and addendum acknowledgment (RAD-01).
+ * Bounded vocabularies for imaging report delivery and addendum acknowledgment.
  *
  * <p>These enums keep clinically meaningful choices out of free text at the trust
  * boundary. A delivery and a referrer notification are separate facts: producing a
@@ -14,7 +14,7 @@ import java.util.Locale;
 public interface ReportTypes {
 
     /**
-     * Acknowledgment state of one addendum revision (RAD-01).
+     * Acknowledgment state of one addendum revision.
      *
      * <p>An addendum starts {@code OPEN} when it is delivered to the referrer and
      * becomes {@code ACKNOWLEDGED} only when that exact revision is acknowledged.
@@ -39,7 +39,7 @@ public interface ReportTypes {
     }
 
     /**
-     * Immutable facts emitted by the report delivery kernel (ARC-05, OPS-02).
+     * Immutable facts emitted by the report delivery kernel.
      *
      * <p>Facts carry only identifiers and the actor. No clinical narrative or image
      * data is placed in an event, so an operational fact cannot disclose a

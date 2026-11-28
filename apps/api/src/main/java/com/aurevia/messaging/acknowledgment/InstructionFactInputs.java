@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 import com.aurevia.api.ApiException;
 
 /**
- * Pure, total validation of every MSG-05 command field.
+ * Pure, total validation of every instruction-fact command field.
  *
  * <p>Each method either returns a normalized value or raises a {@code 422} with
  * a stable code before any domain or store access. No clinical text is accepted

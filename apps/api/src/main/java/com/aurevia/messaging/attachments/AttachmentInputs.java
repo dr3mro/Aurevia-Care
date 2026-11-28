@@ -6,7 +6,7 @@ import com.aurevia.messaging.attachments.AttachmentContract.FileType;
 import com.aurevia.messaging.attachments.AttachmentContract.ScanVerdict;
 
 /**
- * Pure, total validation of every S-G3-06 attachment command field (MSG-03).
+ * Pure, total validation of every attachment command field.
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * with a stable code before any durable state changes, so a malformed type,

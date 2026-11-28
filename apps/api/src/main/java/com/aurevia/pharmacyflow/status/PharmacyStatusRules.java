@@ -5,7 +5,7 @@ import java.util.Set;
 import com.aurevia.authz.specialty.SpecialtyRoles;
 
 /**
- * Bounded permission rule for recording pharmacy status facts (RX-02, IAM-01).
+ * Bounded permission rule for recording pharmacy status facts.
  *
  * <p>The check reuses the shared specialty role vocabulary so the status API
  * cannot drift into a second permission model. Roles are supplied by the caller

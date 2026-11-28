@@ -27,7 +27,7 @@ import com.aurevia.prescription.PrescriptionContract.DrugEntry;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * RX-01 / RX-02 pharmacy substitution domain kernel over durable storage.
+ * Pharmacy substitution domain kernel over durable storage.
  *
  * <p>Proposals, their frozen alternatives and signed revisions live in the V94
  * tenant-guarded tables, never in process memory, so any service instance sees
@@ -41,9 +41,9 @@ import com.aurevia.tenant.TenantContext;
  * {@link com.aurevia.pharmacyflow.substitution.SubstitutionCatalog} port
  * and writes only through {@link com.aurevia.pharmacyflow.substitution.SubstitutionStore}
  * and {@link com.aurevia.pharmacyflow.substitution.SubstitutionApplication}.
- * Callers supply verified membership roles, the active tenant, an {@code If-Match}
- * precondition and an {@code Idempotency-Key}, all of which are re-derived on
- * every command.</p>
+ * Callers supply verified membership roles, the active tenant and an
+ * {@code Idempotency-Key}; an {@code If-Match} precondition applies only to a
+ * decision. Roles and tenant are re-derived on every command.</p>
  */
 @Service
 public final class SubstitutionService {
@@ -177,8 +177,9 @@ public final class SubstitutionService {
      * Approve or decline a pending proposal as its named prescriber.
      *
      * <p>Approval re-resolves the catalog and the allergy, requires an explicit
-     * attestation, rechecks the authoritative prescription version and prescribing
-     * entitlement, records an immutable signed revision, applies the replacement
+     * attestation, rechecks the proposal version and prescribing entitlement and
+     * forwards that version as the application precondition, records an immutable
+     * signed revision, applies the replacement
      * through the prescription workflow and appends the audit event. A decline
      * records no revision. Both close the proposal with a fresh version so a stale
      * or replayed decision cannot act twice. Any failure rolls the transaction
@@ -216,6 +217,8 @@ public final class SubstitutionService {
         if (current == null || !command.subject().equals(current.prescriberSubject())) {
             throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
         }
+        // A replay returns the original decision before the version and state of a
+        // changed proposal are reconsidered, so a retried command cannot decide twice.
         if (!store.claim(command.organizationId(), decision, key, current.id())) {
             return replay(command.organizationId(), decision, key);
         }
@@ -290,6 +293,8 @@ public final class SubstitutionService {
             if (current == null) {
                 throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
             }
+            // Non-party and wrong-role readers see the same 404 as an absent record,
+            // so neither party membership nor a proposal's existence can be probed.
             if (!SubstitutionRules.isParty(subject, current)) {
                 throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
             }

@@ -7,7 +7,7 @@ import java.util.List;
 import com.aurevia.documents.DocumentContract.Actor;
 
 /**
- * Value types shared by the handout policy, renderer, archive and service (CLN-07, ARC-06).
+ * Value types shared by the handout policy, renderer, archive and service.
  *
  * <p>A source is an exact immutable revision of a clinical record selected by
  * the caller. The service never accepts rendered bytes or a version from the
@@ -23,7 +23,8 @@ public final class HandoutContract {
      * One immutable source revision selected for a patient handout.
      *
      * <p>{@code state} and {@code attested} come from the authoritative record;
-     * {@code printChannel} is the approved BUILD-10 channel on a prescription.
+     * {@code printChannel} is a prescription channel whose wire key belongs to
+     * the declared channel families.
      * The checksum binds the rendered PDF to this exact source content. The
      * clinical lines are copied so a caller cannot edit content after the
      * render decision.</p>

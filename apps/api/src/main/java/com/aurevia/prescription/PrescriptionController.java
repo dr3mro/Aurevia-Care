@@ -21,7 +21,7 @@ import com.aurevia.prescription.DraftCatalogVersion;
 import com.aurevia.prescription.PrescriptionContract.SelectMedicationRequest;
 
 /**
- * Thin HTTP adapter for RX-01 prescription drafts (ARC-03, ARC-04).
+ * Thin HTTP adapter for prescription drafts.
  *
  * <p>The medication-selection command requires an {@code If-Match} version.
  * Authorization, allergy matching and override provenance live in the domain

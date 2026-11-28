@@ -7,7 +7,7 @@ import com.aurevia.radiology.RadTypes.Urgency;
 import com.aurevia.radflow.worklist.WorklistTypes.WorklistStatus;
 
 /**
- * One read-model row of the performing-site worklist (RAD-01).
+ * One read-model row of the performing-site worklist.
  *
  * <p>The entry deliberately exposes only the fields a performing-site user needs
  * to pick up and progress a study. It never carries the full clinical narrative

@@ -21,7 +21,7 @@ import com.aurevia.staff.StaffRepository;
 import com.aurevia.tenant.TenantContext;
 
 /**
- * Thin HTTP adapter for prescription clarification threads (RX-02, MSG-04).
+ * Thin HTTP adapter for prescription clarification threads.
  *
  * <p>This controller only binds paths, headers and command bodies. Tenant and
  * actor come from the request context and active roles from freshly resolved

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Approved English and Arabic labels for the fixed handout header fields (UX-01).
+ * Approved English and Arabic labels for the fixed handout header fields.
  *
  * <p>Only the stable field keys used by the renderer are present; an unknown
  * key is a programming error and never reaches the handout. The labels are

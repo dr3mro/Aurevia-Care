@@ -6,7 +6,7 @@ import java.util.List;
 import com.aurevia.prescription.rx.RxContract.EventType;
 
 /**
- * Read model for the pharmacy status fact trail (RX-02, ARC-01, OPS-02).
+ * Read model for the pharmacy status fact trail.
  *
  * <p>The types here carry no persistence or transport concerns. Each clinically
  * significant pharmacy response is a separate immutable event that is never

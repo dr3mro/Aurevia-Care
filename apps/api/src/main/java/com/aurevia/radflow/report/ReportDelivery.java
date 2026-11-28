@@ -5,7 +5,7 @@ import java.util.List;
 import com.aurevia.radiology.Interpretation;
 
 /**
- * One immutable delivered-report aggregate (RAD-01, ARC-01).
+ * One immutable delivered-report aggregate.
  *
  * <p>The aggregate holds the append-only interpretation revisions and one
  * acknowledgment receipt per addendum. A signed interpretation and every later

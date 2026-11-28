@@ -14,7 +14,7 @@ import com.aurevia.prescription.PrescriptionContract.DrugEntry;
 import com.aurevia.prescription.PrescriptionContract.Ingredient;
 
 /**
- * Pure, effective-dated fold over a tenant's versioned drug catalog (RX-01, ADM-01).
+ * Pure, effective-dated fold over a tenant's versioned drug catalog.
  *
  * <p>Only the newest approved entry whose effective window contains the
  * evaluation instant is visible. A future version never applies early and an

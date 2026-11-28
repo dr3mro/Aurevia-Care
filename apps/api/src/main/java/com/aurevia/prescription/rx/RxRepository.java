@@ -20,7 +20,7 @@ import com.aurevia.prescription.rx.RxContract.Prescription;
 import com.aurevia.prescription.rx.RxContract.State;
 
 /**
- * The single SQL boundary for RX-02 prescription transmission.
+ * The single SQL boundary for prescription transmission.
  *
  * <p>Every statement runs inside the tenant-guarded transaction, so forced row
  * level security confines it to the active organization. The event ledger is
@@ -107,9 +107,9 @@ public class RxRepository {
     }
 
     /**
-     * Insert an RX-02 transmission record referencing an RX-01 draft id.
+     * Insert a transmission record referencing a prescription draft id.
      *
-     * @param id                 RX-01 draft identifier used as the local id
+     * @param id prescription draft identifier used as the local id
      * @param patientId          owning patient
      * @param medication         medication name
      * @param strength           medication strength

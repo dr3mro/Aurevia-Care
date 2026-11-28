@@ -5,7 +5,7 @@ import java.util.Optional;
 import com.aurevia.printing.HandoutContract.RenderedHandout;
 
 /**
- * Tenant-scoped registry of immutable handouts produced by the printing service (ARC-06).
+ * Tenant-scoped registry of immutable handouts produced by the printing service.
  *
  * <p>The archive gives the rendering service a stable version within one
  * process: an unchanged source revision returns the original rendered bytes,

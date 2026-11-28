@@ -13,7 +13,7 @@ import com.aurevia.exchange.release.ReleaseState;
 import com.aurevia.printing.HandoutContract.Handout;
 
 /**
- * Value types for the printable consolidated chart extract (CLN-03, CLN-05, CLN-07).
+ * Value types for the printable consolidated chart extract.
  *
  * <p>An extract is a patient-facing projection of one patient's chart over a
  * visit or a date range. The caller supplies immutable source facts (structured
@@ -28,7 +28,7 @@ public final class ChartExtractContract {
     }
 
     /**
-     * A selectable section of the consolidated chart extract (CLN-03, CLN-05, CLN-07).
+     * A selectable section of the consolidated chart extract.
      *
      * <p>The wire key is stable; the English and Arabic titles are the approved
      * patient-facing section headers. Layout direction is chosen centrally from
@@ -81,7 +81,7 @@ public final class ChartExtractContract {
     }
 
     /**
-     * Why a source fact was deliberately left out of an extract (CLN-05).
+     * Why a source fact was deliberately left out of an extract.
      *
      * <p>The reason is stored as a stable key and carries an approved localized
      * label so a print preview can explain the omission without exposing the

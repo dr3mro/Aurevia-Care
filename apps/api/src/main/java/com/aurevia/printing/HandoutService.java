@@ -11,7 +11,7 @@ import com.aurevia.printing.HandoutContract.HandoutSource;
 import com.aurevia.printing.HandoutContract.RenderedHandout;
 
 /**
- * Render a signed or placed clinical source as an immutable patient handout PDF (CLN-07, RX-02).
+ * Render a signed or placed clinical source as an immutable patient handout PDF.
  *
  * <p>The service is the single printing entry point for the five supported
  * kinds. It validates the tenant, language and revision selectors, applies the

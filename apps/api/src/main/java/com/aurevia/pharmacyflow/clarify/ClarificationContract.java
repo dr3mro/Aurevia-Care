@@ -6,10 +6,10 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Read model for a prescription clarification thread (RX-02, MSG-04).
+ * Read model for a prescription clarification thread.
  *
- * <p>A thread is opened by the pharmacy on a routed prescription and addressed
- * to the prescriber identified by that prescription. The request and the
+ * <p>A thread is opened by the pharmacy on a prescription visible to it and
+ * addressed to the prescriber identified by that prescription. The request and the
  * prescriber's answer are append-only entries; the answer closes the thread and
  * is readable by the pharmacy requester. No chart data or inventory concept is
  * carried here. The types have no persistence or transport concerns.</p>

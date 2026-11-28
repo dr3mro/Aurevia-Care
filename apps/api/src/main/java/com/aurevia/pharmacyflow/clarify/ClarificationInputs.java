@@ -5,7 +5,7 @@ import java.util.UUID;
 import com.aurevia.api.ApiException;
 
 /**
- * Pure boundary validation for clarification commands (RX-02, ARC-03).
+ * Pure boundary validation for clarification commands.
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * before any state changes, so a malformed identifier, question or version can

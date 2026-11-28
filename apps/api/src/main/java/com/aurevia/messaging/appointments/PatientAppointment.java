@@ -4,7 +4,7 @@ import java.time.Instant;
 
 /**
  * The appointment fields a verified patient may see, with facility time-zone
- * context and the server-recorded confirmation timestamp (PAT-01, ARC-01).
+ * context and the server-recorded confirmation timestamp.
  *
  * <p>No clinical narrative, clinician note or internal identifier crosses this
  * projection. The facility time zone is IANA so a mobile client can render the

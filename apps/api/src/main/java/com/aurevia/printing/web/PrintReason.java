@@ -3,7 +3,7 @@ package com.aurevia.printing.web;
 import com.aurevia.api.ApiException;
 
 /**
- * The closed reason list recorded with every patient-handout disclosure (OPS-02).
+ * The closed reason list recorded with every patient-handout disclosure.
  *
  * <p>A reason explains <em>why</em> a handout was produced or downloaded without
  * recording <em>what</em> it contained. The wire keys are stable and the list is
