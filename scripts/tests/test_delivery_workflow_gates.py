@@ -393,7 +393,7 @@ class IntegratorPublicationCoverageTest(unittest.TestCase):
         self.assertIn("needs.publish.result == 'success'", condition)
         self.assertIn("needs.seal.outputs.conflicted != ''", condition)
         self.assertIn("needs.publish.outputs.integration_retry != ''", condition)
-        self.assertIn("needs.publish.outputs.recovery_attempt < 1", condition)
+        self.assertIn("needs.publish.outputs.recovery_attempt < 2", condition)
         self.assertNotIn("CONFLICTED", jobs["resolve"].get("env", {}))
         self.assertEqual(jobs["resolve-publish"]["if"], "always() && needs.resolve.result == 'success'")
         self.assertNotIn("continue-on-error", jobs["publish"])

@@ -6228,6 +6228,9 @@ INTEGRATION_FAILED = -1
 # cycle. It still exits nonzero: only the emitted allow-listed signal authorises a
 # retry, so an untrusted log reader cannot turn a failure into a merge.
 INTEGRATION_RETRY = -2
+# Three publication attempts (0, 1, 2) bound the fetch/merge/re-gate recovery:
+# each base advance gets a fresh tokenless cycle, but a run can never loop forever.
+MAX_BASE_ADVANCE_RETRIES = 3
 RETRY_ID = "base_advanced"
 SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 
@@ -6254,12 +6257,16 @@ def integration_retry_payload(reason, base, prs, attempt=0):
     """Return the allow-listed recovery signal, or an empty string if unsafe.
 
     A malformed signal must never be read as a retry request: the base must be a
-    40-hex SHA, ids must be positive integers, and only the first attempt may be
-    retried in a single chain.
+    40-hex SHA, ids must be positive integers, and the attempt must be inside the
+    bounded chain so a forged signal cannot start an unbounded run.
     """
     if reason != RETRY_ID or not isinstance(base, str) or not SHA40.fullmatch(base):
         return ""
-    if not isinstance(attempt, int) or isinstance(attempt, bool) or attempt != 0:
+    if (
+        not isinstance(attempt, int)
+        or isinstance(attempt, bool)
+        or not 0 <= attempt < MAX_BASE_ADVANCE_RETRIES - 1
+    ):
         return ""
     if not isinstance(prs, (list, tuple)) or not prs or any(
         not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0 for pr in prs
@@ -6997,7 +7004,8 @@ def integrate_finalize(merged, gates, gate, attempt=0):
     :data:`INTEGRATION_FAILED` when no batch was published, or
     :data:`INTEGRATION_RETRY` when a newer main requires a fresh tokenless
     validation cycle. Every failure restores the latest task snapshot and the
-    original note bytes. ``attempt`` caps recovery at one cycle per chain.
+    original note bytes. ``attempt`` caps recovery at
+    :data:`MAX_BASE_ADVANCE_RETRIES` publication cycles per chain.
     """
 
     def snapshot_records(items):
@@ -7061,8 +7069,8 @@ def integrate_finalize(merged, gates, gate, attempt=0):
                 )
                 emit("merged", 0)
                 return INTEGRATION_FAILED
-            if attempt >= 1:
-                # The single permitted recovery already ran; another advance needs a person.
+            if attempt >= MAX_BASE_ADVANCE_RETRIES - 1:
+                # The bounded chain is exhausted; another advance needs a person.
                 restore_records(before_tasks, before_notes)
                 handoff_blocked_batch(
                     merged,
@@ -7860,8 +7868,10 @@ def main(argv=None):
         manifest = integrate_seal(a.base, a.payload, a.out)
         emit("conflicted", json.dumps(manifest["conflicted"]))
     elif a.cmd == "integrate-publish":
-        if not 0 <= a.recovery_attempt <= 1:
-            raise SystemExit("recovery attempt must be 0 or 1")
+        if not 0 <= a.recovery_attempt < MAX_BASE_ADVANCE_RETRIES:
+            raise SystemExit(
+                f"recovery attempt must be 0 to {MAX_BASE_ADVANCE_RETRIES - 1}"
+            )
         return integration_exit_code(
             integrate_publish(a.manifest, a.bundle, a.gate, attempt=a.recovery_attempt)
         )
