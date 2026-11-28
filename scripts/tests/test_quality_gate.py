@@ -30,6 +30,48 @@ class MandatoryReviewGateTest(unittest.TestCase):
         self.assertEqual(len(lines), 1)
         self.assertIn('"$notes" --base "$base"', lines[0])
 
+    def test_the_note_is_validated_before_the_gate_runs(self):
+        """A malformed canonical revision is caught locally, before the PR exists."""
+        script = GATE.read_text(encoding="utf-8")
+        calls = [line for line in script.splitlines()
+                 if "swarm_gate.py" in line and "validate-note" in line]
+        self.assertEqual(len(calls), 1)
+        self.assertIn('"$notes"', calls[0])
+        self.assertIn("--note-path", calls[0])
+        lines = script.splitlines()
+        note_line = next(i for i, line in enumerate(lines)
+                         if "python3 " in line and "validate-note" in line)
+        verdict_line = next(i for i, line in enumerate(lines)
+                            if "python3 " in line and "check-verdicts.py" in line)
+        self.assertLess(note_line, verdict_line)
+
+    def test_a_malformed_note_stops_the_gate_before_verdicts(self):
+        """A non-zero note check fails the gate instead of being reported later."""
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            (root / "scripts").mkdir()
+            shutil.copy(GATE, root / "scripts" / "quality-gate.sh")
+            (root / "bin").mkdir()
+            stub = root / "bin" / "python3"
+            stub.write_text(
+                '#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS"\n'
+                'case "$*" in *validate-note*) exit 7;; esac\n'
+                'exit 0\n',
+                encoding="utf-8",
+            )
+            stub.chmod(0o755)
+            env = dict(os.environ)
+            env.update(PATH=f"{root / 'bin'}:{env.get('PATH', '')}",
+                       CALLS=str(root / "calls.log"))
+            result = subprocess.run(
+                ["bash", str(root / "scripts" / "quality-gate.sh"), "base", "notes.md"],
+                cwd=root, env=env, capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 7)
+            calls = (root / "calls.log").read_text(encoding="utf-8")
+            self.assertIn("validate-note", calls)
+            self.assertNotIn("check-verdicts.py", calls)
+
     def test_the_retired_switch_cannot_skip_the_verdict_check(self):
         """Running the gate with the old bypass set still invokes the verdict checker."""
         with tempfile.TemporaryDirectory() as scratch:
