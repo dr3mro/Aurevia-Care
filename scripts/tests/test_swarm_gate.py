@@ -1185,5 +1185,130 @@ class ValidateNoteCommandTests(unittest.TestCase):
             self.assertEqual(gate.main(["refresh-event"]), 2)
 
 
+class ValidateTasksCommandTests(unittest.TestCase):
+    """Offline preflight for tracker fields that otherwise abort reconciliation."""
+
+    def write_tasks(self, files):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(root, ignore_errors=True))
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        return root
+
+    def run_check(self, root):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-tasks", "--dir", str(root)])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_empty_directory_passes_with_zero_count(self):
+        code, out, err = self.run_check(self.write_tasks({}))
+        self.assertEqual(code, 0)
+        self.assertIn("Swarm gate: task validation valid: 0 task files", out)
+        self.assertEqual(err, "")
+
+    def test_all_task_states_and_valid_pr_forms_pass(self):
+        root = self.write_tasks({
+            "a.md": "- [ ] ACTIVE-1 · one\n  - pr: #12\n",
+            "b.md": "- [-] TAKEN-1 · two\n  - pr: 13\n",
+            "c.md": "- [x] DONE-1 · three\n  - [x] a completed checklist item\n",
+            "d.md": "- [!] HELD-1 · four\n  - details:\n    reason\n",
+        })
+        code, out, err = self.run_check(root)
+        self.assertEqual(code, 0)
+        self.assertIn("4 task files", out)
+        self.assertEqual(err, "")
+
+    def test_unreadable_task_file_is_reported_and_scan_continues(self):
+        root = self.write_tasks({"a.md": "- [ ] BAD-9 · one\n  - pr: prose\n"})
+        (root / "broken.md").mkdir()
+        code, out, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("broken.md: unreadable task file", err)
+        self.assertIn("BAD-9 has a malformed pr: field", err)
+        self.assertEqual(out, "")
+
+    def test_unreadable_directory_glob_is_reported(self):
+        with mock.patch.object(Path, "glob", side_effect=OSError("denied")):
+            code, out, err = self.run_check("tasks")
+        self.assertEqual(code, 2)
+        self.assertIn("unreadable task directory: denied", err)
+        self.assertEqual(out, "")
+
+    def test_files_without_a_task_line_are_skipped(self):
+        root = self.write_tasks({
+            "_head.md": "# TODO\n\nThis file holds instructions, not a task entry.\n",
+        })
+        code, out, err = self.run_check(root)
+        self.assertEqual(code, 0)
+        self.assertIn("0 task files", out)
+        self.assertEqual(err, "")
+
+    def test_prose_pr_field_is_reported_and_exits_two(self):
+        root = self.write_tasks({
+            "a.md": "- [ ] BAD-1 · one\n  - pr: local scoped commits on main\n",
+        })
+        code, out, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("BAD-1 has a malformed pr: field", err)
+        self.assertNotIn("Traceback", err)
+
+    def test_repeated_pr_field_is_reported_and_exits_two(self):
+        root = self.write_tasks({"a.md": "- [ ] BAD-2 · two\n  - pr: #12\n  - pr: #13\n"})
+        code, _, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("BAD-2 has repeated pr: fields", err)
+
+    def test_duplicate_id_across_files_is_reported_and_exits_two(self):
+        root = self.write_tasks({
+            "a.md": "- [ ] DUP-1 · one\n",
+            "b.md": "- [-] DUP-1 · two\n",
+        })
+        code, _, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("DUP-1 appears in more than one task file", err)
+
+    def test_done_file_with_embedded_open_checkbox_is_reported(self):
+        root = self.write_tasks({
+            "a.md": "- [x] DONE-2 · done\n\n- [ ] Independent review and final checkpoint.\n",
+        })
+        code, _, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertIn("DONE-2 contains an open task line after its task mark", err)
+
+    def test_task_patterns_stay_in_sync_with_reconcile(self):
+        """A parser change in reconcile must not silently drift from preflight."""
+        source = (Path(__file__).resolve().parents[2] / "scripts" / "swarm.py").read_text(
+            encoding="utf-8")
+        self.assertIn(r"^- \[[- ]\] (\S+)", source)
+        self.assertIn(r"^  - pr:[ \t]*(.*)$", source)
+        self.assertIn(r"#?[1-9][0-9]*", source)
+        active = "- [ ] SYNC-1 · one\n  - pr: #12\n"
+        self.assertEqual(gate.ACTIVE_TASK_LINE.search(active).group(1), "SYNC-1")
+        self.assertEqual(gate.PR_FIELD.findall(active), ["#12"])
+        self.assertTrue(gate.PR_NUMBER.fullmatch("#12"))
+
+    def test_check_scripts_run_the_preflight(self):
+        scripts = Path(__file__).resolve().parents[2] / "scripts"
+        for name in ("check.sh", "quick-check.sh"):
+            with self.subTest(script=name):
+                text = (scripts / name).read_text(encoding="utf-8")
+                self.assertIn("swarm_gate.py validate-tasks --dir tasks", text)
+
+    def test_missing_dir_returns_two_without_a_traceback(self):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = gate.main(["validate-tasks"])
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", err.getvalue())
+
+    def test_unreadable_dir_returns_two_without_a_traceback(self):
+        root = Path(tempfile.mkdtemp()) / "missing"
+        code, _, err = self.run_check(root)
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("unreadable", err.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
