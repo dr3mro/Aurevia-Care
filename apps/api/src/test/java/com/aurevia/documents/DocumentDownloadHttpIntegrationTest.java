@@ -2,6 +2,7 @@ package com.aurevia.documents;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -129,17 +130,22 @@ class DocumentDownloadHttpIntegrationTest {
     }
 
     private String link(String chartId) {
+        ResponseEntity<String> response = linkWithFileName(chartId, "scan.pdf");
+        assertEquals(HttpStatus.CREATED, response.getStatusCode(), response.getBody());
+        return field(response.getBody(), "id");
+    }
+
+    /** Post a synthetic link command with one caller-supplied file name. */
+    private ResponseEntity<String> linkWithFileName(String chartId, String fileName) {
         String body = "{\"subjectType\":\"chart\",\"subjectId\":\"" + chartId
-                + "\",\"fileName\":\"scan.pdf\",\"mediaType\":\"application/pdf\","
+                + "\",\"fileName\":\"" + fileName + "\",\"mediaType\":\"application/pdf\","
                 + "\"contentBase64\":\"" + ENCODED + "\",\"rotationDegrees\":90}";
-        ResponseEntity<String> response = rest.post().uri("/api/v1/documents/associations")
+        return rest.post().uri("/api/v1/documents/associations")
                 .header("X-Synthetic-Subject", "clinician-a")
                 .header("X-Active-Organization", ORG_A)
                 .contentType(MediaType.APPLICATION_JSON).body(body)
                 .retrieve().onStatus(status -> true, (req, res) -> { })
                 .toEntity(String.class);
-        assertEquals(HttpStatus.CREATED, response.getStatusCode(), response.getBody());
-        return field(response.getBody(), "id");
     }
 
     private static String field(String json, String key) {
@@ -199,5 +205,19 @@ class DocumentDownloadHttpIntegrationTest {
 
         ResponseEntity<byte[]> foreign = download(id, "clinician-b", ORG_B);
         assertEquals(HttpStatus.NOT_FOUND, foreign.getStatusCode());
+    }
+
+    /** A parent-traversal name is rejected by the real route before any write. */
+    @Test
+    void rejectsDotDotFileNamesAtTheHttpBoundary() {
+        String chartId = registerChart();
+        for (String name : new String[] { "..", "a..b" }) {
+            ResponseEntity<String> response = linkWithFileName(chartId, name);
+            // Spring 7 renamed HttpStatus.UNPROCESSABLE_ENTITY to UNPROCESSABLE_CONTENT;
+            // assert the wire code so the 422 contract stays stable across the rename.
+            assertEquals(422, response.getStatusCode().value(), response.getBody());
+            assertNotNull(response.getBody());
+            assertTrue(response.getBody().contains("INVALID_FILE_NAME"), response.getBody());
+        }
     }
 }

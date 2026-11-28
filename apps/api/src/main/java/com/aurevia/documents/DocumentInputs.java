@@ -4,7 +4,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 import com.aurevia.api.ApiException;
 
@@ -28,7 +27,6 @@ public final class DocumentInputs {
             Set.of("application/pdf", "image/jpeg", "image/png");
     private static final Set<String> LOCALES = Set.of("en", "ar");
     private static final Set<Integer> ROTATIONS = Set.of(0, 90, 180, 270);
-    private static final Pattern FILE_NAME = Pattern.compile("[^\\x00-\\x1F/\\\\]{1,180}");
 
     private DocumentInputs() {
     }
@@ -110,17 +108,21 @@ public final class DocumentInputs {
     }
 
     /**
-     * Validate a bounded, path-free original file name.
+     * Validate an original file name through the shared upload guard.
      *
-     * @param value value to validate
-     * @return the validated file name
-     * @throws ApiException {@code 422} when absent, path-bearing or overlong
+     * <p>The length bound, path and control-character rules and the parent
+     * traversal guard live only in {@link com.aurevia.documents.UploadValidation},
+     * so this link path cannot drift from artifact, attachment and outage
+     * uploads. A rejection is reported with the stable {@code INVALID_FILE_NAME}
+     * code expected by this route.</p>
+     *
+     * @param value supplied file name
+     * @return the trimmed file name from the shared guard
+     * @throws ApiException {@code 422} {@code INVALID_FILE_NAME} when the name is
+     *                      blank, too long, path-bearing or contains {@code ..}
      */
     public static String fileName(String value) {
-        if (value == null || value.isBlank() || !FILE_NAME.matcher(value).matches()) {
-            throw new ApiException(422, "INVALID_FILE_NAME", "fileName must be a bounded, path-free name");
-        }
-        return value;
+        return UploadValidation.fileName(value);
     }
 
     /**

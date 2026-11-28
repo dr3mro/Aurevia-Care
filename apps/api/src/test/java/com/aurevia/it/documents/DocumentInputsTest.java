@@ -73,7 +73,9 @@ class DocumentInputsTest {
         assert422(() -> DocumentInputs.fileName(" "));
         assert422(() -> DocumentInputs.fileName("../scan.pdf"));
         assert422(() -> DocumentInputs.fileName("a\\b.pdf"));
-        assert422(() -> DocumentInputs.fileName("x".repeat(181)));
+        // fileName now delegates to the shared UploadValidation guard: bound 1-200.
+        assertEquals("x".repeat(200), DocumentInputs.fileName("x".repeat(200)));
+        assert422(() -> DocumentInputs.fileName("x".repeat(201)));
     }
 
     @Test

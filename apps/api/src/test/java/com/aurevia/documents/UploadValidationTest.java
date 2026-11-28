@@ -51,6 +51,7 @@ class UploadValidationTest {
         assertEquals("notes.pdf", UploadValidation.fileName(" notes.pdf "));
         assertEquals("تقرير.pdf", UploadValidation.fileName("تقرير.pdf"));
         assertDenied("INVALID_FILE_NAME", () -> UploadValidation.fileName(null));
+        assertDenied("INVALID_FILE_NAME", () -> UploadValidation.fileName(" "));
         assertDenied("INVALID_FILE_NAME", () -> UploadValidation.fileName("notes..pdf"));
         assertDenied("INVALID_FILE_NAME", () -> UploadValidation.fileName("../notes.pdf"));
         assertDenied("INVALID_FILE_NAME", () -> UploadValidation.fileName("notes\\..\\pdf"));

@@ -69,15 +69,19 @@ public final class UploadValidation {
     /**
      * Validate a bounded, path-free original file name.
      *
-     * <p>Path separators, control characters and explicit parent traversal are
-     * rejected so the name can never escape the tenant's private object prefix.</p>
+     * <p>Path separators, control characters, whitespace-only names and explicit
+     * parent traversal are rejected so the name can never escape the tenant's
+     * private object prefix. The blank guard is needed because a single space
+     * matches the path-free pattern but would trim to an empty object name.</p>
      *
      * @param value supplied file name
      * @return the trimmed file name
-     * @throws ApiException when the name is blank, too long or contains a path
+     * @throws ApiException when the name is blank, too long, contains a path or
+     *                      control character, or contains {@code ..}
      */
     public static String fileName(String value) {
-        if (value == null || !FILE_NAME.matcher(value).matches() || value.contains("..")) {
+        if (value == null || value.isBlank() || !FILE_NAME.matcher(value).matches()
+                || value.contains("..")) {
             throw invalid("fileName", "must be 1-200 characters without a path or control character");
         }
         return value.trim();
