@@ -2,6 +2,7 @@ package com.aurevia.messaging.appointments;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import com.aurevia.api.ApiException;
 
@@ -22,6 +23,16 @@ import com.aurevia.api.ApiException;
  * and the controller receives the finished service by constructor.</p>
  */
 public class PatientAppointmentService {
+
+    /**
+     * Disposition codes that may reach the durable, token-free ledger. Client
+     * text outside this set is reduced to {@code UNSPECIFIED}: the ledger is
+     * documented as non-sensitive, so it must never become a free-text sink.
+     */
+    private static final Set<String> DISPOSITION_CODES = Set.of(
+            "INVALID_TOKEN", "UNREGISTERED", "EXPIRED", "REVOKED", "MALFORMED", "UNSPECIFIED");
+
+    private static final String UNSPECIFIED_DISPOSITION = "UNSPECIFIED";
 
     private final VerifiedPatientLink links;
     private final PatientAppointmentStore store;
@@ -167,7 +178,8 @@ public class PatientAppointmentService {
      * @param subject   authenticated patient subject
      * @param patientId patient identifier in the active organization
      * @param tokenId   opaque device identifier
-     * @param reason    non-sensitive disposition code
+     * @param reason    caller-supplied disposition, normalized to a non-sensitive code
+     *                  before it is persisted
      * @param at        server instant of the disposition
      * @throws ApiException on denial or a concealed device
      */
@@ -179,7 +191,9 @@ public class PatientAppointmentService {
         // A repeated provider disposition must not create duplicate log rows.
         if (current.state() != DeviceState.INVALID) {
             devices.save(current.invalidate());
-            devices.appendInvalidTokenLog(tokenId, patientId, reason, at);
+            String disposition = reason != null && DISPOSITION_CODES.contains(reason)
+                    ? reason : UNSPECIFIED_DISPOSITION;
+            devices.appendInvalidTokenLog(tokenId, patientId, disposition, at);
         }
         audit.append(subject, patientId, "DEVICE_INVALID_TOKEN", "SUCCESS", at);
     }

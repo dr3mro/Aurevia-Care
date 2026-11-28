@@ -329,6 +329,39 @@ class PatientAppointmentHttpIntegrationTest {
         }
     }
 
+    /** A generic notice dispatched over HTTP reaches the real local gateway and is audited. */
+    @Test
+    void notificationAfterRegistrationIsAuditedThroughHttp() throws Exception {
+        String tokenId = "device-http-notify";
+        assertEquals(204, post(BASE + "/devices", SUBJECT_A, ORG_A,
+                deviceBody(CHART, tokenId)).getStatusCode().value());
+        assertEquals(204, post(BASE + "/" + APPOINTMENT + "/notify", SUBJECT_A, ORG_A,
+                "{\"patientId\":\"" + CHART + "\",\"status\":\"CHECKED_IN\"}")
+                .getStatusCode().value());
+        try (Connection connection = freshConnection(ORG_A)) {
+            // One audit fact per active device; other scenarios may register more.
+            assertTrue(scalarCount(connection, "SELECT count(*) FROM public.audit_event "
+                    + "WHERE action = 'PUSH_NOTIFY_CHECKED_IN_SENT' AND outcome = 'SUCCESS'") >= 1);
+        }
+    }
+
+    /** Arbitrary client disposition text is normalized before it reaches the durable ledger. */
+    @Test
+    void arbitraryDispositionTextIsNotPersistedVerbatim() throws Exception {
+        String tokenId = "device-http-invalid-normalized";
+        assertEquals(204, post(BASE + "/devices", SUBJECT_A, ORG_A,
+                deviceBody(CHART, tokenId)).getStatusCode().value());
+        assertEquals(204, post(BASE + "/devices/" + tokenId + "/invalid?patientId=" + CHART
+                + "&reason=arbitrary-text-123", SUBJECT_A, ORG_A, null).getStatusCode().value());
+        try (Connection connection = freshConnection(ORG_A)) {
+            assertEquals(1, scalarCount(connection, "SELECT count(*) FROM "
+                    + "public.device_token_invalid_log WHERE token_id = '" + tokenId
+                    + "' AND reason = 'UNSPECIFIED'"));
+            assertEquals(0, scalarCount(connection, "SELECT count(*) FROM "
+                    + "public.device_token_invalid_log WHERE reason = 'arbitrary-text-123'"));
+        }
+    }
+
     /** A malformed client patient id must fail closed as a denial, not propagate as a server error. */
     @Test
     void malformedPatientIdReturnsForbiddenNotServerError() {

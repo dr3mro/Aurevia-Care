@@ -52,10 +52,14 @@ CREATE TABLE public.device_token_invalid_log (
     id              uuid NOT NULL DEFAULT gen_random_uuid(),
     token_id        text NOT NULL CHECK (char_length(token_id) BETWEEN 1 AND 255),
     patient_id      text NOT NULL CHECK (char_length(patient_id) BETWEEN 1 AND 255),
-    reason          text NOT NULL CHECK (char_length(reason) BETWEEN 1 AND 128),
+    reason          text NOT NULL CHECK (char_length(reason) BETWEEN 1 AND 128
+                        AND reason IN ('INVALID_TOKEN', 'UNREGISTERED', 'EXPIRED',
+                                       'REVOKED', 'MALFORMED', 'UNSPECIFIED')),
     occurred_at     timestamptz NOT NULL,
     -- Deliberately no token column and no free-text detail: only the opaque id
-    -- and a non-sensitive disposition code are durable evidence.
+    -- and a canonical disposition code are durable. The service normalizes any
+    -- other client-supplied text to UNSPECIFIED before it reaches this ledger,
+    -- so a caller cannot turn a fact table into a PHI or credential sink.
     PRIMARY KEY (organization_id, id)
 );
 
