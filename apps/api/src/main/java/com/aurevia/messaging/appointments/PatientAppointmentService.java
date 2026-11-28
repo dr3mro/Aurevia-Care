@@ -17,12 +17,11 @@ import com.aurevia.api.ApiException;
  * is created from a fixed generic template that accepts no clinical input.
  * Revocation and invalid-token state are consulted at dispatch time.</p>
  *
- * <p>The class is intentionally free of Spring stereotypes: this slice has no
- * durable adapter yet, so registering it as a bean would break context
- * startup. Wiring is a follow-up once the verified-link and device tables
- * exist.</p>
+ * <p>The class stays free of Spring stereotypes so its invariants are tested
+ * without a context: a configuration bean composes the tenant-owned JDBC ports
+ * and the controller receives the finished service by constructor.</p>
  */
-public final class PatientAppointmentService {
+public class PatientAppointmentService {
 
     private final VerifiedPatientLink links;
     private final PatientAppointmentStore store;
