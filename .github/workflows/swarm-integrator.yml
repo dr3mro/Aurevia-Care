@@ -16,7 +16,7 @@ on:
         type: boolean
         default: false
       recovery_attempt:
-        description: 'Bounded base-advance retry ordinal (0 or 1)'
+        description: 'Bounded base-advance retry ordinal (0, 1 or 2)'
         type: string
         default: '0'
       recovery_prs:
@@ -43,7 +43,7 @@ on:
         type: boolean
         default: false
       recovery_attempt:
-        description: 'Bounded base-advance retry ordinal (0 or 1)'
+        description: 'Bounded base-advance retry ordinal (0, 1 or 2)'
         type: string
         default: '0'
       recovery_prs:
@@ -384,7 +384,7 @@ jobs:
         || (
           needs.publish.outputs.publication_state == 'deferred'
           && needs.publish.outputs.integration_retry != ''
-          && needs.publish.outputs.recovery_attempt < 1
+          && needs.publish.outputs.recovery_attempt < 2
         )
       )
     runs-on: ubuntu-latest
@@ -479,30 +479,32 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           GH_ISSUES_TOKEN: ${{ github.token }}
-          # A base-advance recovery is capped by the signal-gated step below;
-          # ordinary conflict resolution keeps the historical re-dispatch.
+          # A base-advance recovery is capped by the signal-gated step below:
+          # two re-dispatches at most, then a person takes over. Ordinary conflict
+          # resolution keeps the historical re-dispatch.
           DISPATCH_FLAG: ${{ needs.publish.outputs.publication_state == 'deferred' && needs.publish.outputs.integration_retry != '' && '--no-dispatch' || '' }}
         run: |
           args=(--dir resolved)
           if [[ -n "$DISPATCH_FLAG" ]]; then args+=("$DISPATCH_FLAG"); fi
           python3 -I scripts/swarm.py resolve-publish "${args[@]}"
-      # One bounded retry only: the fresh run re-plans just the signalled PRs and
-      # re-gates on the new main. Ordinary conflict resolution never dispatches a
-      # new integrator run because it carries no recovery signal.
+      # Each recoverable base advance gets one fresh cycle: fetch main, merge and
+      # fix conflicts on the tokenless runner, then re-gate and publish. Three
+      # attempts (0, 1, 2) cap the chain; ordinary conflict resolution never
+      # dispatches a new integrator run because it carries no recovery signal.
       - name: Re-dispatch the bounded base-advance retry
-        if: needs.publish.outputs.publication_state == 'deferred' && needs.publish.outputs.integration_retry != '' && needs.publish.outputs.recovery_attempt < 1
+        if: needs.publish.outputs.publication_state == 'deferred' && needs.publish.outputs.integration_retry != '' && needs.publish.outputs.recovery_attempt < 2
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           RETRY: ${{ needs.publish.outputs.integration_retry }}
           ATTEMPT: ${{ needs.publish.outputs.recovery_attempt }}
         run: |
           prs=$(python3 -c 'import json,os; print(",".join(str(n) for n in json.loads(os.environ["RETRY"])["prs"]))')
-          if [[ ! "$ATTEMPT" =~ ^[01]$ ]]; then
+          if [[ ! "$ATTEMPT" =~ ^[012]$ ]]; then
             echo "::error::invalid recovery attempt" >&2
             exit 1
           fi
           attempt=$(( ATTEMPT + 1 ))
-          if [[ "$attempt" -gt 1 ]]; then
+          if [[ "$attempt" -gt 2 ]]; then
             echo "::error::base-advance retry budget exhausted" >&2
             exit 1
           fi

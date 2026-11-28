@@ -20,7 +20,7 @@ import type {
   ZoneFormatter,
 } from '../features/appointments/types';
 import type { CareUnitRef, PendingAttachment } from '../features/attachments/domain';
-import type { Conversation, ConversationState } from '../features/conversations/domain';
+import type { Conversation, ConversationState, Message } from '../features/conversations/domain';
 import type {
   EnrollmentStrings,
   LockoutStrings,
@@ -259,6 +259,114 @@ export async function loadConversations(
     unreadByConversation[parsed.conversation.id] = parsed.unreadCount;
   }
   return { conversations, unreadByConversation };
+}
+
+/** One validated message from a conversation detail response. */
+function parseConversationMessage(value: unknown): Message {
+  if (
+    !isRecord(value)
+    || !isText(value.id)
+    || !isText(value.conversationId)
+    || !isCount(value.sequence) || value.sequence < 1
+    || (value.senderKind !== 'patient' && value.senderKind !== 'staff')
+    || !isText(value.body)
+    || !isText(value.createdAt)
+  ) {
+    throw new Error('MALFORMED_CONVERSATION_DETAIL');
+  }
+  return {
+    id: value.id,
+    conversationId: value.conversationId,
+    senderId: value.senderKind,
+    senderRole: value.senderKind,
+    body: value.body,
+    sentAt: value.createdAt,
+    sequence: value.sequence,
+  };
+}
+
+/** One verified conversation thread and the version needed for a conditional read. */
+export interface ConversationDetailData {
+  /** Conversation with its ordered messages, scoped to the host organization. */
+  readonly conversation: Conversation;
+  /** Server compare-and-set version from the detail record. */
+  readonly version: number;
+}
+
+/**
+ * Load one patient conversation and its message trail from the deployed detail
+ * endpoint. The organization comes from the verified host context, never from
+ * the server payload, so a spoofed record cannot cross a tenant boundary.
+ */
+export async function loadConversationDetail(
+  transport: Transport,
+  organizationId: string,
+  conversationId: string,
+): Promise<ConversationDetailData> {
+  const body = await transport.get<unknown>(
+    `/api/v1/conversations/${encodeURIComponent(conversationId)}`);
+  if (!isRecord(body) || !isRecord(body.conversation) || !Array.isArray(body.messages)) {
+    throw new Error('MALFORMED_CONVERSATION_DETAIL');
+  }
+  const source = body.conversation;
+  if (
+    !isText(source.id)
+    || source.id !== conversationId
+    || !isText(source.unitKey)
+    || !isConversationState(source.state)
+    || !isCount(source.patientReadSequence)
+    || !isCount(source.version) || source.version < 1
+  ) {
+    throw new Error('MALFORMED_CONVERSATION_DETAIL');
+  }
+  return {
+    conversation: {
+      id: source.id,
+      organizationId,
+      unitId: source.unitKey,
+      unitName: source.unitKey,
+      topic: isText(source.topic) ? source.topic : '',
+      state: source.state,
+      messagingPermitted: source.state !== 'closed',
+      messages: body.messages.map(parseConversationMessage),
+      lastReadSequence: source.patientReadSequence,
+    },
+    version: source.version,
+  };
+}
+
+/** The authoritative read position returned by a conditional read command. */
+export interface ConversationReadResult {
+  /** Version of the conversation after the read. */
+  readonly version: number;
+  /** Highest sequence the patient has now viewed. */
+  readonly patientReadSequence: number;
+}
+
+/**
+ * Record that the patient viewed a thread at the version just loaded. The
+ * conditional header makes a concurrent server-side change fail closed, and the
+ * idempotency key makes a retry safe.
+ */
+export async function markConversationRead(
+  transport: Transport,
+  conversationId: string,
+  version: number,
+  retryKey: string,
+): Promise<ConversationReadResult> {
+  const body = await transport.post<unknown>(
+    `/api/v1/conversations/${encodeURIComponent(conversationId)}/read`,
+    undefined,
+    { 'If-Match': `"${version}"`, 'Idempotency-Key': retryKey },
+  );
+  if (
+    !isRecord(body)
+    || !isCount(body.version) || body.version < 1
+    || !isCount(body.patientReadSequence)
+  ) {
+    throw new Error('MALFORMED_CONVERSATION_READ');
+  }
+  return { version: body.version, patientReadSequence: body.patientReadSequence };
 }
 
 /** Empty synthetic device list. */

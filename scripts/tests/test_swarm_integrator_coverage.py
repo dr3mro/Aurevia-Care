@@ -1490,6 +1490,7 @@ class IntegratorBaseAdvanceRecoveryTest(unittest.TestCase):
         payload = json.loads(retry[0].args[1])
         self.assertEqual(payload, {"id": "base_advanced", "new_base": self.NEW_BASE,
                                    "prs": [7], "attempt": 0})
+        emit.assert_any_call("recovery_attempt", 0)
         emit.assert_any_call("merged", 0)
         write.assert_called_once_with("", "before\n")
         self.assertFalse(any("needs-human" in str(arg)
@@ -1503,9 +1504,23 @@ class IntegratorBaseAdvanceRecoveryTest(unittest.TestCase):
         self.assertTrue(any("needs-human" in str(arg)
                             for call in gh.call_args_list for arg in call.args))
 
-    def test_second_base_advance_at_the_cap_is_terminal(self):
+    def test_second_base_advance_emits_the_next_recovery_cycle(self):
         result, emit, write, gh = self.run_publish(
             "! [rejected] HEAD -> main (non-fast-forward)", attempt=1)
+        self.assertEqual(result, swarm.INTEGRATION_RETRY)
+        retry = [c for c in emit.call_args_list if c.args[0] == "integration_retry"]
+        self.assertEqual(len(retry), 1)
+        payload = json.loads(retry[0].args[1])
+        self.assertEqual(payload, {"id": "base_advanced", "new_base": self.NEW_BASE,
+                                   "prs": [7], "attempt": 1})
+        emit.assert_any_call("recovery_attempt", 1)
+        self.assertFalse(any("needs-human" in str(arg)
+                             for call in gh.call_args_list for arg in call.args))
+        write.assert_called_once_with("", "before\n")
+
+    def test_third_base_advance_at_the_cap_is_terminal(self):
+        result, emit, write, gh = self.run_publish(
+            "! [rejected] HEAD -> main (non-fast-forward)", attempt=2)
         self.assertEqual(result, swarm.INTEGRATION_FAILED)
         self.assertFalse(any(c.args[0] == "integration_retry" for c in emit.call_args_list))
         self.assertTrue(any("needs-human" in str(arg)
@@ -1513,14 +1528,22 @@ class IntegratorBaseAdvanceRecoveryTest(unittest.TestCase):
         write.assert_called_once_with("", "before\n")
 
     def test_retry_payload_rejects_malformed_or_secret_bearing_values(self):
-        self.assertEqual(
-            swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [7], 0),
-            json.dumps({"id": "base_advanced", "new_base": self.NEW_BASE,
-                        "prs": [7], "attempt": 0}, separators=(",", ":")))
+        for attempt in (0, 1):
+            with self.subTest(attempt=attempt):
+                self.assertEqual(
+                    swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [7], attempt),
+                    json.dumps({"id": "base_advanced", "new_base": self.NEW_BASE,
+                                "prs": [7], "attempt": attempt}, separators=(",", ":")))
         self.assertEqual(swarm.integration_retry_payload("other", self.NEW_BASE, [7], 0), "")
         self.assertEqual(swarm.integration_retry_payload("base_advanced", "short", [7], 0), "")
         self.assertEqual(swarm.integration_retry_payload("base_advanced", self.NEW_BASE, ["7"], 0), "")
-        self.assertEqual(swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [7], 1), "")
+        self.assertEqual(swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [7], 2), "")
+        self.assertEqual(swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [7], -1), "")
+        for attempt in (True, False, "1", None, 1.5):
+            with self.subTest(attempt=attempt):
+                self.assertEqual(
+                    swarm.integration_retry_payload(
+                        "base_advanced", self.NEW_BASE, [7], attempt), "")
         self.assertEqual(swarm.integration_retry_payload("base_advanced", self.NEW_BASE, [], 0), "")
 
     def test_malformed_new_base_fails_closed_without_a_retry_signal(self):

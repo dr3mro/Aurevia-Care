@@ -1,6 +1,7 @@
-- [-] ORCA-RECLAIM · Release stale interactive orca claims with completed evidence
+- [x] ORCA-RECLAIM · Release stale interactive orca claims with completed evidence
   - agent: orca
   - attempts: 0
+  - pr: #1835
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm.py, tasks/01357000-ORCA-RECLAIM.md
   - details:
