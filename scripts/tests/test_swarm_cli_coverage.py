@@ -797,6 +797,7 @@ class MainDispatchCoverageTests(CliTestCase):
                     "--recovery-attempt", "2",
                 ])
         publish.assert_not_called()
+        self.assertEqual(self.emitted().get("publication_state"), "failed")
 
     def test_integration_exit_code_rejects_non_integer_status(self):
         with self.assertRaises(TypeError):
@@ -811,13 +812,76 @@ class MainDispatchCoverageTests(CliTestCase):
             integrate.assert_called_once_with([7], "gate.sh")
 
     def test_main_integrate_publish_maps_status_without_exiting_on_merge_count(self):
-        for result, expected in ((-1, 1), (0, 0), (1, 0), (2, 0)):
+        # A bounded base-advance recovery is expected and must not fail the step;
+        # terminal and unknown negative outcomes stay red.
+        for result, expected in ((-3, 1), (-1, 1), (-2, 0), (0, 0), (1, 0), (2, 0)):
             with self.subTest(result=result), \
                     mock.patch.object(swarm, "integrate_publish", return_value=result) as publish:
                 self.assertEqual(swarm.main(["integrate-publish", "--manifest", "m.json",
                                              "--bundle", "b.bundle", "--gate", "gate.sh"]), expected)
             publish.assert_called_once_with(
                 "m.json", "b.bundle", "gate.sh", attempt=0)
+
+    def test_publication_state_helper_covers_every_outcome(self):
+        """The output is a closed enum; an unexpected negative fails closed."""
+        for result, state in ((-3, "failed"), (-1, "failed"), (-2, "deferred"),
+                              (0, "noop"), (1, "published"), (2, "published")):
+            with self.subTest(result=result):
+                self.assertEqual(swarm.publication_state(result), state)
+
+    def test_publication_exit_code_defers_only_the_bounded_retry(self):
+        for result, expected in ((-3, 1), (-1, 1), (-2, 0), (0, 0), (2, 0)):
+            with self.subTest(result=result):
+                self.assertEqual(swarm.publication_exit_code(result), expected)
+
+    def test_main_integrate_publish_emits_an_explicit_state_for_every_outcome(self):
+        """CI gates on the state, not on the job status, so every path emits one."""
+        publish_args = ["integrate-publish", "--manifest", "m.json",
+                        "--bundle", "b.bundle", "--gate", "gate.sh"]
+        for result, state in ((0, "noop"), (2, "published"),
+                              (swarm.INTEGRATION_RETRY, "deferred"),
+                              (swarm.INTEGRATION_FAILED, "failed"), (-3, "failed")):
+            with self.subTest(result=result):
+                self.output.write_text("")
+                with mock.patch.object(swarm, "integrate_publish", return_value=result):
+                    self.assertEqual(swarm.main(publish_args),
+                                     swarm.publication_exit_code(result))
+                self.assertEqual(self.emitted().get("publication_state"), state)
+                written = [line for line in self.output.read_text().splitlines()
+                           if line.startswith("publication_state=")]
+                self.assertEqual(len(written), 1)
+
+    def test_main_integrate_publish_retry_keeps_the_allow_listed_signal(self):
+        """The state output is descriptive; the validated JSON alone authorises a retry."""
+        payload = json.dumps({"id": "base_advanced", "new_base": "a" * 40,
+                              "prs": [7], "attempt": 0}, separators=(",", ":"))
+        self.output.write_text(f"integration_retry={payload}\nrecovery_attempt=0\n")
+        with mock.patch.object(swarm, "integrate_publish",
+                               return_value=swarm.INTEGRATION_RETRY):
+            self.assertEqual(swarm.main(["integrate-publish", "--manifest", "m.json",
+                                         "--bundle", "b.bundle", "--gate", "gate.sh"]), 0)
+        emitted = self.emitted()
+        self.assertEqual(emitted["integration_retry"], payload)
+        self.assertEqual(emitted["recovery_attempt"], "0")
+        self.assertEqual(emitted["publication_state"], "deferred")
+
+    def test_main_integrate_publish_refusal_emits_failed_before_exiting(self):
+        """A manifest/tip refusal never reaches a result, but must still fail closed."""
+        with mock.patch.object(swarm, "integrate_publish",
+                               side_effect=SystemExit("bundle head moved")):
+            with self.assertRaises(SystemExit):
+                swarm.main(["integrate-publish", "--manifest", "m.json",
+                            "--bundle", "b.bundle", "--gate", "gate.sh"])
+        self.assertEqual(self.emitted().get("publication_state"), "failed")
+
+    def test_main_integrate_publish_unexpected_error_emits_failed(self):
+        """An unexpected publication error keeps downstream jobs from assuming success."""
+        with mock.patch.object(swarm, "integrate_publish",
+                               side_effect=RuntimeError("boom")):
+            with self.assertRaises(RuntimeError):
+                swarm.main(["integrate-publish", "--manifest", "m.json",
+                            "--bundle", "b.bundle", "--gate", "gate.sh"])
+        self.assertEqual(self.emitted().get("publication_state"), "failed")
 
     def test_main_integrate_publish_rejection_emits_zero_and_skips_dispatch(self):
         manifest = self.dir / "manifest.json"
@@ -845,6 +909,7 @@ class MainDispatchCoverageTests(CliTestCase):
             self.assertEqual(swarm.main(["integrate-publish", "--manifest", str(manifest),
                                          "--bundle", str(bundle), "--gate", "gate.sh"]), 1)
         self.assertEqual(self.emitted().get("merged"), "0")
+        self.assertEqual(self.emitted().get("publication_state"), "failed")
         dispatch.assert_not_called()
 
     def test_main_resolve_publish_routes_to_resolve_publish(self):

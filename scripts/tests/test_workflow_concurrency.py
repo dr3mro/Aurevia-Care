@@ -290,11 +290,17 @@ class IntegratorRecoveryContractTest(unittest.TestCase):
             publish["outputs"]["integration_retry"],
             "${{ steps.push.outputs.integration_retry }}",
         )
+        self.assertEqual(
+            publish["outputs"]["publication_state"],
+            "${{ steps.push.outputs.publication_state }}",
+        )
         push = next(step for step in publish["steps"] if step.get("id") == "push")
         self.assertIn("--recovery-attempt", push["run"])
 
     def test_recovery_job_is_signal_gated_and_holds_no_write_token(self):
         resolve = self.workflow["jobs"]["resolve"]
+        self.assertNotIn("needs.publish.result", resolve["if"])
+        self.assertIn("needs.publish.outputs.publication_state == 'deferred'", resolve["if"])
         self.assertIn("needs.publish.outputs.integration_retry != ''", resolve["if"])
         self.assertIn("needs.publish.outputs.recovery_attempt < 1", resolve["if"])
         self.assertEqual(set(resolve["permissions"].values()), {"read"})
@@ -313,6 +319,9 @@ class IntegratorRecoveryContractTest(unittest.TestCase):
             step for step in republish["steps"]
             if "Re-dispatch the bounded base-advance retry" in step.get("name", "")
         )
+        self.assertIn("needs.publish.outputs.publication_state == 'deferred'",
+                      redispatch["if"])
+        self.assertIn("needs.publish.outputs.integration_retry != ''", redispatch["if"])
         self.assertIn("--field recovery_attempt", redispatch["run"])
         self.assertIn("--field recovery_prs", redispatch["run"])
         self.assertIn("--field ignore_red_main", redispatch["run"])
@@ -323,6 +332,8 @@ class IntegratorRecoveryContractTest(unittest.TestCase):
             if "Push the resolved branches" in step.get("name", "")
         )
         self.assertIn("--no-dispatch", push_step["env"]["DISPATCH_FLAG"])
+        self.assertIn("needs.publish.outputs.publication_state == 'deferred'",
+                      push_step["env"]["DISPATCH_FLAG"])
         self.assertIn('args+=("$DISPATCH_FLAG")', push_step["run"])
 
 

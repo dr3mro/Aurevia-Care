@@ -32,6 +32,10 @@ on:
         required: false
       OPENCODE_API_KEY_3:
         required: false
+    outputs:
+      publication_state:
+        description: 'Integrator outcome: published, noop, deferred or failed'
+        value: ${{ jobs.publish.outputs.publication_state }}
   workflow_dispatch:
     inputs:
       ignore_red_main:
@@ -281,6 +285,8 @@ jobs:
       || (needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]')
       || (needs.validate.outputs.report != '' && needs.validate.outputs.report != '[]')
     outputs:
+      # Descriptive state only; the retry JSON below is the sole retry authority.
+      publication_state: ${{ steps.push.outputs.publication_state }}
       integration_retry: ${{ steps.push.outputs.integration_retry }}
       recovery_attempt: ${{ steps.push.outputs.recovery_attempt }}
     runs-on: ubuntu-latest
@@ -329,13 +335,12 @@ jobs:
           RECOVERY_ATTEMPT: ${{ inputs.recovery_attempt || '0' }}
         run: python3 -I scripts/swarm.py integrate-publish --manifest validated/manifest.json --bundle validated/main.bundle --gate "$GATE" --recovery-attempt "$RECOVERY_ATTEMPT"
 
-  # Reconcile only after a successful publication, from a fresh trusted main
-  # checkout. A rejected local integration commit must never become the base of
-  # a later tracker write.
+  # Reconcile only after a batch actually reached main, from a fresh trusted
+  # checkout. A green deferred publish (or a no-op) must never write trackers.
   reconcile:
     name: Reconcile merged tasks
     needs: publish
-    if: always() && needs.publish.result == 'success'
+    if: always() && needs.publish.outputs.publication_state == 'published'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -368,8 +373,19 @@ jobs:
     needs: [pick, validate, seal, publish]
     if: >-
       always() && (
-        (needs.publish.result == 'success' && needs.seal.outputs.conflicted != '' && needs.seal.outputs.conflicted != '[]')
-        || (needs.publish.outputs.integration_retry != '' && needs.publish.outputs.recovery_attempt < 1)
+        (
+          (
+            needs.publish.outputs.publication_state == 'published'
+            || needs.publish.outputs.publication_state == 'noop'
+          )
+          && needs.seal.outputs.conflicted != ''
+          && needs.seal.outputs.conflicted != '[]'
+        )
+        || (
+          needs.publish.outputs.publication_state == 'deferred'
+          && needs.publish.outputs.integration_retry != ''
+          && needs.publish.outputs.recovery_attempt < 1
+        )
       )
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -465,7 +481,7 @@ jobs:
           GH_ISSUES_TOKEN: ${{ github.token }}
           # A base-advance recovery is capped by the signal-gated step below;
           # ordinary conflict resolution keeps the historical re-dispatch.
-          DISPATCH_FLAG: ${{ needs.publish.outputs.integration_retry != '' && '--no-dispatch' || '' }}
+          DISPATCH_FLAG: ${{ needs.publish.outputs.publication_state == 'deferred' && needs.publish.outputs.integration_retry != '' && '--no-dispatch' || '' }}
         run: |
           args=(--dir resolved)
           if [[ -n "$DISPATCH_FLAG" ]]; then args+=("$DISPATCH_FLAG"); fi
@@ -474,7 +490,7 @@ jobs:
       # re-gates on the new main. Ordinary conflict resolution never dispatches a
       # new integrator run because it carries no recovery signal.
       - name: Re-dispatch the bounded base-advance retry
-        if: needs.publish.outputs.integration_retry != '' && needs.publish.outputs.recovery_attempt < 1
+        if: needs.publish.outputs.publication_state == 'deferred' && needs.publish.outputs.integration_retry != '' && needs.publish.outputs.recovery_attempt < 1
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           RETRY: ${{ needs.publish.outputs.integration_retry }}
