@@ -789,12 +789,23 @@ class MainDispatchCoverageTests(CliTestCase):
             queue = swarm.plan_integration(False, recovery_prs=[8])
         self.assertEqual(queue, [8])
 
+    def test_main_accepts_every_bounded_recovery_attempt(self):
+        for attempt in (0, 1, 2):
+            with self.subTest(attempt=attempt), \
+                    mock.patch.object(swarm, "integrate_publish", return_value=0) as publish:
+                self.assertEqual(swarm.main([
+                    "integrate-publish", "--manifest", "m", "--bundle", "b",
+                    "--recovery-attempt", str(attempt),
+                ]), 0)
+            publish.assert_called_once_with("m", "b", "scripts/integrator-gate.sh",
+                                            attempt=attempt)
+
     def test_main_caps_the_recovery_attempt(self):
         with mock.patch.object(swarm, "integrate_publish") as publish:
             with self.assertRaises(SystemExit):
                 swarm.main([
                     "integrate-publish", "--manifest", "m", "--bundle", "b",
-                    "--recovery-attempt", "2",
+                    "--recovery-attempt", "3",
                 ])
         publish.assert_not_called()
 
