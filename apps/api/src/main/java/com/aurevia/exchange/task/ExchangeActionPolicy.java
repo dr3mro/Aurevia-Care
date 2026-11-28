@@ -5,11 +5,10 @@ import org.springframework.stereotype.Component;
 /**
  * Bounded role matrix for the XCH-02 slice (IAM-01, PRD-06).
  *
- * <p>Kept inside the story package so a parallel worker cannot change the
- * shared action policy. Consolidation into the shared {@code ActionPolicy} is a
- * follow-up once the exchange module is settled. Clinical review is deliberately
- * clinician-only: a lab collector may record a delivery receipt, but cannot
- * acknowledge or resolve a clinical task.</p>
+ * <p>Clinical review is deliberately clinician-only: a lab collector may record
+ * workflow and transmission facts, but cannot acknowledge or resolve a clinical
+ * task. Administrative and reception roles can read state and history without
+ * gaining access to the clinical review channel.</p>
  */
 @Component
 public class ExchangeActionPolicy {

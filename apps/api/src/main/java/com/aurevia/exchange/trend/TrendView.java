@@ -9,6 +9,11 @@ import java.util.List;
  * that nothing disappeared: {@code points.size() + excluded.size()} equals the
  * number of observations considered.</p>
  *
+ * @param testCode    test identity requested by the caller
+ * @param unit        canonical unit of the effective rule, or {@code null}
+ * @param ruleVersion version of the effective rule, or zero when none applies
+ * @param points      observations eligible for the numeric trend
+ * @param excluded    observations kept visible but not plotted
  * @return this record
  */
 public record TrendView(String testCode, String unit, int ruleVersion, List<TrendPoint> points,
@@ -17,6 +22,12 @@ public record TrendView(String testCode, String unit, int ruleVersion, List<Tren
     /**
      * Copy both lists on construction and on access so callers cannot mutate the
      * view or reach a list they hold a reference to.
+     *
+     * @param testCode    test identity requested by the caller
+     * @param unit        canonical unit of the effective rule, or {@code null}
+     * @param ruleVersion version of the effective rule, or zero when none applies
+     * @param points      comparable points to freeze against caller mutation
+     * @param excluded    visible exclusions to freeze against caller mutation
      */
     public TrendView {
         points = List.copyOf(points);

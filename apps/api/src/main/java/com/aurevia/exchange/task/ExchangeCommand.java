@@ -43,10 +43,12 @@ public enum ExchangeCommand {
     private final boolean requiresReason;
 
     /**
-     * @param wire
-     * @param dimension
-     * @param targetState
-     * @param requiresReason
+     * Bind the wire command name to one state channel and one target state.
+     *
+     * @param wire           lower-case path segment accepted by the controller
+     * @param dimension      single state channel this command writes
+     * @param targetState    lower-case target state within that channel
+     * @param requiresReason whether the caller must record a reason
      */
     ExchangeCommand(String wire, ExchangeDimension dimension, String targetState, boolean requiresReason) {
         this.wire = wire;

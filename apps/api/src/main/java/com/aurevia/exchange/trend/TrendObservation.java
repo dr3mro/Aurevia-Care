@@ -21,6 +21,23 @@ import com.aurevia.api.ApiException;
  * {@code entered_in_error} revisions remain visible as exclusions and are never
  * plotted as current values.</p>
  *
+ * @param id                 opaque tenant-local observation identifier
+ * @param patientId          tenant-local patient identifier
+ * @param testCode           test identity as reported by the source
+ * @param testDisplay        human-readable test name shown verbatim
+ * @param comparabilityGroup assay or method group from the source
+ * @param revisionStatus     final, preliminary, corrected or entered in error
+ * @param value              numeric value, or {@code null} for a coded result
+ * @param unit               unit reported with the numeric value
+ * @param qualifier          less-than, greater-than or no qualifier
+ * @param referenceLow       lower reference bound, or {@code null}
+ * @param referenceHigh      upper reference bound, or {@code null}
+ * @param referenceUnit      unit of the reported reference range
+ * @param effectiveAt        clinical instant used to order the trend
+ * @param interpretation     source interpretation, shown verbatim
+ * @param qualitativeValue   coded or text result when no numeric value exists
+ * @param sourceSystem       originating system
+ * @param sourceVersion      source revision or version
  * @return this record
  */
 public record TrendObservation(String id, String patientId, String testCode, String testDisplay,
@@ -39,6 +56,23 @@ public record TrendObservation(String id, String patientId, String testCode, Str
     /**
      * Validate the observation at the trust boundary.
      *
+     * @param id                 opaque tenant-local observation identifier
+     * @param patientId          tenant-local patient identifier
+     * @param testCode           test identity as reported by the source
+     * @param testDisplay        human-readable test name shown verbatim
+     * @param comparabilityGroup assay or method group from the source
+     * @param revisionStatus     final, preliminary, corrected or entered in error
+     * @param value              numeric value, or {@code null} for a coded result
+     * @param unit               unit reported with the numeric value
+     * @param qualifier          less-than, greater-than or no qualifier
+     * @param referenceLow       lower reference bound, or {@code null}
+     * @param referenceHigh      upper reference bound, or {@code null}
+     * @param referenceUnit      unit of the reported reference range
+     * @param effectiveAt        clinical instant used to order the trend
+     * @param interpretation     source interpretation, shown verbatim
+     * @param qualitativeValue   coded or text result when no numeric value exists
+     * @param sourceSystem       originating system
+     * @param sourceVersion      source revision or version
      * @throws ApiException when identity, group, revision, time, value, unit or
      *                      reference range is invalid
      */

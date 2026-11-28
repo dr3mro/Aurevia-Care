@@ -24,9 +24,9 @@ import jakarta.servlet.http.HttpServletResponse;
  *
  * <p>The id is taken from {@code X-Correlation-Id} only when it is a valid UUID;
  * any missing, blank or malformed value is replaced with a freshly generated UUID.
- * The id is placed in the SLF4J MDC for the duration of the request, echoed in the
- * response header, and the MDC is always cleared afterwards, including when the
- * downstream chain throws. The completion log is produced solely by
+ * The filter puts its resolved id in the SLF4J MDC and echoes it in the response
+ * header, and the MDC is always cleared afterwards, including when the downstream
+ * chain throws; downstream code may replace the MDC value. The completion log is produced solely by
  * {@link com.aurevia.observability.RequestLogFormatter}, which has a
  * fixed field list and cannot include a query string, body, header or user value.</p>
  *
@@ -62,12 +62,27 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         this.clock = clock;
     }
 
+    /**
+     * Resolve and publish one correlation id, then log the completed request.
+     *
+     * <p>The completion log and the correlation cleanup run in a {@code finally}
+     * block so a downstream failure is still logged and no id leaks into the
+     * next request through the thread-local context. The resolved value is
+     * published as a request attribute for downstream consumers.</p>
+     *
+     * @param request  current HTTP request
+     * @param response current HTTP response
+     * @param chain    remaining filter chain
+     * @throws ServletException when the downstream chain signals a servlet failure
+     * @throws IOException      when the downstream chain signals an I/O failure
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
         String correlationId = resolveCorrelationId(request.getHeader(CORRELATION_HEADER));
-        // The interceptor, authorization ledger and error body must use this same
-        // value; a second mint there would split one request into two audit ids.
+        // Publish the resolved id for downstream consumers: a second mint for
+        // the same request would split its audit trail. Only a strict UUID
+        // header is reused here; every other value is replaced with a fresh id.
         request.setAttribute(CORRELATION_ATTRIBUTE, correlationId);
         MDC.put(MDC_KEY, correlationId);
         response.setHeader(CORRELATION_HEADER, correlationId);

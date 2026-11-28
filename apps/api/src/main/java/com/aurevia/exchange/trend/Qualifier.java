@@ -26,7 +26,9 @@ public enum Qualifier {
     private final String wire;
 
     /**
-     * @param wire
+     * Bind the stable wire representation of a result qualifier.
+     *
+     * @param wire lower-case value accepted on input and stored in the database
      */
     Qualifier(String wire) {
         this.wire = wire;
